@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Test/">
+    <Project Path="CustomsCloud.CRM.CertificateOfOrigins.Test/CustomsCloud.CRM.CertificateOfOrigins.Test.csproj" />
+  </Folder>
+  <Project Path="CustomsCloud.CRM.CertificateOfOrigins.BL/CustomsCloud.CRM.CertificateOfOrigins.BL.csproj" />
+  <Project Path="CustomsCloud.CRM.CertificateOfOrigins.DAL/CustomsCloud.CRM.CertificateOfOrigins.DAL.csproj" />
+  <Project Path="CustomsCloud.CRM.CertificateOfOrigins.Model/CustomsCloud.CRM.CertificateOfOrigins.Model.csproj" />
+  <Project Path="CustomsCloud.CRM.CertificateOfOrigins.WebApi/CustomsCloud.CRM.CertificateOfOrigins.WebApi.csproj" />
+</Solution>
