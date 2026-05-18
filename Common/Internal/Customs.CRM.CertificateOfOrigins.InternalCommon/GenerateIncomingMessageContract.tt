@@ -1,0 +1,14 @@
+﻿<#@ template debug="true" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ assembly name="R:\Bin\Common\Customs\MalamTeam.Infrastructure.T4.FrameWork.dll" #>
+<#@ import namespace="MalamTeam.Infrastructure.T4.FrameWork.ModuleWcfGenerator" #>
+<#
+    var t = new ModuleWcfGeneratorPreTextMessageTemplate()
+	{
+		ContractDll = "Customs.CRM.CertificateOfOrigins.InternalCommon",
+        ContractClassdName = "Customs.CRM.CertificateOfOrigins.InternalCommon.Contract.ICertificateOfOriginsIncomingMessageContract",
+		PreProcessedTemplateHost = this.Host,
+	};
+	
+    t.TransformText();
+#>

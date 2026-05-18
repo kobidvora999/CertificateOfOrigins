@@ -1,0 +1,158 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:Assets="clr-namespace:Customs.Inf.MMI.Common.Assets;assembly=Customs.Inf.MMI.Common.Assets"
+                    xmlns:CustomGrid="clr-namespace:Customs.Inf.MMI.Common.Toolbox.CustomDataGrid.CustomColumns;assembly=Customs.Inf.MMI.Common.Toolbox"
+                    xmlns:DateTimePickerControl="clr-namespace:Customs.Inf.MMI.Common.Toolbox.DateTimePickerControl;assembly=Customs.Inf.MMI.Common.Toolbox"
+                    xmlns:loc="clr-namespace:Customs.Inf.MMI.Common.Extensions;assembly=Customs.Inf.MMI.Common"
+                    xmlns:MeasurmentUnitControl="clr-namespace:Customs.Inf.MMI.Services.View.MeasurmentUnitControl;assembly=Customs.Inf.MMI.Services.View"
+                    xmlns:NumericUpDown="clr-namespace:Customs.Inf.MMI.Common.Toolbox.NumericUpDown;assembly=Customs.Inf.MMI.Common.Toolbox"
+                    xmlns:svs="http://schemas.customs.com/wpf/Services"
+                    xmlns:View="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:ViewStateControl="clr-namespace:Customs.Inf.MMI.Common.Toolbox.ViewStateControl;assembly=Customs.Inf.MMI.Common.Toolbox">
+
+    <!--    -->
+
+    <DataTemplate x:Key="CellComboBox">
+        <svs:LOVComponent AutoRefreshFlags="LookupType"
+                          DisplayMemberPath="Name"
+                          IsSimpleStyle="True"
+                          IsSimpleTextBlockStyle="True"
+                          LookupType="{loc:CustomBinding LovType}"
+                          SelectedValue="{loc:CustomBinding ValueInt}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditComboBox">
+        <svs:LOVComponent DisplayMemberPath="Name"
+                          LookupType="{loc:CustomBinding LovType}"
+                          SelectedValue="{loc:CustomBinding ValueInt}" />
+    </DataTemplate>
+
+
+    <DataTemplate x:Key="CellMeasurmentUnit">
+
+        <MeasurmentUnitControl:MeasurmentUnitControl IsSimpleStyle="True" NumberDecimalDigits="3" 
+                                                     MeasurementCategory="{loc:CustomBinding MeasurementCategory}"
+                                                     SelectedUnit="{loc:CustomBinding SelectedUnit}"
+                                                     ViewStateControl:ViewStateManager.ViewState="ReadOnly"
+                                                     Value="{loc:CustomBinding ValueFloat,
+                                                                               Mode=TwoWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditMeasurmentUnit">
+        <MeasurmentUnitControl:MeasurmentUnitControl IsSelectUnitEnabled="False"
+                                                     IsSimpleStyle="False"
+                                                     Maximum="9999999999" NumberDecimalDigits="3" 
+                                                     MeasurementCategory="{loc:CustomBinding MeasurementCategory}"
+                                                     SelectedUnit="{loc:CustomBinding SelectedUnit}"
+                                                     Value="{loc:CustomBinding ValueFloat,
+                                                                               Mode=TwoWay}" />
+    </DataTemplate>
+
+
+    <DataTemplate x:Key="CellLovSelection">
+        <svs:LOVSearchTextBox DisplayMemberPath="Name"
+                              IsCellInGrid="True"
+                              LookupType="{loc:CustomBinding LovType}"
+                              SelectedValue="{loc:CustomBinding ValueInt,
+                                                                Mode=OneWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditLovSelection">
+        <svs:LOVSearchTextBox AutoRefreshFlags="LookupType"
+                              DisplayMemberPath="Name"
+                              IsAllowEmptySearch="True"
+                              LookupType="{loc:CustomBinding LovType}"
+                              SelectedValue="{loc:CustomBinding ValueInt,
+                                                                Mode=TwoWay}"
+                              SelectedValuePath="ID">
+            <svs:LOVSearchTextBox.Columns>
+                <CustomGrid:CustomGridDataColumn Width="*"
+                                                 DataMemberBinding="{loc:CustomBinding Name}"
+                                                 Header="{loc:LocStr StrKey={x:Static Assets:LocalStrings.Name}}" />
+                <CustomGrid:CustomGridDataColumn Width="*"
+                                                 DataMemberBinding="{loc:CustomBinding ID}"
+                                                 Header="{loc:LocStr StrKey={x:Static Assets:LocalStrings.Identify}}" />
+            </svs:LOVSearchTextBox.Columns>
+        </svs:LOVSearchTextBox>
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditLovSelectionInitialized">
+        <svs:LOVSearchTextBox AutoRefreshFlags="LookupType"
+                              DisplayMemberPath="Name"
+                              IsAllowEmptySearch="True"
+                              LookupType="{loc:CustomBinding LovType}"
+                              SelectedValue="{loc:CustomBinding ValueInt,
+                                                                Mode=TwoWay}"
+                              SelectedValuePath="ID"
+                              svs:LOVSearchTextBox.InitialType ="{loc:CustomBinding InitialType}"
+                              Predicate="{loc:CustomBinding Predicate}"
+                              TextSearchMode="Contains"
+                              >
+
+        </svs:LOVSearchTextBox>
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellValueInt">
+        <TextBlock Text="{loc:CustomBinding ValueInt, Mode=OneWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditValueInt">
+        <NumericUpDown:NumericUpDownPicker IsInteger="True"
+                                           NumberDecimalDigits="3"
+                                           Value="{loc:CustomBinding ValueInt}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellValueFloat">
+        <TextBlock Text="{loc:CustomBinding ValueFloat, Mode=OneWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditValueFloat">
+        <NumericUpDown:NumericUpDownPicker NumberDecimalDigits="3" Value="{loc:CustomBinding ValueFloat, Mode=TwoWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellValueBit">
+        <CheckBox IsChecked="{loc:CustomBinding ValueBit, Mode=OneWay}" ViewStateControl:ViewStateManager.ViewState="ReadOnly" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditValueBit">
+        <CheckBox IsChecked="{loc:CustomBinding ValueBit, Mode=TwoWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellValuestring">
+        <TextBlock Text="{loc:CustomBinding Valuestring, Mode=OneWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditValuestring">
+        <TextBox Text="{loc:CustomBinding Valuestring, Mode=TwoWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellEditValueDate">
+        <DateTimePickerControl:CustomDateTimePicker SelectedDate="{loc:CustomBinding ValueDate, Mode=TwoWay}" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="CellValueDate">
+        <TextBlock Text="{loc:CustomBinding ValueDate, Mode=OneWay}" />
+    </DataTemplate>
+
+
+    <View:CellTemplateSelector x:Key="CellTemplateSelector"
+                               CellComboBox="{StaticResource CellComboBox}"
+                               CellLovSelection="{StaticResource CellLovSelection}"
+                               CellMeasurementUnit="{StaticResource CellMeasurmentUnit}"
+                               CellValueBit="{StaticResource CellValueBit}"
+                               CellValueDate="{StaticResource CellValueDate}"
+                               CellValueFloat="{StaticResource CellValueFloat}"
+                               CellValueInt="{StaticResource CellValueInt}"
+                               CellValuestring="{StaticResource CellValuestring}" />
+
+    <View:CellEditTemplateSelector x:Key="CellEditTemplateSelector"
+                                   CellEditComboBox="{StaticResource CellEditComboBox}"
+                                   CellEditLovSelection="{StaticResource CellEditLovSelection}"
+                                   CellEditLovSelectionInitialized="{StaticResource CellEditLovSelectionInitialized}"
+                                   CellEditMeasurementUnit="{StaticResource CellEditMeasurmentUnit}"
+                                   CellEditValueBit="{StaticResource CellEditValueBit}"
+                                   CellEditValueDate="{StaticResource CellEditValueDate}"
+                                   CellEditValueFloat="{StaticResource CellEditValueFloat}"
+                                   CellEditValueInt="{StaticResource CellEditValueInt}"
+                                   CellEditValuestring="{StaticResource CellEditValuestring}" />
+</ResourceDictionary>

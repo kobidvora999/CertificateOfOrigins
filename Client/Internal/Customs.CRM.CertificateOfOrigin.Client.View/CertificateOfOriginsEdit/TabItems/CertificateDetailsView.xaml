@@ -1,0 +1,146 @@
+﻿<loc:CustomViewBase x:Class="Customs.CRM.CertificateOfOrigins.Client.View.CertificateOfOriginsEdit.TabItems.CertificateDetailsView"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:Api="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+                    xmlns:Converters="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.Converters"
+                    xmlns:CustomColumns="clr-namespace:Customs.Inf.MMI.Common.Toolbox.CustomDataGrid.CustomColumns;assembly=Customs.Inf.MMI.Common.Toolbox"
+                    xmlns:customGrid="clr-namespace:Customs.Inf.MMI.Common.Toolbox.CustomDataGrid;assembly=Customs.Inf.MMI.Common.Toolbox"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:Entities="clr-namespace:Customs.CertificateOfOrigins.Entities;assembly=Customs.CRM.Entities"
+                    xmlns:loc="http://schemas.customs.com/wpf"
+                    xmlns:LOVGridComponentColumn="clr-namespace:Customs.Inf.MMI.Services.View.ListOfValuesManager.LOVGridComponentColumn;assembly=Customs.Inf.MMI.Services.View"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    Title="CertificateDetailsView"
+                    d:DesignHeight="480"
+                    d:DesignWidth="640"
+                    mc:Ignorable="d">
+
+    <loc:CustomViewBase.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Customs.CRM.CertificateOfOrigins.Client.View;component/CellTemplateDictionary.xaml" />
+                <!--  /XAcute;component/Themes/generic.xaml"/>  -->
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </loc:CustomViewBase.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="1.25*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <customGrid:CustomDataGridView Grid.Row="0"
+                                       Grid.RowSpan="4"
+                                       Grid.Column="0"
+                                       HeaderToggleButtonVisibility="Collapsed"
+                                       ItemsSource="{loc:CustomBinding CurrentEntity.CertificateOfOriginDetails}"
+                                       UpButtonVisibility="Collapsed"
+                                       NewButtonVisibility="Collapsed"
+                                       DownButtonVisibility="Collapsed"
+                                       EditButtonVisibility="Collapsed"
+                                       DeleteButtonVisibility="Collapsed"
+                                       loc:ViewStateManager.ViewState="ReadOnly">
+            <customGrid:CustomDataGridView.StatusBarContent>
+                <customGrid:SearchStatusLabel />
+            </customGrid:CustomDataGridView.StatusBarContent>
+
+            <customGrid:CustomDataGridView.Columns>
+
+                <LOVGridComponentColumn:LOVComponentColumn Width="*"
+                                                           DataMemberBinding="{loc:CustomBinding CertificateDetailsTypeCodeID}"
+                                                           DisplayMemberPath="Name"
+                                                           Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.Title}}"
+                                                           IsSimpleColumn="True"
+                                                           LookupType="{x:Type Entities:CertificateDetailsTypeCodeEnum}" 
+                                                           IsReadOnly="True"/>
+
+                <!--<CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding DisplayedValue}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.FieldValue}}" />-->
+                <CustomColumns:CustomGridDataColumn CellEditTemplateSelector="{StaticResource CellEditTemplateSelector}"
+                                                 CellTemplateSelector="{StaticResource CellTemplateSelector}"
+                                                 DataMemberBinding="{loc:CustomBinding DataContext.Value, UpdateSourceTrigger=PropertyChanged,Mode=TwoWay}"
+                                                 Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.FieldValue}}"
+                                                 IsFilterable="False"
+                                                 />
+                <!--IsReadOnlyBinding="{loc:CustomBinding DataContext.CertificateDetailsTypeCode,
+                Mode=OneWay,
+                Converter={loc:InstanceToBooleanConverter NullValue=True}}"-->
+            </customGrid:CustomDataGridView.Columns>
+        </customGrid:CustomDataGridView>
+
+        <customGrid:CustomDataGridView Grid.Row="0"
+                                       Grid.Column="2"
+                                       HeaderToggleButtonVisibility="Collapsed"
+                                       ItemsSource="{loc:CustomBinding CurrentEntity.CertificateOfOriginVsDeclarationError}"
+                                       loc:ViewStateManager.ViewState="ReadOnly">
+
+            <customGrid:CustomDataGridView.Columns>
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ErrorText}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CertificateOfOriginVsDeclaration}}" />
+
+            </customGrid:CustomDataGridView.Columns>
+
+        </customGrid:CustomDataGridView>
+
+        <loc:ExpandableGroupBox Grid.Row="1"
+                                Grid.Column="2"
+                                BoundryBorderType="None"                            
+                                Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.FeedbackRemark}}">
+
+            <loc:ViewStateManager.ViewState>
+                <loc:CustomMultiBinding Converter="{x:Static Converters:StaticConverters.ReadOnlyPropertyViewStateConverter}" ConverterParameter="FeedbackRemark">
+                    <loc:CustomBinding Mode="TwoWay"
+                                           Path="DataContext.IsStatusEditable"
+                                           RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                           AncestorType=loc:CustomEditViewBase}"
+                                           UpdateSourceTrigger="PropertyChanged" />
+                    <loc:CustomBinding Mode="TwoWay"
+                                           Path="DataContext.EditViewState"
+                                           RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                           AncestorType=loc:CustomEditViewBase}"
+                                           UpdateSourceTrigger="PropertyChanged" />
+                </loc:CustomMultiBinding>
+            </loc:ViewStateManager.ViewState>
+
+            <loc:CustomMaskedTextBox Height="70"
+                                     VerticalAlignment="Top"
+                                     FlowDirection="RightToLeft"
+                                     IsMultiline="True"                                     
+                                     Value="{loc:CustomBinding CurrentEntity.FeedbackRemark}">
+            </loc:CustomMaskedTextBox>
+        </loc:ExpandableGroupBox>
+
+        <customGrid:CustomDataGridView Grid.Row="2"
+                                       Grid.Column="2"
+                                       HeaderToggleButtonVisibility="Collapsed"
+                                       ItemsSource="{loc:CustomBinding CurrentEntity.Milestones}"
+                                       loc:ViewStateManager.ViewState="ReadOnly"
+                                       HeaderLabel="{Api:LocStr StrKey={x:Static Api:LocalStrings.Milestones}}"> 
+
+            <customGrid:CustomDataGridView.Columns>
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding CreateDate}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CreateDate}}" />
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ActionName}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.Operation}}" />
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding UserName}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ConfirmatorName}}" />
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding RejectReason}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ReasonForCancellationOrPostponement}}" />
+
+                <CustomColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding VersionNumber}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.VersionNumber}}" />
+
+            </customGrid:CustomDataGridView.Columns>
+
+        </customGrid:CustomDataGridView>
+
+    </Grid>
+
+</loc:CustomViewBase>
+
+

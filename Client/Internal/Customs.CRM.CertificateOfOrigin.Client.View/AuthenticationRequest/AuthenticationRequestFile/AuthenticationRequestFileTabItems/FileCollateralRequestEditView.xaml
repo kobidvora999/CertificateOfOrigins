@@ -1,0 +1,28 @@
+﻿<loc:CustomViewBase x:Class="Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest.AuthenticationRequestFile.AuthenticationRequestFileTabItems.FileCollateralRequestEditView"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:Api="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+                    xmlns:CollateralRequestDetails="clr-namespace:Customs.FinanceInfr.Collateral.Client.External.view.CollateralRequestDetails;assembly=Customs.FinanceInfr.Collateral.Client.External.view"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:loc="http://schemas.customs.com/wpf"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    Title="CollateralRequestEditView"
+                    CurrentEntity="{loc:CustomBinding SelectedRequest}"
+                    Id="{x:Static Api:ModuleViews.FileCollateralRequesttView}"
+                    ViewState="ReadOnly"
+                    d:DesignHeight="480"
+                    d:DesignWidth="640"
+                    mc:Ignorable="d">
+
+    <Grid>
+        <CollateralRequestDetails:CollateralRequestDetailsControl EntityExternalID="{loc:CustomBinding SelectedRequest.DocumentID}"
+                                                                  IsEditable="True"
+                                                                  IsSubmittedForEntity="True"
+                                                                  IsTemporaryEntity="True"
+                                                                  MainEntity="{loc:CustomBinding SelectedRequest}"
+                                                                  RelatedEntityID="{loc:CustomBinding SelectedRequest.DocumentID}"
+                                                                  RelatedEntityType="ImportAuthenticationRequest" />
+    </Grid>
+</loc:CustomViewBase>
+
+

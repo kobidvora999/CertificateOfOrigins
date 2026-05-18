@@ -1,0 +1,104 @@
+﻿<loc:CustomEditViewBase
+    x:Class="Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest.AuthenticationRequestFile.AuthenticationRequestFileEditView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:Api="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+    xmlns:AuthenticationRequestFile1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest.AuthenticationRequestFile"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:doc="clr-namespace:Customs.Infrastructure.DocumentManagement.Client.External.View.AttachedDocuments;assembly=Customs.Infrastructure.DocumentManagement.Client.External.View"
+    xmlns:loc="http://schemas.customs.com/wpf"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="AuthenticationRequestFileEditView"
+    d:DesignHeight="480"
+    d:DesignWidth="640"
+    CancelButtonCommand="{loc:CustomBinding CancelAuthenticationRequestFileCommand}"
+    ContentProgressBarPanelVisibility="{loc:CustomBinding ProgressBarVisibility}"
+    CurrentEntity="{loc:CustomBinding CurrentEntity}"
+    EditButtonCommand="{loc:CustomBinding EditAuthenticationRequestFileCommand}"
+    ExpanderHeaderVisibility="Collapsed"
+    Id="{x:Static Api:ModuleViews.AuthenticationRequestFileEditView}"
+    IsCancelButtonEnabled="{loc:CustomBinding IsEditModeEnabled}"
+    IsEditButtonEnabled="{loc:CustomBinding IsEditEnable}"
+    IsSaveButtonEnabled="{loc:CustomBinding IsEditModeEnabled}"
+    RefreshCommand="{loc:CustomBinding RefreshAuthenticationRequestFileCommand}"
+    SaveButtonCommand="{loc:CustomBinding SaveAuthenticationRequestFileCommand}"
+    SaveButtonCommandParameter="{loc:CustomBinding CloseAfterSaveFalse}"
+    SaveCancelButtonCommand="{loc:CustomBinding SaveAuthenticationRequestFileCommand}"
+    SaveCancelButtonCommandParameter="{loc:CustomBinding CloseAfterSaveTrue}"
+    ViewState="{loc:CustomBinding ViewState}"
+    mc:Ignorable="d">
+
+
+    <loc:CustomEditViewBase.LeftToolBarContent>
+        <loc:CustomButton
+            ButtonIcon="{x:Static loc:Icons.Info}"
+            ButtonSize="Large"
+            ButtonType="Button"
+            Command="{loc:CustomBinding RequestDeliverNotificationCommand}"
+            CommandParameter="{loc:CustomBinding CurrentEntity}"
+            Content="{Api:LocStr StrKey={x:Static Api:LocalStrings.SendRequest}}"
+            IsEnabled="{loc:CustomBinding IsUserAllowedToSendReminderToVendorOrCustomsHouse,
+                                          Converter={x:Static loc:CommonConverters.BitwiseConverter}}" />
+
+        <loc:CustomButton
+            ButtonIcon="{x:Static loc:Icons.Info}"
+            ButtonSize="Large"
+            ButtonType="Button"
+            Command="{loc:CustomBinding RemindDeliverNotificationCommand}"
+            CommandParameter="{loc:CustomBinding CurrentEntity}"
+            Content="{Api:LocStr StrKey={x:Static Api:LocalStrings.SendRemind}}"
+            IsEnabled="{loc:CustomBinding IsUserAllowedToSendReminderToVendorOrCustomsHouse,
+                                          Converter={x:Static loc:CommonConverters.BitwiseConverter}}" />
+    </loc:CustomEditViewBase.LeftToolBarContent>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+
+        </Grid.RowDefinitions>
+
+
+        <loc:CustomTabControl
+            Grid.Row="2"
+            Grid.ColumnSpan="3"
+            SelectedIndex="{loc:CustomBinding TabSelectedIndex,
+                                              Mode=TwoWay,
+                                              UpdateSourceTrigger=PropertyChanged}">
+
+            <!--  Tab 1  -->
+            <loc:CustomTabItem
+                CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                Header="{loc:LocStr StrKey={x:Static loc:LocalStrings.Common}}"
+                Id="{x:Static Api:ModuleViews.AuthenticationRequestFileGeneralView}"
+                Visibility="Visible">
+                <AuthenticationRequestFile1:AuthenticationRequestFileGeneralView />
+            </loc:CustomTabItem>
+
+            <!--  Tab 2  -->
+            <loc:CustomTabItem
+                CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                Header="{loc:LocStr StrKey={x:Static Api:LocalStrings.Documents}}"
+                IsForcedRenderingEnabled="False">
+                <doc:AttachedDocumentsView
+                    loc:ViewStateManager.ViewState="{loc:CustomBinding ViewState}"
+                    AttachedDocumentsMode="Required"
+                    CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                    IsRequirementAllowed="True"
+                    IsSendMessageMode="True"
+                    OrganizationUnitId="599"
+                    EntityTypeAndIDsToSearch="{loc:CustomBinding CurrentEntity.EntityTypeAndIDsToSearch}"
+                    SaveDocumentsCommand="{loc:CustomBinding SaveDocumentsCommand,
+                                                             Mode=OneWayToSource,
+                                                             UpdateSourceTrigger=PropertyChanged}" />
+
+            </loc:CustomTabItem>
+
+
+        </loc:CustomTabControl>
+    </Grid>
+
+
+
+</loc:CustomEditViewBase>
+
+

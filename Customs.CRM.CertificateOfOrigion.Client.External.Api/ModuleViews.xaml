@@ -1,0 +1,24 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+			xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			xmlns:System="clr-namespace:System;assembly=mscorlib"
+			xmlns:loc="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Namespace">
+		<System:String x:Key="{x:Static loc:ModuleViews.CertificateOfOriginsSearchView}">מסך איתור תעודת מקור</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.CertificateOfOriginsEditView}">CertificateOfOriginsEditView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.CertificateDetailsView}">CertificateDetailsView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.CertificateOfOriginEditEntityView}">CertificateOfOriginEditEntityView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.CertificateInvoiceView}">CertificateInvoiceView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.DocumentsView}">DocumentsView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.ImportProcessFormEditView}">ImportProcessFormEditView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.AuthenticationRequestSearchView}">AuthenticationRequestSearchView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.RequestDocumentView}">RequestDocumentView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.CollateralRequestView}">CollateralRequestView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.AuthenticationRequestFileEditView}">AuthenticationRequestFileEditView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.FileRequestDocumentView}">FileRequestDocumentView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.FileCollateralRequesttView}">FileCollateralRequesttView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.ExportDocumentAuthenticationRequestSearch}">מסך חיפוש בקשת אימות מסמך (יצוא)</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.ExportDocumentAuthenticationRequest}">בקשת אימות מסמך (יצוא)</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.ExportDocumentAuthenticationRequestEntityView}">מסך ישות - בקשת אימות מסמך (יצוא)</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.AuthenticationRequestFileGeneralView}">AuthenticationRequestFileGeneralView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.AuthenticationRequestFileEntityView}">AuthenticationRequestFileEntityView</System:String>
+		<System:String x:Key="{x:Static loc:ModuleViews.AddedDocumentsView}">AddedDocumentsView</System:String>
+</ResourceDictionary>

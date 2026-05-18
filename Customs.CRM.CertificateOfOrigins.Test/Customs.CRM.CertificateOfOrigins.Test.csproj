@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{274B882E-DAF9-4F75-80E1-21EFE07C5B7E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Customs.CRM.CertificateOfOrigins.Test</RootNamespace>
+    <AssemblyName>Customs.CRM.CertificateOfOrigins.Test</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>r:\bin\Test\Customs\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>r:\bin\Test\Customs\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'UnitTesting Debug|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>r:\bin\Test\Customs\</OutputPath>
+    <DefineConstants>DEBUG</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisLogFile>bin\Debug\Customs.CRM.CertificateOfOrigins.Test.dll.CodeAnalysisLog.xml</CodeAnalysisLogFile>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSetDirectories>;D:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
+    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisRuleDirectories>;D:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
+    <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Customs.CRM.Entities">
+      <HintPath>..\..\..\..\..\bin\Common\Customs\Customs.CRM.Entities.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Customs.Inf.CertificateOfOrigins.EAISchema">
+      <HintPath>..\..\..\..\..\Bin\Common\Customs\Customs.Inf.CertificateOfOrigins.EAISchema.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Customs.Inf.SystemTables.EAISchema">
+      <HintPath>..\..\..\..\..\Bin\Common\Customs\Customs.Inf.SystemTables.EAISchema.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Customs.Inf.WebMultiDotNetSupport.CertificateOfOrigins">
+      <HintPath>..\..\..\..\..\Bin\Server\Customs\Customs.Inf.WebMultiDotNetSupport.CertificateOfOrigins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Customs.Infrastructure.Entities">
+      <HintPath>..\..\..\..\..\Bin\Common\Customs\Customs.Infrastructure.Entities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MalamTeam.Infrastructure.GeneralServices.BaseLayer">
+      <HintPath>..\..\..\..\..\Bin\Common\Customs\MalamTeam.Infrastructure.GeneralServices.BaseLayer.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="MalamTeam.Infrastructure.GeneralServices.CommonBase, Version=2.0.0.2, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>R:\bin\Common\Customs\MalamTeam.Infrastructure.GeneralServices.CommonBase.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="MalamTeam.Infrastructure.GeneralServices.EAISchema">
+      <HintPath>..\..\..\..\..\bin\Common\Customs\MalamTeam.Infrastructure.GeneralServices.EAISchema.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="MalamTeam.Infrastructure.GeneralServices.Environment, Version=2.0.0.2, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>R:\bin\Common\Customs\MalamTeam.Infrastructure.GeneralServices.Environment.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="MalamTeam.Infrastructure.GeneralServices.Stubs">
+      <HintPath>..\..\..\..\..\bin\Common\Customs\MalamTeam.Infrastructure.GeneralServices.Stubs.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity, Version=2.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\bin\Common\Third Party\Microsoft.Practices.Unity.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
+      <Visible>False</Visible>
+    </CodeAnalysisDependentAssemblyPaths>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CertificateOfOriginsIncomingMessageServiceTest.cs" />
+    <Compile Include="CertificateOfOriginsInternalServiceTest.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestUtil.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Internal\Customs.CRM.CertificateOfOrigins.InternalCommon\Customs.CRM.CertificateOfOrigins.InternalCommon.csproj">
+      <Project>{4476F6F7-26A8-43A5-92D9-14A0D0A775BE}</Project>
+      <Name>Customs.CRM.CertificateOfOrigins.InternalCommon</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Server\Customs.CRM.CertificateOfOrigins.BL\Customs.CRM.CertificateOfOrigins.BL.csproj">
+      <Project>{461C3BE5-80FC-431A-BC3C-3E420AF85830}</Project>
+      <Name>Customs.CRM.CertificateOfOrigins.BL</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Server\Customs.CRM.CertificateOfOrigins.Service\Customs.CRM.CertificateOfOrigins.Service.csproj">
+      <Project>{C97D74B2-0CF1-46F5-BBD1-A2D6C4D3F2EE}</Project>
+      <Name>Customs.CRM.CertificateOfOrigins.Service</Name>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\Shared Binaries\Config\Test\app.config">
+      <Link>app.config</Link>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,24 @@
+﻿
+<#@ template debug="true" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ assembly name="R:\Bin\Common\Customs\TepmlateGenerator.dll" #>
+<#@ import namespace="TepmlateGenerator" #>
+<#
+  var t = new WcfGenerator()
+  {
+    	ContractDll = "Customs.CRM.CertificateOfOrigins.InternalCommon",
+        ContractClassdName = "Customs.CRM.CertificateOfOrigins.InternalCommon.Contract.ICertificateOfOriginsInternalContract",
+	 TemplateFilePath = this.Host.TemplateFile
+  };
+
+  try
+  {
+      WriteLine(t.GenerateOutput());
+  }
+  catch(Exception ex)
+  {
+      WriteLine(t.GetException(ex));
+      throw;
+  }
+
+  #>

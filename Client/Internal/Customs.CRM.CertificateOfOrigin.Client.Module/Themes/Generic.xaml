@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   
+                    xmlns:CertificateOfOriginsSearch="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.CertificateOfOriginsSearch"
+                    xmlns:CertificateOfOriginsSearchView="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.CertificateOfOriginsSearch;assembly=Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:loc="http://schemas.customs.com/wpf"
+                    xmlns:CertificateOfOriginsEdit1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.CertificateOfOriginsEdit;assembly=Customs.CRM.CertificateOfOrigins.Client.View" 
+                    xmlns:CertificateOfOriginsEdit="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.CertificateOfOriginsEdit"
+                    xmlns:AuthenticationRequest="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest;assembly=Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:ImportProcessForm="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.AuthenticationRequest.ImportProcessForm"
+                    xmlns:AuthenticationRequestSearch="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.AuthenticationRequest.AuthenticationRequestSearch"
+                    xmlns:AuthenticationRequestSearch1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest.AuthenticationRequestSearch;assembly=Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:AuthenticationRequestFile="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.AuthenticationRequest.AuthenticationRequestFile"
+                    xmlns:AuthenticationRequestFile1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.AuthenticationRequest.AuthenticationRequestFile;assembly=Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:exportDocumentAuthenticationRequestEdit="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.ExportDocumentAuthenticationRequestEdit"
+                    xmlns:exportDocumentAuthenticationRequestSearch="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Module.ExportDocumentAuthenticationRequestSearch"
+                    xmlns:exportDocumentAuthenticationRequestSearch1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.ExportDocumentAuthenticationRequestSearch;assembly=Customs.CRM.CertificateOfOrigins.Client.View"
+                    xmlns:exportDocumentAuthenticationRequestEdit1="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.ExportDocumentAuthenticationRequestEdit;assembly=Customs.CRM.CertificateOfOrigins.Client.View">
+
+
+    <DataTemplate DataType="{x:Type CertificateOfOriginsSearch:CertificateOfOriginsSearchPresenter}">
+        <CertificateOfOriginsSearchView:CertificateOfOriginsSearchView DataContext="{loc:CustomBinding CertificateOfOriginsSearchViewModel}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type CertificateOfOriginsEdit:CertificateOfOriginsEditPresenter}">
+        <CertificateOfOriginsEdit1:CertificateOfOriginEditEntityView DataContext="{loc:CustomBinding CertificateOfOriginsEditViewModel}" />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type CertificateOfOriginsEdit:CertificateOfOriginsEditViewModel}">
+        <CertificateOfOriginsEdit1:CertificateOfOriginsEditView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type ImportProcessForm:ImportProcessFormPresenter}">
+        <AuthenticationRequest:ImportProcessFormEditView DataContext="{loc:CustomBinding ImportProcessFormViewmodel}"/>
+    </DataTemplate>
+    
+    <DataTemplate DataType="{x:Type AuthenticationRequestSearch:AuthenticationRequestSearchPresenter}">
+        <AuthenticationRequestSearch1:AuthenticationRequestSearchView DataContext="{loc:CustomBinding AuthenticationRequestSearchViewModel}"/>
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type AuthenticationRequestFile:AuthenticationRequestFilePresenter}">
+        <AuthenticationRequestFile1:AuthenticationRequestFileEntityView DataContext="{loc:CustomBinding AuthenticationRequestFileViewModel}"/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type AuthenticationRequestFile:AuthenticationRequestFileViewModel}">
+        <AuthenticationRequestFile1:AuthenticationRequestFileEditView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type exportDocumentAuthenticationRequestSearch:ExportDocumentAuthenticationRequestSearchPresenter}">
+        <exportDocumentAuthenticationRequestSearch1:ExportDocumentAuthenticationRequestSearchView DataContext="{loc:CustomBinding ExportDocumentAuthenticationRequestSearchViewModel}"/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type exportDocumentAuthenticationRequestEdit:ExportDocumentAuthenticationRequestViewModel}">
+        <exportDocumentAuthenticationRequestEdit1:ExportDocumentAuthenticationRequestEditView/>
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type exportDocumentAuthenticationRequestEdit:ExportDocumentAuthenticationRequestPresenter}">
+        <exportDocumentAuthenticationRequestEdit1:ExportDocumentAuthenticationRequestEntityView DataContext="{loc:CustomBinding ExportDocumentAuthenticationRequestViewModel}"/>
+    </DataTemplate>
+
+</ResourceDictionary>

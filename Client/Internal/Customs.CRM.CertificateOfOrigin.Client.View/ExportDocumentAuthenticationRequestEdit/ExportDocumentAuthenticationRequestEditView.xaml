@@ -1,0 +1,635 @@
+﻿<loc:CustomEditViewBase
+    x:Class="Customs.CRM.CertificateOfOrigins.Client.View.ExportDocumentAuthenticationRequestEdit.ExportDocumentAuthenticationRequestEditView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:API="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+    xmlns:AttachedOneDocument="clr-namespace:Customs.Infrastructure.DocumentManagement.Client.External.View.AttachedOneDocument;assembly=Customs.Infrastructure.DocumentManagement.Client.External.View"
+    xmlns:CustomDataGrid="clr-namespace:Customs.KnowledgeStore.CustomsBook.Client.External.View.DataGridColumns;assembly=Customs.KnowledgeStore.CustomsBook.Client.External.View"
+    xmlns:Enums="clr-namespace:MalamTeam.Infrastructure.GeneralServices.Environment.Enums;assembly=MalamTeam.Infrastructure.GeneralServices.Environment"
+    xmlns:SharedEntities="clr-namespace:Customs.Shared.Entities;assembly=Customs.Shared.Entities"
+    xmlns:converters="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.Converters"
+    xmlns:customColumns="clr-namespace:Customs.Inf.MMI.Common.Toolbox.CustomDataGrid.CustomColumns;assembly=Customs.Inf.MMI.Common.Toolbox"
+    xmlns:customDataGrid="clr-namespace:Customs.Inf.MMI.Common.Toolbox.CustomDataGrid;assembly=Customs.Inf.MMI.Common.Toolbox"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:doc="clr-namespace:Customs.Infrastructure.DocumentManagement.Client.External.View.AttachedDocuments;assembly=Customs.Infrastructure.DocumentManagement.Client.External.View"
+    xmlns:entities="clr-namespace:Customs.CertificateOfOrigins.Entities;assembly=Customs.CRM.Entities"
+    xmlns:extCommon="clr-namespace:Customs.KnowledgeStore.CustomsBook.ExternalCommon.Common;assembly=Customs.KnowledgeStore.CustomsBook.ExternalCommon"
+    xmlns:loc="http://schemas.customs.com/wpf"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:svc="http://schemas.customs.com/wpf/Services"
+    Title="ExportDocumentAuthenticationRequestEditView"
+    d:DesignHeight="480"
+    d:DesignWidth="640"
+    loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+    loc:ValidationsManager.ValidationMode="Edit"
+    CancelButtonCommand="{loc:CustomBinding CancelCommand}"
+    CurrentEntity="{loc:CustomBinding CurrentEntity}"
+    EditButtonCommand="{loc:CustomBinding EditCommand}"
+    ExpanderHeaderVisibility="Collapsed"
+    HeaderVisibility="Visible"
+    Id="{x:Static API:ModuleViews.ExportDocumentAuthenticationRequest}"
+    IsCancelButtonEnabled="{loc:CustomBinding IsEditModeEnabled}"
+    IsSaveButtonEnabled="{loc:CustomBinding IsEditModeEnabled}"
+    MainProgressBarPanelVisibility="{loc:CustomBinding ProgressBarVisibility}"
+    RefreshCommand="{loc:CustomBinding RefreshCommand}"
+    SaveButtonCommand="{loc:CustomBinding SaveCommand}"
+    SaveCancelButtonCommand="{loc:CustomBinding SaveCloseCommand}"
+    ViewState="{loc:CustomBinding CurrentEntityViewState}"
+    mc:Ignorable="d">
+
+    <loc:CustomEditViewBase.LeftToolBarContent>
+        <loc:CustomButton
+            ButtonIcon="{x:Static loc:Icons.Info}"
+            ButtonSize="Large"
+            ButtonType="Button"
+            Command="{loc:CustomBinding RequestDeliverNotificationCommand}"
+            CommandParameter="{loc:CustomBinding CurrentEntity}"
+            Content="{API:LocStr StrKey={x:Static API:LocalStrings.SendRequest}}"
+            IsEnabled="{loc:CustomBinding IsRequestSent,
+                                          Converter={loc:ConditionalConverter Condition=NotEquals},
+                                          ConverterParameter=True}" />
+
+        <loc:CustomButton
+            ButtonIcon="{x:Static loc:Icons.Info}"
+            ButtonSize="Large"
+            ButtonType="Button"
+            Command="{loc:CustomBinding RemindDeliverNotificationCommand}"
+            CommandParameter="{loc:CustomBinding CurrentEntity}"
+            Content="{API:LocStr StrKey={x:Static API:LocalStrings.SendRemind}}"
+            IsEnabled="{loc:CustomBinding IsRequestSent,
+                                          Converter={loc:ConditionalConverter Condition=NotEquals},
+                                          ConverterParameter=True}" />
+
+        <loc:CustomButton
+            ButtonIcon="{x:Static loc:Icons.Info}"
+            ButtonSize="Large"
+            ButtonType="Button"
+            Command="{loc:CustomBinding DeliverToCustomsHouseNotificationCommand}"
+            CommandParameter="{loc:CustomBinding CurrentEntity}"
+            Content="{API:LocStr StrKey={x:Static API:LocalStrings.DeliverToForeignCustomsHouse}}"
+            IsEnabled="{loc:CustomBinding IsRequestSent,
+                                          Converter={loc:ConditionalConverter Condition=NotEquals},
+                                          ConverterParameter=True}" />
+    </loc:CustomEditViewBase.LeftToolBarContent>
+    <loc:CustomEditViewBase.Resources>
+        <converters:BoolToVisibilityInvertedConverter x:Key="BoolToVisibilityInvertedConverter" />
+        <converters:ExportDocumentAuthenticationIsEditButtonEnabledConverter x:Key="ExportDocumentAuthenticationIsEditButtonEnabledConverter" />
+        <converters:DocumentIDValueToValidationVisibilityConverter x:Key="DocumentIDValueToValidationVisibilityConverter" />
+        <converters:ExportDocumentAuthenticationReadOnlyToVisible x:Key="ExportDocumentAuthenticationReadOnlyToVisible" />
+        <converters:ExportDocumentAuthenticationReadOnlyToCollapsed x:Key="ExportDocumentAuthenticationReadOnlyToCollapsed" />
+        <converters:ExportDocumentAuthenticationStatusViewStateConverter x:Key="ExportDocumentAuthenticationStatusViewStateConverter" />
+        <SharedEntities:CustomerLOVExtendedSearchFilter x:Key="CustomerLOVfilter" CustomerType="5" />
+    </loc:CustomEditViewBase.Resources>
+
+    <loc:CustomEditViewBase.RefreshButtonVisibililty>
+        <loc:CustomBinding Converter="{StaticResource BoolToVisibilityInvertedConverter}" Path="CurrentEntity.IsNew" />
+    </loc:CustomEditViewBase.RefreshButtonVisibililty>
+    <loc:CustomEditViewBase.EditButtonVisibility>
+        <loc:CustomBinding Converter="{StaticResource BoolToVisibilityInvertedConverter}" Path="CurrentEntity.IsNew" />
+    </loc:CustomEditViewBase.EditButtonVisibility>
+    <loc:CustomEditViewBase.IsEditButtonEnabled>
+        <loc:CustomMultiBinding Converter="{StaticResource ExportDocumentAuthenticationIsEditButtonEnabledConverter}">
+            <loc:CustomBinding Path="CurrentEntityViewState" />
+            <loc:CustomBinding Path="CurrentEntity.StatusID" />
+        </loc:CustomMultiBinding>
+    </loc:CustomEditViewBase.IsEditButtonEnabled>
+    <loc:CustomEditViewBase.CancelButtonVisibility>
+        <loc:CustomBinding Converter="{StaticResource ExportDocumentAuthenticationReadOnlyToCollapsed}" Path="CurrentEntityViewState" />
+    </loc:CustomEditViewBase.CancelButtonVisibility>
+    <loc:CustomEditViewBase.SaveButtonVisibility>
+        <loc:CustomBinding Converter="{StaticResource ExportDocumentAuthenticationReadOnlyToCollapsed}" Path="CurrentEntityViewState" />
+    </loc:CustomEditViewBase.SaveButtonVisibility>
+    <loc:CustomEditViewBase.SaveCancelButtonVisibility>
+        <loc:CustomBinding Converter="{StaticResource ExportDocumentAuthenticationReadOnlyToCollapsed}" Path="CurrentEntityViewState" />
+    </loc:CustomEditViewBase.SaveCancelButtonVisibility>
+    <loc:CustomEditViewBase.ValidationErrorsVisibility>
+        <loc:CustomBinding Converter="{StaticResource ExportDocumentAuthenticationReadOnlyToCollapsed}" Path="CurrentEntityViewState" />
+    </loc:CustomEditViewBase.ValidationErrorsVisibility>
+
+    <loc:CustomTabControl ForceRenderOnViewState="ReadOnly">
+        <loc:CustomTabItem CurrentEntity="{loc:CustomBinding CurrentEntity}">
+            <loc:CustomTabItem.Header>
+                <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}{2}">
+                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.DetailsOf}}" />
+                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Ha}}" />
+                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.FileCase}}" />
+                </loc:CustomMultiBinding>
+            </loc:CustomTabItem.Header>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="20" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <loc:SmartPanel
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+                    BoundryBorderType="Right"
+                    Header="{API:LocStr StrKey={x:Static API:LocalStrings.CancellationRequestDetails}}"
+                    IsAutoArrange="False"
+                    IsAutoArrangeColumnEnabled="False"
+                    IsSimpleStyle="True"
+                    LayoutType="Grid"
+                    ToggleButtonVisibility="Collapsed">
+                    <loc:SmartPanel.Columns>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </loc:SmartPanel.Columns>
+                    <loc:SmartPanel.Rows>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </loc:SmartPanel.Rows>
+
+                    <loc:SmartPanelItem
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.AuthenticationRequestArrivalDate}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        ValueChangedCommand="{loc:CustomBinding CountrySelectedChangeCommand}"
+                        Value="{loc:CustomBinding CurrentEntity.CountryID,
+                                                  Mode=TwoWay,
+                                                  UpdateSourceTrigger=PropertyChanged}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.CustomerID,
+                                                  Mode=TwoWay,
+                                                  UpdateSourceTrigger=PropertyChanged}">
+                        <loc:SettingProvider.SmartPanelItemSetting>
+                            <svc:LOVSearchExtendedSetting
+                                DisplayMemberPath="Name"
+                                FilterPropertyGroupName="LovFilterGroupNameExternID"
+                                RelatedEntityType="Customer"
+                                ResultPropertyGroupName="LovResultGroupNameExternID"
+                                SearchMemberPath="Name"
+                                SelectedChangeCommand="{loc:CustomBinding ForeignCustomerSelectedChangeCommand}">
+                                <svc:LOVSearchExtendedSetting.Filter>
+                                    <SharedEntities:CustomerLOVExtendedSearchFilter CustomerType="5" />
+                                </svc:LOVSearchExtendedSetting.Filter>
+                            </svc:LOVSearchExtendedSetting>
+                        </loc:SettingProvider.SmartPanelItemSetting>
+                    </loc:SmartPanelItem>
+
+                    <loc:SmartPanelItem
+                        Grid.Row="3"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.CustomsHouseAddress}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="4"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.ReferenceNumber}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="5"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.DocumentDate}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="6"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="a"
+                        Value="{loc:CustomBinding CurrentEntity.InvoiceDate}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        LabelSharedSizeGroupName="b"
+                        Value="{loc:CustomBinding CurrentEntity.AuthenticationRequestedByName}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        LabelSharedSizeGroupName="b"
+                        Value="{loc:CustomBinding CurrentEntity.AuthenticationRequestedByEmail}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        LabelSharedSizeGroupName="b"
+                        Value="{loc:CustomBinding CurrentEntity.AuthenticationRequestedByPhone}" />
+
+                </loc:SmartPanel>
+
+                <loc:SmartPanel
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+                    BoundryBorderType="None"
+                    IsAutoArrange="False"
+                    IsAutoArrangeColumnEnabled="False"
+                    IsSimpleStyle="True"
+                    LayoutType="Grid"
+                    ToggleButtonVisibility="Collapsed">
+                    <loc:SmartPanel.Header>
+                        <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}{2}">
+                            <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.DetailsOf}}" />
+                            <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Ha}}" />
+                            <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.FileCase}}" />
+                        </loc:CustomMultiBinding>
+                    </loc:SmartPanel.Header>
+                    <loc:SmartPanel.Rows>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </loc:SmartPanel.Rows>
+
+                    <loc:SmartPanelItem
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="c"
+                        Value="{loc:CustomBinding CurrentEntity.StatusID}">
+                        <loc:ViewStateManager.ViewState>
+                            <loc:CustomMultiBinding Converter="{StaticResource ExportDocumentAuthenticationStatusViewStateConverter}">
+                                <loc:CustomBinding Path="CurrentEntityViewState" />
+                                <loc:CustomBinding Path="CurrentEntity.IsNew" />
+                            </loc:CustomMultiBinding>
+                        </loc:ViewStateManager.ViewState>
+                    </loc:SmartPanelItem>
+
+                    <loc:SmartPanelItem
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        loc:ViewStateManager.ViewState="ReadOnly"
+                        LabelSharedSizeGroupName="c"
+                        Value="{loc:CustomBinding CurrentEntity.CreateUserID}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        loc:ViewStateManager.ViewState="ReadOnly"
+                        LabelSharedSizeGroupName="c"
+                        Value="{loc:CustomBinding CurrentEntity.CreateDate}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="3"
+                        Grid.Column="0"
+                        loc:ViewStateManager.ViewState="ReadOnly"
+                        LabelSharedSizeGroupName="c"
+                        Visibility="{loc:CustomBinding CurrentEntity.IsNew,
+                                                       Converter={StaticResource BoolToVisibilityInvertedConverter}}"
+                        Value="{loc:CustomBinding CurrentEntity.ID}" />
+
+                    <loc:SmartPanelItem
+                        Grid.Row="4"
+                        Grid.Column="0"
+                        LabelSharedSizeGroupName="c"
+                        Visibility="{loc:CustomBinding CurrentEntityViewState,
+                                                       Converter={StaticResource ExportDocumentAuthenticationReadOnlyToVisible}}"
+                        Value="{loc:CustomBinding CurrentEntity.UpdateUserID}" />
+
+                </loc:SmartPanel>
+
+                <Grid
+                    Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    Margin="0,20,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+
+                    <loc:SmartPanel
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+                        BoundryBorderType="None"
+                        IsAutoArrange="False"
+                        IsAutoArrangeColumnEnabled="False"
+                        IsSimpleStyle="True"
+                        LayoutType="Grid"
+                        ToggleButtonVisibility="Collapsed">
+                        <loc:SmartPanel.Header>
+                            <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}{2}">
+                                <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Document}}" />
+                                <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.To}}" />
+                                <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Authentication}}" />
+                            </loc:CustomMultiBinding>
+                        </loc:SmartPanel.Header>
+                        <loc:SmartPanel.Columns>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </loc:SmartPanel.Columns>
+                        <loc:SmartPanel.Rows>
+                            <RowDefinition />
+                        </loc:SmartPanel.Rows>
+
+                        <loc:SmartPanelItem
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            LabelSharedSizeGroupName="a"
+                            Value="{loc:CustomBinding CurrentEntity.AuthenticationDocumentTypeID}" />
+
+                        <StackPanel
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Margin="20,0,20,0"
+                            Orientation="Horizontal">
+                            <loc:ValidationsManager.CollectionPropertiesToValidation>
+                                <loc:ObservableCollectionProvider ItemsType="{x:Type loc:PropertyInfo}">
+                                    <loc:PropertyInfo Name="DocumentID" />
+                                </loc:ObservableCollectionProvider>
+                            </loc:ValidationsManager.CollectionPropertiesToValidation>
+                            <Label Content="{loc:LocStr StrKey={x:Static loc:LocalStrings.Document}}" />
+                            <AttachedOneDocument:AttachedOneDocumentView
+                                Grid.Row="0"
+                                Grid.Column="1"
+                                Margin="20,0,20,0"
+                                VerticalAlignment="Center"
+                                loc:ValidationsManager.ValidationMode="Edit"
+                                CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                                Document="{loc:CustomBinding CurrentEntity.DocumentDTO,
+                                                             Mode=TwoWay}"
+                                DocumentId="{loc:CustomBinding CurrentEntity.DocumentID,
+                                                               Mode=TwoWay,
+                                                               Converter={loc:NumericValueConverter}}"
+                                IsDocumentAutoSaveMode="True"
+                                SaveDocumentsCompletedCommand="{loc:CustomBinding SaveMainDocumentCompletedCommand}"
+                                Validation.ErrorTemplate="{x:Static loc:ControlTemplates.DefaultErrorTemplate}">
+                                <loc:ValidationsManager.TrackableValidation>
+                                    <x:StaticExtension Member="AttachedOneDocument:AttachedOneDocumentView.DocumentProperty" />
+                                </loc:ValidationsManager.TrackableValidation>
+                            </AttachedOneDocument:AttachedOneDocumentView>
+                        </StackPanel>
+
+                        <loc:SmartPanelItem
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            LabelSharedSizeGroupName="c"
+                            Value="{loc:CustomBinding CurrentEntity.MainDocumentTitle}" />
+
+                    </loc:SmartPanel>
+
+                    <loc:SmartPanel
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        Margin="0,0,0,10"
+                        loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+                        BoundryBorderType="None"
+                        IsAutoArrange="False"
+                        IsAutoArrangeColumnEnabled="False"
+                        IsSimpleStyle="True"
+                        LayoutType="Grid"
+                        ToggleButtonVisibility="Collapsed">
+                        <loc:SmartPanel.Header>
+                            <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}">
+                                <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.DetailsOf}}" />
+                                <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.IsExportCheck}}" />
+                            </loc:CustomMultiBinding>
+                        </loc:SmartPanel.Header>
+                        <loc:SmartPanel.Columns>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </loc:SmartPanel.Columns>
+                        <loc:SmartPanel.Rows>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </loc:SmartPanel.Rows>
+
+                        <loc:SmartPanelItem
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            LabelSharedSizeGroupName="a"
+                            Value="{loc:CustomBinding CurrentEntity.ExporterCustomerID}" />
+
+                        <loc:SmartPanelItem
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.VendorID}">
+                            <loc:SettingProvider.SmartPanelItemSetting>
+                                <svc:LOVSearchTextBoxSetting
+                                    DisplayMemberPath="Name"
+                                    IgnoreCache="True"
+                                    SearchMemberPath="ID" />
+                            </loc:SettingProvider.SmartPanelItemSetting>
+                        </loc:SmartPanelItem>
+
+                        <loc:SmartPanelItem
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.InvoiceNumbers}" />
+
+                        <loc:SmartPanelItem
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.TotalDocuments}" />
+
+                        <loc:SmartPanelItem
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.TotalInvoices}" />
+                        <Grid Grid.Row="3" Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <customDataGrid:CustomDataGridView
+                                Grid.Column="1"
+                                HeaderLabel="{API:LocStr StrKey={x:Static API:LocalStrings.ManufacturingArea}}"
+                                IsNewButtonEnabled="True"
+                                MaxHeight="150"
+                                ItemsSource="{loc:CustomBinding CurrentEntity.ExportAuthenticationRequestManufacturingArea}"
+                                NewButtonCommand="{loc:CustomBinding NewExportAuthenticationRequestManufactingAreaCommand}"
+                                SearchTextBoxVisibility="Collapsed">
+                                <customDataGrid:CustomDataGridView.Columns>
+                                    <customColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ManufacturingArea, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Header="{API:LocStr StrKey={x:Static API:LocalStrings.ManufacturingArea}}" />
+                                    <customColumns:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ManufacturingZipcode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Header="{API:LocStr StrKey={x:Static API:LocalStrings.ZipCode}}" />
+                                </customDataGrid:CustomDataGridView.Columns>
+                            </customDataGrid:CustomDataGridView>
+                        </Grid>
+
+                        <Grid Grid.Row="3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="10" />
+                            </Grid.ColumnDefinitions>
+                            <customDataGrid:CustomDataGridView
+                                AutoGenerateColumns="False"
+                                DeleteButtonCommand="{loc:CustomBinding ExportDeclarationsDeleteButtonCommand}"
+                                DownButtonVisibility="Collapsed"
+                                EditButtonVisibility="Collapsed"
+                                HeaderLabel="{loc:LocStr StrKey={x:Static loc:LocalStrings.ExportDeclarations}}"
+                                IsSimpleStyle="False"
+                                ItemsSource="{loc:CustomBinding CurrentEntity.ExportDocumentAuthenticationRequestLeadDocument}"
+                                NewButtonVisibility="Visible"
+                                MaxHeight="150"
+                                SearchTextBoxVisibility="Collapsed"
+                                SelectedItem="{loc:CustomBinding SelectedExportDeclaration}"
+                                ToggleButtonVisibility="Collapsed">
+                                <customDataGrid:CustomDataGridView.Columns>
+                                    <customColumns:CustomGridDataColumn
+                                        Width="*"
+                                        DataMemberBinding="{loc:CustomBinding LeadDocumentTitle,
+                                                                              Mode=OneWay}"
+                                        Header="{API:LocStr StrKey={x:Static API:LocalStrings.ExportDeclarationID}}"
+                                        IsEditableColumn="False"
+                                        MaxLength="14" />
+
+                                </customDataGrid:CustomDataGridView.Columns>
+                                <customDataGrid:CustomDataGridView.StatusBarContent>
+                                    <customDataGrid:SearchStatusLabel Visibility="Collapsed" />
+                                </customDataGrid:CustomDataGridView.StatusBarContent>
+                            </customDataGrid:CustomDataGridView>
+                        </Grid>
+                    </loc:SmartPanel>
+
+
+                    <loc:SmartPanel
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        Margin="0,0,0,10"
+                        loc:DesignHelper.DesignTimeStub="{x:Type entities:ExportDocumentAuthenticationRequest}"
+                        BoundryBorderType="None"
+                        Header="{loc:LocStr StrKey={x:Static loc:LocalStrings.Decisions}}"
+                        IsAutoArrange="False"
+                        IsAutoArrangeColumnEnabled="False"
+                        IsSimpleStyle="True"
+                        LayoutType="Grid"
+                        ToggleButtonVisibility="Collapsed">
+                        <loc:SmartPanel.Rows>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </loc:SmartPanel.Rows>
+
+                        <loc:SmartPanelItem
+                            Grid.Row="0"
+                            LabelKey="{API:LocStr StrKey={x:Static API:LocalStrings.DetailedDecision}}"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.DetailedDecision}" />
+
+                        <loc:SmartPanelItem
+                            Grid.Row="1"
+                            LabelSharedSizeGroupName="b"
+                            Value="{loc:CustomBinding CurrentEntity.CommentForCustomsHouseLetter}" />
+
+                        <customDataGrid:CustomDataGridView
+                            Grid.Row="2"
+                            AutoGenerateColumns="False"
+                            DownButtonVisibility="Collapsed"
+                            EditButtonVisibility="Collapsed"
+                            IsSimpleStyle="False"
+                            ItemsSource="{loc:CustomBinding CurrentEntity.CustomsItemToExportDocumentAuthenticationRequest}"
+                            NewButtonVisibility="Visible"
+                            PageSize="5"
+                            SearchTextBoxVisibility="Collapsed"
+                            ToggleButtonVisibility="Collapsed">
+                            <customDataGrid:CustomDataGridView.HeaderLabel>
+                                <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}">
+                                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.DetailsOf}}" />
+                                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Goods}}" />
+                                </loc:CustomMultiBinding>
+                            </customDataGrid:CustomDataGridView.HeaderLabel>
+                            <customDataGrid:CustomDataGridView.Columns>
+                                <CustomDataGrid:CustomsItemLookupColumn
+                                    Width="*"
+                                    DataMemberBinding="{loc:CustomBinding CustomsItemID,
+                                                                          Mode=TwoWay,
+                                                                          ValidatesOnDataErrors=True}"
+                                    FilterCustomsItemsIds="{loc:CustomBinding CustomsItemExclusion}"
+                                    Header="{API:LocStr StrKey={x:Static API:LocalStrings.CustomsItem}}"
+                                    IsAutoSortEnabled="False"
+                                    IsDatePassed="False"
+                                    IsDiscountItemEnable="False"
+                                    IsMinusItemEnable="False"
+                                    IsRegularItemEnable="True"
+                                    IsSortable="False"
+                                    SelectedItemBinding="{loc:CustomBinding CustomsItemDTO,
+                                                                            Mode=TwoWay}"
+                                    TitleBinding="{loc:CustomBinding Title,
+                                                                     Mode=OneWayToSource}" />
+                                <customColumns:CustomGridDataColumn
+                                    Width="4*"
+                                    loc:ViewStateManager.ViewState="ReadOnly"
+                                    DataMemberBinding="{loc:CustomBinding CustomsItemTitle,
+                                                                          Mode=OneWay}"
+                                    Header="{API:LocStr StrKey={x:Static API:LocalStrings.InvoiceGoodsDescription}}"
+                                    IsEditableColumn="False"
+                                    IsFilterable="True" />
+                                <customColumns:CustomGridDataColumn
+                                    Width="*"
+                                    loc:ViewStateManager.ViewState="ReadOnly"
+                                    DataMemberBinding="{loc:CustomBinding MeasurementUnitName,
+                                                                          Mode=OneWay}"
+                                    Header="{API:LocStr StrKey={x:Static API:LocalStrings.MeasurementUnit}}"
+                                    IsFilterable="True" />
+                            </customDataGrid:CustomDataGridView.Columns>
+                            <customDataGrid:CustomDataGridView.StatusBarContent>
+                                <customDataGrid:SearchStatusLabel Visibility="Collapsed" />
+                            </customDataGrid:CustomDataGridView.StatusBarContent>
+                        </customDataGrid:CustomDataGridView>
+                    </loc:SmartPanel>
+                </Grid>
+
+
+
+
+
+            </Grid>
+        </loc:CustomTabItem>
+        <loc:CustomTabItem CurrentEntity="{loc:CustomBinding CurrentEntity}" IsForcedRenderingEnabled="true">
+            <loc:CustomTabItem.Header>
+                <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}">
+                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Documents}}" />
+                    <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Further}}" />
+                </loc:CustomMultiBinding>
+            </loc:CustomTabItem.Header>
+            <doc:AttachedDocumentsView
+                Grid.Row="8"
+                AttachedDocumentsMode="SaveDocWithOutEntity"
+                CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                FilteredDocumentTypes="{loc:CustomBinding RelevantDocumentTypes}"
+                IsRaiseEventMode="True"
+                IsSendMessageMode="False"
+                EntityTypeAndIDsToSearch="{loc:CustomBinding CurrentEntity.EntityTypeAndIDsToSearch}"
+                SaveDocumentsCommand="{loc:CustomBinding SaveDocumentsOnSaveEntityCommand,
+                                                         UpdateSourceTrigger=PropertyChanged,
+                                                         Mode=OneWayToSource}"
+                SaveDocumentsCompletedCommand="{loc:CustomBinding SaveAdditionalDocumentsCompletedCommand}">
+                <doc:AttachedDocumentsView.Title>
+                    <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0} {1}">
+                        <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Documents}}" />
+                        <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Further}}" />
+                    </loc:CustomMultiBinding>
+                </doc:AttachedDocumentsView.Title>
+            </doc:AttachedDocumentsView>
+
+        </loc:CustomTabItem>
+    </loc:CustomTabControl>
+</loc:CustomEditViewBase>
+
+

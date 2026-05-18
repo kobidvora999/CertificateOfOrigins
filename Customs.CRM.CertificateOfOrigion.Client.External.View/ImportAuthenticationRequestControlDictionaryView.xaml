@@ -1,0 +1,104 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+		    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		    xmlns:loc="http://schemas.customs.com/wpf"
+		    xmlns:Api="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+            xmlns:view="clr-namespace:Customs.CRM.CertificateOfOrigion.Client.External.View"
+            xmlns:CustomDataGrid="http://schemas.customs.com/wpf/DataGrid"            
+            xmlns:svc="http://schemas.customs.com/wpf/Services"
+            xmlns:Enums="clr-namespace:MalamTeam.Infrastructure.GeneralServices.Environment.Enums;assembly=MalamTeam.Infrastructure.GeneralServices.Environment">
+
+    <!--TODO: Use all strings with this template - {API:LocStr StrKey={x:Static API:LocalStrings.SomeString}} AuthenticationRequestForLeadDocument -->
+    <ControlTemplate x:Key="A" TargetType="view:ImportAuthenticationRequestControl">
+        <Grid DataContext="{loc:CustomBinding RelativeSource={RelativeSource Mode=TemplatedParent}, Path=CurrentViewModel}">
+            <loc:CustomProgressControl Panel.ZIndex="1"
+									   LabelVisibility="Collapsed"
+									   Visibility="{loc:CustomBinding RelativeSource={RelativeSource Mode=TemplatedParent},
+																	  Path=CurrentViewModel.ProgressBarVisibility,
+																	  FallbackValue=Collapsed}" />
+            <CustomDataGrid:CustomDataGridView DeleteButtonVisibility="Collapsed"
+											   DownButtonVisibility="Collapsed" 
+											   EditButtonVisibility="Collapsed"
+											   NewButtonVisibility="Collapsed"
+											   IsSynchronizedWithCurrentItem="True"
+											   ItemsSource="{loc:CustomBinding AuthenticationRequestForLeadDocument}"
+											   PrintButtonVisibility="Collapsed"
+											   SearchTextBoxVisibility="Collapsed"
+                                               SelectedItem="{loc:CustomBinding SelectAuthenticationRequest}"
+											   ShowColumnFooters="True"
+											   ToggleButtonVisibility="Visible"
+											   UpButtonVisibility="Collapsed"
+                                               loc:ValidationsManager.ValidationMode="ReadOnly"
+                                               HeaderLabel="{Api:LocStr StrKey={x:Static Api:LocalStrings.CertificateOfOriginsAuthenticationRequest}}"
+                                               >
+                <CustomDataGrid:CustomDataGridView.ToolBarContent>
+                    <StackPanel Orientation="Horizontal">
+                        <loc:CustomButton x:Name="RefreshButton"
+                                                      ButtonIcon="{x:Static loc:Icons.Refresh}"
+                                                      ButtonSize="Small"
+                                                      ButtonType="Button"
+                                                      Command="{loc:CustomBinding DealFileImportAuthenticationRequestRefreshCommand}"
+                                                      IsFlat="True"
+                                                      ToolTip="{loc:LocStr StrKey={x:Static loc:LocalStrings.Refresh}}" />
+                    </StackPanel>
+                </CustomDataGrid:CustomDataGridView.ToolBarContent>
+
+                <CustomDataGrid:CustomDataGridView.Columns>
+                    <!--  LeadDocumentTitle  -->
+                    <CustomDataGrid:NavigationHyperlinkColumn DataMemberBinding="{loc:CustomBinding LeadDocumentTitle}"
+                                                              EntityIdBinding="{loc:CustomBinding LeadDocumentID}"
+                                                              Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.StatementNumber}}"
+                                                              IsReadOnly="True"
+                                                              EntityType="{x:Static Enums:EEntityType.ImportDeclaration}"
+                                                              MappingType="Edit"/>
+                    <!--  DocumentID  -->
+                    <CustomDataGrid:NavigationHyperlinkColumn DataMemberBinding="{loc:CustomBinding DocumentID}"
+                                                              Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.RequestID}}"
+                                                              IsReadOnly="True"
+                                                              Command="{loc:CustomBinding NavigateToAuthenticationRequest}"
+                                                              CommandParameterBinding="{loc:CustomBinding DocumentID}"/>
+                    <!--  AuthenticationFileID  -->
+                    <CustomDataGrid:NavigationHyperlinkColumn DataMemberBinding="{loc:CustomBinding AuthenticationFileID}"
+                                                              EntityIdBinding="{loc:CustomBinding AuthenticationFileID}"
+                                                              Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.FileNum}}"
+                                                              IsReadOnly="True"
+                                                              EntityType="{x:Static Enums:EEntityType.AuthenticationRequestFile}"
+                                                              MappingType="Edit"/>
+                    <!--  PreferenceDocumentTypeID  -->
+                    <CustomDataGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding PreferenceDocumentTypeName}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.DocType}}"
+                                                    IsReadOnly="True"/>
+                    <!--  CreateDate  -->
+                    <CustomDataGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding CreateDate}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.StorageMessageDate}}"
+                                                    IsReadOnly="True"/>
+                    <!--  State  -->
+                    <CustomDataGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding DecisionName}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.RequestStatus}}"
+                                                    IsReadOnly="True"/>
+                    <!--  importCountry  -->
+                    <CustomDataGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ImportCountryName}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ImportCountry1}}"
+                                                    IsReadOnly="True"/>
+                    <!--  customHouse  -->
+                    <CustomDataGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding OrganizationUnitName}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CustomsHouse}}"
+                                                    IsReadOnly="True"/>
+                    <!--  IfCcollaterallExist  -->
+                    <CustomDataGrid:CustomGridCheckBoxColumn DataMemberBinding="{loc:CustomBinding IsCollateralExists}"
+                                                    Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CollateralExists}}"
+                                                    IsReadOnly="True"
+                                                    IsEnabled="False"/>
+                   
+
+                </CustomDataGrid:CustomDataGridView.Columns>
+            </CustomDataGrid:CustomDataGridView>
+        </Grid>
+    </ControlTemplate>
+    <Style TargetType="{x:Type view:ImportAuthenticationRequestControl}">
+        <Setter Property="Template" Value="{StaticResource A}"/>
+    </Style>
+
+
+</ResourceDictionary>

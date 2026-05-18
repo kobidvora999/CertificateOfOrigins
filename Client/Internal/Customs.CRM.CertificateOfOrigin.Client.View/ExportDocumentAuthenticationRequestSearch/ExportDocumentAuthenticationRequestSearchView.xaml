@@ -1,0 +1,224 @@
+<temp:CustomSearchViewBase x:Class="Customs.CRM.CertificateOfOrigins.Client.View.ExportDocumentAuthenticationRequestSearch.ExportDocumentAuthenticationRequestSearchView"
+                           xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                           xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                           xmlns:API="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+                           xmlns:customGrid="http://schemas.customs.com/wpf/DataGrid"
+                           xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                           xmlns:filters="clr-namespace:Customs.CRM.Entities.Entities.ExportDocumentAuthenticationRequestSearch;assembly=Customs.CRM.Entities"
+                           xmlns:loc="http://schemas.customs.com/wpf"
+                           xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                           xmlns:svc="clr-namespace:Customs.Inf.MMI.Services.Module.ListOfValuesManager;assembly=Customs.Inf.MMI.Services.Module"
+                           xmlns:temp="http://schemas.customs.com/wpf/ControlTemplates"
+                           xmlns:Enum="clr-namespace:MalamTeam.Infrastructure.GeneralServices.Environment.Enums;assembly=MalamTeam.Infrastructure.GeneralServices.Environment"
+                           xmlns:Entities="clr-namespace:Customs.Shared.Entities;assembly=Customs.Shared.Entities"
+                           xmlns:svc1="clr-namespace:Customs.Inf.MMI.Services.Module.ListOfValuesManager;assembly=Customs.Inf.MMI.Services.Module"
+                           xmlns:search="http://schemas.customs.com/wpf/Services"
+                           Title="ExportDocumentAuthenticationRequestSearchView"
+                           ClearButtonCommand="{loc:CustomBinding ClearCommand}"
+                           CurrentFilter="{loc:CustomBinding CurrentFilter}"
+                           Id="{x:Static API:ModuleViews.ExportDocumentAuthenticationRequestSearch}"
+                           MainProgressBarPanelVisibility="{loc:CustomBinding ProgressBarVisibility}"
+                           SearchButtonCommand="{loc:CustomBinding SearchCommand}"
+                           d:DesignHeight="700"
+                           d:DesignWidth="1000"
+                           loc:DesignHelper.DesignTimeStub="{x:Type filters:ExportDocumentAuthenticationRequestSearchFilter}"
+                           mc:Ignorable="d">
+
+    <temp:CustomSearchViewBase.Resources/>
+
+    <temp:CustomSearchViewBase.LeftToolBarContent>
+        <Grid />
+    </temp:CustomSearchViewBase.LeftToolBarContent>
+
+    <temp:CustomSearchViewBase.HeaderContent>
+        <Grid>
+            <loc:SmartPanel Grid.Row="0"
+                            Grid.Column="0"
+                            BoundryBorderType="None"
+                            IsAutoArrange="False"
+                            IsAutoArrangeColumnEnabled="False"
+                            IsSimpleStyle="True"
+                            LayoutType="Grid"
+                            ToggleButtonVisibility="Collapsed"
+                            loc:DesignHelper.DesignTimeStub="{x:Type filters:ExportDocumentAuthenticationRequestSearchFilter}">
+                <loc:SmartPanel.Columns>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </loc:SmartPanel.Columns>
+                <loc:SmartPanel.Rows>
+                    <RowDefinition />
+                    <RowDefinition />
+                    <RowDefinition />
+                </loc:SmartPanel.Rows>
+
+                <loc:SmartPanelItem Grid.Row="0"
+                                    Grid.Column="0"
+                                    LabelSharedSizeGroupName="a"
+                                    Value="{loc:CustomBinding CurrentFilter.CountryID}" />
+
+                <loc:SmartPanelItem Grid.Row="0"
+                                    Grid.Column="1"
+                                    LabelSharedSizeGroupName="b"
+                                    Value="{loc:CustomBinding CurrentFilter.DocumentTypeID}" />
+
+
+
+                <loc:SmartPanelItem Grid.Row="0"
+                                    Grid.Column="2"
+                                    LabelSharedSizeGroupName="c"
+                                    Value="{loc:CustomBinding CurrentFilter.RequestID}" />
+
+                <loc:SmartPanelItem Grid.Row="0"
+                                    Grid.Column="3"
+                                    Grid.ColumnSpan="2"
+                                    LabelSharedSizeGroupName="d"
+                                    Value="{loc:CustomBinding CurrentFilter.RequestOpenDates, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <loc:SmartPanelItem.Label>
+                        <loc:CustomMultiBinding Converter="{x:Static loc:CommonConverters.ArrayToStringConverter}" ConverterParameter="{}{0}{1}">
+                            <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.Since}}" />
+                            <loc:CustomBinding Source="{API:LocStr StrKey={x:Static API:LocalStrings.AuthenticationRequestArrivalDate}}" />
+                        </loc:CustomMultiBinding>
+                    </loc:SmartPanelItem.Label>
+                    <loc:SettingProvider.SmartPanelItemSetting>
+                        <loc:DateRangePickerSetting InputMode="DatePicker" ToLabelSharedSizeGroup="e" />
+                    </loc:SettingProvider.SmartPanelItemSetting>
+                </loc:SmartPanelItem>
+
+                <!--<loc:SmartPanelItem Grid.Row="0"
+                                    Grid.Column="3"
+                                    Grid.ColumnSpan="2"
+                                    Label="{API:LocStr StrKey={x:Static API:LocalStrings.FromDocumentIssueDate}}"
+                                    LabelSharedSizeGroupName="d"
+                                    Value="{loc:CustomBinding CurrentFilter.DocumentIssueDates, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <loc:SettingProvider.SmartPanelItemSetting>
+                        <loc:DateRangePickerSetting InputMode="DatePicker" ToLabelSharedSizeGroup="e"/>
+                    </loc:SettingProvider.SmartPanelItemSetting>
+                </loc:SmartPanelItem>-->
+
+                <loc:SmartPanelItem Grid.Row="1"
+                                    Grid.Column="0"
+                                    LabelSharedSizeGroupName="a"
+                                    Value="{loc:CustomBinding CurrentFilter.ForeignCustomsHouseCustomerID,Mode=TwoWay,
+                                                          UpdateSourceTrigger=PropertyChanged}">
+                    <loc:SettingProvider.SmartPanelItemSetting>
+                        <svc1:LOVSearchExtendedSetting DisplayMemberPath="Name"
+                                                       SearchMemberPath="Name"
+                                                       FilterPropertyGroupName="LovFilterGroupNameExternID"
+                                                       RelatedEntityType="Customer"
+                                                       ResultPropertyGroupName="LovResultGroupNameExternID">
+                            <svc1:LOVSearchExtendedSetting.Filter>
+                                <Entities:CustomerLOVExtendedSearchFilter CustomerType="5" />
+                            </svc1:LOVSearchExtendedSetting.Filter>
+                        </svc1:LOVSearchExtendedSetting>
+                    </loc:SettingProvider.SmartPanelItemSetting>
+                </loc:SmartPanelItem>
+
+                <search:EntitySearchControl x:Name="EntitySearch"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         ComboBoxVisibility="Collapsed"
+                                         EntityIdLabelContent="{loc:LocStr StrKey={x:Static loc:LocalStrings.ExportDeclaration}}"
+                                         EntityLabelSharedSizeGroup="b"
+                                         EntityType="{x:Static Enum:EEntityType.ExportLeadDocument}"
+                                         EntityTypeLabelVisibility="Collapsed"
+                                         EntityTypes="{loc:CustomBinding CurrentFilter.EntityTypes}"
+                                         IsEditable="True"
+                                         IsEntityIDRequired="True"
+                                         IsNavigationManual="False"
+                                         SelectedEntityId="{loc:CustomBinding CurrentFilter.ExportDeclarationID}" 
+                                         SearchString="{loc:CustomBinding CurrentFilter.ExportLeadDocumentTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"/>
+
+                <loc:SmartPanelItem Grid.Row="1"
+                                    Grid.Column="2"
+                                    LabelSharedSizeGroupName="c"
+                                    Value="{loc:CustomBinding CurrentFilter.ExporterID}" />
+
+                <loc:SmartPanelItem Grid.Row="1"
+                                    Grid.Column="3"
+                                    LabelSharedSizeGroupName="d"
+                                    Value="{loc:CustomBinding CurrentFilter.ExportAuthenticationRequestStatusID}" />
+
+                <loc:SmartPanelItem Grid.Row="1"
+                                    Grid.Column="4"
+                                    LabelSharedSizeGroupName="e"
+                                    Value="{loc:CustomBinding CurrentFilter.InvoiceIDNum}" />
+
+                <loc:SmartPanelItem Grid.Row="2"
+                                    Grid.Column="0"
+                                    LabelSharedSizeGroupName="a"
+                                    Value="{loc:CustomBinding CurrentFilter.MainDocumentTitle}" />
+                <loc:SmartPanelItem Grid.Row="2"
+                                    Grid.Column="1"
+                                    LabelSharedSizeGroupName="b"
+                                    Value="{loc:CustomBinding CurrentFilter.CreateUserID}" />
+
+            </loc:SmartPanel>
+        </Grid>
+    </temp:CustomSearchViewBase.HeaderContent>
+
+    <temp:CustomSearchViewBase.Content>
+
+        <customGrid:CustomDataGridView AutoGenerateColumns="False"
+                                       DownButtonVisibility="Collapsed"
+                                       EditButtonVisibility="Collapsed"
+                                       HeaderLabel="{API:LocStr StrKey={x:Static API:LocalStrings.SearchResult}}"
+                                       HeaderToggleButtonVisibility="Collapsed"
+                                       IsEditable="False"
+                                       IsSimpleStyle="False"
+                                       ItemsSource="{loc:CustomBinding Results}"
+                                       RowDoubleClickCommand="{loc:CustomBinding SelectResultRowCommand}"
+                                       SearchTextBoxVisibility="Collapsed"
+                                       ToggleButtonVisibility="Collapsed">
+            <customGrid:CustomDataGridView.Columns>
+                <customGrid:CustomGridDataColumn Width="*"
+                                                 DataMemberBinding="{loc:CustomBinding RequestID,
+                                                                                       Mode=OneWay}"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.MsgNumber}}"
+                                                 IsFilterable="True" />
+
+                <customGrid:CustomGridDataColumn Width="3*"
+                                                 DataMemberBinding="{loc:CustomBinding CountryName,
+                                                                                       Mode=OneWay}"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.Country}}"
+                                                 IsFilterable="True" />
+
+                <customGrid:NavigationHyperlinkColumn Width="3*"
+                                                 DataMemberBinding="{loc:CustomBinding ForeignCustomsHouseName,
+                                                                                       Mode=OneWay}"
+                                                 EntityIdBinding="{loc:CustomBinding CustomerID}"
+                                                 EntityType="{x:Static Enum:EEntityType.Customer}"
+                                                 MappingType="Edit"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.ForeignCustomsHouseName}}"
+                                                 IsFilterable="True" />
+
+                <customGrid:CustomGridDataColumn Width="3*"
+                                                 DataMemberBinding="{loc:CustomBinding DocumentTypeName,
+                                                                                       Mode=OneWay}"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.DocType}}"
+                                                 IsFilterable="True" />
+
+
+                <customGrid:CustomGridDataColumn Width="3*"
+                                                      DataMemberBinding="{loc:CustomBinding ExportDeclarationTitle}"
+                                                      Header="{API:LocStr StrKey={x:Static API:LocalStrings.ExportDeclarationNum}}"
+                                                      />
+
+                <customGrid:CustomGridDataColumn Width="3*"
+                                                 DataMemberBinding="{loc:CustomBinding RequestIssuerName,
+                                                                                       Mode=OneWay}"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.Exporter}}"
+                                                 IsFilterable="True" />
+
+                <customGrid:CustomGridDataColumn Width="3*"
+                                                 DataMemberBinding="{loc:CustomBinding RequestStatusName,
+                                                                                       Mode=OneWay}"
+                                                 Header="{API:LocStr StrKey={x:Static API:LocalStrings.Status}}"
+                                                 IsFilterable="True" />
+            </customGrid:CustomDataGridView.Columns>
+        </customGrid:CustomDataGridView>
+
+    </temp:CustomSearchViewBase.Content>
+</temp:CustomSearchViewBase>

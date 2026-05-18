@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginDbContext.cs" Link="DbContext\CertificateOfOriginDbContext.cs" />
+    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginDbContextExtension.cs" Link="DbContext\CertificateOfOriginDbContextExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\CustomsCloud.CRM.CertificateOfOrigins.Model.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.7" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.17" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Lookup" Version="1.10.18" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Parameters" Version="1.10.11" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Proxy" Version="1.10.10" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.15" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.WebApi" Version="1.10.26" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+  </PropertyGroup>
+
+</Project>

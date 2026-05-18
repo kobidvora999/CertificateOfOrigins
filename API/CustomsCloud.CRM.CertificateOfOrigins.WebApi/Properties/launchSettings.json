@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "DatabaseMigrations": {
+      "commandName": "Project",
+      "commandLineArgs": "run-dbmigration"
+    },
+    "CustomsCloud.CRM.CertificateOfOrigins.WebApi": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:60951;http://localhost:60952"
+    }
+  }
+}

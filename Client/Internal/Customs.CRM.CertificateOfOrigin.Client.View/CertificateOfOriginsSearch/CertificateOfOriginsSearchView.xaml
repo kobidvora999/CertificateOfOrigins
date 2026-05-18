@@ -1,0 +1,198 @@
+﻿<temp:CustomSearchViewBase x:Class="Customs.CRM.CertificateOfOrigins.Client.View.CertificateOfOriginsSearch.CertificateOfOriginsSearchView"
+                           xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                           xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                           xmlns:Api="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+                           xmlns:CertificateOfOriginsPartial="clr-namespace:Customs.CRM.Entities.CertificateOfOriginsPartial;assembly=Customs.CRM.Entities"
+                           xmlns:customGrid="http://schemas.customs.com/wpf/DataGrid"
+                           xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                           xmlns:Entities="clr-namespace:Customs.CertificateOfOrigins.Entities;assembly=Customs.CRM.Entities"
+                           xmlns:Entities2="clr-namespace:Customs.Shared.Entities;assembly=Customs.Shared.Entities"
+                           xmlns:loc="http://schemas.customs.com/wpf"
+                           xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                           xmlns:orgUnit="http://schemas.customs.com/Users"
+                           xmlns:svc="clr-namespace:Customs.Inf.MMI.Services.Module.ListOfValuesManager;assembly=Customs.Inf.MMI.Services.Module"
+                           xmlns:temp="http://schemas.customs.com/wpf/ControlTemplates"
+                           xmlns:Enums="clr-namespace:MalamTeam.Infrastructure.GeneralServices.Environment.Enums;assembly=MalamTeam.Infrastructure.GeneralServices.Environment"
+                           xmlns:Converters="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.Converters" xmlns:common="clr-namespace:Customs.CRM.CertificateOfOrigins.InternalCommon.Common;assembly=Customs.CRM.CertificateOfOrigins.InternalCommon" xmlns:svc1="http://schemas.customs.com/wpf/Services"
+                           Title="CertificateOfOriginsSearchView"
+                           ClearButtonCommand="{loc:CustomBinding CertificateOfOriginsClearCommand}"
+                           CurrentFilter="{loc:CustomBinding CurrentFilter}"
+                           d:DesignHeight="700"
+                           d:DesignWidth="1000"
+                           Id="{x:Static Api:ModuleViews.CertificateOfOriginsSearchView}"
+                           loc:CustomFocusManager.FocusElement="{loc:CustomBinding ElementName=CertificateNumber}"
+                           loc:ValidationsManager.ValidationMode="Edit"
+                           MainProgressBarPanelVisibility="{loc:CustomBinding ProgressBarPanelVisibile}"
+                           SearchButtonCommand="{loc:CustomBinding SearchCertificateOfOriginsCommand}"
+                           SearchButtonCommandParameter="{loc:CustomBinding CurrentFilter}"
+                           mc:Ignorable="d">
+
+    <temp:CustomSearchViewBase.Resources>
+        <common:CertificateOfOriginFilter x:Key="stub" />
+        <orgUnit:OrgUnitFilter x:Key="orgUnitFilter" SelectedTypeIds="{loc:CustomBinding OrganizationUnitTypeIds}" />
+    </temp:CustomSearchViewBase.Resources>
+
+    <temp:CustomSearchViewBase.LeftToolBarContent>
+        <Grid />
+    </temp:CustomSearchViewBase.LeftToolBarContent>
+
+    <temp:CustomSearchViewBase.HeaderContent>
+        <loc:SmartPanel DataContext="{loc:CustomBinding CurrentFilter}"
+                        Grid.IsSharedSizeScope="True"
+                        IsAutoArrange="False"
+                        IsAutoArrangeColumnEnabled="False"
+                        IsSimpleStyle="True"
+                        LayoutType="Grid"
+                        loc:DesignHelper.DesignTimeStub="{StaticResource stub}">
+            <loc:SmartPanel.Columns>
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </loc:SmartPanel.Columns>
+            <loc:SmartPanel.Rows>
+                <RowDefinition />
+                <RowDefinition />
+                <RowDefinition />
+                <RowDefinition />
+            </loc:SmartPanel.Rows>
+
+            <loc:SmartPanelItem Name="CertificateNumber"
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                LabelSharedSizeGroupName="a"
+                                Value="{loc:CustomBinding certificateNumber}"
+                                InputLanguageManager.InputLanguage="en-us"/>
+            <loc:SmartPanelItem Grid.Row="0"
+                                Grid.Column="1"
+                                LabelSharedSizeGroupName="b"
+                                Value="{loc:CustomBinding exporterCustomerID}" />
+            <loc:SmartPanelItem Grid.Row="0"
+                                Grid.Column="2"
+                                LabelSharedSizeGroupName="c"
+                                Value="{loc:CustomBinding destinationCountry}" />
+            <loc:SmartPanelItem Grid.Row="0"
+                                Grid.Column="3"
+                                LabelSharedSizeGroupName="d"
+                                Value="{loc:CustomBinding customsHouseID}">
+
+
+                <loc:SettingProvider.SmartPanelItemSetting>
+                    <orgUnit:OrganizationUnitSetting Filter="{StaticResource orgUnitFilter}" />
+                </loc:SettingProvider.SmartPanelItemSetting>
+
+
+            </loc:SmartPanelItem>
+
+            <loc:SmartPanelItem Grid.Row="1"
+                                Grid.Column="0"
+                                LabelSharedSizeGroupName="a"
+                                Value="{loc:CustomBinding certificateOfOriginStatusID}" />
+
+            <loc:SmartPanelItem Grid.Row="1"
+                                Grid.Column="1"
+                                LabelSharedSizeGroupName="b"
+                                Value="{loc:CustomBinding customsAgentID}">
+
+
+
+
+            </loc:SmartPanelItem>
+            <loc:SmartPanelItem Grid.Row="1"
+                                Grid.Column="2"
+                                LabelSharedSizeGroupName="c"
+                                Value="{loc:CustomBinding fromIssuingDate}" />
+            <loc:SmartPanelItem Grid.Row="1"
+                                Grid.Column="3"
+                                LabelSharedSizeGroupName="d"
+                                Value="{loc:CustomBinding toIssuingDate}" />
+
+            <loc:SmartPanelItem Grid.Row="2"
+                                Grid.Column="0"
+                                LabelSharedSizeGroupName="a"
+                                Value="{loc:CustomBinding certificateOfOriginTypeID}" />
+            <loc:SmartPanelItem Grid.Row="2"
+                                Grid.Column="1"
+                                LabelSharedSizeGroupName="b"
+                                Value="{loc:CustomBinding exportDeclarationNum}" />
+            <loc:SmartPanelItem Grid.Row="2"
+                                Grid.Column="2"
+                                LabelSharedSizeGroupName="c"
+                                Value="{loc:CustomBinding fromRequestDate}" />
+            <loc:SmartPanelItem Grid.Row="2"
+                                Grid.Column="3"
+                                LabelSharedSizeGroupName="d"
+                                Value="{loc:CustomBinding toRequestDate}" />
+
+            <loc:SmartPanelItem Grid.Row="3"
+                                Grid.Column="0"
+                                LabelSharedSizeGroupName="a"
+                                Value="{loc:CustomBinding requestReasonID}" />
+            
+            <loc:SmartPanelItem Grid.Row="3"
+                                Grid.Column="1"
+                                LabelSharedSizeGroupName="b"
+                                Value="{loc:CustomBinding versionNumber}" />
+
+            <loc:SmartPanelItem Grid.Row="3"
+                                    Grid.Column="2"
+                                    Margin="6"
+                                    VerticalAlignment="Center"
+                                    Value="{loc:CustomBinding isLastVersion}" />
+        </loc:SmartPanel>
+    </temp:CustomSearchViewBase.HeaderContent>
+
+    <temp:CustomSearchViewBase.Content>
+        <customGrid:CustomDataGridView HeaderLabel="{Api:LocStr StrKey={x:Static Api:LocalStrings.SearchResult}}"
+                                       HeaderToggleButtonVisibility="Collapsed"
+                                       ItemsSource="{loc:CustomBinding SearchResult}"
+                                       RowDoubleClickCommand="{loc:CustomBinding CertificateOfOriginsRowDoubleClickCommand}">
+
+
+            <customGrid:CustomDataGridView.StatusBarContent>
+                <customGrid:SearchStatusLabel />
+            </customGrid:CustomDataGridView.StatusBarContent>
+
+
+            <customGrid:CustomDataGridView.Columns>
+
+                <customGrid:NavigationHyperlinkColumn DataMemberBinding="{loc:CustomBinding ExportDeclarationNumber}"
+                                                      EntityIdBinding="{loc:CustomBinding LeadDocumentID}"
+                                                      EntityType="{x:Static Enums:EEntityType.ExportLeadDocument}"
+                                                      Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ExportDeclarationNum}}" 
+                                                      loc:ViewStateManager.ViewState="ReadOnly"
+                                                      IsNavigationEnabledBinding="{loc:CustomBinding Path=LeadDocumentID,Converter={loc:InstanceToBooleanConverter}}">
+                </customGrid:NavigationHyperlinkColumn>
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding CertificateNumber}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CertificateOfOriginNum}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ExporterExternalIdNum}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ExporterID}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding ExporterTitle}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.ExporterName}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding CustomesAgentExternalIdNum}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.NumberOfCustomsAgents}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding CustomesAgentTitle}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CustomsAgentNameDeleteDelete}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding Name}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CertificateStatus}}" />
+                
+                <svc1:LOVComponentColumn
+                            DataMemberBinding="{loc:CustomBinding OrganizationUnitID}"
+                            IsSimpleColumn="True"
+                            LookupType="Entities2:OrganizationUnitLOV" 
+                            Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.CustomsHouse}}"/>
+
+                <svc1:LOVComponentColumn
+                            DataMemberBinding="{loc:CustomBinding RequestReasonCode}"
+                            IsSimpleColumn="True"
+                            LookupType="Entities:RequestReasonCodeEnum" 
+                            Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.RequestReason}}"/>
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding IssuingDate}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.IssuingDate}}" />
+
+                <customGrid:CustomGridDataColumn DataMemberBinding="{loc:CustomBinding VersionNumber}" Header="{Api:LocStr StrKey={x:Static Api:LocalStrings.VersionNumber}}" />
+
+            </customGrid:CustomDataGridView.Columns>
+        </customGrid:CustomDataGridView>
+    </temp:CustomSearchViewBase.Content>
+</temp:CustomSearchViewBase>

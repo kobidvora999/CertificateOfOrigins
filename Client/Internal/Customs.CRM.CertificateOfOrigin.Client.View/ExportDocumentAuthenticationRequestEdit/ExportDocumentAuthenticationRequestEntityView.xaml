@@ -1,0 +1,40 @@
+﻿<nav:CustomEntityViewBase x:Class="Customs.CRM.CertificateOfOrigins.Client.View.ExportDocumentAuthenticationRequestEdit.ExportDocumentAuthenticationRequestEntityView"
+                          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                          xmlns:API="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.Api;assembly=Customs.CRM.CertificateOfOrigion.Client.External.Api"
+                          xmlns:ActivityLog="clr-namespace:Customs.Inf.CommonServices.Client.External.Api.ActivityLog;assembly=Customs.Inf.CommonServices.Client.External.Api"
+                          xmlns:converters="clr-namespace:Customs.CRM.CertificateOfOrigins.Client.View.Converters"
+                          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                          xmlns:loc="http://schemas.customs.com/wpf"
+                          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                          xmlns:nav="http://schemas.customs.com/wpf/Services"
+                          Title="ExportDocumentAuthenticationRequestEntityView"
+                          CurrentEntity="{loc:CustomBinding CurrentEntity}"
+                          Id="{x:Static API:ModuleViews.ExportDocumentAuthenticationRequestEntityView}"
+                          d:DesignHeight="700"
+                          d:DesignWidth="1000"
+                          mc:Ignorable="d">
+
+    <nav:CustomEntityViewBase.Resources>
+        <converters:BoolToVisibilityInvertedConverter x:Key="BoolToVisibilityInvertedConverter" />
+    </nav:CustomEntityViewBase.Resources>
+
+    <nav:CustomEntityViewBase.NavigationTreeItemSource>
+        <nav:NavigationMapping EntityInstance="{loc:CustomBinding CurrentEntity}"
+                               IsPlaceHolder="True"
+                               IsSelected="True"
+                               Visibility="{loc:CustomBinding CurrentEntity.IsNew,
+                                                              Converter={StaticResource BoolToVisibilityInvertedConverter}}">
+            <nav:NavigationMapping.NavigationItems>
+
+                <nav:NavigationViewMapping EntityInstance="{loc:CustomBinding CurrentEntity}"
+                                           Header="{loc:LocStr StrKey={x:Static loc:LocalStrings.Common}}"
+                                           IsSelected="True"
+                                           ViewModelInstance="{loc:CustomBinding}" />
+
+            </nav:NavigationMapping.NavigationItems>
+        </nav:NavigationMapping>
+    </nav:CustomEntityViewBase.NavigationTreeItemSource>
+</nav:CustomEntityViewBase>
+
+
