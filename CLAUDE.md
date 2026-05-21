@@ -75,6 +75,7 @@ After build failure: fix obvious issues (missing usings, missing interface metho
 
 ## Git Rules
 
+- **`/wcf-migrate` פותח branch אוטומטית** בשם `feature/migrate-{method-name}` (kebab-case)
 - **Commit to the feature branch only** — never directly to `master`/`main`
 - The developer reviews and merges via PR
 
