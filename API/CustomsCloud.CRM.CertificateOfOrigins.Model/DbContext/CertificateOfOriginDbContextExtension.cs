@@ -1,36 +1,26 @@
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore;
+using CustomsCloud.InfrastructureCore.DAL;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
-using CustomsCloud.InfrastructureCore.DAL;
 using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.DAL;
 
 public partial class CertificateOfOriginDbContext
 {
-    public async Task<IEnumerable<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilterAsync(CertificateOfOriginFilterDto filter)
-        => await Database.GetDbConnection().QueryAsync<CertificateOfOriginResultDto>(
-            "[CRM].[usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter]",
-            new
-            {
-                certificateNumber = filter.CertificateNumber,
-                certificateOfOriginStatusID = filter.CertificateOfOriginStatusId,
-                certificateOfOriginTypeID = filter.CertificateOfOriginTypeId,
-                customsAgentID = filter.CustomsAgentId,
-                customsHouseID = filter.CustomsHouseId,
-                destinationCountry = filter.DestinationCountry,
-                exportDeclarationID = filter.ExportDeclarationId,
-                exportDeclarationNum = filter.ExportDeclarationNum,
-                exporterCustomerID = filter.ExporterCustomerId,
-                fromIssuingDate = filter.FromIssuingDate,
-                toIssuingDate = filter.ToIssuingDate,
-                fromRequestDate = filter.FromRequestDate,
-                toRequestDate = filter.ToRequestDate,
-                requestReasonID = filter.RequestReasonId,
-                versionNumber = filter.VersionNumber,
-                isLastVersion = filter.IsLastVersion,
-            },
-            commandType: CommandType.StoredProcedure);
+    public async Task<IEnumerable<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<CertificateOfOriginResultDto>(cmd);
+        DapperHelper.DapperCheckRows(cmd, result);
+        return result;
+    }
 }
 
 public partial class CertificateOfOriginDbReadOnlyContext : CertificateOfOriginDbContext, IReadOnlyContext

@@ -8,8 +8,10 @@ Global skills live in `~/.claude/skills/`. The shared patterns file `~/.claude/s
 
 | Task | Skill |
 |---|---|
-| Analyze WCF file | `/wcf-analyze <file>` |
-| Migrate WCF method | `/wcf-migrate <method> <path> <class>` |
+| Analyze WCF file | `/wcf-analyze [file]` — נתיב אופציונלי, נשמר ב-memory |
+| Estimate WCF method effort | `/wcf-estimate <method> [path] [class]` |
+| Migrate WCF method | `/wcf-migrate <method> [path] [class]` — נתיב אופציונלי, נשמר ב-memory |
+| Generate spec document | `/wcf-spec [service]` — מופעל אוטומטית בסוף `/wcf-migrate` |
 | Add DTO | `/net10-dto <class>` |
 | Add controller endpoint | `/net10-controller <method> [External\|Internal\|Incoming]` |
 | Add BL method | `/net10-bl <method>` |
