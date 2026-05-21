@@ -17,6 +17,21 @@
       "name": "Internal",
       "item": [
         {
+          "name": "IsCertificateOfOriginByExternalIdExist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/IsCertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=IL0000108665",
+              "host": ["{{baseUrl}}"],
+              "path": ["Internal", "IsCertificateOfOriginByExternalIdExist"],
+              "query": [
+                { "key": "certificateOfOriginExternalId", "value": "IL0000108665", "disabled": false }
+              ]
+            }
+          }
+        },
+        {
           "name": "GetCertificateOfOriginsByFilter",
           "request": {
             "method": "GET",
