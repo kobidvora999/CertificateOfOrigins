@@ -10,4 +10,13 @@
   </Folder>
   <Folder Name="/Planars/" />
   <Folder Name="/Workers/" />
+  <Folder Name="/Postman/">
+    <File Path="Postman/CertificateOfOrigins.postman_collection.json" />
+    <Folder Name="/Postman/Environments/">
+      <File Path="Postman/Environments/CertificateOfOrigins.Development.postman_environment.json" />
+      <File Path="Postman/Environments/CertificateOfOrigins.PreProd.postman_environment.json" />
+      <File Path="Postman/Environments/CertificateOfOrigins.Production.postman_environment.json" />
+      <File Path="Postman/Environments/CertificateOfOrigins.Test.postman_environment.json" />
+    </Folder>
+  </Folder>
 </Solution>
