@@ -7,7 +7,7 @@
 
 ## 1. תיאור כללי
 
-ה-Internal API של שירות CertificateOfOrigins חושף נקודות קצה לשימוש פנים-ארגוני בין מיקרו-שירותים. ה-controller מאפשר חיפוש ואחזור תעודות מקור לפי קריטריונים מגוונים. הדומיין עוסק בניהול תעודות מקור (CertificateOfOrigins) במערכת המכס.
+ה-Internal API של שירות CertificateOfOrigins חושף נקודות קצה לשימוש פנים-ארגוני בין מיקרו-שירותים. ה-controller מאפשר חיפוש ואחזור תעודות מקור לפי קריטריונים מגוונים, וכן בדיקת קיום תעודה לפי מספר חיצוני. הדומיין עוסק בניהול תעודות מקור (CertificateOfOrigins) במערכת המכס.
 
 ---
 
@@ -58,6 +58,36 @@
 
 ---
 
+### IsCertificateOfOriginByExternalIdExist
+
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/IsCertificateOfOriginByExternalIdExist` |
+| **תיאור** | בודק אם תעודת מקור קיימת לפי מספר חיצוני ומחזיר את פרטיה |
+
+**פרמטרים:**
+
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `certificateOfOriginExternalId` | `string` | מספר התעודה החיצוני לחיפוש |
+
+**ערך מוחזר:** `CertificateOfOriginResultDto?` — פרטי התעודה אם נמצאה, או `null` אם לא קיימת.
+
+**לוגיקה עסקית:**
+
+**מקבל:** מחרוזת המייצגת את מספר התעודה החיצוני.
+
+**מבצע:**
+1. יוצר אובייקט `CertificateOfOriginFilterDto` חדש עם שדה `CertificateNumber` בלבד מאוכלס בערך שהתקבל; כל שאר השדות נשארים `null`.
+2. בונה אובייקט `DynamicParameters` מהפילטר באמצעות `BuildParameterForProcedure` (כל 16 הפרמטרים מועברים ל-SP, שאר הפרמטרים ריקים).
+3. מעביר את הפרמטרים לשכבת ה-DAL דרך `DataLayer.GetCertificateOfOriginsByFilter` — אותו SP של סינון תעודות.
+4. מחזיר את התוצאה הראשונה בלבד באמצעות `FirstOrDefault`.
+
+**מחזיר:** הרשומה הראשונה מסוג `CertificateOfOriginResultDto` שהתאימה למספר החיצוני. מחזיר `null` אם לא נמצאה תעודה תואמת.
+
+---
+
 ## 3. מודלי נתונים
 
 ### CertificateOfOriginFilterDto
@@ -105,7 +135,7 @@
 
 | רכיב | תיאור שימוש |
 |-------|-------------|
-| `CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter` | Stored Procedure לחיפוש תעודות מקור לפי פילטר |
+| `CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter` | Stored Procedure לחיפוש תעודות מקור לפי פילטר — משמש גם עבור `IsCertificateOfOriginByExternalIdExist` |
 | `DapperHelper` | אימות תוצאות ה-SP (`DapperCheckRows`) |
 
 ---
