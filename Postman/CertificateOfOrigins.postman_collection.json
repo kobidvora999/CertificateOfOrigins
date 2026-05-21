@@ -17,6 +17,21 @@
       "name": "Internal",
       "item": [
         {
+          "name": "GetCertificateOfOriginById",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetCertificateOfOriginById?certificateOfOriginId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Internal", "GetCertificateOfOriginById"],
+              "query": [
+                { "key": "certificateOfOriginId", "value": "1", "disabled": false }
+              ]
+            }
+          }
+        },
+        {
           "name": "IsCertificateOfOriginByExternalIdExist",
           "request": {
             "method": "GET",

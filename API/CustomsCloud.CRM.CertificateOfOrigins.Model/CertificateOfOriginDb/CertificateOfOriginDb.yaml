@@ -9,3 +9,8 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginResultDto
+  - name: CRM.usp_CertificateOfOrigins_GetCertificateOfOriginByID
+    function: GetCertificateOfOriginById
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: CertificateOfOriginDto
