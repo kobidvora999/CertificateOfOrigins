@@ -26,11 +26,14 @@ Global skills live in `~/.claude/skills/`. The shared patterns file `~/.claude/s
 This is a CustomsCloud .NET 10 microservice following the standard CRM layered architecture:
 
 ```
-API/CustomsCloud.CRM.{S}.WebApi/        ← Controllers (HTTP entry points)
-API/CustomsCloud.CRM.{S}.BL/           ← Business logic, Proxies, Validations
-API/CustomsCloud.CRM.{S}.DAL/          ← Data access (EF Core + Dapper)
-API/CustomsCloud.CRM.{S}.Model/        ← DTOs, DbContext, YAML schema
-Postman/                                ← Postman collection
+API/CustomsCloud.CRM.{S}.WebApi/                    ← Controllers (HTTP entry points)
+API/CustomsCloud.CRM.{S}.BL/                        ← Business logic
+API/CustomsCloud.CRM.{S}.BL/Proxies/               ← Proxy adapters (BaseMicroServiceProxyAdapter)
+API/CustomsCloud.CRM.{S}.BL/Validations/           ← FluentValidation validators
+API/CustomsCloud.CRM.{S}.DAL/                        ← Data access (EF Core + Dapper)
+API/CustomsCloud.CRM.{S}.Model/                      ← DTOs, DbContext, YAML schema
+Planar/                                              ← Scheduled jobs (BaseJob)
+Postman/                                             ← Postman collection
 ```
 
 `{S}` = service name — detect from `.sln` / project folder names at the start of each session.
@@ -47,10 +50,31 @@ After build failure: fix obvious issues (missing usings, missing interface metho
 
 - **HTTP verb:** method prefix `Get/Find/Search/Is/Check/Load` → `[HttpGet]` + `[FromQuery]`; everything else → `[HttpPost]` + `[FromBody]`
 - **`void` return** → `Task<bool>`, return `Ok(true)` or `Created(true)`
+- **No `Async` suffix** on method names — applies to BL, DAL, and Controller uniformly
+- **Style:** always `var result = await ...; return result;` — never `=> await ...`
+- **`if` blocks** always use braces `{ }` — even single-line bodies
 - **DAL reads** → `ReadOnlyContext` only; **DAL writes** → `Context` with Fetch & Merge
 - **BL** always delegates via `DataLayer.` (not `DAL.` directly)
 - **CA1707:** no underscores in type/member names — `PR_FRM1020_Foo` → `Frm1020Foo`
 - **Soft-delete filter:** `.Where(e => e.State != 99)` + `.ExcludeInterceptor("T7e0Y38X2y")`
+- **`IParametersUtil` / `ILookupUtil`** — constructor injection only, never `Resolve<>()`
+
+## WCF Pattern Quick-Reference
+
+| WCF pattern | .NET 10 replacement |
+|---|---|
+| `EventUtil.RaiseEvent(...)` | `IEventUtil` builder — run `/net10-eventutil` |
+| `PushUtil.*` | `#error MIGRATION: Install NuGet CustomsCloud.Infrastructure.Notifications` |
+| `SystemTablesUtil.GetCodeById<T>(id)` | `await lookupUtil.Get<T>(id)` via `ILookupUtil` |
+| `Configuration.GetConfig<T>("key")` | `await parametersUtil.Get<T>("key")` via `IParametersUtil` |
+| `Container.Resolve<T>()` | `Resolve<T>()` |
+| `new XxxAdapter` / `BaseServiceAdapter` | Run `/net10-proxy` |
+| `BaseScheduleTask` | Run `/net10-planar` |
+
+## Git Rules
+
+- **Commit to the feature branch only** — never directly to `master`/`main`
+- The developer reviews and merges via PR
 
 ## Controller Types
 
