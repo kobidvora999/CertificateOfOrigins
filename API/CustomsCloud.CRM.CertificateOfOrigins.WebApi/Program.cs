@@ -14,6 +14,7 @@ public class Program
     {
         var builder = CloudWebApp.CreateCloudWebAppBuilder()
             .UseBaseType<Program>()
+            .SetMicroService(InfrastructureCore.CustomsMicroServices.CertificateOfOrigins)
             .AddServiceConfiguration<ServicesConfiguration>();
 
         var app = CloudWebApp.Build(builder);
