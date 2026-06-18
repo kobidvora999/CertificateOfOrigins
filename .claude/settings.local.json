@@ -4,7 +4,10 @@
       "Bash(dotnet build *)",
       "Bash(git stash *)",
       "Bash(git branch *)",
-      "PowerShell(New-Item *)"
+      "PowerShell(New-Item *)",
+      "PowerShell($null = New-Item -ItemType Directory -Force \".claude\"; if \\(-not \\(Test-Path \".claude/settings.json\"\\)\\) { '{\"worktree\":{\"bgIsolation\":\"none\"}}' | Out-File -FilePath \".claude/settings.json\" -Encoding utf8 -NoNewline; \"created\" } else { \"exists\" })",
+      "Bash(git checkout *)",
+      "Bash(git add *)"
     ]
   }
 }
