@@ -69,6 +69,19 @@ public partial class CertificateOfOriginDbContext
 
         return certificateOfOrigin;
     }
+
+    public async Task<IEnumerable<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_GetImportAuthenticationRequestByFilter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<GetImportAuthenticationRequestResultDto>(cmd);
+        DapperHelper.DapperCheckRows(cmd, result);
+        return result;
+    }
 }
 
 public partial class CertificateOfOriginDbReadOnlyContext : CertificateOfOriginDbContext, IReadOnlyContext

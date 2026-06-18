@@ -1,6 +1,6 @@
 # אפיון: CertificateOfOrigins — Internal API
 
-> **תאריך:** 18/06/2026
+> **תאריך:** 18/06/2026 (עודכן: 18/06/2026)
 > **Controller:** `CertificateOfOriginInternalController` (`/Internal`)
 
 ---
@@ -90,6 +90,33 @@
 2. קורא ל-DAL (`DataLayer.GetCertificateOfOriginById`) עם הפרמטרים שנוצרו
 
 **מחזיר:** אובייקט `CertificateOfOriginDto` המאוכלס במלואו אם נמצאה תעודה תואמת — כולל אוספי Milestones, CertificateOfOriginVsDeclarationError, CertificateOfOriginDetails (כל אחד עם `CertificateDetailsTypeCode` מקונן), ו-CertificateOfOriginInvoiceDetail (כל אחד עם אוסף `CertificateOfOriginItemDetail` מקונן). מחזיר `null` אם לא קיימת תעודה עם המזהה שניתן.
+
+---
+
+### GetAuthenticationRequestByFilter
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetAuthenticationRequestByFilter` |
+| **תיאור** | מחזיר רשימת בקשות אימות יבוא לפי פילטר חיפוש |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `filter` | `ImportAuthenticationRequestFilterDto` | אובייקט פילטר המכיל את כל קריטריוני החיפוש (`[FromQuery]`) |
+
+**ערך מוחזר:** `List<GetImportAuthenticationRequestResultDto>?` — רשימת בקשות אימות יבוא התואמות לפילטר, או `null` אם לא נמצאו
+
+**לוגיקה עסקית:**
+
+**מקבל:** אובייקט פילטר `ImportAuthenticationRequestFilterDto` המכיל קריטריוני סינון שונים
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider` (מחלקת לוגיקה נפרדת מ-`CertificateOfOriginBl`)
+2. בונה אובייקט `DynamicParameters` עבור פרוצדורת ה-DB `usp_CertificateOfOrigins_GetImportAuthenticationRequestByFilter` באמצעות הפונקציה הפרטית `BuildParameterForProcedure` — ממפה את כל שדות הפילטר לפרמטרים של סוג `DbType` מתאים: `PrefernceDocumentType` (Int32), `GoodsOrigionCountry` (Int32), `IssuingCountry` (Int32), `ImportCountry` (Int32), `FromRequestDate` (DateTimeOffset), `ToRequestDate` (DateTimeOffset), `CustomsHouseId` (Int32), `RequestReason` (Int32), `LeadDocumentId` (Int32), `ImporterId` (Int32), `VendorId` (Int32), `DecisionId` (Int32), `CustomerId` (Int32), `DocumentId` (Int32), `InvoiceNumber` (String), `DocumentNumber` (String), `AuthenticationFileId` (Int32), `CreateUserId` (Int32)
+3. קורא ל-DAL עם הפרמטרים שנבנו (`DataLayer.GetAuthenticationRequestByFilter`)
+
+**מחזיר:** רשימת `GetImportAuthenticationRequestResultDto` כפי שהוחזרה מה-DAL, או `null` אם אין תוצאות
 
 ---
 
@@ -255,12 +282,56 @@
 | `FullClassification` | `string?` | — | סיווג מלא |
 | `ContainerIsoCode` | `string?` | — | קוד ISO של המכולה |
 
+### ImportAuthenticationRequestFilterDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `PrefernceDocumentType` | `int?` | — | מזהה סוג מסמך העדפה |
+| `GoodsOrigionCountry` | `int?` | — | מזהה מדינת מקור הסחורה |
+| `IssuingCountry` | `int?` | — | מזהה מדינה מנפיקה |
+| `ImportCountry` | `int?` | — | מזהה מדינת יבוא |
+| `FromRequestDate` | `DateTimeOffset?` | — | תאריך בקשה מתאריך |
+| `ToRequestDate` | `DateTimeOffset?` | — | תאריך בקשה עד תאריך |
+| `CustomsHouseId` | `int?` | — | מזהה בית המכס |
+| `RequestReason` | `int?` | — | מזהה סיבת הבקשה |
+| `LeadDocumentId` | `int?` | — | מזהה מסמך מוביל |
+| `ImporterId` | `int?` | — | מזהה היבואן |
+| `VendorId` | `int?` | — | מזהה הספק |
+| `DecisionId` | `int?` | — | מזהה ההחלטה |
+| `CustomerId` | `int?` | — | מזהה הלקוח |
+| `DocumentId` | `int?` | — | מזהה המסמך |
+| `InvoiceNumber` | `string?` | — | מספר חשבונית |
+| `DocumentNumber` | `string?` | — | מספר מסמך |
+| `AuthenticationFileId` | `int?` | — | מזהה תיק האימות |
+| `CreateUserId` | `int?` | — | מזהה משתמש יוצר |
+
+### GetImportAuthenticationRequestResultDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `DocumentId` | `int?` | — | מזהה המסמך |
+| `IssuingCountryId` | `string?` | — | מזהה מדינה מנפיקה (ערך טקסטואלי) |
+| `OrganizationUnitId` | `string?` | — | מזהה יחידה ארגונית (ערך טקסטואלי) |
+| `PreferenceDocumentTypeId` | `string?` | — | מזהה סוג מסמך העדפה (ערך טקסטואלי) |
+| `AuthenticationFileId` | `int?` | — | מזהה תיק האימות |
+| `LeadDocumentTitle` | `string?` | — | כותרת המסמך המוביל |
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירה |
+| `VendorName` | `string?` | — | שם הספק |
+| `IssuingCountryIdNum` | `int?` | — | מזהה מדינה מנפיקה (ערך מספרי) |
+| `OrganizationUnitIdNum` | `int?` | — | מזהה יחידה ארגונית (ערך מספרי) |
+| `ResponseNameEmail` | `string?` | — | שם ואימייל של הגורם המגיב |
+| `LeadDocumentId` | `int?` | — | מזהה מסמך מוביל |
+| `CustomerId` | `int?` | — | מזהה הלקוח |
+| `VendorId` | `int?` | — | מזהה הספק |
+| `DecisionId` | `int?` | — | מזהה ההחלטה |
+| `ImporterName` | `string?` | — | שם היבואן |
+| `AuthenticationFileStatusId` | `int?` | — | מזהה סטטוס תיק האימות |
+
 ---
 
 ## 4. תלויות חיצוניות
 | רכיב | תיאור שימוש |
 |-------|-------------|
 | `ICertificateOfOriginDal` | שכבת גישת הנתונים — מבצעת את קריאות ה-DB בפועל |
+| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter` |
 
 ---
 

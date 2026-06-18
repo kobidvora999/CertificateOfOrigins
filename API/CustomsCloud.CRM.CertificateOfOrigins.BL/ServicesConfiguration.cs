@@ -14,5 +14,6 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddCustomsDbContext<CertificateOfOriginDbContext, CertificateOfOriginDbReadOnlyContext>();
         services.AddDataLayer<ICertificateOfOriginDal, CertificateOfOriginDal>();
         services.AddBusinessLayer<CertificateOfOriginBl>();
+        services.AddBusinessLayer<AuthenticationRequestBl>();
     }
 }

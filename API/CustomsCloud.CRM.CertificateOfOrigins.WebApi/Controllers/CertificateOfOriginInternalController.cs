@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 
@@ -37,6 +38,17 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
     public async Task<ActionResult<CertificateOfOriginDto?>> GetCertificateOfOriginById([FromQuery] int certificateOfOriginId)
     {
         var result = await BusinessLayer.GetCertificateOfOriginById(certificateOfOriginId);
+        return Ok(result);
+    }
+
+    [HttpGet("GetAuthenticationRequestByFilter")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(List<GetImportAuthenticationRequestResultDto>))]
+    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>?>> GetAuthenticationRequestByFilter([FromQuery] ImportAuthenticationRequestFilterDto filter)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.GetAuthenticationRequestByFilter(filter);
         return Ok(result);
     }
 }
