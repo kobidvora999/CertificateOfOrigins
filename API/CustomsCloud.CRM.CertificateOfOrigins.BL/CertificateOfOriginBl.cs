@@ -37,4 +37,11 @@ public class CertificateOfOriginBl(IServiceProvider serviceProvider)
         var result = await DataLayer.GetCertificateOfOriginsByFilter(parameters);
         return result;
     }
+
+    public async Task<CertificateOfOriginResultDto?> IsCertificateOfOriginByExternalIdExist(string certificateOfOriginExternalId)
+    {
+        var filter = new CertificateOfOriginFilterDto { CertificateNumber = certificateOfOriginExternalId };
+        var result = await GetCertificateOfOriginsByFilter(filter);
+        return result?.FirstOrDefault();
+    }
 }
