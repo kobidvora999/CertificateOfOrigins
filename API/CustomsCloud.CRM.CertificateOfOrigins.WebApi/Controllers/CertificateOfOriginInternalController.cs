@@ -29,4 +29,14 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await BusinessLayer.IsCertificateOfOriginByExternalIdExist(certificateOfOriginExternalId);
         return Ok(result);
     }
+
+    [HttpGet("GetCertificateOfOriginById")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CertificateOfOriginDto))]
+    public async Task<ActionResult<CertificateOfOriginDto?>> GetCertificateOfOriginById([FromQuery] int certificateOfOriginId)
+    {
+        var result = await BusinessLayer.GetCertificateOfOriginById(certificateOfOriginId);
+        return Ok(result);
+    }
 }

@@ -44,4 +44,12 @@ public class CertificateOfOriginBl(IServiceProvider serviceProvider)
         var result = await GetCertificateOfOriginsByFilter(filter);
         return result?.FirstOrDefault();
     }
+
+    public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@CertificateOfOriginId", certificateOfOriginId, DbType.Int32);
+        var result = await DataLayer.GetCertificateOfOriginById(parameters);
+        return result;
+    }
 }

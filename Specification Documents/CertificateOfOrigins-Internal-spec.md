@@ -67,6 +67,32 @@
 
 ---
 
+### GetCertificateOfOriginById
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetCertificateOfOriginById` |
+| **תיאור** | מחזיר תעודת מקור מלאה (כולל כל האובייקטים המקוננים) לפי מזהה פנימי |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `certificateOfOriginId` | `int` | המזהה הפנימי של תעודת המקור (`[FromQuery]`) |
+
+**ערך מוחזר:** `CertificateOfOriginDto?` — תעודת המקור המלאה עם כל האובייקטים המקוננים שלה, או `null` אם לא נמצאה
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר שלם `certificateOfOriginId` המייצג את המזהה הפנימי של תעודת המקור
+
+**מבצע:**
+1. יוצר אובייקט `DynamicParameters` ומוסיף את הפרמטר `@CertificateOfOriginId` מסוג `Int32` עם הערך שהתקבל
+2. קורא ל-DAL (`DataLayer.GetCertificateOfOriginById`) עם הפרמטרים שנוצרו
+
+**מחזיר:** אובייקט `CertificateOfOriginDto` המאוכלס במלואו אם נמצאה תעודה תואמת — כולל אוספי Milestones, CertificateOfOriginVsDeclarationError, CertificateOfOriginDetails (כל אחד עם `CertificateDetailsTypeCode` מקונן), ו-CertificateOfOriginInvoiceDetail (כל אחד עם אוסף `CertificateOfOriginItemDetail` מקונן). מחזיר `null` אם לא קיימת תעודה עם המזהה שניתן.
+
+---
+
 ## 3. מודלי נתונים
 
 ### CertificateOfOriginFilterDto
@@ -107,6 +133,127 @@
 | `RequestReasonCode` | `int` | ✓ | קוד סיבת הבקשה |
 | `IssuingDate` | `DateTimeOffset?` | — | תאריך הנפקה |
 | `LeadDocumentId` | `int?` | — | מזהה מסמך מוביל |
+
+### CertificateOfOriginDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי של תעודת המקור |
+| `TypeId` | `int` | ✓ | מזהה סוג תעודת המקור |
+| `Title` | `string?` | — | כותרת / שם התעודה |
+| `State` | `int` | ✓ | מצב הרשומה |
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירה |
+| `CreateUserId` | `int` | ✓ | מזהה משתמש יוצר |
+| `UpdateDate` | `DateTimeOffset` | ✓ | תאריך עדכון אחרון |
+| `UpdateUserId` | `int` | ✓ | מזהה משתמש מעדכן |
+| `OrganizationUnitId` | `int` | ✓ | מזהה יחידה ארגונית |
+| `CustomerId` | `int` | ✓ | מזהה לקוח (מייצא) |
+| `CreateCustomerId` | `int` | ✓ | מזהה לקוח יוצר |
+| `UpdateCustomerId` | `int` | ✓ | מזהה לקוח מעדכן |
+| `LeadDocumentId` | `int?` | — | מזהה מסמך מוביל |
+| `CertificateIdToCancel` | `int?` | — | מזהה תעודה לביטול |
+| `CertificateNumber` | `string?` | — | מספר תעודת המקור |
+| `CertificateOfOriginStatusId` | `int` | ✓ | מזהה סטטוס תעודת המקור |
+| `DestinationCountry` | `int?` | — | מזהה מדינת יעד |
+| `FeedbackRemark` | `string?` | — | הערת משוב |
+| `InternalApplication` | `string?` | — | אפליקציה פנימית |
+| `IssuingDate` | `DateTimeOffset?` | — | תאריך הנפקה |
+| `RejectCancelReason` | `string?` | — | סיבת דחייה / ביטול |
+| `ReplacementReason` | `string?` | — | סיבת החלפה |
+| `RequestReasonCode` | `int` | ✓ | קוד סיבת הבקשה |
+| `ExportDeclarationNumber` | `string?` | — | מספר הצהרת הייצוא |
+| `CertificateToReplaceInImport` | `string?` | — | תעודה להחלפה ביבוא |
+| `Guid` | `Guid?` | — | מזהה ייחודי גלובלי |
+| `QrCodePath` | `string?` | — | נתיב קובץ ה-QR |
+| `IsAttachedList` | `bool` | ✓ | האם מצורפת רשימה |
+| `InSufficentworkingInd` | `bool?` | — | אינדיקטור עבודה לא מספקת |
+| `InsufficentWorkingText` | `string?` | — | טקסט עבודה לא מספקת |
+| `QrImage` | `byte[]?` | — | תמונת ה-QR כמערך בתים |
+| `ApproveUserId` | `int?` | — | מזהה משתמש מאשר |
+| `VersionNumber` | `int` | ✓ | מספר גרסה |
+| `IsLastVersion` | `bool` | ✓ | האם זוהי הגרסה האחרונה |
+| `IsInPublishingProcess` | `bool` | ✓ | האם נמצאת בתהליך פרסום |
+| `CertificateOfOriginTypeCodeName` | `string?` | — | שם קוד סוג תעודת המקור |
+| `DocumentId` | `int` | ✓ | מזהה מסמך |
+| `IsDeclarationReleased` | `bool?` | — | האם ההצהרה שוחררה |
+| `IsCargoExitedOfCustomsRegulation` | `bool?` | — | האם המטען יצא מרגולציית המכס |
+| `IsDeclarationReleasedAndNotRetrospectiveCertificate` | `bool?` | — | האם ההצהרה שוחררה ואינה תעודה רטרואקטיבית |
+| `StakeholdersIds` | `List<int>` | ✓ | רשימת מזהי בעלי עניין |
+| `Milestones` | `List<CertificateMilestonesDto>` | ✓ | רשימת אבני הדרך של התעודה |
+| `CertificateOfOriginVsDeclarationError` | `List<CertificateOfOriginVsDeclarationErrorDto>` | ✓ | רשימת שגיאות בהשוואת תעודה-להצהרה |
+| `CertificateOfOriginDetails` | `List<CertificateOfOriginDetailsDto>` | ✓ | רשימת פרטי תעודת המקור |
+| `CertificateOfOriginInvoiceDetail` | `List<CertificateOfOriginInvoiceDetailDto>` | ✓ | רשימת פרטי חשבוניות של תעודת המקור |
+
+### CertificateMilestonesDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירת אבן הדרך |
+| `ActionName` | `string?` | — | שם הפעולה שבוצעה |
+| `UserName` | `string?` | — | שם המשתמש שביצע את הפעולה |
+| `RejectReason` | `string?` | — | סיבת דחייה (אם רלוונטי) |
+| `VersionNumber` | `int` | ✓ | מספר גרסה |
+
+### CertificateOfOriginVsDeclarationErrorDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי של השגיאה |
+| `CertificateOfOriginId` | `int` | ✓ | מזהה תעודת המקור הקשורה |
+| `ErrorText` | `string?` | — | טקסט השגיאה |
+| `State` | `int` | ✓ | מצב הרשומה |
+
+### CertificateOfOriginDetailsDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי של הפרט |
+| `CertificateOfOriginId` | `int` | ✓ | מזהה תעודת המקור הקשורה |
+| `CertificateDetailsTypeCodeId` | `int` | ✓ | מזהה קוד סוג הפרט |
+| `Value` | `string?` | — | הערך הגולמי |
+| `DisplayedValue` | `string?` | — | הערך לתצוגה |
+| `CertificateDetailsTypeCode` | `CertificateDetailsTypeCodeEnumDto?` | — | אובייקט מקונן עם פרטי קוד סוג הפרט |
+
+### CertificateDetailsTypeCodeEnumDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי |
+| `Name` | `string?` | — | שם בעברית |
+| `State` | `int` | ✓ | מצב הרשומה |
+| `Description` | `string?` | — | תיאור |
+| `EnglishName` | `string?` | — | שם באנגלית |
+| `Enumeration` | `string?` | — | ערך ה-Enumeration |
+| `StartDate` | `DateTimeOffset?` | — | תאריך תחילת תוקף |
+| `EndDate` | `DateTimeOffset?` | — | תאריך סיום תוקף |
+| `Comment` | `string?` | — | הערה |
+| `DetailTypeFormat` | `string?` | — | פורמט סוג הפרט |
+| `DataTypeId` | `int` | ✓ | מזהה סוג הנתון |
+
+### CertificateOfOriginInvoiceDetailDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי של פרט החשבונית |
+| `CertificateOfOriginId` | `int` | ✓ | מזהה תעודת המקור הקשורה |
+| `CurrencyTypeId` | `int?` | — | מזהה סוג מטבע |
+| `InvoiceAmount` | `decimal` | ✓ | סכום החשבונית |
+| `InvoiceDate` | `DateTimeOffset` | ✓ | תאריך החשבונית |
+| `InvoiceGoodsDescription` | `string?` | — | תיאור הסחורה בחשבונית |
+| `InvoiceNumber` | `string?` | — | מספר החשבונית |
+| `IsToPrint` | `bool` | ✓ | האם יש להדפיס |
+| `CertificateOfOriginItemDetail` | `List<CertificateOfOriginItemDetailDto>` | ✓ | רשימת פרטי פריטי החשבונית |
+
+### CertificateOfOriginItemDetailDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה ייחודי של הפריט |
+| `PackingTypeId` | `int?` | — | מזהה סוג אריזה |
+| `CustomsItemId` | `int?` | — | מזהה פריט מכס |
+| `GrossWeight` | `decimal` | ✓ | משקל ברוטו |
+| `CertificateOfOriginInvoiceDetailId` | `int` | ✓ | מזהה פרט החשבונית הקשורה |
+| `ItemGoodsDescription` | `string?` | — | תיאור סחורת הפריט |
+| `MarksAndNumbers` | `string?` | — | סימנים ומספרים |
+| `MeasurementUnitId` | `int` | ✓ | מזהה יחידת מידה |
+| `OriginCriterionId` | `int?` | — | מזהה קריטריון מקור |
+| `Quantity` | `int` | ✓ | כמות |
+| `RowNum` | `int` | ✓ | מספר שורה |
+| `FullClassification` | `string?` | — | סיווג מלא |
+| `ContainerIsoCode` | `string?` | — | קוד ISO של המכולה |
 
 ---
 
