@@ -117,6 +117,59 @@
               ]
             }
           }
+        },
+        {
+          "name": "GetAuthenticationRequestByFilter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetAuthenticationRequestByFilter?CustomsHouseId=1&ImporterId=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["Internal", "GetAuthenticationRequestByFilter"],
+              "query": [
+                { "key": "PrefernceDocumentType",  "value": "",    "disabled": true },
+                { "key": "GoodsOrigionCountry",    "value": "",    "disabled": true },
+                { "key": "IssuingCountry",         "value": "",    "disabled": true },
+                { "key": "ImportCountry",          "value": "",    "disabled": true },
+                { "key": "FromRequestDate",        "value": "",    "disabled": true },
+                { "key": "ToRequestDate",          "value": "",    "disabled": true },
+                { "key": "CustomsHouseId",         "value": "1",   "disabled": false },
+                { "key": "RequestReason",          "value": "",    "disabled": true },
+                { "key": "LeadDocumentId",         "value": "",    "disabled": true },
+                { "key": "ImporterId",             "value": "100", "disabled": false },
+                { "key": "VendorId",               "value": "",    "disabled": true },
+                { "key": "DecisionId",             "value": "",    "disabled": true },
+                { "key": "CustomerId",             "value": "",    "disabled": true },
+                { "key": "DocumentId",             "value": "",    "disabled": true },
+                { "key": "InvoiceNumber",          "value": "",    "disabled": true },
+                { "key": "DocumentNumber",         "value": "",    "disabled": true },
+                { "key": "AuthenticationFileId",   "value": "",    "disabled": true },
+                { "key": "CreateUserId",           "value": "",    "disabled": true }
+              ]
+            }
+          }
         }
       ]
     },

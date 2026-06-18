@@ -17,4 +17,10 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         var result = await ReadOnlyContext.GetCertificateOfOriginById(parameters);
         return result;
     }
+
+    public async Task<List<GetImportAuthenticationRequestResultDto>?> GetAuthenticationRequestByFilter(object? parameters)
+    {
+        var result = await ReadOnlyContext.GetImportAuthenticationRequestByFilter(parameters);
+        return result.ToList();
+    }
 }
