@@ -53,6 +53,42 @@
           }
         },
         {
+          "name": "GetCertificateOfOriginById",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetCertificateOfOriginById?certificateOfOriginId=1001",
+              "host": ["{{baseUrl}}"],
+              "path": ["Internal", "GetCertificateOfOriginById"],
+              "query": [
+                { "key": "certificateOfOriginId", "value": "1001", "disabled": false }
+              ]
+            }
+          }
+        },
+        {
           "name": "GetCertificateOfOriginsByFilter",
           "request": {
             "method": "GET",
