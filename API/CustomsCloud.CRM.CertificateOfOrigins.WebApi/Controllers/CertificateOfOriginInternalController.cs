@@ -51,4 +51,26 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await bl.GetAuthenticationRequestByFilter(filter);
         return Ok(result);
     }
+
+    [HttpGet("GetCustomerInformation")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CustomerDto))]
+    public async Task<ActionResult<CustomerDto?>> GetCustomerInformation([FromQuery] int customerId)
+    {
+        var bl = serviceProvider.GetRequiredService<ExportDocumentAuthenticationRequestBl>();
+        var result = await bl.GetCustomerInformation(customerId);
+        return Ok(result);
+    }
+
+    [HttpGet("GetCustomerInformationByCountry")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CustomerDto))]
+    public async Task<ActionResult<CustomerDto?>> GetCustomerInformationByCountry([FromQuery] int countryId)
+    {
+        var bl = serviceProvider.GetRequiredService<ExportDocumentAuthenticationRequestBl>();
+        var result = await bl.GetCustomerInformationByCountry(countryId);
+        return Ok(result);
+    }
 }
