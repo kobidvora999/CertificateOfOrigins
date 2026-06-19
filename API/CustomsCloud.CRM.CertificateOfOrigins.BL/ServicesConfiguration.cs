@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
@@ -15,5 +16,8 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddDataLayer<ICertificateOfOriginDal, CertificateOfOriginDal>();
         services.AddBusinessLayer<CertificateOfOriginBl>();
         services.AddBusinessLayer<AuthenticationRequestBl>();
+        services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
+        services.AddRestProxy();
+        services.AddScoped<ICustomerProxy, CustomerProxy>();
     }
 }

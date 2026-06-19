@@ -1,14 +1,14 @@
 # אפיון: CertificateOfOrigins — Internal API
 
-> **תאריך:** 18/06/2026 (עודכן: 18/06/2026)
+> **תאריך:** 18/06/2026 (עודכן: 19/06/2026)
 > **Controller:** `CertificateOfOriginInternalController` (`/Internal`)
 
 ---
 
 ## 1. תיאור כללי
-ה-controller חושף נקודות קצה פנימיות לניהול ושאילתת תעודות מקור (Certificates of Origin).
+ה-controller חושף נקודות קצה פנימיות לניהול ושאילתת תעודות מקור (Certificates of Origin) ובקשות אימות יבוא.
 הוא מיועד לצריכה פנים-שירותית על ידי שירותים אחרים במערכת CustomsCloud.
-הדומיין עוסק בתעודות מקור המשויכות להצהרות יצוא, מייצאים, וסוכני מכס.
+הדומיין עוסק בתעודות מקור המשויכות להצהרות יצוא, מייצאים, וסוכני מכס, כמו גם בשליפת פרטי לקוחות ובתי מכס זרים לצורך עיבוד מסמכי ייצוא.
 
 ---
 
@@ -117,6 +117,60 @@
 3. קורא ל-DAL עם הפרמטרים שנבנו (`DataLayer.GetAuthenticationRequestByFilter`)
 
 **מחזיר:** רשימת `GetImportAuthenticationRequestResultDto` כפי שהוחזרה מה-DAL, או `null` אם אין תוצאות
+
+### GetCustomerInformation
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetCustomerInformation` |
+| **תיאור** | מחזיר פרטי לקוח לפי מספר זיהוי |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `customerId` | `int` | מספר הזיהוי של הלקוח (`[FromQuery]`) |
+
+**ערך מוחזר:** `CustomerDto?` — פרטי הלקוח המלאים, או שגיאת 404 אם הלקוח לא נמצא.
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר זיהוי לקוח כמספר שלם.
+
+**מבצע:**
+1. מאתר את `ExportDocumentAuthenticationRequestBl` מה-`IServiceProvider`.
+2. קורא ל-`ICustomerProxy.GetCustomerByIdentification` עם מספר הזיהוי שהתקבל.
+3. אם הלקוח לא נמצא (ערך null מוחזר) — זורק `RestValidationException` עם קוד 404 וההודעה "Invalid identification number".
+
+**מחזיר:** `CustomerDto?` עם כל פרטי הלקוח אם נמצא; שגיאת 404 אם לא נמצא לקוח עם מספר הזיהוי הנתון.
+
+---
+
+### GetCustomerInformationByCountry
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetCustomerInformationByCountry` |
+| **תיאור** | מחזיר פרטי בית מכס זר (לקוח מסוג `Foreign_customs_house`) עבור מדינה מסוימת |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `countryId` | `int` | מזהה המדינה לחיפוש בית מכס זר (`[FromQuery]`) |
+
+**ערך מוחזר:** `CustomerDto?` — פרטי בית המכס הזר הראשון הרשום עבור המדינה, או שגיאת 404 אם לא הוגדר בית מכס למדינה זו.
+
+**לוגיקה עסקית:**
+
+**מקבל:** מזהה מדינה כמספר שלם.
+
+**מבצע:**
+1. מאתר את `ExportDocumentAuthenticationRequestBl` מה-`IServiceProvider`.
+2. מגדיר קבוע `foreignCustomsHouseActivityType = 40` המתאים לסוג פעילות `ECustomerActivityType.Foreign_customs_house` (מ-`MalamTeam.Infrastructure.GeneralServices.Environment.Enums`).
+3. קורא ל-`ICustomerProxy.GetCustomersByCountryId` עם מזהה המדינה וסוג הפעילות 40.
+4. אם לא הוחזרו לקוחות (רשימה ריקה או null) — זורק `RestValidationException` עם קוד 404 וההודעה "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה".
+5. מחזיר את הרשומה הראשונה מהרשימה.
+
+**מחזיר:** `CustomerDto?` — הרשומה הראשונה מרשימת הלקוחות שהוחזרה; שגיאת 404 אם אין לקוחות הרשומים כבית מכס זר עבור אותה מדינה.
 
 ---
 
@@ -325,6 +379,58 @@
 | `ImporterName` | `string?` | — | שם היבואן |
 | `AuthenticationFileStatusId` | `int?` | — | מזהה סטטוס תיק האימות |
 
+### CustomerDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה פנימי של הלקוח |
+| `TypeId` | `int` | ✓ | מזהה סוג לקוח |
+| `GenderId` | `int?` | — | מזהה מגדר |
+| `IsCorporation` | `bool` | ✓ | האם תאגיד |
+| `IsMalkar` | `bool` | ✓ | האם מלכר |
+| `IsFromShaam` | `bool` | ✓ | האם מש"מ |
+| `VatNumber` | `int?` | — | מספר מע"מ |
+| `VatOpenDate` | `DateTimeOffset?` | — | תאריך פתיחת מע"מ |
+| `VatOpenDateStr` | `string?` | — | תאריך פתיחת מע"מ כטקסט |
+| `VatStatusId` | `int?` | — | מזהה סטטוס מע"מ |
+| `VatStatusDate` | `DateTimeOffset?` | — | תאריך סטטוס מע"מ |
+| `IsValidVatNumber` | `bool` | ✓ | האם מספר מע"מ תקין |
+| `CustomerStatusByRashamId` | `int?` | — | סטטוס לקוח לפי רשם |
+| `VatReportingGroupId` | `int?` | — | קבוצת דיווח מע"מ |
+| `DateOfImmigration` | `DateTimeOffset?` | — | תאריך עלייה |
+| `ImmigrationDate` | `string?` | — | תאריך עלייה כטקסט |
+| `Activities` | `string?` | — | פעילויות |
+| `Indications` | `string?` | — | אינדיקציות |
+| `ExternalIdNum` | `string?` | — | מספר זיהוי חיצוני |
+| `Address` | `string?` | — | כתובת |
+| `Name` | `string?` | — | שם |
+| `BirthDate` | `DateTimeOffset?` | — | תאריך לידה |
+| `BorderCrossingEndDate` | `DateTimeOffset?` | — | תאריך סיום חציית גבול |
+| `BorderCrossingStartDate` | `DateTimeOffset?` | — | תאריך תחילת חציית גבול |
+| `CountryId` | `int?` | — | מזהה מדינה |
+| `CustomerTypeSpecificId` | `int?` | — | מזהה סוג לקוח ספציפי |
+| `CustomerTypeSpecificName` | `string?` | — | שם סוג לקוח ספציפי |
+| `CustomerTypeGeneralName` | `string?` | — | שם סוג לקוח כללי |
+| `IsActive` | `bool` | ✓ | האם פעיל |
+| `IsActiveInVat` | `bool` | ✓ | האם פעיל במע"מ |
+| `LocalFirstName` | `string?` | — | שם פרטי בעברית |
+| `LocalLastName` | `string?` | — | שם משפחה בעברית |
+| `EnglishFirstName` | `string?` | — | שם פרטי באנגלית |
+| `EnglishLastName` | `string?` | — | שם משפחה באנגלית |
+| `ShaamFinancialInsitituteInMalkarId` | `int?` | — | מזהה מוסד פיננסי במלכר |
+| `TaxDeductionCustomerTypeId` | `int?` | — | מזהה סוג לקוח לניכוי מס |
+| `LastShaamDetailsBeforeIrrevesibleActionUpdate` | `DateTimeOffset?` | — | תאריך עדכון מש"מ לפני פעולה בלתי הפיכה |
+| `CanImportExportCommercial` | `bool` | ✓ | האם מורשה לייבוא/ייצוא מסחרי |
+| `IsPalestinian` | `bool` | ✓ | האם פלסטיני |
+| `AuthoritiyId` | `int?` | — | מזהה רשות |
+| `IsMinor` | `bool` | ✓ | האם קטין |
+| `EconomicBranchVat` | `string?` | — | ענף כלכלי למע"מ |
+| `CustomerTypeGeneralId` | `int?` | — | מזהה סוג לקוח כללי |
+| `Addresses` | `List<CustomerAddressDto>` | ✓ | כתובות הלקוח |
+| `PassportParams` | `PassportParamsDto?` | — | פרמטרי דרכון |
+| `AllPassportParams` | `List<PassportParamsDto>` | ✓ | כל פרמטרי הדרכון |
+| `AddressByPurposeType` | `AddressDto?` | — | כתובת לפי סוג מטרה |
+| `ActiveActivityTypes` | `List<CustomerActivityDto>` | ✓ | סוגי פעילות פעילים |
+
 ---
 
 ## 4. תלויות חיצוניות
@@ -332,6 +438,8 @@
 |-------|-------------|
 | `ICertificateOfOriginDal` | שכבת גישת הנתונים — מבצעת את קריאות ה-DB בפועל |
 | `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter` |
+| `ExportDocumentAuthenticationRequestBl` | מחלקת לוגיקה עסקית לשליפת פרטי לקוחות לצורך עיבוד מסמכי ייצוא — נפתרת דרך `IServiceProvider` ב-`GetCustomerInformation` וב-`GetCustomerInformationByCountry` |
+| `ICustomerProxy` | Proxy לשירות לקוחות חיצוני — משמש ב-`GetCustomerInformation` לשליפת לקוח לפי מספר זיהוי, וב-`GetCustomerInformationByCountry` לשליפת לקוחות לפי מדינה וסוג פעילות |
 
 ---
 
