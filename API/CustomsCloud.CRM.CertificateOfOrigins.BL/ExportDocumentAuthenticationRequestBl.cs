@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
@@ -16,6 +17,7 @@ public class ExportDocumentAuthenticationRequestBl(IServiceProvider serviceProvi
         {
             throw new RestValidationException(customerId.ToString(), "Invalid identification number", "404");
         }
+
         return customer;
     }
 
@@ -29,6 +31,7 @@ public class ExportDocumentAuthenticationRequestBl(IServiceProvider serviceProvi
         {
             throw new RestValidationException(countryId.ToString(), "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה", "404");
         }
+
         return customers.FirstOrDefault();
     }
 }
