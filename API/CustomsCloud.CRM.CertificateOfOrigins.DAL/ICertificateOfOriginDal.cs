@@ -20,4 +20,8 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(object? parameters);
 
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
+
+    Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationFileDetailsById(object? parameters);
+
+    Task<List<CertificateOfOriginsAuthenticationFileStatusDto>?> GetAuthenticationFileStatuses();
 }

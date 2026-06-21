@@ -5,6 +5,8 @@ database:
 tables:
   - CRM.CertificateOfOrigins_enum_Decision
   - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
+  - CRM.CertificateOfOrigins_c_VerificationProhibitedImporters
+  - CRM.CertificateOfOrigins_enum_AuthenticationFileStatus
 stored procedures:
   - name: CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter
     function: GetCertificateOfOriginsByFilter
@@ -29,3 +31,8 @@ stored procedures:
   - name: CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor
     function: CheckIfExistsAdditionalRequestsForVendor
     method: execute-scalar
+  - name: CRM.usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests
+    function: GetAuthenticationFileDetailsById
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: ImportAuthenticationFileDetailsDto

@@ -40,6 +40,7 @@ public class ImportAuthenticationRequestDto
     public decimal? InvoiceGoodsItemTaxDifference { get; set; }
     public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
     public DateTimeOffset? LeadDocumentSubmissionDate { get; set; }
+    public bool IsSendReminderForImporterTaskExists { get; set; }
 
     // Result set 2 — item details
     public List<CertificateOfOriginsItemDetailDto> ItemDetails { get; set; } = new();
