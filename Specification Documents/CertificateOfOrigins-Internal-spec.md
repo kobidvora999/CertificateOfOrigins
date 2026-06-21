@@ -1,6 +1,6 @@
 # אפיון: CertificateOfOrigins — Internal API
 
-> **תאריך:** 18/06/2026 (עודכן: 19/06/2026)
+> **תאריך:** 18/06/2026 (עודכן: 20/06/2026 — נוסף CheckIfExistsAdditionalRequestsForVendor)
 > **Controller:** `CertificateOfOriginInternalController` (`/Internal`)
 
 ---
@@ -118,6 +118,8 @@
 
 **מחזיר:** רשימת `GetImportAuthenticationRequestResultDto` כפי שהוחזרה מה-DAL, או `null` אם אין תוצאות
 
+---
+
 ### GetCustomerInformation
 | שדה | ערך |
 |-----|-----|
@@ -171,6 +173,71 @@
 5. מחזיר את הרשומה הראשונה מהרשימה.
 
 **מחזיר:** `CustomerDto?` — הרשומה הראשונה מרשימת הלקוחות שהוחזרה; שגיאת 404 אם אין לקוחות הרשומים כבית מכס זר עבור אותה מדינה.
+
+---
+
+### GetAuthenticationRequestByID
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetAuthenticationRequestByID` |
+| **תיאור** | מחזיר אגרגט מלא של בקשת אימות יבוא לפי מזהה מסמך, כולל פרטי כותרת, פריטים, מסמך, החלטות, בטחונות, דגלים הנגזרים ממשימות, ופרמטרים נוספים |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `documentId` | `int` | מזהה המסמך של בקשת האימות (`[FromQuery]`) |
+
+**ערך מוחזר:** `ImportAuthenticationRequestDto?` — האגרגט המלא של בקשת האימות, או `null` אם לא נמצא מסמך עם המזהה שניתן
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר שלם `documentId` המזהה את בקשת האימות המבוקשת
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider`.
+2. בונה `DynamicParameters` עם הפרמטר `@DocumentID` מסוג `Int32` וקורא ל-DAL (`DataLayer.GetAuthenticationRequestById`) — הפרוצדורה מחזירה מספר result-sets: result-set 1 הוא כותרת הבקשה, result-set 2 הם פרטי הפריטים (`ItemDetails`), ו-result-set 3 הוא המסמך המצורף (`Document`).
+3. אם ה-DAL מחזיר `null` (מסמך לא קיים) — מחזיר `null` מיידית.
+4. מבצע העשרת URL למסמך (`FillDocumentFileUrl`): אם `Document` אינו `null`, מבצע lookup של `DocumentType` לפי `Document.TypeId` באמצעות `ILookupUtil`, וממלא את `Document.FileUrl` בשם הסוג שהתקבל.
+5. מבצע שליפת מידע נוסף (`GetAdditionalInfoForRequest`):
+   - שולף את רשימת כל ההחלטות האפשריות (`Decisions`) מה-DAL באמצעות `DataLayer.GetCertificateOfOriginsDecisions`.
+   - שולף בטחונות (Collaterals) מ-`ICollateralProxy.GetCollateralRequest` עבור `EEntityType.ImportAuthenticationRequest` (ערך 12384) ומזהה המסמך — אם הוחזרו בטחונות, ממלא את `request.Collaterals`.
+   - שולף פרטי משימות מ-`ITasksProxy.IsTaskExist` עבור שלושה סוגי משימה: `ETaskType.SetDecisionBeforeAssociation` (406), `ETaskType.SendReminderForImporter` (404), ו-`ETaskType.HandleRejectedAuthenticationRequest` (407), עבור אותה ישות.
+   - פותר `IUserUtil` דרך `Resolve<IUserUtil>()` ומשיג את מזהה המשתמש הנוכחי מ-`RequestMetadata`.
+   - קובע `IsCurrentUserHandleRequest = true` אם קיימת משימה כלשהי ששייכת למשתמש הנוכחי.
+   - קובע `IsCurrentUserHasOpenTask = true` אם קיימת משימה פתוחה (IsTaskInProgress) ששייכת למשתמש הנוכחי.
+   - בונה `EntityTypeAndIdsToSearch` — מילון עם ערך יחיד: מפתח 1055 (`EEntityType.ImportDeclaration`) וערך הוא רשימה המכילה את `LeadDocumentId` של הבקשה.
+6. שולף מ-`IParametersUtil` את ערך התצורה `AdditionalRequestsForSearchInDays` ומאכלס את `request.AdditionalRequestsForSearchInDays`.
+7. בודק ב-DAL (`DataLayer.IsVendorCountry`) האם מדינת ההנפקה (`IssuingCountryId`) מוגדרת כמדינת ספק, וממלא את `request.IsVendorByIssuingCountryId`.
+
+**מחזיר:** אובייקט `ImportAuthenticationRequestDto` מאוכלס במלואו הכולל כותרת הבקשה, רשימת פרטי פריטים (`ItemDetails`), מסמך מצורף עם URL מועשר (`Document`), רשימת החלטות (`Decisions`), בטחונות (`Collaterals`), דגלים הנגזרים ממשימות (`IsCurrentUserHandleRequest`, `IsCurrentUserHasOpenTask`), מילון ישויות לחיפוש (`EntityTypeAndIdsToSearch`), ימי חיפוש נוספים (`AdditionalRequestsForSearchInDays`), ודגל מדינת ספק (`IsVendorByIssuingCountryId`). מחזיר `null` אם לא נמצאה בקשה עם המזהה שניתן.
+
+---
+
+### CheckIfExistsAdditionalRequestsForVendor
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/CheckIfExistsAdditionalRequestsForVendor` |
+| **תיאור** | בודק האם קיימות יותר מבקשת אימות ייבוא אחת עבור ספק נתון בשלוש השנים האחרונות |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `vendorId` | `int` | מזהה הספק לבדיקה (`[FromQuery]`) |
+
+**ערך מוחזר:** `bool` — `true` אם קיימת יותר מבקשת `ImportAuthenticationRequest` אחת לספק זה בשלוש שנים אחרונות, `false` אחרת
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר שלם `vendorId` המזהה את הספק.
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider`.
+2. בונה `DynamicParameters` עם הפרמטר `@VendorID` מסוג `Int32`.
+3. קורא ל-DAL לביצוע פרוצדורת `usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor` המחזירה ערך סקלרי.
+
+**מחזיר:** `true` אם מספר בקשות האימות לספק בטווח של שלוש שנים אחורה גדול מאחד, `false` אחרת.
 
 ---
 
@@ -431,15 +498,70 @@
 | `AddressByPurposeType` | `AddressDto?` | — | כתובת לפי סוג מטרה |
 | `ActiveActivityTypes` | `List<CustomerActivityDto>` | ✓ | סוגי פעילות פעילים |
 
+### ImportAuthenticationRequestDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `DocumentId` | `int` | ✓ | מזהה המסמך של בקשת האימות |
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירה |
+| `CreateUserId` | `int` | ✓ | מזהה משתמש יוצר |
+| `UpdateDate` | `DateTimeOffset` | ✓ | תאריך עדכון אחרון |
+| `UpdateUserId` | `int` | ✓ | מזהה משתמש מעדכן |
+| `AuthenticationFileId` | `int?` | — | מזהה תיק האימות |
+| `AuthenticationRequestDate` | `DateTimeOffset` | ✓ | תאריך בקשת האימות |
+| `CirumstanceDetails` | `string?` | — | פרטי נסיבות |
+| `CollateralId` | `int?` | — | מזהה בטחון |
+| `DecisionCircumstences` | `string?` | — | נסיבות ההחלטה |
+| `DecisionId` | `int?` | — | מזהה ההחלטה |
+| `LeadDocumentId` | `int` | ✓ | מזהה המסמך המוביל |
+| `DocumentIssuingDate` | `DateTimeOffset` | ✓ | תאריך הנפקת המסמך |
+| `ImportCountryId` | `int` | ✓ | מזהה מדינת יבוא |
+| `IssuingCountryId` | `int` | ✓ | מזהה מדינה מנפיקה |
+| `ItemDetailId` | `int` | ✓ | מזהה פרט הפריט |
+| `Number` | `int` | ✓ | מספר בקשת האימות |
+| `IsOldIndication` | `bool` | ✓ | האם אינדיקציה ישנה |
+| `OriginCountryId` | `int` | ✓ | מזהה מדינת מקור |
+| `PreferenceDocumentTypeId` | `int` | ✓ | מזהה סוג מסמך העדפה |
+| `Remarks` | `string?` | — | הערות |
+| `RequestCircumstancesId` | `int` | ✓ | מזהה נסיבות הבקשה |
+| `UserResponseId` | `int` | ✓ | מזהה משתמש מגיב |
+| `ResponseNameEmail` | `string?` | — | שם ואימייל של הגורם המגיב |
+| `ResponsePhoneNum` | `string?` | — | מספר טלפון של הגורם המגיב |
+| `OrganizationUnitId` | `int` | ✓ | מזהה יחידה ארגונית |
+| `UserId` | `int` | ✓ | מזהה משתמש |
+| `VendorId` | `int?` | — | מזהה ספק |
+| `VendorName` | `string?` | — | שם ספק |
+| `OrganizationUnitTypeId` | `int?` | — | מזהה סוג יחידה ארגונית |
+| `DocumentNumber` | `string?` | — | מספר מסמך |
+| `CustomerId` | `int?` | — | מזהה לקוח |
+| `ImporterId` | `int?` | — | מזהה יבואן |
+| `InvoiceNumber` | `string?` | — | מספר חשבונית |
+| `InvoiceGoodsItemTaxDifference` | `decimal?` | — | הפרש מס לפריט סחורה בחשבונית |
+| `AllInvoiceGoodsItemTaxDifference` | `decimal?` | — | סך הפרשי מס לכלל פריטי הסחורה |
+| `LeadDocumentSubmissionDate` | `DateTimeOffset?` | — | תאריך הגשת המסמך המוביל |
+| `ItemDetails` | `List<CertificateOfOriginsItemDetailDto>` | ✓ | פרטי הפריטים — result-set 2 מהפרוצדורה |
+| `Document` | `DocumentDto?` | — | המסמך המצורף עם URL מועשר — result-set 3 מהפרוצדורה |
+| `Decisions` | `List<CertificateOfOriginsDecisionDto>` | ✓ | רשימת כל ההחלטות האפשריות — מועשר ב-BL |
+| `Collaterals` | `List<CollateralRequestDto>` | ✓ | בטחונות הקשורים לבקשה — מועשר ב-BL דרך `ICollateralProxy` |
+| `IsCurrentUserHandleRequest` | `bool` | ✓ | האם המשתמש הנוכחי מטפל בבקשה — נגזר ממשימות |
+| `IsCurrentUserHasOpenTask` | `bool` | ✓ | האם למשתמש הנוכחי יש משימה פתוחה על בקשה זו — נגזר ממשימות |
+| `EntityTypeAndIdsToSearch` | `Dictionary<int, List<int>>` | ✓ | מילון ישויות לחיפוש — מפתח: `EEntityType.ImportDeclaration` (1055), ערך: `[LeadDocumentId]` |
+| `AdditionalRequestsForSearchInDays` | `int` | ✓ | מספר ימים לחיפוש בקשות נוספות — נשלף מ-`IParametersUtil` |
+| `IsVendorByIssuingCountryId` | `bool` | ✓ | האם מדינת ההנפקה מוגדרת כמדינת ספק — נשלף מ-DAL |
+
 ---
 
 ## 4. תלויות חיצוניות
 | רכיב | תיאור שימוש |
 |-------|-------------|
 | `ICertificateOfOriginDal` | שכבת גישת הנתונים — מבצעת את קריאות ה-DB בפועל |
-| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter` |
+| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter` וב-`GetAuthenticationRequestByID` |
 | `ExportDocumentAuthenticationRequestBl` | מחלקת לוגיקה עסקית לשליפת פרטי לקוחות לצורך עיבוד מסמכי ייצוא — נפתרת דרך `IServiceProvider` ב-`GetCustomerInformation` וב-`GetCustomerInformationByCountry` |
 | `ICustomerProxy` | Proxy לשירות לקוחות חיצוני — משמש ב-`GetCustomerInformation` לשליפת לקוח לפי מספר זיהוי, וב-`GetCustomerInformationByCountry` לשליפת לקוחות לפי מדינה וסוג פעילות |
+| `ICollateralProxy` | Proxy לשירות בטחונות — משמש ב-`GetAuthenticationRequestByID` לשליפת בטחונות הקשורים לבקשת האימות לפי `EEntityType.ImportAuthenticationRequest` (12384) |
+| `ITasksProxy` | Proxy לשירות משימות — משמש ב-`GetAuthenticationRequestByID` לבדיקת קיום משימות פתוחות מסוגים 406, 404 ו-407 עבור בקשת האימות |
+| `ILookupUtil` | שירות lookup — משמש ב-`GetAuthenticationRequestByID` לשליפת שם סוג מסמך (`DocumentType`) לצורך העשרת `Document.FileUrl` |
+| `IParametersUtil` | שירות פרמטרי תצורה — משמש ב-`GetAuthenticationRequestByID` לשליפת `AdditionalRequestsForSearchInDays` |
+| `IUserUtil` | שירות זיהוי משתמש — משמש ב-`GetAuthenticationRequestByID` לשליפת מזהה המשתמש הנוכחי לצורך חישוב דגלי המשימות |
 
 ---
 

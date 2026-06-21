@@ -82,6 +82,44 @@ public partial class CertificateOfOriginDbContext
         DapperHelper.DapperCheckRows(cmd, result);
         return result;
     }
+
+    public async Task<ImportAuthenticationRequestDto?> GetAuthenticationRequestById(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_CertificateOfOrigins_GetImportAuthenticationRequestById",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+
+        using var grid = await conn.QueryMultipleAsync(cmd);
+
+        var request = (await grid.ReadAsync<ImportAuthenticationRequestDto>()).FirstOrDefault();
+        if (request == null)
+        {
+            return null;
+        }
+
+        var itemDetails = (await grid.ReadAsync<CertificateOfOriginsItemDetailDto>()).ToList();
+        request.ItemDetails.AddRange(itemDetails);
+
+        var document = (await grid.ReadAsync<DocumentDto>()).FirstOrDefault();
+        request.Document = document;
+
+        return request;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.ExecuteScalarAsync<bool>(cmd);
+        return result;
+    }
 }
 
 public partial class CertificateOfOriginDbReadOnlyContext : CertificateOfOriginDbContext, IReadOnlyContext

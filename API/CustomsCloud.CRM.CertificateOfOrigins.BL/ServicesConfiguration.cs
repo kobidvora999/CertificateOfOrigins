@@ -2,6 +2,9 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
+using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
+using CustomsCloud.InfrastructureCore.Parameters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
@@ -19,5 +22,9 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
         services.AddRestProxy();
         services.AddScoped<ICustomerProxy, CustomerProxy>();
+        services.AddScoped<ICollateralProxy, CollateralProxy>();
+        services.AddScoped<ITasksProxy, TasksProxy>();
+        services.AddLookup<DocumentType>();
+        services.AddParametersService();
     }
 }
