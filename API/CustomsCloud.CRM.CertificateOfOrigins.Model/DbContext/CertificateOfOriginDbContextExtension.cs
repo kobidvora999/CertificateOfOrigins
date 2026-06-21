@@ -170,6 +170,18 @@ public partial class CertificateOfOriginDbContext
 
         return file;
     }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForImporter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.ExecuteScalarAsync<bool>(cmd);
+        return result;
+    }
 }
 
 public partial class CertificateOfOriginDbReadOnlyContext : CertificateOfOriginDbContext, IReadOnlyContext

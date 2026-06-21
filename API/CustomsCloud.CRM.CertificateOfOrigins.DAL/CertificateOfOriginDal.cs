@@ -102,4 +102,10 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
             .ToListAsync();
         return result;
     }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(object? parameters)
+    {
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForImporter(parameters);
+        return result;
+    }
 }
