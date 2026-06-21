@@ -75,4 +75,31 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
             .AnyAsync(c => c.CustomerId == importerId);
         return isProhibited ? null : importerId;
     }
+
+    public async Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationFileDetailsById(object? parameters)
+    {
+        var result = await ReadOnlyContext.GetAuthenticationFileDetailsById(parameters);
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsAuthenticationFileStatusDto>?> GetAuthenticationFileStatuses()
+    {
+        var result = await ReadOnlyContext.CertificateOfOriginsAuthenticationFileStatuses
+            .ExcludeInterceptor("T7e0Y38X2y")
+            .Where(s => s.State != 99)
+            .Select(s => new CertificateOfOriginsAuthenticationFileStatusDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                State = s.State,
+                Description = s.Description,
+                EnglishName = s.EnglishName,
+                Enumeration = s.Enumeration,
+                StartDate = s.StartDate,
+                EndDate = s.EndDate,
+                IsAutomatic = s.IsAutomatic
+            })
+            .ToListAsync();
+        return result;
+    }
 }

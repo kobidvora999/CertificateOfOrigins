@@ -134,4 +134,61 @@ public class AuthenticationRequestBl(
         var result = await DataLayer.CheckImporterOfImportAuthentication(importerId);
         return result;
     }
+
+    public async Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationRequestFileById(int fileId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@FileID", fileId, DbType.Int32);
+
+        var file = await DataLayer.GetAuthenticationFileDetailsById(parameters);
+        if (file == null)
+        {
+            return null;
+        }
+
+        await GetAdditionalInfoForFile(file);
+        return file;
+    }
+
+    private async Task GetAdditionalInfoForFile(ImportAuthenticationFileDetailsDto file)
+    {
+        var decisions = await DataLayer.GetCertificateOfOriginsDecisions() ?? new List<CertificateOfOriginsDecisionDto>();
+        file.FileStatuses = await DataLayer.GetAuthenticationFileStatuses() ?? new List<CertificateOfOriginsAuthenticationFileStatusDto>();
+
+        foreach (var request in file.Requests)
+        {
+            request.Decisions = decisions;
+
+            var collaterals = await collateralProxy.GetCollateralRequest(
+                12384 /* EEntityType.ImportAuthenticationRequest */, request.DocumentId, null);
+            if (collaterals != null && collaterals.Count > 0)
+            {
+                request.Collaterals = collaterals;
+            }
+        }
+
+        var tasks = await GetTaskDetailsForFileByTaskType(file, new List<int>
+        {
+            339, // ETaskType.ReminderNotice6Months
+            340, // ETaskType.ReminderNotice10Months
+            408, // ETaskType.HandleAuthenticationRequestFile
+            404  // ETaskType.SendReminderForImporter
+        });
+
+        var userUtil = Resolve<IUserUtil>();
+        var currentUserId = (await userUtil.GetUserId(RequestMetadata)).GetValueOrDefault();
+        file.IsCurrentUserHandleFile = tasks.Any(t => t.UserId == currentUserId);
+    }
+
+    private async Task<List<IsTaskExistResultDto>> GetTaskDetailsForFileByTaskType(ImportAuthenticationFileDetailsDto file, List<int> taskTypeIds)
+    {
+        var filter = new IsTaskExistFilterDto
+        {
+            EntityId = file.Id,
+            EntityTypeId = 12385, // EEntityType.AuthenticationRequestFile
+            TaskTypeIds = taskTypeIds
+        };
+        var result = await tasksProxy.IsTaskExist(filter);
+        return result ?? new List<IsTaskExistResultDto>();
+    }
 }

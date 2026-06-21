@@ -1,6 +1,6 @@
 # אפיון: CertificateOfOrigins — Internal API
 
-> **תאריך:** 18/06/2026 (עודכן: 20/06/2026 — נוסף CheckIfExistsAdditionalRequestsForVendor)
+> **תאריך:** 18/06/2026 (עודכן: 21/06/2026 — נוספו CheckImporterOfImportAuthentication ו-GetAuthenticationRequestFileByID)
 > **Controller:** `CertificateOfOriginInternalController` (`/Internal`)
 
 ---
@@ -238,6 +238,66 @@
 3. קורא ל-DAL לביצוע פרוצדורת `usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor` המחזירה ערך סקלרי.
 
 **מחזיר:** `true` אם מספר בקשות האימות לספק בטווח של שלוש שנים אחורה גדול מאחד, `false` אחרת.
+
+---
+
+### CheckImporterOfImportAuthentication
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/CheckImporterOfImportAuthentication` |
+| **תיאור** | בודק האם יבואן נתון מופיע בטבלת VerificationProhibitedImporters ומחזיר את מזהה הישות אם כן |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `importerId` | `int` | מזהה היבואן לבדיקה (`[FromQuery]`) |
+
+**ערך מוחזר:** `int?` — מזהה ישות (EntityId) של הרשומה האוסרת אם נמצאה, או `null` אם היבואן אינו מוגבל
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר שלם `importerId` המזהה את היבואן.
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider`.
+2. קורא ל-DAL (`DataLayer.CheckImporterOfImportAuthentication`) עם מזהה היבואן ישירות (ללא DynamicParameters).
+
+**מחזיר:** `int?` — ה-EntityId של הרשומה האוסרת ב-VerificationProhibitedImporters אם היבואן מוגבל, או `null` אם אינו מוגבל.
+
+---
+
+### GetAuthenticationRequestFileByID
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/GetAuthenticationRequestFileByID` |
+| **תיאור** | מחזיר אגרגט מלא של תיק אימות יבוא לפי מזהה תיק, כולל כותרת התיק, רשימת בקשות האימות הכלולות (כל אחת עם החלטות ובטחונות), סטטוסי תיק זמינים ודגל טיפול של המשתמש הנוכחי |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `fileId` | `int` | מזהה תיק האימות (`[FromQuery]`) |
+
+**ערך מוחזר:** `ImportAuthenticationFileDetailsDto?` — האגרגט המלא של תיק האימות, או `null` אם לא נמצא תיק עם המזהה שניתן
+
+**לוגיקה עסקית:**
+
+**מקבל:** מספר שלם `fileId` המזהה את תיק האימות המבוקש.
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider`.
+2. בונה `DynamicParameters` עם הפרמטר `@FileID` מסוג `Int32` וקורא ל-DAL (`DataLayer.GetAuthenticationFileDetailsById`) — הפרוצדורה `usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests` מחזירה מספר result-sets: result-set 1 הוא כותרת התיק, result-sets 2/3/4 הם בקשות האימות הכלולות בתיק (כל אחת עם המסמכים ופרטי הפריטים שלה).
+3. אם ה-DAL מחזיר `null` (תיק לא קיים) — מחזיר `null` מיידית.
+4. מבצע העשרת מידע נוסף (`GetAdditionalInfoForFile`):
+   - שולף את רשימת כל ההחלטות האפשריות (`Decisions`) מה-DAL באמצעות `DataLayer.GetCertificateOfOriginsDecisions`.
+   - שולף את רשימת כל סטטוסי התיק (`FileStatuses`) מה-DAL באמצעות `DataLayer.GetAuthenticationFileStatuses` וממלא את `file.FileStatuses`.
+   - עבור כל בקשת אימות (`Requests`) בתיק: ממלא את `request.Decisions` ברשימת ההחלטות שנשלפה, ושולף בטחונות (Collaterals) מ-`ICollateralProxy.GetCollateralRequest` עבור `EEntityType.ImportAuthenticationRequest` (ערך 12384) ומזהה המסמך של הבקשה — אם הוחזרו בטחונות, ממלא את `request.Collaterals`.
+   - שולף פרטי משימות מ-`ITasksProxy.IsTaskExist` עבור ארבעה סוגי משימה: `ETaskType.ReminderNotice6Months` (339), `ETaskType.ReminderNotice10Months` (340), `ETaskType.HandleAuthenticationRequestFile` (408), ו-`ETaskType.SendReminderForImporter` (404), עבור ישות מסוג `EEntityType.AuthenticationRequestFile` (12385) ומזהה התיק.
+   - פותר `IUserUtil` דרך `Resolve<IUserUtil>()` ומשיג את מזהה המשתמש הנוכחי מ-`RequestMetadata`.
+   - קובע `IsCurrentUserHandleFile = true` אם קיימת משימה כלשהי ששייכת למשתמש הנוכחי.
+
+**מחזיר:** אובייקט `ImportAuthenticationFileDetailsDto` מאוכלס במלואו הכולל כותרת התיק, רשימת בקשות אימות מועשרות (`Requests` — כל אחת עם `Decisions` ו-`Collaterals`), רשימת סטטוסי תיק (`FileStatuses`), ודגל טיפול המשתמש הנוכחי (`IsCurrentUserHandleFile`). מחזיר `null` אם לא נמצא תיק עם המזהה שניתן.
 
 ---
 
@@ -548,17 +608,59 @@
 | `AdditionalRequestsForSearchInDays` | `int` | ✓ | מספר ימים לחיפוש בקשות נוספות — נשלף מ-`IParametersUtil` |
 | `IsVendorByIssuingCountryId` | `bool` | ✓ | האם מדינת ההנפקה מוגדרת כמדינת ספק — נשלף מ-DAL |
 
+### ImportAuthenticationFileDetailsDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה תיק האימות |
+| `State` | `int` | ✓ | מצב הרשומה |
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירה |
+| `CreateUserId` | `int` | ✓ | מזהה משתמש יוצר |
+| `UpdateDate` | `DateTimeOffset` | ✓ | תאריך עדכון אחרון |
+| `UpdateUserId` | `int` | ✓ | מזהה משתמש מעדכן |
+| `AuthenticationFileStatusId` | `int` | ✓ | מזהה סטטוס תיק האימות הנוכחי |
+| `Notes` | `string?` | — | הערות |
+| `PostalAdress` | `string?` | — | כתובת דואר |
+| `DeliveryMethodId` | `int` | ✓ | מזהה שיטת משלוח |
+| `EmailAdress` | `string?` | — | כתובת אימייל |
+| `ReminderMethodId` | `int` | ✓ | מזהה שיטת תזכורת |
+| `RequestCountryId` | `int` | ✓ | מזהה מדינת הבקשה |
+| `UserId` | `int` | ✓ | מזהה משתמש |
+| `UserNameIssuingLetter` | `string?` | — | שם המשתמש שהנפיק את המכתב |
+| `LastDelivery` | `DateTimeOffset?` | — | תאריך משלוח אחרון |
+| `ImporterContactingReasonId` | `int?` | — | מזהה סיבת פנייה ליבואן |
+| `FirstProvideContactDate` | `DateTimeOffset?` | — | תאריך פנייה ראשונה לאספקת מידע |
+| `CustomerIdList` | `List<int>` | ✓ | רשימת מזהי לקוחות — מחושב |
+| `CustomerId` | `int` | ✓ | מזהה לקוח ראשי — מחושב |
+| `OrganizationUnitId` | `int` | ✓ | מזהה יחידה ארגונית — מחושב |
+| `EntityTypeAndIdsToSearch` | `Dictionary<int, List<int>>` | ✓ | מילון ישויות לחיפוש |
+| `IsCurrentUserHandleFile` | `bool` | ✓ | האם המשתמש הנוכחי מטפל בתיק — נגזר ממשימות |
+| `Requests` | `List<ImportAuthenticationRequestDto>` | ✓ | בקשות האימות הכלולות בתיק — result-sets 2/3/4 מהפרוצדורה, מועשרות ב-BL |
+| `FileStatuses` | `List<CertificateOfOriginsAuthenticationFileStatusDto>` | ✓ | כל סטטוסי תיק האימות האפשריים — מועשר ב-BL |
+
+### CertificateOfOriginsAuthenticationFileStatusDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה סטטוס |
+| `Name` | `string?` | — | שם הסטטוס בעברית |
+| `State` | `int` | ✓ | מצב הרשומה |
+| `Description` | `string?` | — | תיאור |
+| `EnglishName` | `string?` | — | שם הסטטוס באנגלית |
+| `Enumeration` | `string?` | — | ערך ה-Enumeration |
+| `StartDate` | `DateTime?` | — | תאריך תחילת תוקף |
+| `EndDate` | `DateTime?` | — | תאריך סיום תוקף |
+| `IsAutomatic` | `bool` | ✓ | האם הסטטוס מוגדר אוטומטית |
+
 ---
 
 ## 4. תלויות חיצוניות
 | רכיב | תיאור שימוש |
 |-------|-------------|
 | `ICertificateOfOriginDal` | שכבת גישת הנתונים — מבצעת את קריאות ה-DB בפועל |
-| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter` וב-`GetAuthenticationRequestByID` |
+| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter`, `GetAuthenticationRequestByID`, `CheckIfExistsAdditionalRequestsForVendor`, `CheckImporterOfImportAuthentication` וב-`GetAuthenticationRequestFileByID` |
 | `ExportDocumentAuthenticationRequestBl` | מחלקת לוגיקה עסקית לשליפת פרטי לקוחות לצורך עיבוד מסמכי ייצוא — נפתרת דרך `IServiceProvider` ב-`GetCustomerInformation` וב-`GetCustomerInformationByCountry` |
 | `ICustomerProxy` | Proxy לשירות לקוחות חיצוני — משמש ב-`GetCustomerInformation` לשליפת לקוח לפי מספר זיהוי, וב-`GetCustomerInformationByCountry` לשליפת לקוחות לפי מדינה וסוג פעילות |
-| `ICollateralProxy` | Proxy לשירות בטחונות — משמש ב-`GetAuthenticationRequestByID` לשליפת בטחונות הקשורים לבקשת האימות לפי `EEntityType.ImportAuthenticationRequest` (12384) |
-| `ITasksProxy` | Proxy לשירות משימות — משמש ב-`GetAuthenticationRequestByID` לבדיקת קיום משימות פתוחות מסוגים 406, 404 ו-407 עבור בקשת האימות |
+| `ICollateralProxy` | Proxy לשירות בטחונות — משמש ב-`GetAuthenticationRequestByID` לשליפת בטחונות הקשורים לבקשת האימות לפי `EEntityType.ImportAuthenticationRequest` (12384); ומשמש ב-`GetAuthenticationRequestFileByID` לשליפת בטחונות עבור כל אחת מבקשות האימות הכלולות בתיק |
+| `ITasksProxy` | Proxy לשירות משימות — משמש ב-`GetAuthenticationRequestByID` לבדיקת קיום משימות פתוחות מסוגים 406, 404 ו-407 עבור בקשת האימות (`EEntityType.ImportAuthenticationRequest` 12384); ומשמש ב-`GetAuthenticationRequestFileByID` לבדיקת משימות מסוגים 339, 340, 408 ו-404 עבור תיק האימות (`EEntityType.AuthenticationRequestFile` 12385) |
 | `ILookupUtil` | שירות lookup — משמש ב-`GetAuthenticationRequestByID` לשליפת שם סוג מסמך (`DocumentType`) לצורך העשרת `Document.FileUrl` |
 | `IParametersUtil` | שירות פרמטרי תצורה — משמש ב-`GetAuthenticationRequestByID` לשליפת `AdditionalRequestsForSearchInDays` |
 | `IUserUtil` | שירות זיהוי משתמש — משמש ב-`GetAuthenticationRequestByID` לשליפת מזהה המשתמש הנוכחי לצורך חישוב דגלי המשימות |

@@ -120,6 +120,56 @@ public partial class CertificateOfOriginDbContext
         var result = await conn.ExecuteScalarAsync<bool>(cmd);
         return result;
     }
+
+    public async Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationFileDetailsById(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "CRM.usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+
+        using var grid = await conn.QueryMultipleAsync(cmd);
+
+        var file = (await grid.ReadAsync<ImportAuthenticationFileDetailsDto>()).FirstOrDefault();
+        if (file == null)
+        {
+            return null;
+        }
+
+        var requests = (await grid.ReadAsync<ImportAuthenticationRequestDto>()).ToList();
+        var documents = (await grid.ReadAsync<DocumentDto>()).ToList();
+        var itemDetails = (await grid.ReadAsync<CertificateOfOriginsItemDetailDto>()).ToList();
+
+        foreach (var request in requests)
+        {
+            request.Document = documents.FirstOrDefault(d => d.Id == request.DocumentId);
+            request.ItemDetails.AddRange(itemDetails.Where(i => i.ImportAuthenticationRequestId == request.DocumentId));
+            request.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+            {
+                { 1055 /* EEntityType.ImportDeclaration */, new List<int> { request.LeadDocumentId } }
+            };
+        }
+
+        file.Requests.AddRange(requests);
+        file.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            { 1055 /* EEntityType.ImportDeclaration */, requests.Select(r => r.LeadDocumentId).ToList() }
+        };
+
+        if (file.Requests.Count > 0)
+        {
+            file.OrganizationUnitId = file.Requests[0].OrganizationUnitId;
+        }
+
+        if (file.CustomerId == 0)
+        {
+            file.CustomerId = -1;
+        }
+
+        return file;
+    }
 }
 
 public partial class CertificateOfOriginDbReadOnlyContext : CertificateOfOriginDbContext, IReadOnlyContext

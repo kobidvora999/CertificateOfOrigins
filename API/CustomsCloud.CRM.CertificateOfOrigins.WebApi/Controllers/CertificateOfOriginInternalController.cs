@@ -106,4 +106,15 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await bl.CheckImporterOfImportAuthentication(importerId);
         return Ok(result);
     }
+
+    [HttpGet("GetAuthenticationRequestFileByID")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(ImportAuthenticationFileDetailsDto))]
+    public async Task<ActionResult<ImportAuthenticationFileDetailsDto?>> GetAuthenticationRequestFileByID([FromQuery] int fileId)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.GetAuthenticationRequestFileById(fileId);
+        return Ok(result);
+    }
 }
