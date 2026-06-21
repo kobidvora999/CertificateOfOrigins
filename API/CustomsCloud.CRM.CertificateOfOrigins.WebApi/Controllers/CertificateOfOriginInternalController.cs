@@ -73,4 +73,37 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await bl.GetCustomerInformationByCountry(countryId);
         return Ok(result);
     }
+
+    [HttpGet("GetAuthenticationRequestByID")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(ImportAuthenticationRequestDto))]
+    public async Task<ActionResult<ImportAuthenticationRequestDto?>> GetAuthenticationRequestByID([FromQuery] int documentId)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.GetAuthenticationRequestById(documentId);
+        return Ok(result);
+    }
+
+    [HttpGet("CheckIfExistsAdditionalRequestsForVendor")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForVendor([FromQuery] int vendorId)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.CheckIfExistsAdditionalRequestsForVendor(vendorId);
+        return Ok(result);
+    }
+
+    [HttpGet("CheckImporterOfImportAuthentication")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(int?))]
+    public async Task<ActionResult<int?>> CheckImporterOfImportAuthentication([FromQuery] int importerId)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.CheckImporterOfImportAuthentication(importerId);
+        return Ok(result);
+    }
 }

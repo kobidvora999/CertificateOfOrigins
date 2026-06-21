@@ -2,7 +2,9 @@ project: CustomsCloud.CRM.CertificateOfOrigins
 database:
   name: CertificateOfOriginDb
   connection string: Password=CustomsDev123!;Persist Security Info=True;User ID=sa;Initial Catalog=CertificateOfOriginsDb;Data Source=localhost;Encrypt=False
-tables: []
+tables:
+  - CRM.CertificateOfOrigins_enum_Decision
+  - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
 stored procedures:
   - name: CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter
     function: GetCertificateOfOriginsByFilter
@@ -19,3 +21,11 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: GetImportAuthenticationRequestResultDto
+  - name: CRM.usp_CertificateOfOrigins_CertificateOfOrigins_GetImportAuthenticationRequestById
+    function: GetAuthenticationRequestById
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: ImportAuthenticationRequestDto
+  - name: CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor
+    function: CheckIfExistsAdditionalRequestsForVendor
+    method: execute-scalar
