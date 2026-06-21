@@ -263,6 +263,45 @@
           }
         },
         {
+          "name": "CheckIfExistsAdditionalRequestsForImporter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/CheckIfExistsAdditionalRequestsForImporter?importerId=100&countryId=376",
+              "host": ["{{baseUrl}}"],
+              "path": ["Internal", "CheckIfExistsAdditionalRequestsForImporter"],
+              "query": [
+                { "key": "importerId",  "value": "100", "disabled": false },
+                { "key": "vendorId",    "value": "200", "disabled": true },
+                { "key": "customerId",  "value": "300", "disabled": true },
+                { "key": "countryId",   "value": "376", "disabled": false }
+              ]
+            }
+          }
+        },
+        {
           "name": "GetAuthenticationRequestByFilter",
           "event": [
             {

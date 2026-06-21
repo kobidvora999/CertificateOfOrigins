@@ -36,3 +36,6 @@ stored procedures:
     method: query-multiple
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: ImportAuthenticationFileDetailsDto
+  - name: CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForImporter
+    function: CheckIfExistsAdditionalRequestsForImporter
+    method: execute-scalar

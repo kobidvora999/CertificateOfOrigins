@@ -1,6 +1,6 @@
 # אפיון: CertificateOfOrigins — Internal API
 
-> **תאריך:** 18/06/2026 (עודכן: 21/06/2026 — נוספו CheckImporterOfImportAuthentication ו-GetAuthenticationRequestFileByID)
+> **תאריך:** 18/06/2026 (עודכן: 21/06/2026 — נוספו CheckImporterOfImportAuthentication, GetAuthenticationRequestFileByID ו-CheckIfExistsAdditionalRequestsForImporter)
 > **Controller:** `CertificateOfOriginInternalController` (`/Internal`)
 
 ---
@@ -298,6 +298,35 @@
    - קובע `IsCurrentUserHandleFile = true` אם קיימת משימה כלשהי ששייכת למשתמש הנוכחי.
 
 **מחזיר:** אובייקט `ImportAuthenticationFileDetailsDto` מאוכלס במלואו הכולל כותרת התיק, רשימת בקשות אימות מועשרות (`Requests` — כל אחת עם `Decisions` ו-`Collaterals`), רשימת סטטוסי תיק (`FileStatuses`), ודגל טיפול המשתמש הנוכחי (`IsCurrentUserHandleFile`). מחזיר `null` אם לא נמצא תיק עם המזהה שניתן.
+
+### CheckIfExistsAdditionalRequestsForImporter
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/Internal/CheckIfExistsAdditionalRequestsForImporter` |
+| **תיאור** | בודק האם קיימות בקשות אימות יבוא נוספות עבור יבואן, תוך הפרדה בין מסלול ספק למסלול לקוח בהתאם למדינה |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `importerId` | `int` | מזהה היבואן (`[FromQuery]`) |
+| `vendorId` | `int?` | מזהה הספק — אופציונלי (`[FromQuery]`) |
+| `customerId` | `int?` | מזהה הלקוח — אופציונלי (`[FromQuery]`) |
+| `countryId` | `int` | מזהה המדינה לקביעת מסלול ספק/לקוח (`[FromQuery]`) |
+
+**ערך מוחזר:** `bool` — `true` אם קיימות בקשות אימות נוספות ביחס ליבואן, `false` אחרת
+
+**לוגיקה עסקית:**
+
+**מקבל:** מזהה יבואן, מזהה ספק (אופציונלי), מזהה לקוח (אופציונלי) ומזהה מדינה.
+
+**מבצע:**
+1. מאתר את `AuthenticationRequestBl` מה-`IServiceProvider`.
+2. בונה `DynamicParameters` עם הפרמטרים: `@ImporterID`, `@VendorID`, `@CustomerID`, `@CountryID`.
+3. מעביר את הפרמטרים ל-DAL לביצוע ה-SP `usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForImporter`.
+4. ה-SP מסווג פנימית את סוג החיפוש: אם המדינה מוגדרת כמדינת ספק — מחפש לפי `VendorId`; אחרת — מחפש לפי `CustomerId`. החיפוש מוגבל לטווח ימים הנקבע על ידי פרמטר התצורה `AdditionalRequestsForSearchInDays`.
+
+**מחזיר:** `true` אם קיימות בקשות אימות יבוא נוספות ליבואן בטווח הזמן המוגדר, `false` אחרת.
 
 ---
 
@@ -656,7 +685,7 @@
 | רכיב | תיאור שימוש |
 |-------|-------------|
 | `ICertificateOfOriginDal` | שכבת גישת הנתונים — מבצעת את קריאות ה-DB בפועל |
-| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter`, `GetAuthenticationRequestByID`, `CheckIfExistsAdditionalRequestsForVendor`, `CheckImporterOfImportAuthentication` וב-`GetAuthenticationRequestFileByID` |
+| `AuthenticationRequestBl` | מחלקת לוגיקה עסקית נפרדת לניהול בקשות אימות יבוא — נפתרת דרך `IServiceProvider` ב-`GetAuthenticationRequestByFilter`, `GetAuthenticationRequestByID`, `CheckIfExistsAdditionalRequestsForVendor`, `CheckImporterOfImportAuthentication`, `GetAuthenticationRequestFileByID` וב-`CheckIfExistsAdditionalRequestsForImporter` |
 | `ExportDocumentAuthenticationRequestBl` | מחלקת לוגיקה עסקית לשליפת פרטי לקוחות לצורך עיבוד מסמכי ייצוא — נפתרת דרך `IServiceProvider` ב-`GetCustomerInformation` וב-`GetCustomerInformationByCountry` |
 | `ICustomerProxy` | Proxy לשירות לקוחות חיצוני — משמש ב-`GetCustomerInformation` לשליפת לקוח לפי מספר זיהוי, וב-`GetCustomerInformationByCountry` לשליפת לקוחות לפי מדינה וסוג פעילות |
 | `ICollateralProxy` | Proxy לשירות בטחונות — משמש ב-`GetAuthenticationRequestByID` לשליפת בטחונות הקשורים לבקשת האימות לפי `EEntityType.ImportAuthenticationRequest` (12384); ומשמש ב-`GetAuthenticationRequestFileByID` לשליפת בטחונות עבור כל אחת מבקשות האימות הכלולות בתיק |

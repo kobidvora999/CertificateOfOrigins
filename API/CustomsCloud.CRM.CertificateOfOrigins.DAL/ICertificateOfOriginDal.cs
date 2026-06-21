@@ -24,4 +24,6 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationFileDetailsById(object? parameters);
 
     Task<List<CertificateOfOriginsAuthenticationFileStatusDto>?> GetAuthenticationFileStatuses();
+
+    Task<bool> CheckIfExistsAdditionalRequestsForImporter(object? parameters);
 }

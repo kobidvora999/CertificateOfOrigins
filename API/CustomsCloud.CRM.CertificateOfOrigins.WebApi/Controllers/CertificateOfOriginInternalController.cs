@@ -117,4 +117,15 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await bl.GetAuthenticationRequestFileById(fileId);
         return Ok(result);
     }
+
+    [HttpGet("CheckIfExistsAdditionalRequestsForImporter")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForImporter([FromQuery] int importerId, [FromQuery] int? vendorId, [FromQuery] int? customerId, [FromQuery] int countryId)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
+        return Ok(result);
+    }
 }
