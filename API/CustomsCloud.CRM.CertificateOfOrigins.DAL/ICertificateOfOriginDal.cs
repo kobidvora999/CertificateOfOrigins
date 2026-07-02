@@ -10,4 +10,6 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId);
 
     Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle);
+
+    Task<List<GetImportAuthenticationRequestResultDto>> GetAuthenticationRequestByFilter(ImportAuthenticationRequestFilterDto filter);
 }
