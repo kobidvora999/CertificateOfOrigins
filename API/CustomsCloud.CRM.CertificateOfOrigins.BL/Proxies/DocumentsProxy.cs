@@ -18,4 +18,13 @@ public class DocumentsProxy(IRestProxy restProxy)
             .AddQueryStringParameter("entityTypeId", entityTypeId);
         return (await ExecuteAsync<List<DocumentDto>>(req)).Data;
     }
+
+    public async Task<List<DocumentDto>?> GetDocumentsByIds(List<int> documentIds)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Internal/GetDocumentsByIds") // TODO: confirm endpoint name with the Documents microservice
+            .AddBody(documentIds);
+        return (await ExecuteAsync<List<DocumentDto>>(req)).Data;
+    }
 }
