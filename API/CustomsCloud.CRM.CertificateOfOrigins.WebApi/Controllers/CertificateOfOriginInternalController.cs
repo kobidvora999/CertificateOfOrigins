@@ -11,6 +11,15 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 public class CertificateOfOriginInternalController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginBl>(serviceProvider)
 {
+    [HttpGet("GetExportDocumentAuthenticationRequestSearch")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<ExportDocumentAuthenticationRequestSearchResultDto>))]
+    public async Task<ActionResult<List<ExportDocumentAuthenticationRequestSearchResultDto>>> GetExportDocumentAuthenticationRequestSearch([FromQuery] ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    {
+        var bl = serviceProvider.GetRequiredService<ExportDocumentAuthenticationRequestBl>();
+        var result = await bl.GetExportDocumentAuthenticationRequestSearch(filter);
+        return Ok(result);
+    }
+
     [HttpGet("GetAuthenticationRequestByLeadDocumentIDs")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<ImportAuthenticationRequestByLeadDocumentDto>))]
     public async Task<ActionResult<List<ImportAuthenticationRequestByLeadDocumentDto>>> GetAuthenticationRequestByLeadDocumentIDs([FromQuery] List<int> leadDocumentIDs)

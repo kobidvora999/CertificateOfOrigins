@@ -38,6 +38,12 @@ public partial class CertificateOfOriginDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginSupplierDeliveryCountryConfig> CertificateOfOriginSupplierDeliveryCountryConfigs { get; set; }
 
+    public virtual DbSet<ExportDocumentAuthenticationRequest> ExportDocumentAuthenticationRequests { get; set; }
+
+    public virtual DbSet<ExportDocumentAuthenticationRequestLeadDocument> ExportDocumentAuthenticationRequestLeadDocuments { get; set; }
+
+    public virtual DbSet<ExportAuthenticationRequestStatus> ExportAuthenticationRequestStatuses { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         OnModelCreatingPartial(modelBuilder);
