@@ -622,6 +622,48 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<List<ImportAuthenticationRequestByLeadDocumentDto>> GetAuthenticationRequestsByLeadDocumentIds(List<int> leadDocumentIds)
+    {
+        var result = await ReadOnlyContext.ImportAuthenticationRequests
+            .Where(r => leadDocumentIds.Contains(r.LeadDocumentId))
+            .Join(ReadOnlyContext.PrefernceDocumentTypes,
+                r => r.PreferenceDocumentTypeId,
+                p => p.Id,
+                (r, p) => new { Request = r, PreferenceDocumentType = p })
+            .Join(ReadOnlyContext.CertificateOfOriginsDecisions,
+                x => x.Request.DecisionId,
+                d => (int?)d.Id,
+                (x, d) => new { x.Request, x.PreferenceDocumentType, Decision = d })
+            .Select(x => new ImportAuthenticationRequestByLeadDocumentDto
+            {
+                LeadDocumentId = x.Request.LeadDocumentId,
+                DocumentId = x.Request.DocumentId,
+                AuthenticationFileId = x.Request.AuthenticationFileId,
+                PreferenceDocumentTypeId = x.Request.PreferenceDocumentTypeId,
+                PreferenceDocumentTypeName = x.PreferenceDocumentType.Name,
+                CreateDate = x.Request.CreateDate,
+                AuthenticationFileStatusId = ReadOnlyContext.ImportAuthenticationFileDetails
+                    .Where(f => f.Id == x.Request.AuthenticationFileId)
+                    .Select(f => (int?)f.AuthenticationFileStatusId)
+                    .FirstOrDefault(),
+                AuthenticationFileStatusName = ReadOnlyContext.ImportAuthenticationFileDetails
+                    .Where(f => f.Id == x.Request.AuthenticationFileId)
+                    .Join(ReadOnlyContext.CertificateOfOriginsAuthenticationFileStatuses,
+                        f => f.AuthenticationFileStatusId,
+                        s => s.Id,
+                        (f, s) => s.Name)
+                    .FirstOrDefault(),
+                DecisionId = x.Decision.Id,
+                DecisionName = x.Decision.Name,
+                ImportCountryId = x.Request.ImportCountryId,
+                OrganizationUnitId = x.Request.OrganizationUnitId,
+                CollateralId = x.Request.CollateralId,
+                IsCollateralExists = x.Request.CollateralId != null
+            })
+            .ToListAsync();
+        return result;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

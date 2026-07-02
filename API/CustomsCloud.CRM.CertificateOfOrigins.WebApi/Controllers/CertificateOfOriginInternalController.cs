@@ -11,6 +11,14 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 public class CertificateOfOriginInternalController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginBl>(serviceProvider)
 {
+    [HttpGet("GetAuthenticationRequestByLeadDocumentIDs")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<ImportAuthenticationRequestByLeadDocumentDto>))]
+    public async Task<ActionResult<List<ImportAuthenticationRequestByLeadDocumentDto>>> GetAuthenticationRequestByLeadDocumentIDs([FromQuery] List<int> leadDocumentIDs)
+    {
+        var result = await BusinessLayer.GetAuthenticationRequestByLeadDocumentIDs(leadDocumentIDs);
+        return Ok(result);
+    }
+
     [HttpGet("GetAuthenticationRequestByID")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(ImportAuthenticationRequestDto))]
     public async Task<ActionResult<ImportAuthenticationRequestDto?>> GetAuthenticationRequestByID([FromQuery] int documentId)
