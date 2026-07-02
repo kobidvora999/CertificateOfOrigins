@@ -44,10 +44,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/IsCertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=COO-2024-001234",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "IsCertificateOfOriginByExternalIdExist"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "IsCertificateOfOriginByExternalIdExist"
+              ],
               "query": [
-                { "key": "certificateOfOriginExternalId", "value": "COO-2024-001234", "disabled": false }
+                {
+                  "key": "certificateOfOriginExternalId",
+                  "value": "COO-2024-001234",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -80,10 +89,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetCertificateOfOriginById?certificateOfOriginId=1001",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetCertificateOfOriginById"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetCertificateOfOriginById"
+              ],
               "query": [
-                { "key": "certificateOfOriginId", "value": "1001", "disabled": false }
+                {
+                  "key": "certificateOfOriginId",
+                  "value": "1001",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -95,25 +113,94 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetCertificateOfOriginsByFilter?IsLastVersion=true",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetCertificateOfOriginsByFilter"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetCertificateOfOriginsByFilter"
+              ],
               "query": [
-                { "key": "CertificateNumber",         "value": "",    "disabled": true },
-                { "key": "CertificateOfOriginStatusId","value": "",   "disabled": true },
-                { "key": "CertificateOfOriginTypeId",  "value": "",   "disabled": true },
-                { "key": "CustomsAgentId",             "value": "",   "disabled": true },
-                { "key": "CustomsHouseId",             "value": "",   "disabled": true },
-                { "key": "DestinationCountry",         "value": "",   "disabled": true },
-                { "key": "ExportDeclarationId",        "value": "",   "disabled": true },
-                { "key": "ExportDeclarationNum",       "value": "",   "disabled": true },
-                { "key": "ExporterCustomerId",         "value": "",   "disabled": true },
-                { "key": "FromIssuingDate",            "value": "",   "disabled": true },
-                { "key": "ToIssuingDate",              "value": "",   "disabled": true },
-                { "key": "FromRequestDate",            "value": "",   "disabled": true },
-                { "key": "ToRequestDate",              "value": "",   "disabled": true },
-                { "key": "RequestReasonId",            "value": "",   "disabled": true },
-                { "key": "VersionNumber",              "value": "",   "disabled": true },
-                { "key": "IsLastVersion",              "value": "true","disabled": false }
+                {
+                  "key": "CertificateNumber",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CertificateOfOriginStatusId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CertificateOfOriginTypeId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CustomsAgentId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CustomsHouseId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "DestinationCountry",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExportDeclarationId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExportDeclarationNum",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExporterCustomerId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "FromIssuingDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ToIssuingDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "FromRequestDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ToRequestDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "RequestReasonId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "VersionNumber",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "IsLastVersion",
+                  "value": "true",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -146,10 +233,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetCustomerInformationByCountry?countryId=376",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetCustomerInformationByCountry"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetCustomerInformationByCountry"
+              ],
               "query": [
-                { "key": "countryId", "value": "376", "disabled": false }
+                {
+                  "key": "countryId",
+                  "value": "376",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -182,10 +278,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetAuthenticationRequestByID?documentId=1001",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetAuthenticationRequestByID"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetAuthenticationRequestByID"
+              ],
               "query": [
-                { "key": "documentId", "value": "1001", "disabled": false }
+                {
+                  "key": "documentId",
+                  "value": "1001",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -218,10 +323,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/CheckIfExistsAdditionalRequestsForVendor?vendorId=100",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "CheckIfExistsAdditionalRequestsForVendor"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "CheckIfExistsAdditionalRequestsForVendor"
+              ],
               "query": [
-                { "key": "vendorId", "value": "100", "disabled": false }
+                {
+                  "key": "vendorId",
+                  "value": "100",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -254,10 +368,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetAuthenticationRequestFileByID?fileId=1001",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetAuthenticationRequestFileByID"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetAuthenticationRequestFileByID"
+              ],
               "query": [
-                { "key": "fileId", "value": "1001", "disabled": false }
+                {
+                  "key": "fileId",
+                  "value": "1001",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -290,13 +413,34 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/CheckIfExistsAdditionalRequestsForImporter?importerId=100&countryId=376",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "CheckIfExistsAdditionalRequestsForImporter"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "CheckIfExistsAdditionalRequestsForImporter"
+              ],
               "query": [
-                { "key": "importerId",  "value": "100", "disabled": false },
-                { "key": "vendorId",    "value": "200", "disabled": true },
-                { "key": "customerId",  "value": "300", "disabled": true },
-                { "key": "countryId",   "value": "376", "disabled": false }
+                {
+                  "key": "importerId",
+                  "value": "100",
+                  "disabled": false
+                },
+                {
+                  "key": "vendorId",
+                  "value": "200",
+                  "disabled": true
+                },
+                {
+                  "key": "customerId",
+                  "value": "300",
+                  "disabled": true
+                },
+                {
+                  "key": "countryId",
+                  "value": "376",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -329,27 +473,763 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/Internal/GetAuthenticationRequestByFilter?CustomsHouseId=1&ImporterId=100",
-              "host": ["{{baseUrl}}"],
-              "path": ["Internal", "GetAuthenticationRequestByFilter"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetAuthenticationRequestByFilter"
+              ],
               "query": [
-                { "key": "PrefernceDocumentType",  "value": "",    "disabled": true },
-                { "key": "GoodsOrigionCountry",    "value": "",    "disabled": true },
-                { "key": "IssuingCountry",         "value": "",    "disabled": true },
-                { "key": "ImportCountry",          "value": "",    "disabled": true },
-                { "key": "FromRequestDate",        "value": "",    "disabled": true },
-                { "key": "ToRequestDate",          "value": "",    "disabled": true },
-                { "key": "CustomsHouseId",         "value": "1",   "disabled": false },
-                { "key": "RequestReason",          "value": "",    "disabled": true },
-                { "key": "LeadDocumentId",         "value": "",    "disabled": true },
-                { "key": "ImporterId",             "value": "100", "disabled": false },
-                { "key": "VendorId",               "value": "",    "disabled": true },
-                { "key": "DecisionId",             "value": "",    "disabled": true },
-                { "key": "CustomerId",             "value": "",    "disabled": true },
-                { "key": "DocumentId",             "value": "",    "disabled": true },
-                { "key": "InvoiceNumber",          "value": "",    "disabled": true },
-                { "key": "DocumentNumber",         "value": "",    "disabled": true },
-                { "key": "AuthenticationFileId",   "value": "",    "disabled": true },
-                { "key": "CreateUserId",           "value": "",    "disabled": true }
+                {
+                  "key": "PrefernceDocumentType",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "GoodsOrigionCountry",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "IssuingCountry",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ImportCountry",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "FromRequestDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ToRequestDate",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CustomsHouseId",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "RequestReason",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "LeadDocumentId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ImporterId",
+                  "value": "100",
+                  "disabled": false
+                },
+                {
+                  "key": "VendorId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "DecisionId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CustomerId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "DocumentId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "InvoiceNumber",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "DocumentNumber",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "AuthenticationFileId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CreateUserId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryForImporterSent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 1,\n  \"createDate\": \"2026-01-01T00:00:00Z\",\n  \"createUserId\": 1,\n  \"updateDate\": \"2026-01-01T00:00:00Z\",\n  \"updateUserId\": 1,\n  \"authenticationFileId\": 1,\n  \"authenticationRequestDate\": \"2026-01-01T00:00:00Z\",\n  \"cirumstanceDetails\": \"נסיבות בקשה לאימות ייבוא\",\n  \"collateralId\": null,\n  \"decisionCircumstences\": null,\n  \"decisionId\": null,\n  \"leadDocumentId\": 1,\n  \"documentIssuingDate\": \"2026-01-01T00:00:00Z\",\n  \"importCountryId\": 376,\n  \"issuingCountryId\": 376,\n  \"itemDetailId\": 1,\n  \"number\": 1,\n  \"isOldIndication\": false,\n  \"originCountryId\": 376,\n  \"preferenceDocumentTypeId\": 1,\n  \"remarks\": \"הערות לבקשת אימות\",\n  \"requestCircumstancesId\": 1,\n  \"userResponseId\": 1,\n  \"responseNameEmail\": \"importer@example.com\",\n  \"responsePhoneNum\": \"0501234567\",\n  \"organizationUnitId\": 1,\n  \"userId\": 1,\n  \"vendorId\": 1,\n  \"vendorName\": \"ספק לדוגמה בעמ\",\n  \"organizationUnitTypeId\": 1,\n  \"documentNumber\": \"DOC-2026-001\",\n  \"customerId\": 1,\n  \"importerId\": 1,\n  \"lastDeliveryForImporter\": null,\n  \"invoiceNumber\": \"INV-2026-001\",\n  \"invoiceGoodsItemTaxDifference\": 0,\n  \"allInvoiceGoodsItemTaxDifference\": 0,\n  \"leadDocumentSubmissionDate\": \"2026-01-01T00:00:00Z\",\n  \"isSendReminderForImporterTaskExists\": false,\n  \"itemDetails\": [\n    {\n      \"id\": 1,\n      \"importAuthenticationRequestId\": 1,\n      \"customItemId\": 1\n    }\n  ],\n  \"document\": null,\n  \"decisions\": [],\n  \"collaterals\": [],\n  \"isCurrentUserHandleRequest\": false,\n  \"isCurrentUserHasOpenTask\": false,\n  \"entityTypeAndIdsToSearch\": {},\n  \"additionalRequestsForSearchInDays\": 30,\n  \"isVendorByIssuingCountryId\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/HandleImportAuthenticationRequestDeliveryForImporterSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "HandleImportAuthenticationRequestDeliveryForImporterSent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryReminderForImporterSent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 1,\n  \"createDate\": \"2026-01-01T00:00:00Z\",\n  \"createUserId\": 1,\n  \"updateDate\": \"2026-01-01T00:00:00Z\",\n  \"updateUserId\": 1,\n  \"authenticationFileId\": 1,\n  \"authenticationRequestDate\": \"2026-01-01T00:00:00Z\",\n  \"cirumstanceDetails\": \"נסיבות בקשה לאימות ייבוא\",\n  \"collateralId\": null,\n  \"decisionCircumstences\": null,\n  \"decisionId\": null,\n  \"leadDocumentId\": 1,\n  \"documentIssuingDate\": \"2026-01-01T00:00:00Z\",\n  \"importCountryId\": 376,\n  \"issuingCountryId\": 376,\n  \"itemDetailId\": 1,\n  \"number\": 1,\n  \"isOldIndication\": false,\n  \"originCountryId\": 376,\n  \"preferenceDocumentTypeId\": 1,\n  \"remarks\": \"הערות לבקשת אימות\",\n  \"requestCircumstancesId\": 1,\n  \"userResponseId\": 1,\n  \"responseNameEmail\": \"importer@example.com\",\n  \"responsePhoneNum\": \"0501234567\",\n  \"organizationUnitId\": 1,\n  \"userId\": 1,\n  \"vendorId\": 1,\n  \"vendorName\": \"ספק לדוגמה בעמ\",\n  \"organizationUnitTypeId\": 1,\n  \"documentNumber\": \"DOC-2026-001\",\n  \"customerId\": 1,\n  \"importerId\": 1,\n  \"lastDeliveryForImporter\": null,\n  \"invoiceNumber\": \"INV-2026-001\",\n  \"invoiceGoodsItemTaxDifference\": 0,\n  \"allInvoiceGoodsItemTaxDifference\": 0,\n  \"leadDocumentSubmissionDate\": \"2026-01-01T00:00:00Z\",\n  \"isSendReminderForImporterTaskExists\": false,\n  \"itemDetails\": [\n    {\n      \"id\": 1,\n      \"importAuthenticationRequestId\": 1,\n      \"customItemId\": 1\n    }\n  ],\n  \"document\": null,\n  \"decisions\": [],\n  \"collaterals\": [],\n  \"isCurrentUserHandleRequest\": false,\n  \"isCurrentUserHasOpenTask\": false,\n  \"entityTypeAndIdsToSearch\": {},\n  \"additionalRequestsForSearchInDays\": 30,\n  \"isVendorByIssuingCountryId\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/HandleImportAuthenticationRequestDeliveryReminderForImporterSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "HandleImportAuthenticationRequestDeliveryReminderForImporterSent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"state\": 0,\n  \"createDate\": \"2026-01-01T00:00:00Z\",\n  \"createUserId\": 1,\n  \"updateDate\": \"2026-01-01T00:00:00Z\",\n  \"updateUserId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"notes\": \"הערות לתיק אימות\",\n  \"postalAdress\": \"רחוב הדוגמה 1, תל אביב\",\n  \"deliveryMethodId\": 1,\n  \"emailAdress\": \"authfile@example.com\",\n  \"reminderMethodId\": 1,\n  \"requestCountryId\": 376,\n  \"userId\": 1,\n  \"userNameIssuingLetter\": \"ישראל ישראלי\",\n  \"lastDelivery\": \"2026-01-01T00:00:00Z\",\n  \"importerContactingReasonId\": 1,\n  \"firstProvideContactDate\": \"2026-01-01T00:00:00Z\",\n  \"customerIdList\": [\n    1\n  ],\n  \"customerId\": 1,\n  \"organizationUnitId\": 1,\n  \"entityTypeAndIdsToSearch\": {},\n  \"isCurrentUserHandleFile\": false,\n  \"requests\": [\n    {\n      \"documentId\": 1,\n      \"createDate\": \"2026-01-01T00:00:00Z\",\n      \"createUserId\": 1,\n      \"updateDate\": \"2026-01-01T00:00:00Z\",\n      \"updateUserId\": 1,\n      \"authenticationFileId\": 1,\n      \"authenticationRequestDate\": \"2026-01-01T00:00:00Z\",\n      \"cirumstanceDetails\": \"נסיבות בקשה לאימות ייבוא\",\n      \"collateralId\": null,\n      \"decisionCircumstences\": null,\n      \"decisionId\": null,\n      \"leadDocumentId\": 1,\n      \"documentIssuingDate\": \"2026-01-01T00:00:00Z\",\n      \"importCountryId\": 376,\n      \"issuingCountryId\": 376,\n      \"itemDetailId\": 1,\n      \"number\": 1,\n      \"isOldIndication\": false,\n      \"originCountryId\": 376,\n      \"preferenceDocumentTypeId\": 1,\n      \"remarks\": \"הערות לבקשת אימות\",\n      \"requestCircumstancesId\": 1,\n      \"userResponseId\": 1,\n      \"responseNameEmail\": \"importer@example.com\",\n      \"responsePhoneNum\": \"0501234567\",\n      \"organizationUnitId\": 1,\n      \"userId\": 1,\n      \"vendorId\": 1,\n      \"vendorName\": \"ספק לדוגמה בעמ\",\n      \"organizationUnitTypeId\": 1,\n      \"documentNumber\": \"DOC-2026-001\",\n      \"customerId\": 1,\n      \"importerId\": 1,\n      \"lastDeliveryForImporter\": null,\n      \"invoiceNumber\": \"INV-2026-001\",\n      \"invoiceGoodsItemTaxDifference\": 0,\n      \"allInvoiceGoodsItemTaxDifference\": 0,\n      \"leadDocumentSubmissionDate\": \"2026-01-01T00:00:00Z\",\n      \"isSendReminderForImporterTaskExists\": false,\n      \"itemDetails\": [\n        {\n          \"id\": 1,\n          \"importAuthenticationRequestId\": 1,\n          \"customItemId\": 1\n        }\n      ],\n      \"document\": null,\n      \"decisions\": [],\n      \"collaterals\": [],\n      \"isCurrentUserHandleRequest\": false,\n      \"isCurrentUserHasOpenTask\": false,\n      \"entityTypeAndIdsToSearch\": {},\n      \"additionalRequestsForSearchInDays\": 30,\n      \"isVendorByIssuingCountryId\": false\n    }\n  ],\n  \"fileStatuses\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent?isDelivery=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent"
+              ],
+              "query": [
+                {
+                  "key": "isDelivery",
+                  "value": "true",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleSendRemindDeliverNotification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"state\": 0,\n  \"createDate\": \"2026-01-01T00:00:00Z\",\n  \"createUserId\": 1,\n  \"updateDate\": \"2026-01-01T00:00:00Z\",\n  \"updateUserId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"notes\": \"הערות לתיק אימות\",\n  \"postalAdress\": \"רחוב הדוגמה 1, תל אביב\",\n  \"deliveryMethodId\": 1,\n  \"emailAdress\": \"authfile@example.com\",\n  \"reminderMethodId\": 1,\n  \"requestCountryId\": 376,\n  \"userId\": 1,\n  \"userNameIssuingLetter\": \"ישראל ישראלי\",\n  \"lastDelivery\": \"2026-01-01T00:00:00Z\",\n  \"importerContactingReasonId\": 1,\n  \"firstProvideContactDate\": \"2026-01-01T00:00:00Z\",\n  \"customerIdList\": [\n    1\n  ],\n  \"customerId\": 1,\n  \"organizationUnitId\": 1,\n  \"entityTypeAndIdsToSearch\": {},\n  \"isCurrentUserHandleFile\": false,\n  \"requests\": [\n    {\n      \"documentId\": 1,\n      \"createDate\": \"2026-01-01T00:00:00Z\",\n      \"createUserId\": 1,\n      \"updateDate\": \"2026-01-01T00:00:00Z\",\n      \"updateUserId\": 1,\n      \"authenticationFileId\": 1,\n      \"authenticationRequestDate\": \"2026-01-01T00:00:00Z\",\n      \"cirumstanceDetails\": \"נסיבות בקשה לאימות ייבוא\",\n      \"collateralId\": null,\n      \"decisionCircumstences\": null,\n      \"decisionId\": null,\n      \"leadDocumentId\": 1,\n      \"documentIssuingDate\": \"2026-01-01T00:00:00Z\",\n      \"importCountryId\": 376,\n      \"issuingCountryId\": 376,\n      \"itemDetailId\": 1,\n      \"number\": 1,\n      \"isOldIndication\": false,\n      \"originCountryId\": 376,\n      \"preferenceDocumentTypeId\": 1,\n      \"remarks\": \"הערות לבקשת אימות\",\n      \"requestCircumstancesId\": 1,\n      \"userResponseId\": 1,\n      \"responseNameEmail\": \"importer@example.com\",\n      \"responsePhoneNum\": \"0501234567\",\n      \"organizationUnitId\": 1,\n      \"userId\": 1,\n      \"vendorId\": 1,\n      \"vendorName\": \"ספק לדוגמה בעמ\",\n      \"organizationUnitTypeId\": 1,\n      \"documentNumber\": \"DOC-2026-001\",\n      \"customerId\": 1,\n      \"importerId\": 1,\n      \"lastDeliveryForImporter\": null,\n      \"invoiceNumber\": \"INV-2026-001\",\n      \"invoiceGoodsItemTaxDifference\": 0,\n      \"allInvoiceGoodsItemTaxDifference\": 0,\n      \"leadDocumentSubmissionDate\": \"2026-01-01T00:00:00Z\",\n      \"isSendReminderForImporterTaskExists\": false,\n      \"itemDetails\": [\n        {\n          \"id\": 1,\n          \"importAuthenticationRequestId\": 1,\n          \"customItemId\": 1\n        }\n      ],\n      \"document\": null,\n      \"decisions\": [],\n      \"collaterals\": [],\n      \"isCurrentUserHandleRequest\": false,\n      \"isCurrentUserHasOpenTask\": false,\n      \"entityTypeAndIdsToSearch\": {},\n      \"additionalRequestsForSearchInDays\": 30,\n      \"isVendorByIssuingCountryId\": false\n    }\n  ],\n  \"fileStatuses\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/HandleSendRemindDeliverNotification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "HandleSendRemindDeliverNotification"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ChangeStatusAfterDeliverySent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"state\": 0,\n  \"createDate\": \"2026-01-01T00:00:00Z\",\n  \"createUserId\": 1,\n  \"updateDate\": \"2026-01-01T00:00:00Z\",\n  \"updateUserId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"notes\": \"הערות לתיק אימות\",\n  \"postalAdress\": \"רחוב הדוגמה 1, תל אביב\",\n  \"deliveryMethodId\": 1,\n  \"emailAdress\": \"authfile@example.com\",\n  \"reminderMethodId\": 1,\n  \"requestCountryId\": 376,\n  \"userId\": 1,\n  \"userNameIssuingLetter\": \"ישראל ישראלי\",\n  \"lastDelivery\": \"2026-01-01T00:00:00Z\",\n  \"importerContactingReasonId\": 1,\n  \"firstProvideContactDate\": \"2026-01-01T00:00:00Z\",\n  \"customerIdList\": [\n    1\n  ],\n  \"customerId\": 1,\n  \"organizationUnitId\": 1,\n  \"entityTypeAndIdsToSearch\": {},\n  \"isCurrentUserHandleFile\": false,\n  \"requests\": [\n    {\n      \"documentId\": 1,\n      \"createDate\": \"2026-01-01T00:00:00Z\",\n      \"createUserId\": 1,\n      \"updateDate\": \"2026-01-01T00:00:00Z\",\n      \"updateUserId\": 1,\n      \"authenticationFileId\": 1,\n      \"authenticationRequestDate\": \"2026-01-01T00:00:00Z\",\n      \"cirumstanceDetails\": \"נסיבות בקשה לאימות ייבוא\",\n      \"collateralId\": null,\n      \"decisionCircumstences\": null,\n      \"decisionId\": null,\n      \"leadDocumentId\": 1,\n      \"documentIssuingDate\": \"2026-01-01T00:00:00Z\",\n      \"importCountryId\": 376,\n      \"issuingCountryId\": 376,\n      \"itemDetailId\": 1,\n      \"number\": 1,\n      \"isOldIndication\": false,\n      \"originCountryId\": 376,\n      \"preferenceDocumentTypeId\": 1,\n      \"remarks\": \"הערות לבקשת אימות\",\n      \"requestCircumstancesId\": 1,\n      \"userResponseId\": 1,\n      \"responseNameEmail\": \"importer@example.com\",\n      \"responsePhoneNum\": \"0501234567\",\n      \"organizationUnitId\": 1,\n      \"userId\": 1,\n      \"vendorId\": 1,\n      \"vendorName\": \"ספק לדוגמה בעמ\",\n      \"organizationUnitTypeId\": 1,\n      \"documentNumber\": \"DOC-2026-001\",\n      \"customerId\": 1,\n      \"importerId\": 1,\n      \"lastDeliveryForImporter\": null,\n      \"invoiceNumber\": \"INV-2026-001\",\n      \"invoiceGoodsItemTaxDifference\": 0,\n      \"allInvoiceGoodsItemTaxDifference\": 0,\n      \"leadDocumentSubmissionDate\": \"2026-01-01T00:00:00Z\",\n      \"isSendReminderForImporterTaskExists\": false,\n      \"itemDetails\": [\n        {\n          \"id\": 1,\n          \"importAuthenticationRequestId\": 1,\n          \"customItemId\": 1\n        }\n      ],\n      \"document\": null,\n      \"decisions\": [],\n      \"collaterals\": [],\n      \"isCurrentUserHandleRequest\": false,\n      \"isCurrentUserHasOpenTask\": false,\n      \"entityTypeAndIdsToSearch\": {},\n      \"additionalRequestsForSearchInDays\": 30,\n      \"isVendorByIssuingCountryId\": false\n    }\n  ],\n  \"fileStatuses\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/ChangeStatusAfterDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "ChangeStatusAfterDeliverySent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CheckImporterOfImportAuthentication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/CheckImporterOfImportAuthentication?importerId=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "CheckImporterOfImportAuthentication"
+              ],
+              "query": [
+                {
+                  "key": "importerId",
+                  "value": "100",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetCustomerInformation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetCustomerInformation?customerId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetCustomerInformation"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "1",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetExportDocumentAuthenticationRequestByID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetExportDocumentAuthenticationRequestByID?id=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetExportDocumentAuthenticationRequestByID"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetExportDocumentAuthenticationRequestSearch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetExportDocumentAuthenticationRequestSearch?CountryId=376",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetExportDocumentAuthenticationRequestSearch"
+              ],
+              "query": [
+                {
+                  "key": "CountryId",
+                  "value": "376",
+                  "disabled": false
+                },
+                {
+                  "key": "DocumentTypeId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "RequestId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ForeignCustomsHouseCustomerId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExportDeclarationId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "RequestOpenDateFrom",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "RequestOpenDateTo",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExportAuthenticationDocumentId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "InvoiceIdNum",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "MainDocumentTitle",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExporterId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ExportAuthenticationRequestStatusId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CreateUserId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetAuthenticationRequestByLeadDocumentIDs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetAuthenticationRequestByLeadDocumentIDs?leadDocumentIDs=1&leadDocumentIDs=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetAuthenticationRequestByLeadDocumentIDs"
+              ],
+              "query": [
+                {
+                  "key": "leadDocumentIDs",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "leadDocumentIDs",
+                  "value": "2",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CreateNewAuthenticationFile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"documentId\": 1,\n    \"issuingCountryId\": \"376\",\n    \"organizationUnitId\": \"1\",\n    \"preferenceDocumentTypeId\": \"1\",\n    \"authenticationFileId\": 1,\n    \"leadDocumentTitle\": \"מסמך ראשי לדוגמה\",\n    \"createDate\": \"2026-01-01T00:00:00Z\",\n    \"vendorName\": \"ספק לדוגמה בעמ\",\n    \"issuingCountryIdNum\": 376,\n    \"organizationUnitIdNum\": 1,\n    \"responseNameEmail\": \"importer@example.com\",\n    \"leadDocumentId\": 1,\n    \"customerId\": 1,\n    \"vendorId\": 1,\n    \"decisionId\": 1,\n    \"importerName\": \"יבואן לדוגמה בעמ\",\n    \"authenticationFileStatusId\": 1\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Internal/CreateNewAuthenticationFile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "CreateNewAuthenticationFile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetEntityDocuments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Internal/GetEntityDocuments?DocumentId=1&LeadDocumentId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Internal",
+                "GetEntityDocuments"
+              ],
+              "query": [
+                {
+                  "key": "DocumentId",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "LeadDocumentId",
+                  "value": "1",
+                  "disabled": false
+                }
               ]
             }
           }
@@ -358,7 +1238,261 @@
     },
     {
       "name": "External",
-      "item": []
+      "item": [
+        {
+          "name": "Convert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityIdKey1\": \"1001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/External/Convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "External",
+                "Convert"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetCertificateOfOriginID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/External/GetCertificateOfOriginID?certificateNumber=COO-2026-000123",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "External",
+                "GetCertificateOfOriginID"
+              ],
+              "query": [
+                {
+                  "key": "certificateNumber",
+                  "value": "COO-2026-000123",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GetGoodsItemCerificateDTO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"goodsItemId\": 1,\n    \"certificateNumber\": \"COO-2026-000123\",\n    \"certificateOfOriginId\": 1\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/External/GetGoodsItemCerificateDTO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "External",
+                "GetGoodsItemCerificateDTO"
+              ]
+            }
+          }
+        },
+        {
+          "name": "SaveCertificateOfOriginAttachments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificatesTemplates\": [\n    {\n      \"documentTypeId\": 1,\n      \"content\": \"\",\n      \"fileName\": \"CertificateOfOrigin.pdf\"\n    }\n  ],\n  \"certificateNumber\": \"COO-2026-000123\",\n  \"certificateId\": 1,\n  \"certificateRequestReasonCode\": 1,\n  \"certificateTypeId\": 1,\n  \"additionalInfo\": \"מידע נוסף לתעודת מקור\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/External/SaveCertificateOfOriginAttachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "External",
+                "SaveCertificateOfOriginAttachments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleAuthenticationRequestDeliverySent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relatedEntities\": [\n    {\n      \"id\": 1,\n      \"title\": \"ישות קשורה לדוגמה\",\n      \"state\": 0,\n      \"updateDate\": \"2026-01-01T00:00:00Z\",\n      \"createDate\": \"2026-01-01T00:00:00Z\",\n      \"createUserId\": 1,\n      \"typeId\": 1,\n      \"updateUserId\": 1,\n      \"organizationUnitId\": 1,\n      \"customerId\": 1,\n      \"entityType\": 1055,\n      \"timeStamp\": null,\n      \"relatedEntities\": null,\n      \"iEntityFUpdateCustomerId\": null,\n      \"iCustomerEntityUpdateCustomerId\": null,\n      \"iEntitySpecializationSpecializationId\": null,\n      \"iOrganizationUnitTypeOrganizationUnitTypeId\": null,\n      \"isAddAttachmentAllowed\": true,\n      \"eaddAttachmentNotAllowedStatus\": null,\n      \"eTaskPriorityCode\": null,\n      \"entityIdKeys\": \"1001\",\n      \"path\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/External/HandleAuthenticationRequestDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "External",
+                "HandleAuthenticationRequestDeliverySent"
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "name": "Incoming",
