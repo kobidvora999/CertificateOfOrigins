@@ -213,6 +213,89 @@ public class AuthenticationRequestBl(
         return result;
     }
 
+    #region LEGACY_WCF
+
+    // public CertificateOfOriginsImportAuthenticationFileDetails GetAuthenticationRequestFileByID(int fileId)
+    // {
+    //     ExecuteResultSetFunction([CRM].[usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests], @FileID)
+    //     — 4 result sets: file header; requests by AuthenticationFileID (+LeadDocumentSubmissionDate from
+    //       CRP.DealFile_LeadDocumentSubmissionData, +IsSendReminderForImporterTaskExists from open task 404);
+    //       documents (Infrastructure.Docs_Document by request DocumentIDs); item details (CRM.CertificateOfOrigins_ItemDetails).
+    //     MaterializeForGetFile assembled the graph, set EntityTypeAndIDsToSearch[ImportDeclaration],
+    //     CustomerID==0 → -1. GetAdditionalInfoForFile then loaded the Decision/FileStatus lookup tables,
+    //     fetched collaterals per request (Collateral adapter) and computed IsCurrentUserHandleFile from
+    //     open file tasks (Tasks adapter, task types 339/340/408/404) vs UserUtil.Current.ID.
+    //     Migrated: local result sets via LINQ; documents via Documents proxy; tasks/collaterals via proxies.
+    // }
+    #endregion
+    public async Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationRequestFileByID(int fileId)
+    {
+        var file = await DataLayer.GetAuthenticationFileById(fileId);
+        if (file == null)
+        {
+            return null;
+        }
+
+        file.CustomerIdList = new List<int>(); // legacy: initialized empty, never populated in this path
+
+        var requests = await DataLayer.GetRequestsByAuthenticationFileId(fileId);
+        file.Requests = requests;
+        file.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            [1055] = requests.Select(r => r.LeadDocumentId).ToList() // EntityType.ImportDeclaration = 1055
+        };
+
+        var requestDocumentIds = requests.Select(r => r.DocumentId).ToList();
+        if (requestDocumentIds.Count > 0)
+        {
+            var documents = await documentsProxy.GetDocumentsByIds(requestDocumentIds);
+            var itemDetails = await DataLayer.GetItemDetailsByRequestIds(requestDocumentIds);
+            foreach (var request in requests)
+            {
+                request.Document = documents?.FirstOrDefault(d => d.Id == request.DocumentId);
+                request.ItemDetails = itemDetails.Where(i => i.ImportAuthenticationRequestId == request.DocumentId).ToList();
+                request.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+                {
+                    [1055] = new List<int> { request.LeadDocumentId }
+                };
+
+                // TODO (blocking): legacy also returned LeadDocumentSubmissionDate (CRP.DealFile_LeadDocumentSubmissionData)
+                // and IsSendReminderForImporterTaskExists (open task 404) per request — DealFile has no microservice;
+                // the reminder-task flag can be filled via ITasksProxy.IsTaskExist once semantics are confirmed.
+            }
+        }
+
+        if (file.CustomerId == 0)
+        {
+            file.CustomerId = -1;
+        }
+
+        var decisions = await DataLayer.GetAllDecisions();
+        file.FileStatuses = await DataLayer.GetAllAuthenticationFileStatuses();
+        foreach (var request in requests)
+        {
+            request.Decisions = decisions;
+
+            var collateralList = await collateralProxy.GetCollateralRequest(12384, request.DocumentId, null); // EntityType.ImportAuthenticationRequest = 12384
+            if (collateralList != null && collateralList.Count > 0)
+            {
+                request.Collaterals = collateralList;
+            }
+        }
+
+        var tasks = await tasksProxy.IsTaskExist(new IsTaskExistFilterDto
+        {
+            EntityId = file.Id,
+            EntityTypeId = 12385, // EntityType.AuthenticationRequestFile
+            TaskTypeIds = new List<int> { 339, 340, 408, 404 } // ETaskType: ReminderNotice6Months, ReminderNotice10Months, HandleAuthenticationRequestFile, SendReminderForImporter
+        });
+
+        // TODO(blocking): legacy UserUtil.Current.ID — current-user-id source pending (see CreateNewAuthenticationFile)
+        var currentUserId = 1;
+        file.IsCurrentUserHandleFile = tasks != null && tasks.Any(t => t.UserId == currentUserId);
+        return file;
+    }
+
     private static async Task RaiseEventNewDecisionBeforeAssociation(IEventUtil eventUtil, GetImportAuthenticationRequestResultDto request)
     {
         var eventRequest = eventUtil.CreatBuilder()

@@ -13,5 +13,8 @@ tables:
   - CRM.CertificateOfOrigins_ImportAuthenticationRequest
   - CRM.CertificateOfOrigins_enum_PrefernceDocumentType
   - CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
+  - CRM.CertificateOfOrigins_ItemDetails
+  - CRM.CertificateOfOrigins_enum_Decision
+  - CRM.CertificateOfOrigins_enum_AuthenticationFileStatus
 stored procedures:
 

@@ -28,4 +28,16 @@ public class DocumentsMockProxy : IDocumentsProxy
         };
         return Task.FromResult<List<DocumentDto>?>(result);
     }
+
+    public Task<List<DocumentDto>?> GetDocumentsByIds(List<int> documentIds)
+    {
+        var result = documentIds.Select(id => new DocumentDto
+        {
+            Id = id,                          // TODO: dummy data
+            TypeId = 1,                       // TODO: dummy data
+            Title = "Test Document " + id,
+            CreateDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        }).ToList();
+        return Task.FromResult<List<DocumentDto>?>(result);
+    }
 }
