@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
 using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Lookup.Entities;
 using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
 using CustomsCloud.InfrastructureCore.Parameters;
 using Microsoft.Extensions.Configuration;
@@ -18,8 +19,14 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddCustomsDbContext<CertificateOfOriginDbContext, CertificateOfOriginDbReadOnlyContext>();
         services.AddDataLayer<ICertificateOfOriginDal, CertificateOfOriginDal>();
         services.AddBusinessLayer<CertificateOfOriginBl>();
+        services.AddBusinessLayer<AuthenticationRequestBl>();
         services.AddRestProxy();
         services.AddScoped<ICustomerProxy, CustomerProxy>();
         services.AddScoped<IUserProxy, UserProxy>();
+        services.AddScoped<IVendorProxy, VendorProxy>();
+        services.AddScoped<ICollateralProxy, CollateralProxy>();
+        services.AddScoped<ITasksProxy, TasksProxy>();
+        services.AddLookup<Country>();
+        services.AddLookup<OrganizationUnit>();
     }
 }

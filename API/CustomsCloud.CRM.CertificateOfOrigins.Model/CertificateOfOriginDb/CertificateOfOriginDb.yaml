@@ -10,5 +10,8 @@ tables:
   - CRM.CertificateOfOrigins_CertificateOfOriginDetails
   - CRM.CertificateOfOrigins_CertificateOfOriginInvoiceDetail
   - CRM.CertificateOfOrigins_CertificateOfOriginItemDetail
+  - CRM.CertificateOfOrigins_ImportAuthenticationRequest
+  - CRM.CertificateOfOrigins_enum_PrefernceDocumentType
+  - CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
 stored procedures:
 
