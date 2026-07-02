@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.DAL;
 
@@ -16,4 +17,10 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<List<int>> GetRequestedDocumentIdsByLeadDocumentId(int leadDocumentId);
 
     Task<List<int>> GetDocumentIdsUsedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId);
+
+    Task<ImportAuthenticationRequest?> GetFirstRequestWithAuthenticationFile(List<int> documentIds);
+
+    Task<ImportAuthenticationFileDetails> CreateAuthenticationFile(ImportAuthenticationFileDetails file);
+
+    Task<int> UpdateRequestsAuthenticationFileId(List<int> documentIds, int authenticationFileId);
 }

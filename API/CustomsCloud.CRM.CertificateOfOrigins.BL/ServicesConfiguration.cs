@@ -30,5 +30,6 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
         services.AddParametersService();
+        services.AddEventUtil();
     }
 }
