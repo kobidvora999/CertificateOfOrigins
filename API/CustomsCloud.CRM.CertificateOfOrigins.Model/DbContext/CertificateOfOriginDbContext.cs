@@ -48,6 +48,8 @@ public partial class CertificateOfOriginDbContext : DbContext
 
     public virtual DbSet<ExportAuthenticationRequestManufacturingArea> ExportAuthenticationRequestManufacturingAreas { get; set; }
 
+    public virtual DbSet<VerificationProhibitedImporters> VerificationProhibitedImporters { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         OnModelCreatingPartial(modelBuilder);

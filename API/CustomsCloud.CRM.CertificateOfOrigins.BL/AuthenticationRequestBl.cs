@@ -369,6 +369,36 @@ public class AuthenticationRequestBl(
         };
     }
 
+    #region LEGACY_WCF
+
+    // CheckIfExistsAdditionalRequestsForImporter(request) — SP [CRM].[usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForImporter]:
+    //   IsVendor = exists row in cf_SupplierDeliveryCountryConfig for the country;
+    //   days = GlobalParam 'AdditionalRequestsForSearchInDays';
+    //   exists file+request where ImporterID matches, (VendorId | CustomerID) matches by IsVendor,
+    //   and F.LastDelivery >= now - days. Converted to LINQ per module guidelines (flattened params per master precedent).
+    // CheckIfExistsAdditionalRequestsForVendor(vendorId) — SP: COUNT(requests where VendorId, CreateDate >= now-3y) > 1.
+    // CheckImporterOfImportAuthentication(importerId) — prohibited-importers check (master precedent): prohibited → null.
+    #endregion
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId)
+    {
+        var isVendor = await DataLayer.IsVendorDeliveryCountryConfigured(countryId);
+        var daysForLastDelivery = await parametersUtil.Get<int>("AdditionalRequestsForSearchInDays");
+        var result = await DataLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, isVendor, daysForLastDelivery);
+        return result;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
+    {
+        var result = await DataLayer.CheckIfExistsAdditionalRequestsForVendor(vendorId);
+        return result;
+    }
+
+    public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
+    {
+        var result = await DataLayer.CheckImporterOfImportAuthentication(importerId);
+        return result;
+    }
+
     private static async Task RaiseEventNewDecisionBeforeAssociation(IEventUtil eventUtil, GetImportAuthenticationRequestResultDto request)
     {
         var eventRequest = eventUtil.CreatBuilder()

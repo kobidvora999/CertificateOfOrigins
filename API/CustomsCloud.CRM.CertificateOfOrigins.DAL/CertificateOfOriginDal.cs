@@ -842,6 +842,48 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return request;
     }
 
+    public async Task<bool> IsVendorDeliveryCountryConfigured(int countryId)
+    {
+        // legacy SP checked for any row without a State filter — interceptor excluded for exact parity
+        var result = await ReadOnlyContext.CertificateOfOriginSupplierDeliveryCountryConfigs
+            .ExcludeInterceptor("T7e0Y38X2y")
+            .AnyAsync(c => c.ConutryId == countryId);
+        return result;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, bool isVendor, int daysForLastDelivery)
+    {
+        var minLastDelivery = DateTime.Now.AddDays(-daysForLastDelivery);
+        var query = ReadOnlyContext.ImportAuthenticationFileDetails
+            .Join(ReadOnlyContext.ImportAuthenticationRequests,
+                f => f.Id,
+                r => r.AuthenticationFileId,
+                (f, r) => new { File = f, Request = r })
+            .Where(x => x.Request.ImporterId == importerId && x.File.LastDelivery >= minLastDelivery);
+
+        query = isVendor
+            ? query.Where(x => x.Request.VendorId == vendorId)
+            : query.Where(x => x.Request.CustomerId == customerId);
+
+        var result = await query.AnyAsync();
+        return result;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
+    {
+        var minCreateDate = DateTime.Now.AddYears(-3);
+        var count = await ReadOnlyContext.ImportAuthenticationRequests
+            .CountAsync(r => r.VendorId == vendorId && r.CreateDate >= minCreateDate);
+        return count > 1;
+    }
+
+    public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
+    {
+        var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
+            .AnyAsync(c => c.CustomerId == importerId);
+        return isProhibited ? null : importerId;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

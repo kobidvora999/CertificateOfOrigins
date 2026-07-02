@@ -22,5 +22,6 @@ tables:
   - CRM.CertificateOfOrigins_enum_ExportAuthenticationRequestStatus
   - CRM.CertificateOfOrigins_CustomsItemToExportDocumentAuthenticationRequest
   - CRM.CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea
+  - CRM.CertificateOfOrigins_c_VerificationProhibitedImporters
 stored procedures:
 
