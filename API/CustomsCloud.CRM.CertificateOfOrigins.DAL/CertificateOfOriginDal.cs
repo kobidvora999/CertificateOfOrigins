@@ -884,6 +884,90 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return isProhibited ? null : importerId;
     }
 
+    public async Task<ImportAuthenticationRequestDto> SaveImportAuthenticationRequest(ImportAuthenticationRequestDto dto)
+    {
+        var entity = await Context.ImportAuthenticationRequests.FindAsync(dto.DocumentId) ?? new ImportAuthenticationRequest { DocumentId = dto.DocumentId };
+        if (entity.CreateDate == default)
+        {
+            Context.ImportAuthenticationRequests.Add(entity);
+        }
+
+        entity.CreateDate = dto.CreateDate.DateTime;
+        entity.CreateUserId = dto.CreateUserId;
+        entity.UpdateDate = dto.UpdateDate.DateTime;
+        entity.UpdateUserId = dto.UpdateUserId;
+        entity.AuthenticationFileId = dto.AuthenticationFileId;
+        entity.AuthenticationRequestDate = dto.AuthenticationRequestDate.DateTime;
+        entity.CirumstanceDetails = dto.CirumstanceDetails;
+        entity.CollateralId = dto.CollateralId;
+        entity.DecisionCircumstences = dto.DecisionCircumstences;
+        entity.DecisionId = dto.DecisionId;
+        entity.LeadDocumentId = dto.LeadDocumentId;
+        entity.DocumentIssuingDate = dto.DocumentIssuingDate.DateTime;
+        entity.ImportCountryId = dto.ImportCountryId;
+        entity.IssuingCountryId = dto.IssuingCountryId;
+        entity.ItemDetailId = dto.ItemDetailId;
+        entity.Number = dto.Number;
+        entity.IsOldIndication = dto.IsOldIndication;
+        entity.OriginCountryId = dto.OriginCountryId;
+        entity.PreferenceDocumentTypeId = dto.PreferenceDocumentTypeId;
+        entity.Remarks = dto.Remarks ?? string.Empty;
+        entity.RequestCircumstancesId = dto.RequestCircumstancesId;
+        entity.UserResponseId = dto.UserResponseId;
+        entity.ResponseNameEmail = dto.ResponseNameEmail;
+        entity.ResponsePhoneNum = dto.ResponsePhoneNum;
+        entity.OrganizationUnitId = dto.OrganizationUnitId;
+        entity.UserId = dto.UserId;
+        entity.VendorId = dto.VendorId;
+        entity.VendorName = dto.VendorName;
+        entity.OrganizationUnitTypeId = dto.OrganizationUnitTypeId;
+        entity.DocumentNumber = dto.DocumentNumber;
+        entity.CustomerId = dto.CustomerId;
+        entity.ImporterId = dto.ImporterId;
+        entity.LastDeliveryForImporter = dto.LastDeliveryForImporter == null ? null : dto.LastDeliveryForImporter.Value.DateTime;
+        entity.InvoiceNumber = dto.InvoiceNumber;
+        entity.InvoiceGoodsItemTaxDifference = dto.InvoiceGoodsItemTaxDifference;
+        entity.AllInvoiceGoodsItemTaxDifference = dto.AllInvoiceGoodsItemTaxDifference;
+        await Context.SaveChangesAsync();
+        return dto;
+    }
+
+    public async Task SaveAuthenticationFileDetails(ImportAuthenticationFileDetailsDto dto)
+    {
+        var entity = await Context.ImportAuthenticationFileDetails.FindAsync(dto.Id) ?? new ImportAuthenticationFileDetails();
+        if (entity.Id == 0)
+        {
+            Context.ImportAuthenticationFileDetails.Add(entity);
+        }
+
+        entity.State = dto.State;
+        entity.CreateDate = dto.CreateDate.DateTime;
+        entity.CreateUserId = dto.CreateUserId;
+        entity.UpdateDate = dto.UpdateDate.DateTime;
+        entity.UpdateUserId = dto.UpdateUserId;
+        entity.AuthenticationFileStatusId = dto.AuthenticationFileStatusId;
+        entity.Notes = dto.Notes;
+        entity.PostalAdress = dto.PostalAdress ?? string.Empty;
+        entity.DeliveryMethodId = dto.DeliveryMethodId;
+        entity.EmailAdress = dto.EmailAdress;
+        entity.ReminderMethodId = dto.ReminderMethodId;
+        entity.RequestCountryId = dto.RequestCountryId;
+        entity.UserId = dto.UserId;
+        entity.UserNameIssuingLetter = dto.UserNameIssuingLetter ?? string.Empty;
+        entity.LastDelivery = dto.LastDelivery == null ? null : dto.LastDelivery.Value.DateTime;
+        entity.ImporterContactingReasonId = dto.ImporterContactingReasonId;
+        entity.FirstProvideContactDate = dto.FirstProvideContactDate == null ? null : dto.FirstProvideContactDate.Value.DateTime;
+        await Context.SaveChangesAsync();
+    }
+
+    public async Task<int> TouchRequestsUpdateDateByFileId(int fileId, DateTime updateDate)
+    {
+        var result = await Context.ImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.UpdateDate, updateDate));
+        return result;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

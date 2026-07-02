@@ -11,6 +11,51 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 public class CertificateOfOriginInternalController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginBl>(serviceProvider)
 {
+    [HttpPost("HandleImportAuthenticationRequestDeliveryForImporterSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(ImportAuthenticationRequestDto))]
+    public async Task<ActionResult<ImportAuthenticationRequestDto>> HandleImportAuthenticationRequestDeliveryForImporterSent([FromBody] ImportAuthenticationRequestDto authenticationRequest)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.HandleImportAuthenticationRequestDeliveryForImporterSent(authenticationRequest);
+        return Ok(result);
+    }
+
+    [HttpPost("HandleImportAuthenticationRequestDeliveryReminderForImporterSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(ImportAuthenticationRequestDto))]
+    public async Task<ActionResult<ImportAuthenticationRequestDto>> HandleImportAuthenticationRequestDeliveryReminderForImporterSent([FromBody] ImportAuthenticationRequestDto authenticationRequest)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.HandleImportAuthenticationRequestDeliveryReminderForImporterSent(authenticationRequest);
+        return Ok(result);
+    }
+
+    [HttpPost("HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(ImportAuthenticationFileDetailsDto))]
+    public async Task<ActionResult<ImportAuthenticationFileDetailsDto>> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent([FromBody] ImportAuthenticationFileDetailsDto authenticationFile, [FromQuery] bool isDelivery)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(authenticationFile, isDelivery);
+        return Ok(result);
+    }
+
+    [HttpPost("HandleSendRemindDeliverNotification")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> HandleSendRemindDeliverNotification([FromBody] ImportAuthenticationFileDetailsDto file)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.HandleSendRemindDeliverNotification(file);
+        return Ok(result);
+    }
+
+    [HttpPost("ChangeStatusAfterDeliverySent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(ImportAuthenticationFileDetailsDto))]
+    public async Task<ActionResult<ImportAuthenticationFileDetailsDto>> ChangeStatusAfterDeliverySent([FromBody] ImportAuthenticationFileDetailsDto importAuthenticationRequest)
+    {
+        var bl = serviceProvider.GetRequiredService<AuthenticationRequestBl>();
+        var result = await bl.ChangeStatusAfterDeliverySent(importAuthenticationRequest);
+        return Ok(result);
+    }
+
     [HttpGet("CheckIfExistsAdditionalRequestsForImporter")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
     public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForImporter([FromQuery] int importerId, [FromQuery] int? vendorId, [FromQuery] int? customerId, [FromQuery] int countryId)

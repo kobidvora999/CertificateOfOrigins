@@ -51,4 +51,10 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);
 
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
+
+    Task<ImportAuthenticationRequestDto> SaveImportAuthenticationRequest(ImportAuthenticationRequestDto dto);
+
+    Task SaveAuthenticationFileDetails(ImportAuthenticationFileDetailsDto dto);
+
+    Task<int> TouchRequestsUpdateDateByFileId(int fileId, DateTime updateDate);
 }

@@ -36,6 +36,7 @@ public class ImportAuthenticationRequestDto
     public string? DocumentNumber { get; set; }
     public int? CustomerId { get; set; }
     public int? ImporterId { get; set; }
+    public DateTimeOffset? LastDeliveryForImporter { get; set; }
     public string? InvoiceNumber { get; set; }
     public decimal? InvoiceGoodsItemTaxDifference { get; set; }
     public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }

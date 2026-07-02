@@ -399,6 +399,148 @@ public class AuthenticationRequestBl(
         return result;
     }
 
+    #region LEGACY_WCF
+
+    // HandleImportAuthenticationRequestDeliveryForImporterSent / ...ReminderForImporterSent →
+    //   HandleReminderOrDeliveryRequestSentToImporter(request, eventType, decision):
+    //     set DecisionID + LastDeliveryForImporter/UpdateDate = Today; UpdateFileAfterDelivery(file nav);
+    //     Save + Commit; RaiseEvent(eventType, ImportAuthenticationRequest, related file when exists).
+    // HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(file, isDelivery):
+    //     reminder → status = AuthenticationRequestReminderWasSend(3); UpdateFileAfterDelivery(file).
+    // UpdateFileAfterDelivery — status/delivery-method state machine:
+    //     WaitingForSendingLetter(1) → status AuthenticationRequestWasSend(2) + PostedMailing(2);
+    //     AuthenticationRequestWasSend(2): PostedMailing(2)/SentByEmailRequest(3)→FirstRemindSent(4); FirstRemindSent(4)→SecondRemindSent(5);
+    //     AuthenticationRequestReminderWasSend(3): FirstRemindSent(4)→SecondRemindSent(5);
+    //     LastDelivery/UpdateDate = Today; children UpdateDate = Now; Save + Commit.
+    // HandleSendRemindDeliverNotification (BL CloseReminderTask): RaiseEvent CloseTaskReminderNotice3Months(1745)
+    //     on the file (+ related file entity); returns true.
+    // ChangeStatusAfterDeliverySent: RaiseEvent CloseAllTaskForImportAuthenticationRequestFile(1525) on the file.
+    // In the WCF flow the file arrived as the request's nav property (client-tracked); in .NET 10 it is loaded
+    // from the DB by AuthenticationFileId.
+    #endregion
+    public async Task<ImportAuthenticationRequestDto> HandleImportAuthenticationRequestDeliveryForImporterSent(ImportAuthenticationRequestDto authenticationRequest)
+    {
+        var result = await HandleReminderOrDeliveryRequestSentToImporter(authenticationRequest,
+            1511, // EEventType.NewDeliveryForImporterSent
+            8); // EAuthenticationRequestDecision.LetterForImporterWasSent
+        return result;
+    }
+
+    public async Task<ImportAuthenticationRequestDto> HandleImportAuthenticationRequestDeliveryReminderForImporterSent(ImportAuthenticationRequestDto authenticationRequest)
+    {
+        var result = await HandleReminderOrDeliveryRequestSentToImporter(authenticationRequest,
+            1512, // EEventType.NewDeliveryReminderForImporterSent
+            9); // EAuthenticationRequestDecision.ReminderForImporterWasSent
+        return result;
+    }
+
+    public async Task<ImportAuthenticationFileDetailsDto> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(ImportAuthenticationFileDetailsDto authenticationFile, bool isDelivery)
+    {
+        if (!isDelivery)
+        {
+            authenticationFile.AuthenticationFileStatusId = 3; // EAuthenticationFileStatus.AuthenticationRequestReminderWasSend
+        }
+
+        await UpdateFileAfterDelivery(authenticationFile);
+        return authenticationFile;
+    }
+
+    public async Task<bool> HandleSendRemindDeliverNotification(ImportAuthenticationFileDetailsDto file)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        var eventRequest = eventUtil.CreatBuilder()
+            .WithEventType(1745) // EEventType.CloseTaskReminderNotice3Months
+            .WithEntityId(file.Id)
+            .WithEntityType(12385) // EntityType.AuthenticationRequestFile
+            .WithTitle(file.Id.ToString())
+            .AddRelatedEntity(file.Id, (CustomsCloud.InfrastructureCore.Utils.Shared.EntityType)12385)
+            .Build();
+        await eventUtil.RaiseEvent(eventRequest);
+        return true;
+    }
+
+    public async Task<ImportAuthenticationFileDetailsDto> ChangeStatusAfterDeliverySent(ImportAuthenticationFileDetailsDto authenticationRequestFile)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        var eventRequest = eventUtil.CreatBuilder()
+            .WithEventType(1525) // EEventType.CloseAllTaskForImportAuthenticationRequestFile
+            .WithEntityId(authenticationRequestFile.Id)
+            .WithEntityType(12385) // EntityType.AuthenticationRequestFile
+            .WithTitle(authenticationRequestFile.Id.ToString())
+            .WithOrganizationUnitId(authenticationRequestFile.OrganizationUnitId)
+            .Build();
+        await eventUtil.RaiseEvent(eventRequest);
+        return authenticationRequestFile;
+    }
+
+    private async Task<ImportAuthenticationRequestDto> HandleReminderOrDeliveryRequestSentToImporter(ImportAuthenticationRequestDto authenticationRequest, int eventType, int decision)
+    {
+        authenticationRequest.DecisionId = decision;
+        authenticationRequest.LastDeliveryForImporter = DateTime.Today;
+        authenticationRequest.UpdateDate = DateTime.Today;
+
+        if (authenticationRequest.AuthenticationFileId.HasValue)
+        {
+            var file = await DataLayer.GetAuthenticationFileById(authenticationRequest.AuthenticationFileId.Value);
+            if (file != null)
+            {
+                await UpdateFileAfterDelivery(file);
+            }
+        }
+
+        await DataLayer.SaveImportAuthenticationRequest(authenticationRequest);
+
+        var eventUtil = Resolve<IEventUtil>();
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType(eventType)
+            .WithEntityId(authenticationRequest.DocumentId)
+            .WithEntityType(12384) // EntityType.ImportAuthenticationRequest
+            .WithTitle(authenticationRequest.DocumentId.ToString())
+            .WithOrganizationUnitId(authenticationRequest.OrganizationUnitId);
+        if (authenticationRequest.AuthenticationFileId != null)
+        {
+            builder = builder.AddRelatedEntity(authenticationRequest.AuthenticationFileId ?? 0, (CustomsCloud.InfrastructureCore.Utils.Shared.EntityType)12385); // EntityType.AuthenticationRequestFile
+        }
+
+        var eventRequest = builder.Build();
+        await eventUtil.RaiseEvent(eventRequest);
+
+        return authenticationRequest;
+    }
+
+    private async Task UpdateFileAfterDelivery(ImportAuthenticationFileDetailsDto file)
+    {
+        if (file.AuthenticationFileStatusId == 1) // WaitingForSendingLetter
+        {
+            file.AuthenticationFileStatusId = 2; // AuthenticationRequestWasSend
+            file.DeliveryMethodId = 2; // EDeliveryMethod.PostedMailing
+        }
+        else if (file.AuthenticationFileStatusId == 2) // AuthenticationRequestWasSend
+        {
+            if (file.DeliveryMethodId == 2 || file.DeliveryMethodId == 3) // PostedMailing / SentByEmailRequest
+            {
+                file.DeliveryMethodId = 4; // FirstRemindSent
+            }
+            else if (file.DeliveryMethodId == 4) // FirstRemindSent
+            {
+                file.DeliveryMethodId = 5; // SecondRemindSent
+            }
+        }
+        else if (file.AuthenticationFileStatusId == 3) // AuthenticationRequestReminderWasSend
+        {
+            if (file.DeliveryMethodId == 4) // FirstRemindSent
+            {
+                file.DeliveryMethodId = 5; // SecondRemindSent
+            }
+        }
+
+        file.LastDelivery = DateTime.Today;
+        file.UpdateDate = DateTime.Today;
+
+        await DataLayer.SaveAuthenticationFileDetails(file);
+        await DataLayer.TouchRequestsUpdateDateByFileId(file.Id, DateTime.Now);
+    }
+
     private static async Task RaiseEventNewDecisionBeforeAssociation(IEventUtil eventUtil, GetImportAuthenticationRequestResultDto request)
     {
         var eventRequest = eventUtil.CreatBuilder()
