@@ -14,6 +14,16 @@ public partial class CertificateOfOriginDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginStatusCode> CertificateOfOriginStatusCodes { get; set; }
 
+    public virtual DbSet<CertificateOfOriginVsDeclarationError> CertificateOfOriginVsDeclarationErrors { get; set; }
+
+    public virtual DbSet<CertificateDetailsTypeCode> CertificateDetailsTypeCodes { get; set; }
+
+    public virtual DbSet<CertificateOfOriginDetails> CertificateOfOriginDetails { get; set; }
+
+    public virtual DbSet<CertificateOfOriginInvoiceDetail> CertificateOfOriginInvoiceDetails { get; set; }
+
+    public virtual DbSet<CertificateOfOriginItemDetail> CertificateOfOriginItemDetails { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         OnModelCreatingPartial(modelBuilder);

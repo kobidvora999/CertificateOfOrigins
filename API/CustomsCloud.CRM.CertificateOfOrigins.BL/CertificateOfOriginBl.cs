@@ -9,7 +9,8 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
 public class CertificateOfOriginBl(
     IServiceProvider serviceProvider,
-    ICustomerProxy customerProxy)
+    ICustomerProxy customerProxy,
+    IUserProxy userProxy)
     : BaseBL<CertificateOfOriginBl, ICertificateOfOriginDal>(serviceProvider)
 {
     #region LEGACY_WCF
@@ -48,6 +49,50 @@ public class CertificateOfOriginBl(
         var filter = new CertificateOfOriginFilterDto { CertificateNumber = certificateOfOriginExternalId };
         var certificates = await GetCertificateOfOriginsByFilter(filter);
         var result = certificates.FirstOrDefault();
+        return result;
+    }
+
+    #region LEGACY_WCF
+
+    // public CertificateOfOrigin GetCertificateOfOriginById(int certificateOfOriginId, bool isFromMessage = false)
+    //     => GetCertificateOfOriginByIdSP(certificateOfOriginId);
+    // GetCertificateOfOriginByIdSP executed [CRM].[usp_CertificateOfOrigins_GetCertificateOfOriginByID]
+    // (7 result sets: certificate, vs-declaration errors, full details-type-code enum table, details,
+    // invoices, item details, milestones) and assembled the graph in MaterializeForCertificateOfOrigin,
+    // then set StakeholdersIDs = [CustomerID, CreateCustomerID].
+    // The milestones result set joined Infrastructure.UserMng_User for user names — that table is not
+    // replicated to this service's DB, so user names are enriched via the Users microservice instead.
+    #endregion
+    public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId)
+    {
+        var certificate = await DataLayer.GetCertificateOfOriginById(certificateOfOriginId);
+        if (certificate == null)
+        {
+            return null;
+        }
+
+        certificate.StakeholdersIds = new List<int>
+        {
+            certificate.CustomerId,       // יצואן
+            certificate.CreateCustomerId  // סוכן המכס
+        };
+        certificate.Milestones = await GetCertificateMilestones(certificate.Title);
+        return certificate;
+    }
+
+    private async Task<List<CertificateMilestonesDto>> GetCertificateMilestones(string? certificateTitle)
+    {
+        var rows = await DataLayer.GetCertificateMilestoneRows(certificateTitle);
+        var userIds = rows.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().ToList();
+        var users = userIds.Count > 0 ? await userProxy.GetUsersByIds(userIds) : null;
+        var result = rows.Select(r => new CertificateMilestonesDto
+        {
+            VersionNumber = r.VersionNumber,
+            ActionName = r.ActionName,
+            CreateDate = r.CreateDate,
+            RejectReason = r.RejectReason,
+            UserName = users?.FirstOrDefault(u => u.Id == r.UserId)?.Title
+        }).ToList();
         return result;
     }
 
