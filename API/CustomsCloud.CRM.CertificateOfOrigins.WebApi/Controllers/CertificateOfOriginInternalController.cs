@@ -11,6 +11,14 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 public class CertificateOfOriginInternalController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginBl>(serviceProvider)
 {
+    [HttpGet("IsCertificateOfOriginByExternalIdExist")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginResultDto))]
+    public async Task<ActionResult<CertificateOfOriginResultDto?>> IsCertificateOfOriginByExternalIdExist([FromQuery] string certificateOfOriginExternalId)
+    {
+        var result = await BusinessLayer.IsCertificateOfOriginByExternalIdExist(certificateOfOriginExternalId);
+        return Ok(result);
+    }
+
     [HttpGet("GetCertificateOfOriginsByFilter")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<CertificateOfOriginResultDto>))]
     public async Task<ActionResult<List<CertificateOfOriginResultDto>>> GetCertificateOfOriginsByFilter([FromQuery] CertificateOfOriginFilterDto filter)

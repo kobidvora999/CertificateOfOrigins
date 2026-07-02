@@ -34,6 +34,23 @@ public class CertificateOfOriginBl(
         return result;
     }
 
+    #region LEGACY_WCF
+
+    // public CertificateOfOriginResult IsCertificateOfOriginByExternalIdExist(string certificateOfOriginExternalId)
+    // {
+    //     var filter = new CertificateOfOriginFilter { certificateNumber = certificateOfOriginExternalId };
+    //     var result = _uow.Repository.ExecuteFunction<CertificateOfOriginResult>(filter).FirstOrDefault();
+    //     return result;
+    // }
+    #endregion
+    public async Task<CertificateOfOriginResultDto?> IsCertificateOfOriginByExternalIdExist(string certificateOfOriginExternalId)
+    {
+        var filter = new CertificateOfOriginFilterDto { CertificateNumber = certificateOfOriginExternalId };
+        var certificates = await GetCertificateOfOriginsByFilter(filter);
+        var result = certificates.FirstOrDefault();
+        return result;
+    }
+
     private async Task FillCustomersInformation(List<CertificateOfOriginResultDto> certificates)
     {
         if (certificates.Count == 0)
