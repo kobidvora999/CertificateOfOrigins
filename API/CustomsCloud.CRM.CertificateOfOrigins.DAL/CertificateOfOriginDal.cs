@@ -760,6 +760,88 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestById(int id)
+    {
+        var request = await ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(e => e.Id == id)
+            .Select(e => new ExportDocumentAuthenticationRequestDto
+            {
+                Id = e.Id,
+                TypeId = e.TypeId,
+                Title = e.Title,
+                State = e.State,
+                CreateDate = e.CreateDate,
+                CreateUserId = e.CreateUserId,
+                UpdateDate = e.UpdateDate,
+                UpdateUserId = e.UpdateUserId,
+                OrganizationUnitId = e.OrganizationUnitId,
+                CustomerId = e.CustomerId,
+                AuthenticationDocumentTypeId = e.AuthenticationDocumentTypeId,
+                ExporterCustomerId = e.ExporterCustomerId,
+                StatusId = e.StatusId,
+                CountryId = e.CountryId,
+                CustomsHouseAddress = e.CustomsHouseAddress,
+                VendorId = e.VendorId,
+                AuthenticationRequestArrivalDate = e.AuthenticationRequestArrivalDate,
+                AuthenticationRequestedByName = e.AuthenticationRequestedByName,
+                AuthenticationRequestedByEmail = e.AuthenticationRequestedByEmail,
+                AuthenticationRequestedByPhone = e.AuthenticationRequestedByPhone,
+                AuthenticationRequestNotes = e.AuthenticationRequestNotes,
+                ExportLeadDocumentId = e.ExportLeadDocumentId,
+                DocumentId = e.DocumentId,
+                MainDocumentTitle = e.MainDocumentTitle,
+                LastDeliveryDate = e.LastDeliveryDate,
+                DeliveryMethodId = e.DeliveryMethodId,
+                InvoiceNumbers = e.InvoiceNumbers,
+                DetailedDecision = e.DetailedDecision,
+                ReferenceNumber = e.ReferenceNumber,
+                CommentForCustomsHouseLetter = e.CommentForCustomsHouseLetter,
+                TotalDocuments = e.TotalDocuments,
+                TotalInvoices = e.TotalInvoices,
+                DocumentDate = e.DocumentDate,
+                InvoiceDate = e.InvoiceDate
+            })
+            .FirstOrDefaultAsync();
+        if (request == null)
+        {
+            return null;
+        }
+
+        request.CustomsItemToExportDocumentAuthenticationRequest = await ReadOnlyContext.CustomsItemToExportDocumentAuthenticationRequests
+            .Where(c => c.ExportDocumentAuthenticationRequestId == id)
+            .Select(c => new CustomsItemToExportDocumentAuthenticationRequestDto
+            {
+                Id = c.Id,
+                ExportDocumentAuthenticationRequestId = c.ExportDocumentAuthenticationRequestId,
+                CustomsItemId = c.CustomsItemId
+            })
+            .ToListAsync();
+
+        request.ExportDocumentAuthenticationRequestLeadDocument = await ReadOnlyContext.ExportDocumentAuthenticationRequestLeadDocuments
+            .Where(l => l.ExportRequestId == id)
+            .Select(l => new ExportDocumentAuthenticationRequestLeadDocumentDto
+            {
+                Id = l.Id,
+                ExportRequestId = l.ExportRequestId,
+                LeadDocumentId = l.LeadDocumentId,
+                LeadDocumentTitle = l.LeadDocumentTitle
+            })
+            .ToListAsync();
+
+        request.ExportAuthenticationRequestManufacturingArea = await ReadOnlyContext.ExportAuthenticationRequestManufacturingAreas
+            .Where(m => m.ExportAuthenticationRequestId == id)
+            .Select(m => new ExportAuthenticationRequestManufacturingAreaDto
+            {
+                Id = m.Id,
+                ExportAuthenticationRequestId = m.ExportAuthenticationRequestId,
+                ManufacturingArea = m.ManufacturingArea,
+                ManufacturingZipcode = m.ManufacturingZipcode
+            })
+            .ToListAsync();
+
+        return request;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

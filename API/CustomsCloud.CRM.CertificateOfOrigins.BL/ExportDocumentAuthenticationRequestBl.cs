@@ -51,4 +51,37 @@ public class ExportDocumentAuthenticationRequestBl(
 
         return result;
     }
+
+    #region LEGACY_WCF
+
+    // public ExportDocumentAuthenticationRequest GetExportDocumentAuthenticationRequestByID(int id)
+    // {
+    //     var result = GetQuery<ExportDocumentAuthenticationRequest>().Single(edar => edar.ID == id); // threw when missing
+    //     result.OriginalStatusID = result.StatusID ?? 0;
+    //     LoadProperty ×3: CustomsItemToExportDocumentAuthenticationRequest,
+    //                      ExportDocumentAuthenticationRequestLeadDocument,
+    //                      ExportAuthenticationRequestManufacturingArea;
+    //     result.EntityTypeAndIDsToSearch[EEntityType.ExportDeclaration] =
+    //         leadDocuments.Where(LeadDocumentID != null).Select(LeadDocumentID);
+    //     The migrated version returns null when not found (consistent with the repo's Get-by-id precedent).
+    // }
+    #endregion
+    public async Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestByID(int id)
+    {
+        var result = await DataLayer.GetExportDocumentAuthenticationRequestById(id);
+        if (result == null)
+        {
+            return null;
+        }
+
+        result.OriginalStatusId = result.StatusId ?? 0;
+        result.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            [12414] = result.ExportDocumentAuthenticationRequestLeadDocument // EntityType.ExportDeclaration = 12414
+                .Where(l => l.LeadDocumentId.HasValue)
+                .Select(l => l.LeadDocumentId!.Value)
+                .ToList()
+        };
+        return result;
+    }
 }
