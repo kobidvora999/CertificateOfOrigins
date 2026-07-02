@@ -17,10 +17,93 @@ public class AuthenticationRequestBl(
     ITasksProxy tasksProxy,
     ICustomerProxy customerProxy,
     IVendorProxy vendorProxy,
+    IDocumentsProxy documentsProxy,
     ILookupUtil lookupUtil,
     IParametersUtil parametersUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginDal>(serviceProvider)
 {
+    #region LEGACY_WCF
+
+    // public List<DocumentDTO> GetEntityDocuments(CertificateOfOriginsImportAuthenticationRequest importAuthenticationRequest)
+    // {
+    //     var requestedDocuments = GetQuery<CertificateOfOriginsImportAuthenticationRequest>()
+    //         .Where(cr => cr.LeadDocumentID == request.LeadDocumentID).ToList();
+    //     var documentTypeIDs = Configuration.GetConfig<string>("CertificateOfOriginsDocumentsFilter"); // CSV
+    //     var entityDocuments = Container.Resolve<IDocumentsExternalProxy>()
+    //         .GetDocumentsByEntitySync(request.LeadDocumentID, EEntityType.ImportDeclaration);
+    //     ... filters: exclude already-requested IDs, keep configured TypeIDs, exclude ID==0,
+    //         exclude documents already used by a different lead document ...
+    //     foreach: map to DocumentDTO { Notes = "{ID} {Title} {TypeName}", StringDynamicParams = entity.Notes,
+    //              TypeName = SystemTablesUtil.GetCodeById<DocumentType>(TypeID).Name, OtherRelatedEntities }
+    // }
+    // The Documents microservice response already carries TypeName + OtherRelatedEntities, so the
+    // DocumentType lookup is not needed in the new implementation.
+    #endregion
+    public async Task<List<DocumentDto>> GetEntityDocuments(ImportAuthenticationRequestDto importAuthenticationRequest)
+    {
+        var requestedDocumentIds = await DataLayer.GetRequestedDocumentIdsByLeadDocumentId(importAuthenticationRequest.LeadDocumentId);
+
+        var documentTypeIds = await parametersUtil.Get<string>("CertificateOfOriginsDocumentsFilter");
+        var documentFilter = documentTypeIds
+            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => Convert.ToInt32(s))
+            .ToList();
+
+        var entityDocuments = await documentsProxy.GetDocumentsByEntity(
+            importAuthenticationRequest.LeadDocumentId,
+            1055); // EntityType.ImportDeclaration = 1055 (CustomsCloud.Infrastructure.Documents.Model.DTO.EntityType)
+        entityDocuments = entityDocuments?.Where(entDoc => !requestedDocumentIds.Contains(entDoc.Id)).ToList();
+        if (entityDocuments == null)
+        {
+            return new List<DocumentDto>();
+        }
+
+        var entityDocumentsFilteredList = entityDocuments.Where(d => documentFilter.Any(f => f == d.TypeId)).ToList();
+        if (requestedDocumentIds.Count > 0)
+        {
+            entityDocumentsFilteredList = entityDocumentsFilteredList
+                .Where(d => requestedDocumentIds.All(requestedId => requestedId != d.Id) && d.Id != 0)
+                .ToList();
+        }
+
+        var ids = entityDocumentsFilteredList.Select(e => e.Id).ToList();
+        var documentIdsByOtherLeadDocumentId = await DataLayer.GetDocumentIdsUsedByOtherLeadDocuments(ids, importAuthenticationRequest.LeadDocumentId);
+        if (documentIdsByOtherLeadDocumentId.Count > 0)
+        {
+            entityDocumentsFilteredList = entityDocumentsFilteredList
+                .Where(d => !documentIdsByOtherLeadDocumentId.Contains(d.Id))
+                .ToList();
+        }
+
+        if (entityDocumentsFilteredList.Count == 0)
+        {
+            return new List<DocumentDto>();
+        }
+
+        var docs = new List<DocumentDto>();
+        foreach (var entityDocument in entityDocumentsFilteredList)
+        {
+            var doc = new DocumentDto
+            {
+                Id = entityDocument.Id,
+                IsIncoming = entityDocument.IsIncoming,
+                CreateDate = entityDocument.CreateDate,
+                Title = entityDocument.Title,
+                TypeName = entityDocument.TypeName,
+                IsAccepted = entityDocument.IsAccepted,
+                IsRequired = entityDocument.IsRequired,
+                Notes = entityDocument.Id + " " + entityDocument.Title + " " + entityDocument.TypeName,
+                ExternalId = entityDocument.ExternalId,
+                TypeId = entityDocument.TypeId,
+                StringDynamicParams = entityDocument.Notes,
+                OtherRelatedEntities = entityDocument.OtherRelatedEntities ?? new List<EntityDocumentDto>()
+            };
+            docs.Add(doc);
+        }
+
+        return docs;
+    }
+
     #region LEGACY_WCF
 
     // public List<GetImportAuthenticationRequestResult> GetAuthenticationRequestByFilter(ImportAuthenticationRequestFilter filter)
