@@ -164,12 +164,16 @@ public class AuthenticationRequestBl(
         }
 
         var firstRequest = importAuthenticationRequests.First();
+
+        // TODO(blocking): legacy UserUtil.Current.ID — IRequestMetadata exposes CertificateId/Username but not a
+        // numeric UserId; confirm the current-user-id source with the team (same open point as in PreRulings).
+        var currentUserId = 1;
         var file = new ImportAuthenticationFileDetails
         {
             State = 1,
             AuthenticationFileStatusId = 1, // EAuthenticationFileStatus.WaitingForSendingLetter
             RequestCountryId = firstRequest.IssuingCountryIdNum ?? 0,
-            UserId = RequestMetadata.UserId,
+            UserId = currentUserId,
             PostalAdress = "gg", // legacy hardcoded placeholder — preserved for parity
             DeliveryMethodId = 1,
             EmailAdress = firstRequest.ResponseNameEmail,
@@ -177,8 +181,8 @@ public class AuthenticationRequestBl(
             UserNameIssuingLetter = "ss", // legacy hardcoded placeholder — preserved for parity
             CreateDate = DateTime.Now,
             UpdateDate = DateTime.Now,
-            UpdateUserId = RequestMetadata.UserId,
-            CreateUserId = RequestMetadata.UserId
+            UpdateUserId = currentUserId,
+            CreateUserId = currentUserId
         };
 
         var customerIdList = importAuthenticationRequests.Where(r => r.CustomerId.HasValue).Select(r => r.CustomerId!.Value).ToList();
