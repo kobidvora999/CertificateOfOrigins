@@ -5,5 +5,10 @@ database:
 tables:
   - CRM.CertificateOfOrigins_CertificateOfOrigin
   - CRM.CertificateOfOrigins_enum_CertificateOfOriginStatusCode
+  - CRM.CertificateOfOrigins_CertificateOfOriginVsDeclarationError
+  - CRM.CertificateOfOrigins_enum_CertificateDetailsTypeCode
+  - CRM.CertificateOfOrigins_CertificateOfOriginDetails
+  - CRM.CertificateOfOrigins_CertificateOfOriginInvoiceDetail
+  - CRM.CertificateOfOrigins_CertificateOfOriginItemDetail
 stored procedures:
 

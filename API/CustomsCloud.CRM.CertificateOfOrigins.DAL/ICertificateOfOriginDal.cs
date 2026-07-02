@@ -6,4 +6,8 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.DAL;
 public interface ICertificateOfOriginDal : IBaseDal
 {
     Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(CertificateOfOriginFilterDto filter);
+
+    Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId);
+
+    Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle);
 }

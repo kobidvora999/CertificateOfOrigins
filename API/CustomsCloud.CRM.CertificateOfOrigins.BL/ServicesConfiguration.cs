@@ -20,5 +20,6 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddBusinessLayer<CertificateOfOriginBl>();
         services.AddRestProxy();
         services.AddScoped<ICustomerProxy, CustomerProxy>();
+        services.AddScoped<IUserProxy, UserProxy>();
     }
 }
