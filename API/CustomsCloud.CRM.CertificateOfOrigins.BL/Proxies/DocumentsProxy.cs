@@ -27,4 +27,24 @@ public class DocumentsProxy(IRestProxy restProxy)
             .AddBody(documentIds);
         return (await ExecuteAsync<List<DocumentDto>>(req)).Data;
     }
+
+    public async Task<bool> DeleteDocuments(List<int> documentIds, int entityId, int entityTypeId)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("External/DeleteDocuments") // TODO: confirm endpoint name with the Documents microservice
+            .AddQueryStringParameter("entityId", entityId)
+            .AddQueryStringParameter("entityTypeId", entityTypeId)
+            .AddBody(documentIds);
+        return (await ExecuteAsync<bool>(req)).Data;
+    }
+
+    public async Task<DocumentDto?> UploadDocumentAndSave(DocumentDto document, byte[] content)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("External/UploadDocumentAndSave") // TODO: confirm endpoint name + payload shape with the Documents microservice
+            .AddBody(new { Document = document, Content = content });
+        return (await ExecuteAsync<DocumentDto>(req)).Data;
+    }
 }

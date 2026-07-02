@@ -968,6 +968,25 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber)
+    {
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.CertificateNumber == certificateNumber)
+            .OrderByDescending(c => c.CreateDate)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<string?> GetCertificateOfOriginTypeCodeName(int typeCodeId)
+    {
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .Where(t => t.Id == typeCodeId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

@@ -8,4 +8,8 @@ public interface IDocumentsProxy
     Task<List<DocumentDto>?> GetDocumentsByEntity(int entityId, int entityTypeId);
 
     Task<List<DocumentDto>?> GetDocumentsByIds(List<int> documentIds);
+
+    Task<bool> DeleteDocuments(List<int> documentIds, int entityId, int entityTypeId);
+
+    Task<DocumentDto?> UploadDocumentAndSave(DocumentDto document, byte[] content);
 }

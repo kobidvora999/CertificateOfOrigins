@@ -2,6 +2,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Entities;
 using Dapper;
@@ -13,9 +14,110 @@ public class CertificateOfOriginBl(
     IServiceProvider serviceProvider,
     ICustomerProxy customerProxy,
     IUserProxy userProxy,
+    IDocumentsProxy documentsProxy,
     ILookupUtil lookupUtil)
     : BaseBL<CertificateOfOriginBl, ICertificateOfOriginDal>(serviceProvider)
 {
+    #region LEGACY_WCF
+
+    // External Convert(ConnectedEntity): find certificate by number via GetCertificateOfOriginsByFilter,
+    //   not found → InfException(ConversionOfEntityFaildEntityNotExist, ["תעודת מקור", number]);
+    //   return VirtualEntity { ID, Title = result.Name, EntityType = CertificateOfOrigin(12319), CustomerID = CustomesAgentID }.
+    // External GetCertificateOfOriginID(certificateNumber): latest certificate id by number (order by CreateDate desc).
+    // External GetGoodsItemCerificateDTO(list): per item — resolve certificateOfOriginID by CertificateNumber (same query).
+    // External SaveCertificateOfOriginAttachments(args): per rendered template — build DocumentDTO
+    //   (Title = "{typeName} - {טיוטה|סופי}", FileName = "תעודת {typeName} מספר {number}.pdf",
+    //    additional field 46 = certificate number when TypeID == EDocumentType.ExportCertificateOfOrigin(329)),
+    //   delete existing certificate documents, upload the new content via the Documents service.
+    #endregion
+    public async Task<VirtualEntityDto> Convert(ConnectedEntityDto connectedEntity)
+    {
+        var filter = new CertificateOfOriginFilterDto { CertificateNumber = connectedEntity.EntityIdKey1 };
+        var certificates = await GetCertificateOfOriginsByFilter(filter);
+        var certificateOfOrigin = certificates.FirstOrDefault();
+        if (certificateOfOrigin == null)
+        {
+            // legacy: InfException(EMessages.ConversionOfEntityFaildEntityNotExist, ["תעודת מקור", number])
+            throw new RestValidationException(nameof(connectedEntity.EntityIdKey1),
+                $"המרת ישות נכשלה — תעודת מקור {connectedEntity.EntityIdKey1} אינה קיימת", "404");
+        }
+
+        var result = new VirtualEntityDto
+        {
+            Id = certificateOfOrigin.Id,
+            Title = certificateOfOrigin.Name,
+            EntityType = 12319, // EntityType.CertificateOfOrigin
+            CustomerId = certificateOfOrigin.CustomesAgentId
+        };
+        return result;
+    }
+
+    public async Task<int?> GetCertificateOfOriginID(string certificateNumber)
+    {
+        var result = await DataLayer.GetCertificateOfOriginIdByNumber(certificateNumber);
+        return result;
+    }
+
+    public async Task<List<GoodsItemCerificateDto>> GetGoodsItemCerificateDTO(List<GoodsItemCerificateDto> goodsItemCerificateDTOs)
+    {
+        foreach (var item in goodsItemCerificateDTOs)
+        {
+            if (item.CertificateNumber != null)
+            {
+                item.CertificateOfOriginId = await DataLayer.GetCertificateOfOriginIdByNumber(item.CertificateNumber);
+            }
+        }
+
+        return goodsItemCerificateDTOs;
+    }
+
+    public async Task<bool> SaveCertificateOfOriginAttachments(SaveCertificateAttachmentsArgsDto saveCertificateAttachmentsArgsDto)
+    {
+        var certificateTypeName = await DataLayer.GetCertificateOfOriginTypeCodeName(saveCertificateAttachmentsArgsDto.CertificateTypeId);
+
+        foreach (var certificateTemplate in saveCertificateAttachmentsArgsDto.CertificatesTemplates)
+        {
+            var isDraft = saveCertificateAttachmentsArgsDto.CertificateRequestReasonCode == 12 // ERequestReason.Draft
+                || saveCertificateAttachmentsArgsDto.AdditionalInfo == "isDraft";
+            var document = new DocumentDto
+            {
+                Title = certificateTypeName + " - " + (isDraft ? "טיוטה" : "סופי"),
+                FileName = string.Format("תעודת {0} מספר {1}.pdf", certificateTypeName, saveCertificateAttachmentsArgsDto.CertificateNumber),
+                TypeId = certificateTemplate.DocumentTypeId,
+
+                // TODO(blocking): legacy UserUtil.Current.OrganizationUnitID — the current user's organization
+                // unit source in .NET 10 is unresolved (IUserUtil exposes the user id only).
+                OrganizationUnitId = 1,
+                EntityId = saveCertificateAttachmentsArgsDto.CertificateId,
+                EntityTypeId = 12319 // EntityType.CertificateOfOrigin
+            };
+            if (document.TypeId == 329) // EDocumentType.ExportCertificateOfOrigin
+            {
+                document.DocumentAdditionalFieldValues = new List<DocumentAdditionalFieldValueDto>
+                {
+                    new()
+                    {
+                        Value = saveCertificateAttachmentsArgsDto.CertificateNumber,
+                        DocumentAdditionaFieldId = 46 // CertificateOfOriginsConsts.DocumentAdditionaFieldIDForCertificateNumber
+                    }
+                };
+            }
+
+            var documentsOfCertificates = await documentsProxy.GetDocumentsByEntity(saveCertificateAttachmentsArgsDto.CertificateId, 12319);
+            if (documentsOfCertificates != null && documentsOfCertificates.Count > 0)
+            {
+                await documentsProxy.DeleteDocuments(
+                    documentsOfCertificates.Select(c => c.Id).ToList(),
+                    saveCertificateAttachmentsArgsDto.CertificateId,
+                    12319);
+            }
+
+            await documentsProxy.UploadDocumentAndSave(document, certificateTemplate.Content ?? Array.Empty<byte>());
+        }
+
+        return true;
+    }
+
     #region LEGACY_WCF
 
     // public List<ImportAuthenticationRequestDTO> GetAuthenticationRequestByLeadDocumentIDs(List<int> leadDocumentIDs)

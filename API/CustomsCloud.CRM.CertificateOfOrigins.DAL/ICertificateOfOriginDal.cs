@@ -57,4 +57,8 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task SaveAuthenticationFileDetails(ImportAuthenticationFileDetailsDto dto);
 
     Task<int> TouchRequestsUpdateDateByFileId(int fileId, DateTime updateDate);
+
+    Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber);
+
+    Task<string?> GetCertificateOfOriginTypeCodeName(int typeCodeId);
 }
