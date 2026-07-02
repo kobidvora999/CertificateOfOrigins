@@ -17,5 +17,8 @@ tables:
   - CRM.CertificateOfOrigins_enum_Decision
   - CRM.CertificateOfOrigins_enum_AuthenticationFileStatus
   - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
+  - CRM.CertificateOfOrigins_ExportDocumentAuthenticationRequest
+  - CRM.CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument
+  - CRM.CertificateOfOrigins_enum_ExportAuthenticationRequestStatus
 stored procedures:
 

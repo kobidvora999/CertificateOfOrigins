@@ -20,6 +20,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddDataLayer<ICertificateOfOriginDal, CertificateOfOriginDal>();
         services.AddBusinessLayer<CertificateOfOriginBl>();
         services.AddBusinessLayer<AuthenticationRequestBl>();
+        services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
         services.AddRestProxy();
         services.AddScoped<ICustomerProxy, CustomerProxy>();
         services.AddScoped<IUserProxy, UserProxy>();
