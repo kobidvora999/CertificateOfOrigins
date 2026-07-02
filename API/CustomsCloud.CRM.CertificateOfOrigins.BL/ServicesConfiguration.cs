@@ -18,13 +18,5 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddCustomsDbContext<CertificateOfOriginDbContext, CertificateOfOriginDbReadOnlyContext>();
         services.AddDataLayer<ICertificateOfOriginDal, CertificateOfOriginDal>();
         services.AddBusinessLayer<CertificateOfOriginBl>();
-        services.AddBusinessLayer<AuthenticationRequestBl>();
-        services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
-        services.AddRestProxy();
-        services.AddScoped<ICustomerProxy, CustomerProxy>();
-        services.AddScoped<ICollateralProxy, CollateralProxy>();
-        services.AddScoped<ITasksProxy, TasksProxy>();
-        services.AddLookup<DocumentType>();
-        services.AddParametersService();
     }
 }

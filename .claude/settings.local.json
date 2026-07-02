@@ -11,7 +11,12 @@
       "Bash(git commit -m '@ *)",
       "Bash(git commit *)",
       "Bash(git merge *)",
-      "Bash(dir \"C:\\\\\\\\Repos\" /b)"
+      "Bash(dir \"C:\\\\\\\\Repos\" /b)",
+      "Bash(xargs grep -l \"class NavigationToVendorView\\\\|class NavigationToVendorPath\\\\|class NavigationPath\")",
+      "Bash(xargs grep -l \"VerificationProhibitedImporters\")",
+      "Bash(xargs grep -l \"CertificateOfOriginsImportAuthenticationFileDetails\")",
+      "Bash(xargs grep -l \"ImportAuthenticationFileDetails\\\\|AuthenticationFileDetails\")",
+      "Bash(git reset *)"
     ]
   }
 }
