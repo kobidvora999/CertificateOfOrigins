@@ -26,7 +26,9 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddScoped<IVendorProxy, VendorProxy>();
         services.AddScoped<ICollateralProxy, CollateralProxy>();
         services.AddScoped<ITasksProxy, TasksProxy>();
+        services.AddScoped<IDocumentsProxy, DocumentsProxy>();
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
+        services.AddParametersService();
     }
 }

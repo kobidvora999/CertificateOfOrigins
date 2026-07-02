@@ -390,6 +390,24 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<List<int>> GetRequestedDocumentIdsByLeadDocumentId(int leadDocumentId)
+    {
+        var result = await ReadOnlyContext.ImportAuthenticationRequests
+            .Where(r => r.LeadDocumentId == leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<int>> GetDocumentIdsUsedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId)
+    {
+        var result = await ReadOnlyContext.ImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.LeadDocumentId != leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins
