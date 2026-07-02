@@ -3,39 +3,7 @@ database:
   name: CertificateOfOriginDb
   connection string: Password=CustomsDev123!;Persist Security Info=True;User ID=sa;Initial Catalog=CertificateOfOriginsDb;Data Source=localhost;Encrypt=False
 tables:
-  - CRM.CertificateOfOrigins_enum_Decision
-  - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
-  - CRM.CertificateOfOrigins_c_VerificationProhibitedImporters
-  - CRM.CertificateOfOrigins_enum_AuthenticationFileStatus
+  - CRM.CertificateOfOrigins_CertificateOfOrigin
+  - CRM.CertificateOfOrigins_enum_CertificateOfOriginStatusCode
 stored procedures:
-  - name: CRM.usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter
-    function: GetCertificateOfOriginsByFilter
-    method: query
-    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
-    result type: CertificateOfOriginResultDto
-  - name: CRM.usp_CertificateOfOrigins_GetCertificateOfOriginByID
-    function: GetCertificateOfOriginById
-    method: query-multiple
-    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
-    result type: CertificateOfOriginDto
-  - name: CRM.usp_CertificateOfOrigins_GetImportAuthenticationRequestByFilter
-    function: GetImportAuthenticationRequestByFilter
-    method: query
-    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
-    result type: GetImportAuthenticationRequestResultDto
-  - name: CRM.usp_CertificateOfOrigins_CertificateOfOrigins_GetImportAuthenticationRequestById
-    function: GetAuthenticationRequestById
-    method: query-multiple
-    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
-    result type: ImportAuthenticationRequestDto
-  - name: CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForVendor
-    function: CheckIfExistsAdditionalRequestsForVendor
-    method: execute-scalar
-  - name: CRM.usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests
-    function: GetAuthenticationFileDetailsById
-    method: query-multiple
-    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
-    result type: ImportAuthenticationFileDetailsDto
-  - name: CRM.usp_CertificateOfOrigins_CheckIfExistsAdditionalRequestsForImporter
-    function: CheckIfExistsAdditionalRequestsForImporter
-    method: execute-scalar
+

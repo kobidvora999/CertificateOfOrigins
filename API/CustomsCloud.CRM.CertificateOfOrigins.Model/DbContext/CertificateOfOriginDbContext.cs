@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginDb;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.DAL;
@@ -8,6 +9,10 @@ public partial class CertificateOfOriginDbContext : DbContext
         : base(options)
     {
     }
+
+    public virtual DbSet<CertificateOfOrigin> CertificateOfOrigins { get; set; }
+
+    public virtual DbSet<CertificateOfOriginStatusCode> CertificateOfOriginStatusCodes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
