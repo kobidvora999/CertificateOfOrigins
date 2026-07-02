@@ -567,6 +567,61 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<ImportAuthenticationRequestDto?> GetAuthenticationRequestById(int documentId)
+    {
+        var result = await ReadOnlyContext.ImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .Select(r => new ImportAuthenticationRequestDto
+            {
+                DocumentId = r.DocumentId,
+                CreateDate = r.CreateDate,
+                CreateUserId = r.CreateUserId,
+                UpdateDate = r.UpdateDate,
+                UpdateUserId = r.UpdateUserId,
+                AuthenticationFileId = r.AuthenticationFileId,
+                AuthenticationRequestDate = r.AuthenticationRequestDate,
+                CirumstanceDetails = r.CirumstanceDetails,
+                CollateralId = r.CollateralId,
+                DecisionCircumstences = r.DecisionCircumstences,
+                DecisionId = r.DecisionId,
+                LeadDocumentId = r.LeadDocumentId,
+                DocumentIssuingDate = r.DocumentIssuingDate,
+                ImportCountryId = r.ImportCountryId,
+                IssuingCountryId = r.IssuingCountryId,
+                ItemDetailId = r.ItemDetailId,
+                Number = r.Number,
+                IsOldIndication = r.IsOldIndication,
+                OriginCountryId = r.OriginCountryId,
+                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
+                Remarks = r.Remarks,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                UserResponseId = r.UserResponseId,
+                ResponseNameEmail = r.ResponseNameEmail,
+                ResponsePhoneNum = r.ResponsePhoneNum,
+                OrganizationUnitId = r.OrganizationUnitId,
+                UserId = r.UserId,
+                VendorId = r.VendorId,
+                VendorName = r.VendorName,
+                OrganizationUnitTypeId = r.OrganizationUnitTypeId,
+                DocumentNumber = r.DocumentNumber,
+                CustomerId = r.CustomerId,
+                ImporterId = r.ImporterId,
+                InvoiceNumber = r.InvoiceNumber,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<bool> IsVendorCountry(int issuingCountryId)
+    {
+        var result = await ReadOnlyContext.CertificateOfOriginSupplierDeliveryCountryConfigs
+            .ExcludeInterceptor("T7e0Y38X2y")
+            .AnyAsync(c => c.ConutryId == issuingCountryId && c.State != 99);
+        return result;
+    }
+
     public async Task<List<CertificateMilestoneRowDto>> GetCertificateMilestoneRows(string? certificateTitle)
     {
         var result = await ReadOnlyContext.CertificateOfOrigins

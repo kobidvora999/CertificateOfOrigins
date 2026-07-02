@@ -165,9 +165,8 @@ public class AuthenticationRequestBl(
 
         var firstRequest = importAuthenticationRequests.First();
 
-        // TODO(blocking): legacy UserUtil.Current.ID — IRequestMetadata exposes CertificateId/Username but not a
-        // numeric UserId; confirm the current-user-id source with the team (same open point as in PreRulings).
-        var currentUserId = 1;
+        var userUtil = Resolve<IUserUtil>();
+        var currentUserId = (await userUtil.GetUserId(RequestMetadata)).GetValueOrDefault();
         var file = new ImportAuthenticationFileDetails
         {
             State = 1,
@@ -290,10 +289,84 @@ public class AuthenticationRequestBl(
             TaskTypeIds = new List<int> { 339, 340, 408, 404 } // ETaskType: ReminderNotice6Months, ReminderNotice10Months, HandleAuthenticationRequestFile, SendReminderForImporter
         });
 
-        // TODO(blocking): legacy UserUtil.Current.ID — current-user-id source pending (see CreateNewAuthenticationFile)
-        var currentUserId = 1;
+        var userUtil = Resolve<IUserUtil>();
+        var currentUserId = (await userUtil.GetUserId(RequestMetadata)).GetValueOrDefault();
         file.IsCurrentUserHandleFile = tasks != null && tasks.Any(t => t.UserId == currentUserId);
         return file;
+    }
+
+    #region LEGACY_WCF
+
+    // public CertificateOfOriginsImportAuthenticationRequest GetAuthenticationRequestByID(int documentId)
+    // {
+    //     ExecuteResultSetFunction([CRM].[usp_CertificateOfOrigins_CertificateOfOrigins_GetImportAuthenticationRequestById], @DocumentId)
+    //     — 3 result sets: request row (+LeadDocumentSubmissionDate from CRP.DealFile_LeadDocumentSubmissionData);
+    //       item details (CRM.CertificateOfOrigins_ItemDetails); document (Infrastructure.Docs_Document, FileUrl = DocumentType name).
+    //     GetAdditionalInfoForRequest: all decisions; collaterals via Collateral adapter; tasks 406/404/407 via Tasks
+    //     adapter → IsCurrentUserHandleRequest/IsCurrentUserHasOpenTask vs UserUtil.Current.ID;
+    //     EntityTypeAndIDsToSearch[ImportDeclaration] = [LeadDocumentID].
+    //     Then: AdditionalRequestsForSearchInDays = GetConfig<int>; IsVendorByIssuingCountryID via
+    //     SystemTablesUtil.GetIdByCode<CertificateOfOriginSupplierDeliveryCountryConfig>("ConutryID", countryId).
+    //     Legacy threw NRE when the request was not found — the migrated version returns null (per master precedent).
+    // }
+    #endregion
+    public async Task<ImportAuthenticationRequestDto?> GetAuthenticationRequestById(int documentId)
+    {
+        var importAuthenticationRequest = await DataLayer.GetAuthenticationRequestById(documentId);
+        if (importAuthenticationRequest == null)
+        {
+            return null;
+        }
+
+        var itemDetails = await DataLayer.GetItemDetailsByRequestIds(new List<int> { documentId });
+        importAuthenticationRequest.ItemDetails = itemDetails;
+
+        var documents = await documentsProxy.GetDocumentsByIds(new List<int> { documentId });
+        importAuthenticationRequest.Document = documents?.FirstOrDefault(d => d.Id == documentId);
+        if (importAuthenticationRequest.Document != null)
+        {
+            // legacy: Document.FileUrl holds the DocumentType display name (field reuse preserved for parity)
+            importAuthenticationRequest.Document.FileUrl = importAuthenticationRequest.Document.TypeName;
+        }
+
+        // TODO (blocking): legacy also returned LeadDocumentSubmissionDate from CRP.DealFile_LeadDocumentSubmissionData —
+        // DealFile has no microservice; the data source must be decided with the team.
+        await GetAdditionalInfoForRequest(importAuthenticationRequest);
+
+        importAuthenticationRequest.AdditionalRequestsForSearchInDays =
+            await parametersUtil.Get<int>("AdditionalRequestsForSearchInDays");
+        importAuthenticationRequest.IsVendorByIssuingCountryId =
+            await DataLayer.IsVendorCountry(importAuthenticationRequest.IssuingCountryId);
+
+        return importAuthenticationRequest;
+    }
+
+    private async Task GetAdditionalInfoForRequest(ImportAuthenticationRequestDto request)
+    {
+        request.Decisions = await DataLayer.GetAllDecisions();
+
+        var collaterals = await collateralProxy.GetCollateralRequest(12384, request.DocumentId, null); // EntityType.ImportAuthenticationRequest
+        if (collaterals != null && collaterals.Count > 0)
+        {
+            request.Collaterals = collaterals;
+        }
+
+        var tasks = await tasksProxy.IsTaskExist(new IsTaskExistFilterDto
+        {
+            EntityId = request.DocumentId,
+            EntityTypeId = 12384, // EntityType.ImportAuthenticationRequest
+            TaskTypeIds = new List<int> { 406, 404, 407 } // ETaskType: SetDecisionBeforeAssociation, SendReminderForImporter, HandleRejectedAuthenticationRequest
+        }) ?? new List<IsTaskExistResultDto>();
+
+        var userUtil = Resolve<IUserUtil>();
+        var currentUserId = (await userUtil.GetUserId(RequestMetadata)).GetValueOrDefault();
+        request.IsCurrentUserHandleRequest = tasks.Any(t => t.UserId == currentUserId);
+        request.IsCurrentUserHasOpenTask = tasks.Any(t => t.UserId == currentUserId && t.IsTaskInProgress);
+
+        request.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            [1055] = new List<int> { request.LeadDocumentId } // EntityType.ImportDeclaration
+        };
     }
 
     private static async Task RaiseEventNewDecisionBeforeAssociation(IEventUtil eventUtil, GetImportAuthenticationRequestResultDto request)
