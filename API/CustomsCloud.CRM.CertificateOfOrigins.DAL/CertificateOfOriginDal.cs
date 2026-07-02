@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.DAL;
 using Microsoft.EntityFrameworkCore;
@@ -405,6 +406,34 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
             .Where(r => documentIds.Contains(r.DocumentId) && r.LeadDocumentId != leadDocumentId)
             .Select(r => r.DocumentId)
             .ToListAsync();
+        return result;
+    }
+
+    public async Task<ImportAuthenticationRequest?> GetFirstRequestWithAuthenticationFile(List<int> documentIds)
+    {
+        var result = await ReadOnlyContext.ImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId != null)
+            .Select(r => new ImportAuthenticationRequest
+            {
+                DocumentId = r.DocumentId,
+                AuthenticationFileId = r.AuthenticationFileId
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<ImportAuthenticationFileDetails> CreateAuthenticationFile(ImportAuthenticationFileDetails file)
+    {
+        Context.ImportAuthenticationFileDetails.Add(file);
+        await Context.SaveChangesAsync();
+        return file;
+    }
+
+    public async Task<int> UpdateRequestsAuthenticationFileId(List<int> documentIds, int authenticationFileId)
+    {
+        var result = await Context.ImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.AuthenticationFileId, authenticationFileId));
         return result;
     }
 

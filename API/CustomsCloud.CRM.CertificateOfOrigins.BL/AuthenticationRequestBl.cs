@@ -1,7 +1,10 @@
 using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
+using CustomsCloud.InfrastructureCore.Utils.Events;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Entities;
 using CustomsCloud.InfrastructureCore.Parameters;
@@ -124,6 +127,126 @@ public class AuthenticationRequestBl(
         var result = await DataLayer.GetAuthenticationRequestByFilter(filter);
         await FillAuthenticationRequestNames(result);
         return result;
+    }
+
+    #region LEGACY_WCF
+
+    // public CertificateOfOriginsImportAuthenticationFileDetails CreateNewAuthenticationFile(List<GetImportAuthenticationRequestResult> importAuthenticationRequests)
+    // {
+    //     guard null/empty → null;
+    //     duplicate check: first request with AuthenticationFileID != null → throw InfException(EMessages.FileExistForRequest /*14070*/, [DocumentID, fileID]);
+    //     file = new CertificateOfOriginsImportAuthenticationFileDetails { State=1, Status=WaitingForSendingLetter(1),
+    //            RequestCountryID = first.IssuingCountryIDNum ?? 0, UserID/CreateUserID/UpdateUserID = UserUtil.Current.ID,
+    //            PostalAdress="gg", DeliveryMethodID=1, EmailAdress=first.ResponseNameEmail, ReminderMethodID=1,
+    //            UserNameIssuingLetter="ss", CreateDate/UpdateDate=Now, CustomerID = first.CustomerID ?? 1 /*transient*/ };
+    //     file.CustomerIDList = all non-null CustomerIDs; foreach request → RaiseEvent NewDecisionBeforeAssociation;
+    //     file.OrganizationUnitID = first.OrganizationUnitIDNum.Value /*transient, unguarded*/;
+    //     Save + Commit; ExecuteFunction [CRM].[usp_CertificateOfOrigins_UpdateImportAuthenticationRequest](TVP ids, fileID)
+    //       — plain bulk UPDATE ... SET AuthenticationFileID WHERE DocumentID IN ids AND AuthenticationFileID IS NULL
+    //       (converted to ExecuteUpdateAsync in the DAL per module guidelines); Commit;
+    //     RaiseEvent NewAuthenticationRequestFile; return file;
+    // }
+    #endregion
+    public async Task<ImportAuthenticationFileDetailsDto?> CreateNewAuthenticationFile(List<GetImportAuthenticationRequestResultDto> importAuthenticationRequests)
+    {
+        if (importAuthenticationRequests == null || importAuthenticationRequests.Count == 0)
+        {
+            return null;
+        }
+
+        var documentIds = importAuthenticationRequests.Where(r => r.DocumentId.HasValue).Select(r => r.DocumentId!.Value).ToList();
+        var requestWithFile = await DataLayer.GetFirstRequestWithAuthenticationFile(documentIds);
+        if (requestWithFile != null)
+        {
+            // legacy: InfException(EMessages.FileExistForRequest /*14070*/, [DocumentID, fileID])
+            throw new RestValidationException(requestWithFile.DocumentId.ToString(),
+                $"Authentication file {requestWithFile.AuthenticationFileId} already exists for request {requestWithFile.DocumentId}", "400");
+        }
+
+        var firstRequest = importAuthenticationRequests.First();
+        var file = new ImportAuthenticationFileDetails
+        {
+            State = 1,
+            AuthenticationFileStatusId = 1, // EAuthenticationFileStatus.WaitingForSendingLetter
+            RequestCountryId = firstRequest.IssuingCountryIdNum ?? 0,
+            UserId = RequestMetadata.UserId,
+            PostalAdress = "gg", // legacy hardcoded placeholder — preserved for parity
+            DeliveryMethodId = 1,
+            EmailAdress = firstRequest.ResponseNameEmail,
+            ReminderMethodId = 1,
+            UserNameIssuingLetter = "ss", // legacy hardcoded placeholder — preserved for parity
+            CreateDate = DateTime.Now,
+            UpdateDate = DateTime.Now,
+            UpdateUserId = RequestMetadata.UserId,
+            CreateUserId = RequestMetadata.UserId
+        };
+
+        var customerIdList = importAuthenticationRequests.Where(r => r.CustomerId.HasValue).Select(r => r.CustomerId!.Value).ToList();
+
+        var eventUtil = Resolve<IEventUtil>();
+        foreach (var request in importAuthenticationRequests)
+        {
+            await RaiseEventNewDecisionBeforeAssociation(eventUtil, request);
+        }
+
+        // legacy: file.OrganizationUnitID = first.OrganizationUnitIDNum.Value — transient field, unguarded (throws on null)
+        var organizationUnitId = firstRequest.OrganizationUnitIdNum!.Value;
+
+        file = await DataLayer.CreateAuthenticationFile(file);
+        await DataLayer.UpdateRequestsAuthenticationFileId(documentIds, file.Id);
+
+        var fileEventRequest = eventUtil.CreatBuilder()
+            .WithEventType(1517) // EEventType.NewAuthenticationRequestFile
+            .WithEntityId(file.Id)
+            .WithEntityType(12385) // EntityType.AuthenticationRequestFile (CustomsCloud.Infrastructure.Documents.Model.DTO.EntityType)
+            .WithTitle(file.Id.ToString())
+            .WithOrganizationUnitId(organizationUnitId)
+            .WithAdditionalInfo(file.Id.ToString())
+            .Build();
+        await eventUtil.RaiseEvent(fileEventRequest); // opens task type HandleAuthenticationRequestFile
+
+        var result = MapAuthenticationFileToDto(file, organizationUnitId, customerIdList, firstRequest.CustomerId ?? 1);
+        return result;
+    }
+
+    private static async Task RaiseEventNewDecisionBeforeAssociation(IEventUtil eventUtil, GetImportAuthenticationRequestResultDto request)
+    {
+        var eventRequest = eventUtil.CreatBuilder()
+            .WithEventType(1515) // EEventType.NewDecisionBeforeAssociation
+            .WithEntityId((int)request.DocumentId!)
+            .WithEntityType(12384) // EntityType.ImportAuthenticationRequest (CustomsCloud.Infrastructure.Documents.Model.DTO.EntityType)
+            .WithTitle(request.DocumentId.ToString()!)
+            .WithAdditionalInfo(request.DocumentId.ToString()!)
+            .Build();
+        await eventUtil.RaiseEvent(eventRequest); // closes task type SetDecisionBeforeAssociation
+    }
+
+    private static ImportAuthenticationFileDetailsDto MapAuthenticationFileToDto(ImportAuthenticationFileDetails file, int organizationUnitId, List<int> customerIdList, int customerId)
+    {
+        return new ImportAuthenticationFileDetailsDto
+        {
+            Id = file.Id,
+            State = file.State,
+            CreateDate = file.CreateDate,
+            CreateUserId = file.CreateUserId,
+            UpdateDate = file.UpdateDate,
+            UpdateUserId = file.UpdateUserId,
+            AuthenticationFileStatusId = file.AuthenticationFileStatusId,
+            Notes = file.Notes,
+            PostalAdress = file.PostalAdress,
+            DeliveryMethodId = file.DeliveryMethodId,
+            EmailAdress = file.EmailAdress,
+            ReminderMethodId = file.ReminderMethodId,
+            RequestCountryId = file.RequestCountryId,
+            UserId = file.UserId,
+            UserNameIssuingLetter = file.UserNameIssuingLetter,
+            LastDelivery = file.LastDelivery,
+            ImporterContactingReasonId = file.ImporterContactingReasonId,
+            FirstProvideContactDate = file.FirstProvideContactDate,
+            CustomerIdList = customerIdList,
+            CustomerId = customerId,
+            OrganizationUnitId = organizationUnitId
+        };
     }
 
     private async Task FillAuthenticationRequestNames(List<GetImportAuthenticationRequestResultDto> requests)
