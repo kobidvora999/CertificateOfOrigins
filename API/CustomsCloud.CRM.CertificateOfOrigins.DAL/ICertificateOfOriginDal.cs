@@ -33,4 +33,8 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<List<CertificateOfOriginsDecisionDto>> GetAllDecisions();
 
     Task<List<CertificateOfOriginsAuthenticationFileStatusDto>> GetAllAuthenticationFileStatuses();
+
+    Task<ImportAuthenticationRequestDto?> GetAuthenticationRequestById(int documentId);
+
+    Task<bool> IsVendorCountry(int issuingCountryId);
 }
