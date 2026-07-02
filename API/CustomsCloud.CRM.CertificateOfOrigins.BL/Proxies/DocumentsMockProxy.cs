@@ -40,4 +40,15 @@ public class DocumentsMockProxy : IDocumentsProxy
         }).ToList();
         return Task.FromResult<List<DocumentDto>?>(result);
     }
+
+    public Task<bool> DeleteDocuments(List<int> documentIds, int entityId, int entityTypeId)
+    {
+        return Task.FromResult(true); // TODO: dummy data
+    }
+
+    public Task<DocumentDto?> UploadDocumentAndSave(DocumentDto document, byte[] content)
+    {
+        document.Id = 1; // TODO: dummy data
+        return Task.FromResult<DocumentDto?>(document);
+    }
 }

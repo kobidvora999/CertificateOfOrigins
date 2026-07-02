@@ -21,4 +21,11 @@ public class DocumentDto
 
     // Not returned by the SP — set in BL from DocumentType.Name (lookup by TypeId)
     public string? FileUrl { get; set; }
+
+    // Upload metadata (used when persisting documents via the Documents service)
+    public string? FileName { get; set; }
+    public int? OrganizationUnitId { get; set; }
+    public int? EntityId { get; set; }
+    public int? EntityTypeId { get; set; }
+    public List<DocumentAdditionalFieldValueDto>? DocumentAdditionalFieldValues { get; set; }
 }

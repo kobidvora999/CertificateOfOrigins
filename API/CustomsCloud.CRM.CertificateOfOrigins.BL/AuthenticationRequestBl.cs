@@ -473,6 +473,30 @@ public class AuthenticationRequestBl(
         return authenticationRequestFile;
     }
 
+    #region LEGACY_WCF
+
+    // External HandleAuthenticationRequestDeliverySent(raiseEventArgs): find the related entity of type
+    // AuthenticationRequestFile; missing → false; load the file by id; null → false; otherwise true.
+    // (The actual update — UpdateFileAfterDelivery — is commented out in the WCF source; preserved as-is.)
+    #endregion
+    public async Task<bool> HandleAuthenticationRequestDeliverySent(RaiseEventArgsDto raiseEventArgs)
+    {
+        if (raiseEventArgs.RelatedEntities == null || raiseEventArgs.RelatedEntities.Count == 0)
+        {
+            return false;
+        }
+
+        var authenticationRequestFileEntity = raiseEventArgs.RelatedEntities.SingleOrDefault(
+            e => e.EntityType == 12385 || e.TypeId == 12385); // EntityType.AuthenticationRequestFile
+        if (authenticationRequestFileEntity == null)
+        {
+            return false;
+        }
+
+        var authenticationRequestFile = await GetAuthenticationRequestFileByID(authenticationRequestFileEntity.Id);
+        return authenticationRequestFile != null;
+    }
+
     private async Task<ImportAuthenticationRequestDto> HandleReminderOrDeliveryRequestSentToImporter(ImportAuthenticationRequestDto authenticationRequest, int eventType, int decision)
     {
         authenticationRequest.DecisionId = decision;
