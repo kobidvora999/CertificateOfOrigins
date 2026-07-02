@@ -2,6 +2,8 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Lookup.Entities;
 using Dapper;
 using System.Data;
 
@@ -10,10 +12,53 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 public class CertificateOfOriginBl(
     IServiceProvider serviceProvider,
     ICustomerProxy customerProxy,
-    IUserProxy userProxy)
+    IUserProxy userProxy,
+    ILookupUtil lookupUtil)
     : BaseBL<CertificateOfOriginBl, ICertificateOfOriginDal>(serviceProvider)
 {
     #region LEGACY_WCF
+
+    // public List<ImportAuthenticationRequestDTO> GetAuthenticationRequestByLeadDocumentIDs(List<int> leadDocumentIDs)
+    // {
+    //     TVP Shared.IntArray → ExecuteFunction<ImportAuthenticationRequestDTO>(
+    //         [CRM].[usp_CertificateOfOrigins_GetAuthenticationRequestByLeadDocumentID], @LeadDocumentIDs);
+    //     — SP joined local tables (requests, file details, PrefernceDocumentType/Decision/FileStatus enums)
+    //       plus Shared.General_c_Country + Infrastructure.UserMng_OrganizationUnit (names) and
+    //       CRP.DealFile_LeadDocument (LeadDocumentTitle). Converted to LINQ per module guidelines;
+    //       country/org-unit names enriched via ILookupUtil; ImporterID/LastDeliveryForImporter were never
+    //       populated by the legacy SP (parity preserved).
+    // }
+    #endregion
+    public async Task<List<ImportAuthenticationRequestByLeadDocumentDto>> GetAuthenticationRequestByLeadDocumentIDs(List<int> leadDocumentIDs)
+    {
+        if (leadDocumentIDs == null || leadDocumentIDs.Count == 0)
+        {
+            return new List<ImportAuthenticationRequestByLeadDocumentDto>();
+        }
+
+        var result = await DataLayer.GetAuthenticationRequestsByLeadDocumentIds(leadDocumentIDs);
+        if (result.Count == 0)
+        {
+            return result;
+        }
+
+        var countries = await lookupUtil.All<Country>();
+        var organizationUnits = await lookupUtil.All<OrganizationUnit>();
+        foreach (var request in result)
+        {
+            request.ImportCountryName = countries?.FirstOrDefault(c => c.Id == request.ImportCountryId)?.Name;
+            request.OrganizationUnitName = organizationUnits?.FirstOrDefault(o => o.Id == request.OrganizationUnitId)?.Name;
+
+            // TODO (blocking): LeadDocumentTitle came from CRP.DealFile_LeadDocument — no DealFile microservice;
+            // the data source must be decided with the team.
+            request.LeadDocumentTitle = null;
+        }
+
+        return result;
+    }
+
+    #region LEGACY_WCF
+
     // public List<CertificateOfOriginResult> GetCertificateOfOriginsByFilter(CertificateOfOriginFilter filter)
     // {
     //     var sqlParameters = new List<SqlParameter> { ... 16 parameters, one per filter field, each ?? DBNull.Value ... };
