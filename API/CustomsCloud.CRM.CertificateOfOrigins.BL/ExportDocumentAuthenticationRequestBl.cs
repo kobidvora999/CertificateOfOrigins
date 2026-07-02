@@ -84,4 +84,48 @@ public class ExportDocumentAuthenticationRequestBl(
         };
         return result;
     }
+
+    #region LEGACY_WCF
+
+    // public CustomerDTO GetCustomerInformation(int customerId)
+    // {
+    //     var customerDto = customerAdapter.GetCustomerDTOByCustomerIdentification(
+    //         new CustomerIdentificationFilter { ExternalId = null, CustomerId = customerId });
+    //     if (customerDto == null) { throw new InfException(EMessages.InvalidIdentificationNumber /*2345*/); }
+    //     return customerDto;
+    // }
+    #endregion
+    public async Task<CustomerDto> GetCustomerInformation(int customerId)
+    {
+        var customer = await customerProxy.GetCustomerByIdentification(customerId);
+        if (customer == null)
+        {
+            // legacy: EMessages.InvalidIdentificationNumber (2345) — "הלקוח לא קיים במערכת"
+            throw new RestValidationException(nameof(customerId), "הלקוח לא קיים במערכת", "404");
+        }
+
+        return customer;
+    }
+
+    #region LEGACY_WCF
+
+    // public CustomerDTO GetCustomerInformationByCountry(int countryId)
+    // {
+    //     var customers = customerAdapter.GetCustomeDTOByCountryID(countryId, (int)ECustomerActivityType.Foreign_customs_house);
+    //     if (customers.IsNullOrEmpty()) { throw new InfException(EMessages.NoCustomHouseForThisCountry /*13717*/); }
+    //     return customers.FirstOrDefault();
+    // }
+    #endregion
+    public async Task<CustomerDto> GetCustomerInformationByCountry(int countryId)
+    {
+        var customers = await customerProxy.GetCustomersByCountryId(countryId, 40); // ECustomerActivityType.Foreign_customs_house = 40
+        if (customers == null || customers.Count == 0)
+        {
+            // legacy: EMessages.NoCustomHouseForThisCountry (13717) — "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה"
+            throw new RestValidationException(nameof(countryId), "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה", "404");
+        }
+
+        var result = customers.First();
+        return result;
+    }
 }
