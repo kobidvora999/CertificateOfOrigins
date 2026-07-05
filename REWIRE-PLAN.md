@@ -8,11 +8,11 @@
 
 | # | פרוצדורה | מתודה | ניתוח SQL נדרש | סטטוס |
 |---|---|---|---|---|
-| 1 | dbo.CheckIfExistsAdditionalRequestsForVendor | CheckIfExistsAdditionalRequestsForVendor | עצמאית — אימות לוגיקה מול LINQ (חלון 3 שנים, ‏>1) | גל א |
-| 2 | dbo.CheckIfExistsAdditionalRequestsForImporter | CheckIfExistsAdditionalRequestsForImporter | `Infrastructure.General_enum_GlobalParam` חסרה → פרמטר `@DaysForLastDelivery` (ה-BL כבר קורא parametersUtil); ‏isVendor מחושב ב-SP מטבלה מקומית — הקריאות המקדימות ב-BL מתייתרות חלקית | גל א |
-| 3 | dbo.GetAuthenticationRequestByLeadDocumentID | GetAuthenticationRequestByLeadDocumentIDs | להעיר JOINs: ‏CRP.DealFile_LeadDocument, Shared.General_c_Country, Infrastructure.UserMng_OrganizationUnit → NULL: ‏LeadDocumentTitle, ImportCountryName, OrganizationUnitName (BL מעשיר lookup) | גל א |
-| 4 | dbo.GetImportAuthenticationRequestById | GetAuthenticationRequestByID | ‏3 result sets; להעיר `CRP.DealFile_LeadDocumentSubmissionData`‏ (set 1) → NULL; ‏set 3 (‏Infrastructure.Docs_Document) → SELECT ריק תואם-מבנה (המסמכים מגיעים מ-proxy) | גל א |
-| 5 | dbo.GetCertificateOfOriginsByFilter | GetCertificateOfOriginsByFilter | dynamic SQL; להסיר JOIN ל-`Shared.rStockPileData_Customers_Customer` בתוך המחרוזת → NULL לעמודות Title/ExternalIdNum (BL מעשיר proxy) | גל ב |
+| 1 | dbo.CheckIfExistsAdditionalRequestsForVendor | CheckIfExistsAdditionalRequestsForVendor | עצמאית — אימות לוגיקה מול LINQ (חלון 3 שנים, ‏>1) | ✅ חווטה |
+| 2 | dbo.CheckIfExistsAdditionalRequestsForImporter | CheckIfExistsAdditionalRequestsForImporter | ‏GlobalParam → פרמטר `@DaysForLastDelivery`; ‏BL הפסיק לקרוא IsVendorDeliveryCountryConfigured (הוסרה מה-DAL) | ✅ חווטה |
+| 3 | dbo.GetAuthenticationRequestByLeadDocumentID | GetAuthenticationRequestByLeadDocumentIDs | ‏3 JOINs הוערו → NULL; ‏BL lookup נשאר | ✅ חווטה |
+| 4 | dbo.GetImportAuthenticationRequestById | GetAuthenticationRequestByID | ‏query-multiple; ‏ItemDetails מה-set השני מוצמד ב-DAL; ‏set 3 ריק (Documents proxy) | ✅ חווטה |
+| 5 | dbo.GetCertificateOfOriginsByFilter | GetCertificateOfOriginsByFilter | ‏ufn_GetMaxRows→200, ‏GetDateStart/End→CAST; ‏JOIN לקוחות הוסר, ‏E.ID/C.ID→F.*; ‏BuildParameterForProcedure ב-BL | ✅ חווטה |
 | 6 | dbo.GetImportAuthenticationRequestByFilter | GetAuthenticationRequestByFilter | dynamic SQL; להסיר JOINs לחמש טבלאות חסרות; לוודא CONTAINS (FTS) — אם אין קטלוג מקומי → LIKE; עמודות שם → NULL, ‏IDNum נשארות | גל ב |
 | 7 | dbo.CROSS_ExportDocumentAuthenticationRequestSearch | GetExportDocumentAuthenticationRequestSearch | dynamic SQL; להסיר JOINs ל-Country/Customer; **להוסיף** עמודות id גולמיות (CountryID, ExporterCustomerID) שה-BL צריך להעשרה; שמות → NULL | גל ב |
 | 8 | dbo.GetCertificateOfOriginByID | GetCertificateOfOriginById | ‏7 result sets; ‏1–6 מקומיים; ‏set 7 (milestones) — JOIN ל-UserMng_User → להחזיר UserID גולמי (IIF סטטוס=8) במקום UserName; מחליף גם את GetCertificateMilestoneRows | גל ג |

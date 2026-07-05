@@ -57,6 +57,18 @@ public partial class CertificateOfOriginDbContext
         return result;
     }
 
+    public async Task<IEnumerable<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetCertificateOfOriginsByFilter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<CertificateOfOriginResultDto>(cmd);
+        return result;
+    }
+
     public async Task<(ImportAuthenticationRequestDto? Request, List<CertificateOfOriginsItemDetailDto> ItemDetails)> GetImportAuthenticationRequestById(object? parameters = null, CancellationToken cancellationToken = default)
     {
         var conn = Database.GetDbConnection();

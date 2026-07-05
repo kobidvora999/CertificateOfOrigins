@@ -30,16 +30,16 @@ AS
 
       
         SET @Select = '       
-SELECT      TOP (shared.ufn_GetMaxRows())
+SELECT      TOP (200)
                         F.ID,
                 F.CertificateNumber,
                 S.Name,
-                C.ID CustomesAgentID,
-                C.Title CustomesAgentTitle,
-                C.ExternalIdNum CustomesAgentExternalIdNum,                    
-                E.ID ExporterID,
-                E.Title ExporterTitle,
-                E.ExternalIdNum ExporterExternalIdNum,  
+                F.CreateCustomerID CustomesAgentID,
+                CAST(NULL AS NVARCHAR(255)) CustomesAgentTitle,
+                CAST(NULL AS NVARCHAR(50)) CustomesAgentExternalIdNum,
+                F.CustomerID ExporterID,
+                CAST(NULL AS NVARCHAR(255)) ExporterTitle,
+                CAST(NULL AS NVARCHAR(50)) ExporterExternalIdNum,
                 F.ExportDeclarationNumber,
                         F.VersionNumber,
                         F.OrganizationUnitID,
@@ -49,8 +49,8 @@ SELECT      TOP (shared.ufn_GetMaxRows())
             '
         SET @From = '         
 FROM    CRM.CertificateOfOrigins_CertificateOfOrigin F
-        INNER JOIN Shared.rStockPileData_Customers_Customer E ON F.CustomerID = E.ID
-        INNER JOIN Shared.rStockPileData_Customers_Customer C ON F.CreateCustomerID = C.ID
+
+
         INNER JOIN CRM.CertificateOfOrigins_enum_CertificateOfOriginStatusCode S ON f.CertificateOfOriginStatusID = S.ID
     '       
       
@@ -84,16 +84,16 @@ WHERE (F.State = 1)                 
                   SELECT    N'F.DestinationCountry = @destinationCountry'
                   WHERE     @destinationCountry IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.IssuingDate >= Shared.ufn_General_GetDateStart(@fromIssuingDate)'
+                  SELECT    N'F.IssuingDate >= CAST(@fromIssuingDate AS DATE)'
                   WHERE     @fromIssuingDate IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.IssuingDate <= Shared.ufn_General_GetDateEnd(@toIssuingDate)'
+                  SELECT    N'F.IssuingDate <= DATEADD(MILLISECOND, -3, DATEADD(DAY, 1, CAST(@toIssuingDate AS DATE)))'
                   WHERE     @toIssuingDate IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.CreateDate >= Shared.ufn_General_GetDateStart(@fromRequestDate)'
+                  SELECT    N'F.CreateDate >= CAST(@fromRequestDate AS DATE)'
                   WHERE     @fromRequestDate IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.CreateDate <= Shared.ufn_General_GetDateEnd(@toRequestDate)'
+                  SELECT    N'F.CreateDate <= DATEADD(MILLISECOND, -3, DATEADD(DAY, 1, CAST(@toRequestDate AS DATE)))'
                   WHERE     @toRequestDate IS NOT NULL
                   UNION ALL
                   SELECT    N'F.RequestReasonCode = @requestReasonID'
@@ -154,4 +154,5 @@ WHERE (F.State = 1)                 
       @isLastVersion = @isLastVersion
 
 END
+
 GO

@@ -178,9 +178,32 @@ public class CertificateOfOriginBl(
     #endregion
     public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(CertificateOfOriginFilterDto filter)
     {
-        var result = await DataLayer.GetCertificateOfOriginsByFilter(filter);
+        var parameters = BuildParameterForProcedure(filter);
+        var result = await DataLayer.GetCertificateOfOriginsByFilter(parameters);
         await FillCustomersInformation(result);
         return result;
+    }
+
+    private static DynamicParameters BuildParameterForProcedure(CertificateOfOriginFilterDto filter)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@CertificateNumber", filter.CertificateNumber, DbType.String);
+        parameters.Add("@CertificateOfOriginStatusID", filter.CertificateOfOriginStatusId, DbType.Int32);
+        parameters.Add("@CertificateOfOriginTypeID", filter.CertificateOfOriginTypeId, DbType.Int32);
+        parameters.Add("@CustomsAgentID", filter.CustomsAgentId, DbType.Int32);
+        parameters.Add("@CustomsHouseID", filter.CustomsHouseId, DbType.Int32);
+        parameters.Add("@DestinationCountry", filter.DestinationCountry, DbType.Int32);
+        parameters.Add("@ExportDeclarationID", filter.ExportDeclarationId, DbType.Int32);
+        parameters.Add("@ExportDeclarationNum", filter.ExportDeclarationNum, DbType.String);
+        parameters.Add("@ExporterCustomerID", filter.ExporterCustomerId, DbType.Int32);
+        parameters.Add("@FromIssuingDate", filter.FromIssuingDate, DbType.DateTime);
+        parameters.Add("@ToIssuingDate", filter.ToIssuingDate, DbType.DateTime);
+        parameters.Add("@FromRequestDate", filter.FromRequestDate, DbType.DateTime);
+        parameters.Add("@ToRequestDate", filter.ToRequestDate, DbType.DateTime);
+        parameters.Add("@RequestReasonID", filter.RequestReasonId, DbType.Int32);
+        parameters.Add("@VersionNumber", filter.VersionNumber, DbType.Int32);
+        parameters.Add("@IsLastVersion", filter.IsLastVersion, DbType.Boolean);
+        return parameters;
     }
 
     #region LEGACY_WCF
