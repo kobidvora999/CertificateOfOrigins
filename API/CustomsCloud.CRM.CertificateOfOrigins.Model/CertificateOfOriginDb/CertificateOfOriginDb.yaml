@@ -25,4 +25,8 @@ tables:
   - CRM.CertificateOfOrigins_c_VerificationProhibitedImporters
   - CRM.CertificateOfOrigins_enum_CertificateOfOriginTypeCode
 stored procedures:
+  # dbo copy — usp_CertificateOfOrigins_ prefix stripped (db-proc STEP 0); script in WebApi/Scripts/
+  - name: dbo.UpdateImportAuthenticationRequest
+    function: UpdateImportAuthenticationRequest
+    method: execute
 

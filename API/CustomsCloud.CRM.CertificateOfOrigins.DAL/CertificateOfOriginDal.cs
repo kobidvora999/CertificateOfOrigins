@@ -1,7 +1,9 @@
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.DAL;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.DAL;
 
@@ -431,9 +433,19 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
 
     public async Task<int> UpdateRequestsAuthenticationFileId(List<int> documentIds, int authenticationFileId)
     {
-        var result = await Context.ImportAuthenticationRequests
-            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.AuthenticationFileId, authenticationFileId));
+        // dbo.UpdateImportAuthenticationRequest — the legacy SP owns the update logic
+        // (UPDATE ... SET AuthenticationFileID WHERE DocumentID IN (TVP) AND AuthenticationFileID IS NULL)
+        var table = new DataTable();
+        table.Columns.Add("val", typeof(int));
+        foreach (var id in documentIds)
+        {
+            table.Rows.Add(id);
+        }
+
+        var parameters = new DynamicParameters();
+        parameters.Add("@ImportAuthenticationRequestsID", table.AsTableValuedParameter("Shared.IntArray"));
+        parameters.Add("@AuthenticationFileID", authenticationFileId, DbType.Int32);
+        var result = await Context.UpdateImportAuthenticationRequest(parameters);
         return result;
     }
 
