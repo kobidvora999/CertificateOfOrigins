@@ -15,7 +15,7 @@
 -- Update:      28/01/2020 Dean_Ha - BUG 148534 - GetLeadDocument
 --                      05/11/2020 Maxim  - Search by @InvoiceIDNumFTS
 -- =============================================*/
-CREATE OR ALTER PROCEDURE [dbo].[CROSS_ExportDocumentAuthenticationRequestSearch]
+CREATE OR ALTER PROCEDURE [dbo].[ExportDocumentAuthenticationRequestSearch]
 (
 --declare
       @CountryID INT,

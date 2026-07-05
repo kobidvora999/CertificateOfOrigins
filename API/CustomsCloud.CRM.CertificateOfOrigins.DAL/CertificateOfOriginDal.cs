@@ -213,7 +213,7 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
 
     public async Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters)
     {
-        // dbo.CROSS_ExportDocumentAuthenticationRequestSearch - dynamic-SQL search; CountryName/
+        // dbo.ExportDocumentAuthenticationRequestSearch - dynamic-SQL search; CountryName/
         // ForeignCustomsHouseName/RequestIssuerName return NULL from the SP (raw CountryId/
         // ExporterCustomerId columns added) and are enriched in the BL via lookup + Customers proxy
         var result = await ReadOnlyContext.GetExportDocumentAuthenticationRequestSearch(parameters);

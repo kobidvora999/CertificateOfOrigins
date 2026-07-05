@@ -116,7 +116,7 @@ public partial class CertificateOfOriginDbContext
     {
         var conn = Database.GetDbConnection();
         var cmd = new CommandDefinition(
-            commandText: "dbo.CROSS_ExportDocumentAuthenticationRequestSearch",
+            commandText: "dbo.ExportDocumentAuthenticationRequestSearch",
             commandType: CommandType.StoredProcedure,
             cancellationToken: cancellationToken,
             parameters: parameters);

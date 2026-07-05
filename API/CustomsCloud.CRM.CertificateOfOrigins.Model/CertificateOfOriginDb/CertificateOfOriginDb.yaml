@@ -55,7 +55,7 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: GetImportAuthenticationRequestResultDto
-  - name: dbo.CROSS_ExportDocumentAuthenticationRequestSearch
+  - name: dbo.ExportDocumentAuthenticationRequestSearch
     function: GetExportDocumentAuthenticationRequestSearch
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
