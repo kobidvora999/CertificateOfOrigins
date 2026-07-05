@@ -57,6 +57,43 @@ public partial class CertificateOfOriginDbContext
         return result;
     }
 
+    public async Task<(CertificateOfOriginDto? Certificate, List<CertificateMilestoneRowDto> MilestoneRows)> GetCertificateOfOriginByID(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetCertificateOfOriginByID",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        using var multi = await conn.QueryMultipleAsync(cmd);
+        var certificate = (await multi.ReadAsync<CertificateOfOriginDto>()).FirstOrDefault();
+        var errors = (await multi.ReadAsync<CertificateOfOriginVsDeclarationErrorDto>()).ToList();
+        var detailsTypeCodes = (await multi.ReadAsync<CertificateDetailsTypeCodeEnumDto>()).ToList();
+        var details = (await multi.ReadAsync<CertificateOfOriginDetailsDto>()).ToList();
+        var invoices = (await multi.ReadAsync<CertificateOfOriginInvoiceDetailDto>()).ToList();
+        var items = (await multi.ReadAsync<CertificateOfOriginItemDetailDto>()).ToList();
+        var milestoneRows = (await multi.ReadAsync<CertificateMilestoneRowDto>()).ToList();
+        if (certificate == null)
+        {
+            return (null, milestoneRows);
+        }
+
+        foreach (var detail in details)
+        {
+            detail.CertificateDetailsTypeCode = detailsTypeCodes.FirstOrDefault(t => t.Id == detail.CertificateDetailsTypeCodeId);
+        }
+
+        foreach (var invoice in invoices)
+        {
+            invoice.CertificateOfOriginItemDetail = items.Where(d => d.CertificateOfOriginInvoiceDetailId == invoice.Id).ToList();
+        }
+
+        certificate.CertificateOfOriginVsDeclarationError = errors;
+        certificate.CertificateOfOriginDetails = details;
+        certificate.CertificateOfOriginInvoiceDetail = invoices;
+        return (certificate, milestoneRows);
+    }
+
     public async Task<IEnumerable<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters = null, CancellationToken cancellationToken = default)
     {
         var conn = Database.GetDbConnection();

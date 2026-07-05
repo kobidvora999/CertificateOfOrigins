@@ -236,7 +236,7 @@ public class CertificateOfOriginBl(
     #endregion
     public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId)
     {
-        var certificate = await DataLayer.GetCertificateOfOriginById(certificateOfOriginId);
+        var (certificate, milestoneRows) = await DataLayer.GetCertificateOfOriginById(certificateOfOriginId);
         if (certificate == null)
         {
             return null;
@@ -247,13 +247,12 @@ public class CertificateOfOriginBl(
             certificate.CustomerId,       // יצואן
             certificate.CreateCustomerId  // סוכן המכס
         };
-        certificate.Milestones = await GetCertificateMilestones(certificate.Title);
+        certificate.Milestones = await GetCertificateMilestones(milestoneRows);
         return certificate;
     }
 
-    private async Task<List<CertificateMilestonesDto>> GetCertificateMilestones(string? certificateTitle)
+    private async Task<List<CertificateMilestonesDto>> GetCertificateMilestones(List<CertificateMilestoneRowDto> rows)
     {
-        var rows = await DataLayer.GetCertificateMilestoneRows(certificateTitle);
         var userIds = rows.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().ToList();
         var users = userIds.Count > 0 ? await userProxy.GetUsersByIds(userIds) : null;
         var result = rows.Select(r => new CertificateMilestonesDto

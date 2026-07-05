@@ -60,4 +60,9 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: ExportDocumentAuthenticationRequestSearchResultDto
+  - name: dbo.GetCertificateOfOriginByID
+    function: GetCertificateOfOriginByID
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: CertificateOfOriginDto
 

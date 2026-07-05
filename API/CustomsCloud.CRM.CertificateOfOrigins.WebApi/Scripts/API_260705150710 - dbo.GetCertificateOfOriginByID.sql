@@ -64,12 +64,12 @@ BEGIN
                   WHEN COO.ApproveUserID is  not null and COO.CertificateOfOriginStatusID <> 4 THEN 'אושרה'
             END AS ActionName,
              COO.UpdateDate as CreateDate,
-             IIF(COO.CertificateOfOriginStatusID = 8, UA.Title, U.Title) as UserName,     
+             IIF(COO.CertificateOfOriginStatusID = 8, COO.ApproveUserID, COO.UpdateUserID) as UserId, -- db-proc Pattern B: UserMng_User not replicated; name enriched in BL via Users proxy
              isnull(COO.RejectCancelReason,'') as RejectReason          
              from [CRM].[CertificateOfOrigins_CertificateOfOrigin] COO
                   JOIN [CRM].CertificateOfOrigins_enum_CertificateOfOriginStatusCode CS ON COO.CertificateOfOriginStatusID = CS.ID
-                  JOIN Infrastructure.UserMng_User u ON COO.UpdateUserID = u.ID
-                  left JOIN Infrastructure.UserMng_User ua on ua.id = COO.ApproveUserID
+
+
       where
       COO.Title = @CertificateNumber
         and (
