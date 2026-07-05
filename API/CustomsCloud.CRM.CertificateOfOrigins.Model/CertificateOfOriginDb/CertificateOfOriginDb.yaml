@@ -50,4 +50,9 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginResultDto
+  - name: dbo.GetImportAuthenticationRequestByFilter
+    function: GetAuthenticationRequestByFilter
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: GetImportAuthenticationRequestResultDto
 

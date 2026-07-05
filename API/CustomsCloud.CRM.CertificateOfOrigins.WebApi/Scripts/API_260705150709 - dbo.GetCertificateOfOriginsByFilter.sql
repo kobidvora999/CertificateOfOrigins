@@ -87,13 +87,13 @@ WHERE (F.State = 1)                 
                   SELECT    N'F.IssuingDate >= CAST(@fromIssuingDate AS DATE)'
                   WHERE     @fromIssuingDate IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.IssuingDate <= DATEADD(MILLISECOND, -3, DATEADD(DAY, 1, CAST(@toIssuingDate AS DATE)))'
+                  SELECT    N'F.IssuingDate <= DATEADD(MILLISECOND, -3, CAST(DATEADD(DAY, 1, CAST(@toIssuingDate AS DATE)) AS DATETIME))'
                   WHERE     @toIssuingDate IS NOT NULL
                   UNION ALL
                   SELECT    N'F.CreateDate >= CAST(@fromRequestDate AS DATE)'
                   WHERE     @fromRequestDate IS NOT NULL
                   UNION ALL
-                  SELECT    N'F.CreateDate <= DATEADD(MILLISECOND, -3, DATEADD(DAY, 1, CAST(@toRequestDate AS DATE)))'
+                  SELECT    N'F.CreateDate <= DATEADD(MILLISECOND, -3, CAST(DATEADD(DAY, 1, CAST(@toRequestDate AS DATE)) AS DATETIME))'
                   WHERE     @toRequestDate IS NOT NULL
                   UNION ALL
                   SELECT    N'F.RequestReasonCode = @requestReasonID'

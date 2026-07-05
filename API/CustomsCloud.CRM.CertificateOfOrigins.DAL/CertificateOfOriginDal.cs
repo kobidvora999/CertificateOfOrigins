@@ -158,133 +158,13 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return certificate;
     }
 
-    public async Task<List<GetImportAuthenticationRequestResultDto>> GetAuthenticationRequestByFilter(ImportAuthenticationRequestFilterDto filter)
+    public async Task<List<GetImportAuthenticationRequestResultDto>> GetAuthenticationRequestByFilter(object? parameters)
     {
-        var query = ReadOnlyContext.ImportAuthenticationRequests
-            .Join(ReadOnlyContext.PrefernceDocumentTypes,
-                r => r.PreferenceDocumentTypeId,
-                p => p.Id,
-                (r, p) => new { Request = r, PreferenceDocumentType = p })
-            .GroupJoin(ReadOnlyContext.ImportAuthenticationFileDetails,
-                x => x.Request.AuthenticationFileId,
-                f => f.Id,
-                (x, files) => new { x.Request, x.PreferenceDocumentType, Files = files })
-            .SelectMany(x => x.Files.DefaultIfEmpty(), (x, file) => new { x.Request, x.PreferenceDocumentType, File = file });
-
-        if (filter.FromRequestDate.HasValue)
-        {
-            var fromRequestDate = filter.FromRequestDate.Value.Date;
-            query = query.Where(x => x.Request.CreateDate >= fromRequestDate);
-        }
-
-        if (filter.ToRequestDate.HasValue)
-        {
-            var toRequestDate = filter.ToRequestDate.Value.Date.AddDays(1);
-            query = query.Where(x => x.Request.CreateDate < toRequestDate);
-        }
-
-        if (filter.PrefernceDocumentType.HasValue)
-        {
-            query = query.Where(x => x.Request.PreferenceDocumentTypeId == filter.PrefernceDocumentType.Value);
-        }
-
-        if (filter.GoodsOrigionCountry.HasValue)
-        {
-            query = query.Where(x => x.Request.OriginCountryId == filter.GoodsOrigionCountry.Value);
-        }
-
-        if (filter.IssuingCountry.HasValue)
-        {
-            query = query.Where(x => x.Request.IssuingCountryId == filter.IssuingCountry.Value);
-        }
-
-        if (filter.ImportCountry.HasValue)
-        {
-            query = query.Where(x => x.Request.ImportCountryId == filter.ImportCountry.Value);
-        }
-
-        if (filter.ImporterId.HasValue)
-        {
-            query = query.Where(x => x.Request.ImporterId == filter.ImporterId.Value);
-        }
-
-        if (filter.CustomsHouseId.HasValue)
-        {
-            query = query.Where(x => x.Request.OrganizationUnitId == filter.CustomsHouseId.Value);
-        }
-
-        if (filter.RequestReason.HasValue)
-        {
-            query = query.Where(x => x.Request.RequestCircumstancesId == filter.RequestReason.Value);
-        }
-
-        if (filter.LeadDocumentId.HasValue)
-        {
-            query = query.Where(x => x.Request.LeadDocumentId == filter.LeadDocumentId.Value);
-        }
-
-        if (filter.VendorId.HasValue)
-        {
-            query = query.Where(x => x.Request.VendorId == filter.VendorId.Value);
-        }
-
-        if (filter.DecisionId.HasValue)
-        {
-            query = query.Where(x => x.Request.DecisionId == filter.DecisionId.Value);
-        }
-
-        if (filter.CustomerId.HasValue)
-        {
-            query = query.Where(x => x.Request.CustomerId == filter.CustomerId.Value);
-        }
-
-        if (filter.DocumentId.HasValue)
-        {
-            query = query.Where(x => x.Request.DocumentId == filter.DocumentId.Value);
-        }
-
-        if (filter.InvoiceNumber != null)
-        {
-            // legacy: full-text CONTAINS with comma-separated terms OR-ed together
-            var invoiceTerms = filter.InvoiceNumber.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            query = query.Where(x => invoiceTerms.Any(term => x.Request.InvoiceNumber != null && x.Request.InvoiceNumber.Contains(term)));
-        }
-
-        if (filter.DocumentNumber != null)
-        {
-            query = query.Where(x => x.Request.DocumentNumber != null && x.Request.DocumentNumber.Contains(filter.DocumentNumber));
-        }
-
-        if (filter.AuthenticationFileId.HasValue)
-        {
-            query = query.Where(x => x.Request.AuthenticationFileId == filter.AuthenticationFileId.Value);
-        }
-
-        if (filter.CreateUserId.HasValue)
-        {
-            query = query.Where(x => x.Request.CreateUserId == filter.CreateUserId.Value);
-        }
-
-        var result = await query
-            .OrderByDescending(x => x.Request.CreateDate)
-            .Take(200) // legacy: TOP (shared.ufn_GetMaxRows())
-            .Select(x => new GetImportAuthenticationRequestResultDto
-            {
-                DocumentId = x.Request.DocumentId,
-                PreferenceDocumentTypeId = x.PreferenceDocumentType.Name,
-                AuthenticationFileId = x.Request.AuthenticationFileId,
-                CreateDate = x.Request.CreateDate,
-                IssuingCountryIdNum = x.Request.IssuingCountryId,
-                OrganizationUnitIdNum = x.Request.OrganizationUnitId,
-                ResponseNameEmail = x.Request.ResponseNameEmail,
-                LeadDocumentId = x.Request.LeadDocumentId,
-                CustomerId = x.Request.ImporterId,
-                VendorId = x.Request.VendorId,
-                DecisionId = x.Request.DecisionId,
-                AuthenticationFileStatusId = (int?)x.File!.AuthenticationFileStatusId
-            })
-            .ToListAsync();
-        return result;
+        // dbo.GetImportAuthenticationRequestByFilter - dynamic-SQL search; cross-service name columns
+        // (IssuingCountryID/OrganizationUnitID/VendorName/ImporterName/LeadDocumentTitle) return NULL
+        // from the SP and are enriched in the BL (FillAuthenticationRequestNames)
+        var result = await ReadOnlyContext.GetAuthenticationRequestByFilter(parameters);
+        return result.ToList();
     }
 
     public async Task<List<int>> GetRequestedDocumentIdsByLeadDocumentId(int leadDocumentId)
