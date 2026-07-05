@@ -55,9 +55,9 @@ BEGIN
                   R.InvoiceNumber,
                   R.InvoiceGoodsItemTaxDifference     ,
                   R.AllInvoiceGoodsItemTaxDifference,
-                  DFLDSD.SubmitDate LeadDocumentSubmissionDate
+                  CAST(NULL AS DATETIME) LeadDocumentSubmissionDate -- db-proc Pattern F: CRP.DealFile_* not replicated (no DealFile microservice yet)
       FROM  [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] R
-                  LEFT JOIN CRP.DealFile_LeadDocumentSubmissionData DFLDSD ON DFLDSD.LeadDocumentID = R.LeadDocumentID
+                  -- LEFT JOIN CRP.DealFile_LeadDocumentSubmissionData DFLDSD ON DFLDSD.LeadDocumentID = R.LeadDocumentID  (not replicated)
                   
       WHERE R.DocumentID = @DocumentID;
 
@@ -75,10 +75,8 @@ BEGIN
                   D.CreateDate,
                   D.ExternalIDNum,
                   D.Notes
-      FROM  Infrastructure.Docs_Document D
-      WHERE D.ID = @DocumentID;
+      FROM (SELECT CAST(NULL AS INT) ID, CAST(NULL AS INT) TypeID, CAST(NULL AS NVARCHAR(255)) Title, CAST(NULL AS DATETIME) CreateDate, CAST(NULL AS NVARCHAR(50)) ExternalIDNum, CAST(NULL AS NVARCHAR(MAX)) Notes) D -- db-proc Pattern F: Infrastructure.Docs_Document not replicated (Documents microservice)
+      WHERE 1 = 0;
 END;
-
-
 
 GO

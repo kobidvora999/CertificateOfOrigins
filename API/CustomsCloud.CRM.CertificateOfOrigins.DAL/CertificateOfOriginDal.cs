@@ -581,49 +581,16 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
 
     public async Task<ImportAuthenticationRequestDto?> GetAuthenticationRequestById(int documentId)
     {
-        var result = await ReadOnlyContext.ImportAuthenticationRequests
-            .Where(r => r.DocumentId == documentId)
-            .Select(r => new ImportAuthenticationRequestDto
-            {
-                DocumentId = r.DocumentId,
-                CreateDate = r.CreateDate,
-                CreateUserId = r.CreateUserId,
-                UpdateDate = r.UpdateDate,
-                UpdateUserId = r.UpdateUserId,
-                AuthenticationFileId = r.AuthenticationFileId,
-                AuthenticationRequestDate = r.AuthenticationRequestDate,
-                CirumstanceDetails = r.CirumstanceDetails,
-                CollateralId = r.CollateralId,
-                DecisionCircumstences = r.DecisionCircumstences,
-                DecisionId = r.DecisionId,
-                LeadDocumentId = r.LeadDocumentId,
-                DocumentIssuingDate = r.DocumentIssuingDate,
-                ImportCountryId = r.ImportCountryId,
-                IssuingCountryId = r.IssuingCountryId,
-                ItemDetailId = r.ItemDetailId,
-                Number = r.Number,
-                IsOldIndication = r.IsOldIndication,
-                OriginCountryId = r.OriginCountryId,
-                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
-                Remarks = r.Remarks,
-                RequestCircumstancesId = r.RequestCircumstancesId,
-                UserResponseId = r.UserResponseId,
-                ResponseNameEmail = r.ResponseNameEmail,
-                ResponsePhoneNum = r.ResponsePhoneNum,
-                OrganizationUnitId = r.OrganizationUnitId,
-                UserId = r.UserId,
-                VendorId = r.VendorId,
-                VendorName = r.VendorName,
-                OrganizationUnitTypeId = r.OrganizationUnitTypeId,
-                DocumentNumber = r.DocumentNumber,
-                CustomerId = r.CustomerId,
-                ImporterId = r.ImporterId,
-                InvoiceNumber = r.InvoiceNumber,
-                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
-                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference
-            })
-            .FirstOrDefaultAsync();
-        return result;
+        // dbo.GetImportAuthenticationRequestById — 3 result sets: request / item details / documents (empty — Documents microservice)
+        var parameters = new DynamicParameters();
+        parameters.Add("@DocumentID", documentId, DbType.Int32);
+        var (request, itemDetails) = await ReadOnlyContext.GetImportAuthenticationRequestById(parameters);
+        if (request != null)
+        {
+            request.ItemDetails = itemDetails;
+        }
+
+        return request;
     }
 
     public async Task<bool> IsVendorCountry(int issuingCountryId)
@@ -636,44 +603,19 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
 
     public async Task<List<ImportAuthenticationRequestByLeadDocumentDto>> GetAuthenticationRequestsByLeadDocumentIds(List<int> leadDocumentIds)
     {
-        var result = await ReadOnlyContext.ImportAuthenticationRequests
-            .Where(r => leadDocumentIds.Contains(r.LeadDocumentId))
-            .Join(ReadOnlyContext.PrefernceDocumentTypes,
-                r => r.PreferenceDocumentTypeId,
-                p => p.Id,
-                (r, p) => new { Request = r, PreferenceDocumentType = p })
-            .Join(ReadOnlyContext.CertificateOfOriginsDecisions,
-                x => x.Request.DecisionId,
-                d => (int?)d.Id,
-                (x, d) => new { x.Request, x.PreferenceDocumentType, Decision = d })
-            .Select(x => new ImportAuthenticationRequestByLeadDocumentDto
-            {
-                LeadDocumentId = x.Request.LeadDocumentId,
-                DocumentId = x.Request.DocumentId,
-                AuthenticationFileId = x.Request.AuthenticationFileId,
-                PreferenceDocumentTypeId = x.Request.PreferenceDocumentTypeId,
-                PreferenceDocumentTypeName = x.PreferenceDocumentType.Name,
-                CreateDate = x.Request.CreateDate,
-                AuthenticationFileStatusId = ReadOnlyContext.ImportAuthenticationFileDetails
-                    .Where(f => f.Id == x.Request.AuthenticationFileId)
-                    .Select(f => (int?)f.AuthenticationFileStatusId)
-                    .FirstOrDefault(),
-                AuthenticationFileStatusName = ReadOnlyContext.ImportAuthenticationFileDetails
-                    .Where(f => f.Id == x.Request.AuthenticationFileId)
-                    .Join(ReadOnlyContext.CertificateOfOriginsAuthenticationFileStatuses,
-                        f => f.AuthenticationFileStatusId,
-                        s => s.Id,
-                        (f, s) => s.Name)
-                    .FirstOrDefault(),
-                DecisionId = x.Decision.Id,
-                DecisionName = x.Decision.Name,
-                ImportCountryId = x.Request.ImportCountryId,
-                OrganizationUnitId = x.Request.OrganizationUnitId,
-                CollateralId = x.Request.CollateralId,
-                IsCollateralExists = x.Request.CollateralId != null
-            })
-            .ToListAsync();
-        return result;
+        // dbo.GetAuthenticationRequestByLeadDocumentID — name columns (LeadDocumentTitle/ImportCountryName/
+        // OrganizationUnitName) return NULL from the SP and are enriched in the BL via lookup/proxy
+        var table = new DataTable();
+        table.Columns.Add("val", typeof(int));
+        foreach (var id in leadDocumentIds)
+        {
+            table.Rows.Add(id);
+        }
+
+        var parameters = new DynamicParameters();
+        parameters.Add("@LeadDocumentIDs", table.AsTableValuedParameter("Shared.IntArray"));
+        var result = await ReadOnlyContext.GetAuthenticationRequestByLeadDocumentID(parameters);
+        return result.ToList();
     }
 
     public async Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
@@ -854,39 +796,26 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return request;
     }
 
-    public async Task<bool> IsVendorDeliveryCountryConfigured(int countryId)
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId, int daysForLastDelivery)
     {
-        // legacy SP checked for any row without a State filter — interceptor excluded for exact parity
-        var result = await ReadOnlyContext.CertificateOfOriginSupplierDeliveryCountryConfigs
-            .ExcludeInterceptor("T7e0Y38X2y")
-            .AnyAsync(c => c.ConutryId == countryId);
-        return result;
-    }
-
-    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, bool isVendor, int daysForLastDelivery)
-    {
-        var minLastDelivery = DateTime.Now.AddDays(-daysForLastDelivery);
-        var query = ReadOnlyContext.ImportAuthenticationFileDetails
-            .Join(ReadOnlyContext.ImportAuthenticationRequests,
-                f => f.Id,
-                r => r.AuthenticationFileId,
-                (f, r) => new { File = f, Request = r })
-            .Where(x => x.Request.ImporterId == importerId && x.File.LastDelivery >= minLastDelivery);
-
-        query = isVendor
-            ? query.Where(x => x.Request.VendorId == vendorId)
-            : query.Where(x => x.Request.CustomerId == customerId);
-
-        var result = await query.AnyAsync();
+        // dbo.CheckIfExistsAdditionalRequestsForImporter — the SP computes isVendor internally
+        // from the local SupplierDeliveryCountryConfig table
+        var parameters = new DynamicParameters();
+        parameters.Add("@ImporterID", importerId, DbType.Int32);
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        parameters.Add("@CustomerID", customerId, DbType.Int32);
+        parameters.Add("@CountryID", countryId, DbType.Int32);
+        parameters.Add("@DaysForLastDelivery", daysForLastDelivery, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForImporter(parameters);
         return result;
     }
 
     public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
     {
-        var minCreateDate = DateTime.Now.AddYears(-3);
-        var count = await ReadOnlyContext.ImportAuthenticationRequests
-            .CountAsync(r => r.VendorId == vendorId && r.CreateDate >= minCreateDate);
-        return count > 1;
+        var parameters = new DynamicParameters();
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForVendor(parameters);
+        return result;
     }
 
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)

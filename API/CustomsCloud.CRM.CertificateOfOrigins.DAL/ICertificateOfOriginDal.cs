@@ -44,9 +44,7 @@ public interface ICertificateOfOriginDal : IBaseDal
 
     Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestById(int id);
 
-    Task<bool> IsVendorDeliveryCountryConfigured(int countryId);
-
-    Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, bool isVendor, int daysForLastDelivery);
+    Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId, int daysForLastDelivery);
 
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);
 

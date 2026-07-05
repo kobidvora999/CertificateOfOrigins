@@ -29,4 +29,20 @@ stored procedures:
   - name: dbo.UpdateImportAuthenticationRequest
     function: UpdateImportAuthenticationRequest
     method: execute
+  - name: dbo.CheckIfExistsAdditionalRequestsForVendor
+    function: CheckIfExistsAdditionalRequestsForVendor
+    method: execute-scalar
+  - name: dbo.CheckIfExistsAdditionalRequestsForImporter
+    function: CheckIfExistsAdditionalRequestsForImporter
+    method: execute-scalar
+  - name: dbo.GetAuthenticationRequestByLeadDocumentID
+    function: GetAuthenticationRequestByLeadDocumentID
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: ImportAuthenticationRequestByLeadDocumentDto
+  - name: dbo.GetImportAuthenticationRequestById
+    function: GetImportAuthenticationRequestById
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: ImportAuthenticationRequestDto
 

@@ -318,9 +318,7 @@ public class AuthenticationRequestBl(
             return null;
         }
 
-        var itemDetails = await DataLayer.GetItemDetailsByRequestIds(new List<int> { documentId });
-        importAuthenticationRequest.ItemDetails = itemDetails;
-
+        // ItemDetails arrive from the SP's 2nd result set (attached in the DAL)
         var documents = await documentsProxy.GetDocumentsByIds(new List<int> { documentId });
         importAuthenticationRequest.Document = documents?.FirstOrDefault(d => d.Id == documentId);
         if (importAuthenticationRequest.Document != null)
@@ -381,9 +379,8 @@ public class AuthenticationRequestBl(
     #endregion
     public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId)
     {
-        var isVendor = await DataLayer.IsVendorDeliveryCountryConfigured(countryId);
         var daysForLastDelivery = await parametersUtil.Get<int>("AdditionalRequestsForSearchInDays");
-        var result = await DataLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, isVendor, daysForLastDelivery);
+        var result = await DataLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId, daysForLastDelivery);
         return result;
     }
 

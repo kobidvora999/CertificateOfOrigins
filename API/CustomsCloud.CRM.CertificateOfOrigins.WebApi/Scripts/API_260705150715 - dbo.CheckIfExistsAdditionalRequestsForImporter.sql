@@ -11,7 +11,8 @@ CREATE OR ALTER PROCEDURE [dbo].[CheckIfExistsAdditionalRequestsForImporter]
     @ImporterID int,
       @VendorID int=null,
       @CustomerID int=null,
-      @CountryID int
+      @CountryID int,
+      @DaysForLastDelivery int
  )
 AS
     BEGIN   
@@ -24,7 +25,8 @@ AS
             --@CountryID int
 
             DECLARE @IsVendor BIT = CONVERT(BIT, IIF((SELECT TOP 1 1 FROM CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig WHERE ConutryID = @CountryID) = 1, 1, 0))
-            DECLARE @DaysForLastDelivery int = (SELECT Value FROM Infrastructure.General_enum_GlobalParam WHERE Name='AdditionalRequestsForSearchInDays')
+            -- db-proc Pattern B: Infrastructure.General_enum_GlobalParam is not replicated - value supplied by caller (IParametersUtil)
+            -- DECLARE @DaysForLastDelivery int = (SELECT Value FROM Infrastructure.General_enum_GlobalParam WHERE Name='AdditionalRequestsForSearchInDays')
             DECLARE @IsExistsRequests BIT;
 
             IF(@IsVendor = 1)
@@ -52,4 +54,5 @@ AS
             SELECT @IsExistsRequests
 
 END
+
 GO
