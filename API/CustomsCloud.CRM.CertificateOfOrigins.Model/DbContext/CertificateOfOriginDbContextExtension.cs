@@ -57,6 +57,18 @@ public partial class CertificateOfOriginDbContext
         return result;
     }
 
+    public async Task<IEnumerable<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.CROSS_ExportDocumentAuthenticationRequestSearch",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<ExportDocumentAuthenticationRequestSearchResultDto>(cmd);
+        return result;
+    }
+
     public async Task<IEnumerable<GetImportAuthenticationRequestResultDto>> GetAuthenticationRequestByFilter(object? parameters = null, CancellationToken cancellationToken = default)
     {
         var conn = Database.GetDbConnection();

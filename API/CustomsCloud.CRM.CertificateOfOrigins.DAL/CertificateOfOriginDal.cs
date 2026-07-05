@@ -392,100 +392,13 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result.ToList();
     }
 
-    public async Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    public async Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters)
     {
-        var query = ReadOnlyContext.ExportDocumentAuthenticationRequests
-            .Join(ReadOnlyContext.PrefernceDocumentTypes,
-                e => e.AuthenticationDocumentTypeId,
-                t => t.Id,
-                (e, t) => new { Request = e, DocumentType = t })
-            .Join(ReadOnlyContext.ExportAuthenticationRequestStatuses,
-                x => x.Request.StatusId,
-                s => (int?)s.Id,
-                (x, s) => new { x.Request, x.DocumentType, Status = s })
-            .Where(x => x.Request.CountryId != null && x.Request.ExporterCustomerId != null); // legacy: INNER JOINs to Country / exporter customer
-
-        if (filter.CountryId.HasValue)
-        {
-            query = query.Where(x => x.Request.CountryId == filter.CountryId.Value);
-        }
-
-        if (filter.DocumentTypeId.HasValue)
-        {
-            query = query.Where(x => x.Request.AuthenticationDocumentTypeId == filter.DocumentTypeId.Value);
-        }
-
-        if (filter.RequestId.HasValue)
-        {
-            query = query.Where(x => x.Request.Id == filter.RequestId.Value);
-        }
-
-        if (filter.ForeignCustomsHouseCustomerId.HasValue)
-        {
-            query = query.Where(x => x.Request.CustomerId == filter.ForeignCustomsHouseCustomerId.Value);
-        }
-
-        if (filter.RequestOpenDateFrom.HasValue)
-        {
-            query = query.Where(x => x.Request.CreateDate >= filter.RequestOpenDateFrom.Value);
-        }
-
-        if (filter.RequestOpenDateTo.HasValue)
-        {
-            query = query.Where(x => x.Request.CreateDate <= filter.RequestOpenDateTo.Value);
-        }
-
-        if (filter.ExportAuthenticationDocumentId.HasValue)
-        {
-            query = query.Where(x => x.Request.DocumentId == filter.ExportAuthenticationDocumentId.Value);
-        }
-
-        if (filter.InvoiceIdNum != null)
-        {
-            // legacy: full-text CONTAINS with comma-separated terms OR-ed together
-            var invoiceTerms = filter.InvoiceIdNum.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            query = query.Where(x => invoiceTerms.Any(term => x.Request.InvoiceNumbers != null && x.Request.InvoiceNumbers.Contains(term)));
-        }
-
-        if (filter.MainDocumentTitle != null)
-        {
-            query = query.Where(x => x.Request.MainDocumentTitle != null && x.Request.MainDocumentTitle.Contains(filter.MainDocumentTitle));
-        }
-
-        if (filter.ExporterId.HasValue)
-        {
-            query = query.Where(x => x.Request.ExporterCustomerId == filter.ExporterId.Value);
-        }
-
-        if (filter.ExportAuthenticationRequestStatusId.HasValue)
-        {
-            query = query.Where(x => x.Request.StatusId == filter.ExportAuthenticationRequestStatusId.Value);
-        }
-
-        if (filter.CreateUserId.HasValue)
-        {
-            query = query.Where(x => x.Request.CreateUserId == filter.CreateUserId.Value);
-        }
-
-        var result = await query
-            .OrderBy(x => x.Request.Id)
-            .Select(x => new ExportDocumentAuthenticationRequestSearchResultDto
-            {
-                RequestId = x.Request.Id,
-                DocumentTypeName = x.DocumentType.Name,
-                RequestStatusName = x.Status.Name,
-                CustomerId = x.Request.CustomerId,
-                ExportLeadDocumentId = x.Request.ExportLeadDocumentId,
-                CountryId = x.Request.CountryId,
-                ExporterCustomerId = x.Request.ExporterCustomerId,
-                ExportDeclarationTitle = ReadOnlyContext.ExportDocumentAuthenticationRequestLeadDocuments
-                    .Where(l => l.ExportRequestId == x.Request.Id)
-                    .OrderBy(l => l.Id)
-                    .Select(l => l.LeadDocumentTitle)
-                    .FirstOrDefault()
-            })
-            .ToListAsync();
-        return result;
+        // dbo.CROSS_ExportDocumentAuthenticationRequestSearch - dynamic-SQL search; CountryName/
+        // ForeignCustomsHouseName/RequestIssuerName return NULL from the SP (raw CountryId/
+        // ExporterCustomerId columns added) and are enriched in the BL via lookup + Customers proxy
+        var result = await ReadOnlyContext.GetExportDocumentAuthenticationRequestSearch(parameters);
+        return result.ToList();
     }
 
     public async Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestById(int id)

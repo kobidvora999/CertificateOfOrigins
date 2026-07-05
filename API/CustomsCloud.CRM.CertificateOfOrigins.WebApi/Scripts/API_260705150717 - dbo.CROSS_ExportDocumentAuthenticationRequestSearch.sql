@@ -48,13 +48,15 @@ BEGIN
 
       SET @Select = N'  
       SELECT            EAR.ID AS RequestID,
-                        C.Name AS CountryName,
-                        CC.Title AS ForeignCustomsHouseName,
-                        CC.ID AS CustomerID,
+                        CAST(NULL AS NVARCHAR(255)) AS CountryName,
+                        CAST(NULL AS NVARCHAR(255)) AS ForeignCustomsHouseName,
+                        EAR.CustomerID AS CustomerID,
                         DT.Name AS DocumentTypeName,
                         LDT.LeadDocumentTitle AS ExportDeclarationTitle,
                         EARS.Name AS RequestStatusName,
-                        CC1.Title AS RequestIssuerName,
+                        CAST(NULL AS NVARCHAR(255)) AS RequestIssuerName,
+                        EAR.CountryID AS CountryId,
+                        EAR.ExporterCustomerID AS ExporterCustomerId,
                         EAR.ExportLeadDocumentID,
                         EAR.CreateDate AS DocumentIssueDateFrom,
                         EAR.AuthenticationRequestArrivalDate AS RequestOpenDateFrom
@@ -62,9 +64,9 @@ BEGIN
 
       SET @From = N'
 FROM  CRM.CertificateOfOrigins_ExportDocumentAuthenticationRequest EAR
-            INNER JOIN Shared.General_c_Country C ON EAR.CountryID = C.ID
-            INNER JOIN StockPileData.Customers_Customer CC ON EAR.CustomerID = CC.ID
-            INNER JOIN StockPileData.Customers_Customer CC1 ON EAR.ExporterCustomerID = CC1.ID
+
+
+
             INNER JOIN CRM.CertificateOfOrigins_enum_PrefernceDocumentType DT ON EAR.AuthenticationDocumentTypeID = DT.ID
             INNER JOIN CRM.CertificateOfOrigins_enum_ExportAuthenticationRequestStatus EARS ON EAR.StatusID = EARS.ID
             OUTER APPLY(      SELECT TOP 1 coocedarld.LeadDocumentTitle
@@ -102,7 +104,7 @@ WHERE 1 = 1'
             UNION ALL
             --SELECT    'EAR.InvoiceNumbers LIKE ' + '''%' + @InvoiceIDNum + '%'''
             --WHERE     @InvoiceIDNum IS NOT NULL
-            SELECT      'CONTAINS ( EAR.InvoiceNumbers,' +  @InvoiceIDNumFTS +')'
+            SELECT      'EAR.InvoiceNumbers LIKE ' + '''%' + @InvoiceIDNum + '%''' -- FTS CONTAINS replaced: no local fulltext catalog
             WHERE @InvoiceIDNumFTS IS NOT NULL
             UNION ALL
             SELECT      'EAR.MainDocumentTitle LIKE ' + '''%' + @MainDocumentTitle + '%'''
@@ -153,4 +155,5 @@ WHERE 1 = 1'
       @CreateUserID = @CreateUserID;
 
 END;
+
 GO

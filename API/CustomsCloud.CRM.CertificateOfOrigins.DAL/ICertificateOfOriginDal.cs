@@ -40,7 +40,7 @@ public interface ICertificateOfOriginDal : IBaseDal
 
     Task<List<ImportAuthenticationRequestByLeadDocumentDto>> GetAuthenticationRequestsByLeadDocumentIds(List<int> leadDocumentIds);
 
-    Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter);
+    Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters);
 
     Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestById(int id);
 

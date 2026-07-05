@@ -6,6 +6,8 @@ using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Entities;
+using Dapper;
+using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
@@ -26,9 +28,29 @@ public class ExportDocumentAuthenticationRequestBl(
     //     Converted to LINQ per module guidelines; country name via ILookupUtil, customer names via Customers proxy.
     // }
     #endregion
+    private static DynamicParameters BuildParameterForProcedure(ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@CountryID", filter.CountryId, DbType.Int32);
+        parameters.Add("@DocumentTypeID", filter.DocumentTypeId, DbType.Int32);
+        parameters.Add("@RequestID", filter.RequestId, DbType.Int32);
+        parameters.Add("@ForeignCustomsHouseID", filter.ForeignCustomsHouseCustomerId, DbType.Int32);
+        parameters.Add("@ExportDeclarationID", filter.ExportDeclarationId, DbType.Int32);
+        parameters.Add("@RequestOpenDateFrom", filter.RequestOpenDateFrom, DbType.DateTime);
+        parameters.Add("@RequestOpenDateTo", filter.RequestOpenDateTo, DbType.DateTime);
+        parameters.Add("@ExportAuthenticationDocumentID", filter.ExportAuthenticationDocumentId, DbType.Int32);
+        parameters.Add("@InvoiceIDNum", filter.InvoiceIdNum, DbType.String);
+        parameters.Add("@MainDocumentTitle", filter.MainDocumentTitle, DbType.String);
+        parameters.Add("@ExporterCustomerID", filter.ExporterId, DbType.Int32);
+        parameters.Add("@ExportAuthenticationRequestStatusID", filter.ExportAuthenticationRequestStatusId, DbType.Int32);
+        parameters.Add("@CreateUserID", filter.CreateUserId, DbType.Int32);
+        return parameters;
+    }
+
     public async Task<List<ExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
-        var result = await DataLayer.GetExportDocumentAuthenticationRequestSearch(filter);
+        var parameters = BuildParameterForProcedure(filter);
+        var result = await DataLayer.GetExportDocumentAuthenticationRequestSearch(parameters);
         if (result.Count == 0)
         {
             return result;
