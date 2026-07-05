@@ -28,6 +28,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddScoped<ICollateralProxy, CollateralProxy>();
         services.AddScoped<ITasksProxy, TasksProxy>();
         services.AddScoped<IDocumentsProxy, DocumentsProxy>();
+        services.AddScoped<IExportDealFileProxy, ExportDealFileMockProxy>(); // TODO(blocking): switch to ExportDealFileProxy when an ExportDealFile microservice exists
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
         services.AddParametersService();

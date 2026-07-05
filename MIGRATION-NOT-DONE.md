@@ -91,11 +91,14 @@
 ייתכן שהמנגנון (ניווט תפריטים של הקליינט הישן) כלל אינו רלוונטי ב-SPA החדש — **לברר עם הצוות לפני שבונים
 גישה חדשה**.
 
-## Internal: LoadDataFromExportDeclaration — ❌ לא בוצע (DealFile)
+## Internal: LoadDataFromExportDeclaration — ✅ הומר (2026-07-05, branch `feature/migrate-load-data-from-export-declaration`)
 
-הלוגיקה עצמה טריוויאלית (`IsCargoExitedOfCustomsRegulation && RequestReasonCode != RetrospectiveCertificate`),
-אבל הנתונים מגיעים מ-`IExportDealFileExternalServiceAdapter.GetExportDeclarationDetailsForCertificateOfOrigion` —
-אין מיקרו-שירות DealFile. ניתנת להמרה מיידית ברגע שיוקם פרוקסי לשירות הצהרות היצוא.
+הומר במלואו: endpoint‏ `POST Internal/LoadDataFromExportDeclaration` המקבל `CertificateOfOriginDto` ומחזיר אותו
+מועשר (`IsDeclarationReleased`, `IsCargoExitedOfCustomsRegulation`, וכן
+`IsDeclarationReleasedAndNotRetrospectiveCertificate` — השדה שהלקוח הישן הציב מה-bool המוחזר).
+נוצרו `IExportDealFileProxy` + `ExportDealFileProxy` + `ExportDealFileMockProxy`; ה-**Mock רשום ב-DI**.
+`TODO(blocking)`: מעבר ל-proxy האמיתי + אימות שם ה-endpoint כשיוקם שירות ExportDealFile
+(הערך `CustomsMicroServices.ExportDealFile` קיים ב-enum ומקומפל).
 
 ## External: UpdateCetrificateOfOrigins — ❌ לא בוצע (הודעות + תבניות + DealFile)
 

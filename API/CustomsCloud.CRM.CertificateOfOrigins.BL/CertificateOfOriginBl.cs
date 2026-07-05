@@ -15,6 +15,7 @@ public class CertificateOfOriginBl(
     ICustomerProxy customerProxy,
     IUserProxy userProxy,
     IDocumentsProxy documentsProxy,
+    IExportDealFileProxy exportDealFileProxy,
     ILookupUtil lookupUtil)
     : BaseBL<CertificateOfOriginBl, ICertificateOfOriginDal>(serviceProvider)
 {
@@ -275,5 +276,41 @@ public class CertificateOfOriginBl(
                 certificate.CustomesAgentExternalIdNum = agent.ExternalIdNum;
             }
         }
+    }
+
+    #region LEGACY_WCF
+
+    // Internal LoadDataFromExportDeclaration(certificateOfOrigin):
+    //   if (LeadDocumentID != null || !ExportDeclarationNumber.IsNullOrEmpty())
+    //   {
+    //       var dto = Container.Resolve<IExportDealFileExternalServiceAdapter>()
+    //           .GetExportDeclarationDetailsForCertificateOfOrigion(LeadDocumentID, ExportDeclarationNumber);
+    //       certificateOfOrigin.IsDeclarationReleased = dto?.IsDeclarationReleased;
+    //       certificateOfOrigin.IsCargoExitedOfCustomsRegulation = dto?.IsCargoExitedOfCustomsRegulation;
+    //       return IsCargoExitedOfCustomsRegulation == true && RequestReasonCode != (int)ERequestReason.RetrospectiveCertificate;
+    //   }
+    //   return false;
+    // The WPF presenter assigned the returned bool to CurrentEntity.IsDeclarationReleasedAndNotRetrospectiveCertificate,
+    // so here the BL enriches that DTO field directly and returns the enriched certificate.
+    #endregion
+    public async Task<CertificateOfOriginDto> LoadDataFromExportDeclaration(CertificateOfOriginDto certificateOfOrigin)
+    {
+        certificateOfOrigin.IsDeclarationReleasedAndNotRetrospectiveCertificate = false;
+        if (certificateOfOrigin.LeadDocumentId != null || !string.IsNullOrEmpty(certificateOfOrigin.ExportDeclarationNumber))
+        {
+            var exportDeclarationDetails = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigin(
+                certificateOfOrigin.LeadDocumentId, certificateOfOrigin.ExportDeclarationNumber);
+
+            certificateOfOrigin.IsDeclarationReleased = exportDeclarationDetails?.IsDeclarationReleased;
+            certificateOfOrigin.IsCargoExitedOfCustomsRegulation = exportDeclarationDetails?.IsCargoExitedOfCustomsRegulation;
+            if (certificateOfOrigin.IsCargoExitedOfCustomsRegulation.HasValue &&
+                certificateOfOrigin.IsCargoExitedOfCustomsRegulation.Value &&
+                certificateOfOrigin.RequestReasonCode != 2) // ERequestReason.RetrospectiveCertificate
+            {
+                certificateOfOrigin.IsDeclarationReleasedAndNotRetrospectiveCertificate = true;
+            }
+        }
+
+        return certificateOfOrigin;
     }
 }

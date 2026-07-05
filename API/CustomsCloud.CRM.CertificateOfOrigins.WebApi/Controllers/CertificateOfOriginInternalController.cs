@@ -195,4 +195,13 @@ public class CertificateOfOriginInternalController(IServiceProvider serviceProvi
         var result = await BusinessLayer.GetCertificateOfOriginsByFilter(filter);
         return Ok(result);
     }
+
+    // POST (not GET despite the "Load" prefix): the full certificate travels in the body and is returned enriched.
+    [HttpPost("LoadDataFromExportDeclaration")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
+    public async Task<ActionResult<CertificateOfOriginDto>> LoadDataFromExportDeclaration([FromBody] CertificateOfOriginDto certificateOfOrigin)
+    {
+        var result = await BusinessLayer.LoadDataFromExportDeclaration(certificateOfOrigin);
+        return Ok(result);
+    }
 }
