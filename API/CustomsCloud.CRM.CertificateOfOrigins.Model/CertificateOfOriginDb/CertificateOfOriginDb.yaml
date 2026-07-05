@@ -65,4 +65,9 @@ stored procedures:
     method: query-multiple
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginDto
+  - name: dbo.GetImportAuthenticationFileDetailsAndRequests
+    function: GetImportAuthenticationFileDetailsAndRequests
+    method: query-multiple
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: ImportAuthenticationFileDetailsDto
 

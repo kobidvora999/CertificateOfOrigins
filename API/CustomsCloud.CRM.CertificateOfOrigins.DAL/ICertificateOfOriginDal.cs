@@ -24,9 +24,7 @@ public interface ICertificateOfOriginDal : IBaseDal
 
     Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationFileById(int fileId);
 
-    Task<List<ImportAuthenticationRequestDto>> GetRequestsByAuthenticationFileId(int fileId);
-
-    Task<List<CertificateOfOriginsItemDetailDto>> GetItemDetailsByRequestIds(List<int> requestIds);
+    Task<(ImportAuthenticationFileDetailsDto? File, List<ImportAuthenticationRequestDto> Requests, List<CertificateOfOriginsItemDetailDto> ItemDetails)> GetAuthenticationFileDetailsAndRequests(int fileId);
 
     Task<List<CertificateOfOriginsDecisionDto>> GetAllDecisions();
 

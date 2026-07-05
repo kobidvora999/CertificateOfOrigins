@@ -122,64 +122,13 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<List<ImportAuthenticationRequestDto>> GetRequestsByAuthenticationFileId(int fileId)
+    public async Task<(ImportAuthenticationFileDetailsDto? File, List<ImportAuthenticationRequestDto> Requests, List<CertificateOfOriginsItemDetailDto> ItemDetails)> GetAuthenticationFileDetailsAndRequests(int fileId)
     {
-        var result = await ReadOnlyContext.ImportAuthenticationRequests
-            .Where(r => r.AuthenticationFileId == fileId)
-            .Select(r => new ImportAuthenticationRequestDto
-            {
-                DocumentId = r.DocumentId,
-                CreateDate = r.CreateDate,
-                CreateUserId = r.CreateUserId,
-                UpdateDate = r.UpdateDate,
-                UpdateUserId = r.UpdateUserId,
-                AuthenticationFileId = r.AuthenticationFileId,
-                AuthenticationRequestDate = r.AuthenticationRequestDate,
-                CirumstanceDetails = r.CirumstanceDetails,
-                CollateralId = r.CollateralId,
-                DecisionCircumstences = r.DecisionCircumstences,
-                DecisionId = r.DecisionId,
-                LeadDocumentId = r.LeadDocumentId,
-                DocumentIssuingDate = r.DocumentIssuingDate,
-                ImportCountryId = r.ImportCountryId,
-                IssuingCountryId = r.IssuingCountryId,
-                ItemDetailId = r.ItemDetailId,
-                Number = r.Number,
-                IsOldIndication = r.IsOldIndication,
-                OriginCountryId = r.OriginCountryId,
-                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
-                Remarks = r.Remarks,
-                RequestCircumstancesId = r.RequestCircumstancesId,
-                UserResponseId = r.UserResponseId,
-                ResponseNameEmail = r.ResponseNameEmail,
-                ResponsePhoneNum = r.ResponsePhoneNum,
-                OrganizationUnitId = r.OrganizationUnitId,
-                UserId = r.UserId,
-                VendorId = r.VendorId,
-                VendorName = r.VendorName,
-                OrganizationUnitTypeId = r.OrganizationUnitTypeId,
-                DocumentNumber = r.DocumentNumber,
-                CustomerId = r.CustomerId,
-                ImporterId = r.ImporterId,
-                InvoiceNumber = r.InvoiceNumber,
-                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
-                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference
-            })
-            .ToListAsync();
-        return result;
-    }
-
-    public async Task<List<CertificateOfOriginsItemDetailDto>> GetItemDetailsByRequestIds(List<int> requestIds)
-    {
-        var result = await ReadOnlyContext.CertificateOfOriginsItemDetails
-            .Where(i => i.ImportAuthenticationRequestId != null && requestIds.Contains(i.ImportAuthenticationRequestId.Value))
-            .Select(i => new CertificateOfOriginsItemDetailDto
-            {
-                Id = i.Id,
-                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
-                CustomItemId = i.CustomItemId
-            })
-            .ToListAsync();
+        // dbo.GetImportAuthenticationFileDetailsAndRequests - 4 result sets in one round-trip
+        // (file header / requests / documents-empty / item details); documents come from the Documents microservice
+        var parameters = new DynamicParameters();
+        parameters.Add("@FileID", fileId, DbType.Int32);
+        var result = await ReadOnlyContext.GetImportAuthenticationFileDetailsAndRequests(parameters);
         return result;
     }
 

@@ -13,11 +13,11 @@
 | 3 | dbo.GetAuthenticationRequestByLeadDocumentID | GetAuthenticationRequestByLeadDocumentIDs | ‏3 JOINs הוערו → NULL; ‏BL lookup נשאר | ✅ חווטה |
 | 4 | dbo.GetImportAuthenticationRequestById | GetAuthenticationRequestByID | ‏query-multiple; ‏ItemDetails מה-set השני מוצמד ב-DAL; ‏set 3 ריק (Documents proxy) | ✅ חווטה |
 | 5 | dbo.GetCertificateOfOriginsByFilter | GetCertificateOfOriginsByFilter | ‏ufn_GetMaxRows→200, ‏GetDateStart/End→CAST; ‏JOIN לקוחות הוסר, ‏E.ID/C.ID→F.*; ‏BuildParameterForProcedure ב-BL | ✅ חווטה |
-| 6 | dbo.GetImportAuthenticationRequestByFilter | GetAuthenticationRequestByFilter | dynamic SQL; להסיר JOINs לחמש טבלאות חסרות; לוודא CONTAINS (FTS) — אם אין קטלוג מקומי → LIKE; עמודות שם → NULL, ‏IDNum נשארות | גל ב |
-| 7 | dbo.CROSS_ExportDocumentAuthenticationRequestSearch | GetExportDocumentAuthenticationRequestSearch | dynamic SQL; להסיר JOINs ל-Country/Customer; **להוסיף** עמודות id גולמיות (CountryID, ExporterCustomerID) שה-BL צריך להעשרה; שמות → NULL | גל ב |
-| 8 | dbo.GetCertificateOfOriginByID | GetCertificateOfOriginById | ‏7 result sets; ‏1–6 מקומיים; ‏set 7 (milestones) — JOIN ל-UserMng_User → להחזיר UserID גולמי (IIF סטטוס=8) במקום UserName; מחליף גם את GetCertificateMilestoneRows | גל ג |
-| 9 | dbo.GetImportAuthenticationFileDetailsAndRequests | GetAuthenticationRequestFileByID | ‏4 sets; מאחד 3 קריאות DAL לקריאת query-multiple אחת; ‏set 3 (Docs) → מבנה ריק; ‏set 2 סוגר שני TODO (LeadDocumentSubmissionDate, IsSendReminderForImporterTaskExists — לאמת מקור מקומי) | גל ג |
-| 10 | dbo.GetExportDocumentAuthenticationRequestByID | GetExportDocumentAuthenticationRequestByID | 🛑 **חסום** — ה-proc ב-DB הוא stub‏ (`SELECT 1`, בלי פרמטרים). נדרש הגוף האמיתי מה-DB הישן (ההעתקה המקורית הייתה חלקית) | חסום |
+| 6 | dbo.GetImportAuthenticationRequestByFilter | GetAuthenticationRequestByFilter | ‏5 JOINs הוסרו; ‏CONTAINS→LIKE (אין FTS מקומי); ‏date-utils→CAST; ‏BuildParameterForProcedure (18 פרמ') | ✅ חווטה |
+| 7 | dbo.CROSS_ExportDocumentAuthenticationRequestSearch | GetExportDocumentAuthenticationRequestSearch | ‏JOINs הוסרו + נוספו עמודות id גולמיות להעשרת BL; ‏WHERE שומר סמנטיקת INNER JOIN; ‏CONTAINS→LIKE | ✅ חווטה |
+| 8 | dbo.GetCertificateOfOriginByID | GetCertificateOfOriginById | ‏7 sets בסיבוב אחד; milestones מחזיר UserId גולמי (העשרת שם ב-Users proxy); ‏GetCertificateMilestoneRows הוסרה | ✅ חווטה |
+| 9 | dbo.GetImportAuthenticationFileDetailsAndRequests | GetAuthenticationRequestFileByID | ‏4 sets בסיבוב אחד; ‏Tasks_Task→CAST(0), ‏DealFile→NULL, ‏Docs→ריק (proxy); הוחלפו 3 קריאות DAL | ✅ חווטה |
+| 10 | dbo.GetExportDocumentAuthenticationRequestByID | GetExportDocumentAuthenticationRequestByID | 🛑 **חסום** — ה-proc ב-DB הוא stub‏ (`SELECT 1`, בלי פרמטרים). נדרש הגוף האמיתי מה-DB הישן; עד אז המתודה נשארת LINQ (החלטה מתועדת) | חסום |
 
 ## כללי חיווט (לכל מתודה)
 1. תיקון גוף ה-dbo copy (הערת JOINs חסרים, NULL, פרמטרים) → ALTER + עדכון קובץ ה-Scripts (אותה ריצה = אותו קובץ).

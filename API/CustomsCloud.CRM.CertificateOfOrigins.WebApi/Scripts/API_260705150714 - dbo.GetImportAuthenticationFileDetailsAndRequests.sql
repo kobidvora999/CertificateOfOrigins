@@ -1,11 +1,9 @@
-﻿-- Source: CRM.usp_CertificateOfOrigins_GetImportAuthenticationFileDetailsAndRequests (legacy copy, untouched)
--- Target: dbo.GetImportAuthenticationFileDetailsAndRequests - microservice-owned copy (db-proc STEP 0/6.5)
--- Generated: 2026-07-05 15:07 by db-proc audit
-IF SCHEMA_ID('Shared') IS NULL EXEC('CREATE SCHEMA Shared');
+﻿IF SCHEMA_ID('Shared') IS NULL EXEC('CREATE SCHEMA Shared');
 GO
 IF TYPE_ID('Shared.IntArray') IS NULL
     CREATE TYPE Shared.IntArray AS TABLE ([val] INT);
 GO
+
 CREATE OR ALTER PROCEDURE [dbo].[GetImportAuthenticationFileDetailsAndRequests]
 (
       --declare
@@ -77,20 +75,20 @@ BEGIN
                   AR.ImporterID,
                   AR.LastDeliveryForImporter,
                   AR.InvoiceNumber,
-                  CAST(CASE WHEN T.ID IS NOT NULL THEN 1
-                                ELSE 0 END AS BIT) IsSendReminderForImporterTaskExists,
-                  DFLDSD.SubmitDate LeadDocumentSubmissionDate,
+                  CAST(0 AS BIT) IsSendReminderForImporterTaskExists, -- db-proc Pattern F: Infrastructure.Tasks_Task not replicated (Tasks microservice) ג€” enrich in BL if needed
+
+                  CAST(NULL AS DATETIME) LeadDocumentSubmissionDate, -- CRP.DealFile_* not replicated (no DealFile microservice)
                   AR.AllInvoiceGoodsItemTaxDifference,
                   AR.InvoiceGoodsItemTaxDifference
       FROM  CRM.CertificateOfOrigins_ImportAuthenticationRequest AR
-                  LEFT JOIN CRP.DealFile_LeadDocumentSubmissionData DFLDSD ON DFLDSD.LeadDocumentID = AR.LeadDocumentID
-                  OUTER APPLY (     SELECT            TOP 1 T.ID
-                                          FROM        Infrastructure.Tasks_Task T
-                                          WHERE       T.TypeID = 404 -- שילחת תזכורת ליבואן בגין אימות מסמך {0}
-                                                            AND T.TaskStatusID != 2 -- סגור
-                                                            AND T.MainRelated_EntityID = AR.DocumentID
-                                                            AND T.MainRelated_EntityTypeID = 12384    -- אימות מסמך מקור (יבוא)
-                                          ORDER BY    T.ID) T
+
+
+
+
+
+
+
+
       WHERE AR.AuthenticationFileID = @FileID;
 
       SELECT      D.ID,
@@ -99,9 +97,9 @@ BEGIN
                   D.CreateDate,
                   D.ExternalIDNum,
                   D.Notes
-      FROM  Infrastructure.Docs_Document D
-      WHERE ID IN (       SELECT    [@DocumentIDs].val
-                                FROM            @DocumentIDs);
+      FROM (SELECT CAST(NULL AS INT) ID, CAST(NULL AS INT) TypeID, CAST(NULL AS NVARCHAR(255)) Title, CAST(NULL AS DATETIME) CreateDate, CAST(NULL AS NVARCHAR(50)) ExternalIDNum, CAST(NULL AS NVARCHAR(MAX)) Notes) D -- Docs_Document not replicated (Documents microservice)
+      WHERE 1 = 0;
+
 
 
       SELECT      I.Id,

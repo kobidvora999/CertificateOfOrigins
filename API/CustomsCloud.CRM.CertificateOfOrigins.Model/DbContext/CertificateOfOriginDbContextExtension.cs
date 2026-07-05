@@ -57,6 +57,24 @@ public partial class CertificateOfOriginDbContext
         return result;
     }
 
+    public async Task<(ImportAuthenticationFileDetailsDto? File, List<ImportAuthenticationRequestDto> Requests, List<CertificateOfOriginsItemDetailDto> ItemDetails)> GetImportAuthenticationFileDetailsAndRequests(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetImportAuthenticationFileDetailsAndRequests",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        using var multi = await conn.QueryMultipleAsync(cmd);
+        var file = (await multi.ReadAsync<ImportAuthenticationFileDetailsDto>()).FirstOrDefault();
+        var requests = (await multi.ReadAsync<ImportAuthenticationRequestDto>()).ToList();
+        _ = await multi.ReadAsync();
+
+        // 3rd result set (documents) is intentionally empty — documents come from the Documents microservice
+        var itemDetails = (await multi.ReadAsync<CertificateOfOriginsItemDetailDto>()).ToList();
+        return (file, requests, itemDetails);
+    }
+
     public async Task<(CertificateOfOriginDto? Certificate, List<CertificateMilestoneRowDto> MilestoneRows)> GetCertificateOfOriginByID(object? parameters = null, CancellationToken cancellationToken = default)
     {
         var conn = Database.GetDbConnection();

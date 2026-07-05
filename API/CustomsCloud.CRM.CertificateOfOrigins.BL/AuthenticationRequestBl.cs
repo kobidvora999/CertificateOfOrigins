@@ -254,7 +254,7 @@ public class AuthenticationRequestBl(
     #endregion
     public async Task<ImportAuthenticationFileDetailsDto?> GetAuthenticationRequestFileByID(int fileId)
     {
-        var file = await DataLayer.GetAuthenticationFileById(fileId);
+        var (file, requests, itemDetails) = await DataLayer.GetAuthenticationFileDetailsAndRequests(fileId);
         if (file == null)
         {
             return null;
@@ -262,7 +262,6 @@ public class AuthenticationRequestBl(
 
         file.CustomerIdList = new List<int>(); // legacy: initialized empty, never populated in this path
 
-        var requests = await DataLayer.GetRequestsByAuthenticationFileId(fileId);
         file.Requests = requests;
         file.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
         {
@@ -273,7 +272,6 @@ public class AuthenticationRequestBl(
         if (requestDocumentIds.Count > 0)
         {
             var documents = await documentsProxy.GetDocumentsByIds(requestDocumentIds);
-            var itemDetails = await DataLayer.GetItemDetailsByRequestIds(requestDocumentIds);
             foreach (var request in requests)
             {
                 request.Document = documents?.FirstOrDefault(d => d.Id == request.DocumentId);
@@ -283,9 +281,9 @@ public class AuthenticationRequestBl(
                     [1055] = new List<int> { request.LeadDocumentId }
                 };
 
-                // TODO (blocking): legacy also returned LeadDocumentSubmissionDate (CRP.DealFile_LeadDocumentSubmissionData)
-                // and IsSendReminderForImporterTaskExists (open task 404) per request — DealFile has no microservice;
-                // the reminder-task flag can be filled via ITasksProxy.IsTaskExist once semantics are confirmed.
+                // TODO (blocking): LeadDocumentSubmissionDate returns NULL from the SP (CRP.DealFile_* not replicated —
+                // no DealFile microservice) and IsSendReminderForImporterTaskExists returns 0 (Infrastructure.Tasks_Task
+                // not replicated) — the reminder-task flag can be filled via ITasksProxy.IsTaskExist once semantics are confirmed.
             }
         }
 
