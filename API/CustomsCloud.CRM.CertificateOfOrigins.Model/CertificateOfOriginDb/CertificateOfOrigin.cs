@@ -106,4 +106,10 @@ public class CertificateOfOrigin
     public bool IsLastVersion { get; set; }
 
     public bool IsInPublishingProcess { get; set; }
+
+    // legacy columns missing from the local extraction — added by API_20260707 script;
+    // TODO(confirm): verify names/defaults against the monolith schema before ROLLOUT
+    public bool IsCreateAttachments { get; set; }
+
+    public bool IsMessageSent { get; set; }
 }

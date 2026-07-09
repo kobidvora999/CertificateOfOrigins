@@ -100,14 +100,16 @@
 `TODO(blocking)`: מעבר ל-proxy האמיתי + אימות שם ה-endpoint כשיוקם שירות ExportDealFile
 (הערך `CustomsMicroServices.ExportDealFile` קיים ב-enum ומקומפל).
 
-## External: UpdateCetrificateOfOrigins — ❌ לא בוצע (הודעות + תבניות + DealFile)
+## External: UpdateCetrificateOfOrigins — ✅ הומר (2026-07-07, branch `feature/migrate-update-cetrificate-of-origins`)
 
-מפזר לפי EventType ל-5 זרימות (DeclarationReleased ×2, UpdateCertrificateOfOrigins,
-AmendmentSuccess, CancellationRequestCommited) — כל ענף נוגע בלפחות חסם אחד:
-הדפסת תעודה (`PrintCertificateOfOriginAndSaveAttachments` — ETemplate), הודעות
-(`SendMessageToAgent` / `OutgoingMessageProxy.Send`), או DealFile
-(`GetDetailsForExportAssociatedGoodsItemsByLeadDocumentId`). אין ענף הניתן להמרה עצמאית.
-טבלת הפיזור המלאה (240/1423/1790/334/554) מתועדת בניתוח.
+הומר במלואו: `POST CertificateOfOrigin/UpdateCetrificateOfOrigins` — dispatcher על 5 אירועים (240/1423/1790/334/554)
+→ 4 מתודות BL + כל ה-helpers. החסמים ההיסטוריים נפתרו עם תשתיות חדשות שנלמדו בסקילים: IOutgoingMessageUtil
+(פידבק PC_NG_2281), IQueueUtil (הנפקה ע"י worker), IDocumentUtil (QR/צרופות), ITemplateUtil (זרימת תבניות אחידה
+ללא switch), ValidationMessages+resx (טקסטי מערכת). Build ✅.
+**חסמים שנותרו (TODO(blocking) בקוד):** טקסטי resx מטבלת UIMessage הפנימית; חבילת BaseValidationMessages
+טרם ב-feed החיצוני; CountryCountryGroup חסר בתשתית lookup (2 בדיקות מדולגות); ערכי SendService/DestinationExternalId
+של הודעת הפידבק; endpoints לא מאומתים (Common, CustomsBook, Tasks, ExportDealFile); שמות תבניות במודול התבניות
++ השלמת dataset ב-dbo.GetTemplateData; אימות עמודות IsCreateAttachments/IsMessageSent מול המונוליט.
 
 ## External: TempSync — ⏭️ לא נדרש
 

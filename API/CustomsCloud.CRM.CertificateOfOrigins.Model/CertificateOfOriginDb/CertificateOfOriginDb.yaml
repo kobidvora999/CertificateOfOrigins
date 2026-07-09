@@ -70,4 +70,9 @@ stored procedures:
     method: query-multiple
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: ImportAuthenticationFileDetailsDto
+  - name: dbo.GetTemplateData
+    function: GetTemplateData
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: object   # generic - the DbContextExtension method is GetTemplateData<T>
 

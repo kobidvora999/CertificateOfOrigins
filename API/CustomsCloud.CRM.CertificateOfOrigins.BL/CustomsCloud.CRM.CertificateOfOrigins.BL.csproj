@@ -35,6 +35,18 @@
 		<EmbeddedResource Include="Scripts/**/*.sql" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<EmbeddedResource Update="ErrorMessagesResources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>ErrorMessagesResources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+		<Compile Update="ErrorMessagesResources.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>ErrorMessagesResources.resx</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>

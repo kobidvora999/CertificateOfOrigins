@@ -6,6 +6,7 @@ using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Entities;
 using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
 using CustomsCloud.InfrastructureCore.Parameters;
+using CustomsCloud.InfrastructureCore.Queue;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
@@ -29,9 +30,15 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddScoped<ITasksProxy, TasksProxy>();
         services.AddScoped<IDocumentsProxy, DocumentsProxy>();
         services.AddScoped<IExportDealFileProxy, ExportDealFileMockProxy>(); // TODO(blocking): switch to ExportDealFileProxy when an ExportDealFile microservice exists
+        services.AddScoped<ICommonProxy, CommonProxy>();       // CustomsMicroServices.Common — endpoints TODO(blocking), CommonMockProxy available
+        services.AddScoped<ICustomsBookProxy, CustomsBookProxy>(); // endpoints TODO(blocking), CustomsBookMockProxy available
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
         services.AddParametersService();
         services.AddEventUtil();
+        services.AddOutgoingMessageService();
+        services.AddQueueService();
+        services.AddDocumentUtil();
+        services.AddTemplateUtil();
     }
 }

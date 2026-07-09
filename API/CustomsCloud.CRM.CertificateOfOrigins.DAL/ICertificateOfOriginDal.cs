@@ -55,4 +55,22 @@ public interface ICertificateOfOriginDal : IBaseDal
     Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber);
 
     Task<string?> GetCertificateOfOriginTypeCodeName(int typeCodeId);
+
+    Task<CertificateOfOriginTypeCode?> GetCertificateOfOriginTypeCode(int typeCodeId);
+
+    Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> certificateIds);
+
+    Task<CertificateOfOrigin?> GetCertificateById(int certificateId);
+
+    Task<List<CertificateOfOriginDetails>> GetCertificateDetails(int certificateId);
+
+    Task<(List<CertificateOfOriginInvoiceDetail> Invoices, List<CertificateOfOriginItemDetail> Items)> GetCertificateInvoiceGraph(int certificateId);
+
+    Task AddVsDeclarationError(int certificateId, string errorText);
+
+    Task SaveCertificate(CertificateOfOrigin certificate);
+
+    Task<List<string>> GetActiveCertificateNumbersByIds(List<int> certificateIds, string? excludeCertificateNumber);
+
+    Task<T?> GetTemplateData<T>(int templateId, int entityId);
 }

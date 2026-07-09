@@ -85,7 +85,7 @@ public class ExportDocumentAuthenticationRequestBl(
     //                      ExportAuthenticationRequestManufacturingArea;
     //     result.EntityTypeAndIDsToSearch[EEntityType.ExportDeclaration] =
     //         leadDocuments.Where(LeadDocumentID != null).Select(LeadDocumentID);
-    //     The migrated version returns null when not found (consistent with the repo's Get-by-id precedent).
+    //     Migrated: route-style endpoint — not-found throws RestNotFoundException → 404 (C1).
     // }
     #endregion
     public async Task<ExportDocumentAuthenticationRequestDto?> GetExportDocumentAuthenticationRequestByID(int id)
@@ -93,7 +93,7 @@ public class ExportDocumentAuthenticationRequestBl(
         var result = await DataLayer.GetExportDocumentAuthenticationRequestById(id);
         if (result == null)
         {
-            return null;
+            throw new RestNotFoundException(); // route-style endpoint → 404 (C1)
         }
 
         result.OriginalStatusId = result.StatusId ?? 0;
@@ -122,8 +122,8 @@ public class ExportDocumentAuthenticationRequestBl(
         var customer = await customerProxy.GetCustomerByIdentification(customerId);
         if (customer == null)
         {
-            // legacy: EMessages.InvalidIdentificationNumber (2345) — "הלקוח לא קיים במערכת"
-            throw new RestValidationException(nameof(customerId), "הלקוח לא קיים במערכת", "404");
+            // legacy: EMessages.InvalidIdentificationNumber (2345) — "הלקוח לא קיים במערכת" → 404 (C1)
+            throw new RestNotFoundException();
         }
 
         return customer;
@@ -143,8 +143,8 @@ public class ExportDocumentAuthenticationRequestBl(
         var customers = await customerProxy.GetCustomersByCountryId(countryId, 40); // ECustomerActivityType.Foreign_customs_house = 40
         if (customers == null || customers.Count == 0)
         {
-            // legacy: EMessages.NoCustomHouseForThisCountry (13717) — "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה"
-            throw new RestValidationException(nameof(countryId), "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה", "404");
+            // legacy: EMessages.NoCustomHouseForThisCountry (13717) — "לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה" → 404 (C1)
+            throw new RestNotFoundException();
         }
 
         var result = customers.First();

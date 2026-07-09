@@ -433,4 +433,91 @@ public class CertificateOfOriginDal(IServiceProvider serviceProvider)
             .FirstOrDefaultAsync();
         return result;
     }
+
+    public async Task<CertificateOfOriginTypeCode?> GetCertificateOfOriginTypeCode(int typeCodeId)
+    {
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .FirstOrDefaultAsync(t => t.Id == typeCodeId);
+        return result;
+    }
+
+    public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> certificateIds)
+    {
+        // tracked (Context, not ReadOnlyContext) — the update flows mutate these entities and SaveCertificate persists
+        var result = await Context.CertificateOfOrigins
+            .Where(c => certificateIds.Contains(c.Id))
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOrigin?> GetCertificateById(int certificateId)
+    {
+        var result = await Context.CertificateOfOrigins
+            .FirstOrDefaultAsync(c => c.Id == certificateId);
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginDetails>> GetCertificateDetails(int certificateId)
+    {
+        var result = await ReadOnlyContext.CertificateOfOriginDetails
+            .Where(d => d.CertificateOfOriginId == certificateId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<(List<CertificateOfOriginInvoiceDetail> Invoices, List<CertificateOfOriginItemDetail> Items)> GetCertificateInvoiceGraph(int certificateId)
+    {
+        // the scaffolded entities have no navigation properties — the graph is stitched from two queries
+        var invoices = await ReadOnlyContext.CertificateOfOriginInvoiceDetails
+            .Where(i => i.CertificateOfOriginId == certificateId)
+            .ToListAsync();
+        var invoiceIds = invoices.Select(i => i.Id).ToList();
+        var items = await ReadOnlyContext.CertificateOfOriginItemDetails
+            .Where(d => invoiceIds.Contains(d.CertificateOfOriginInvoiceDetailId))
+            .ToListAsync();
+        return (invoices, items);
+    }
+
+    public async Task AddVsDeclarationError(int certificateId, string errorText)
+    {
+        Context.CertificateOfOriginVsDeclarationErrors.Add(new CertificateOfOriginVsDeclarationError
+        {
+            CertificateOfOriginId = certificateId,
+            ErrorText = errorText
+        });
+        await Context.SaveChangesAsync();
+    }
+
+    public async Task SaveCertificate(CertificateOfOrigin certificate)
+    {
+        if (Context.Entry(certificate).State == EntityState.Detached)
+        {
+            Context.CertificateOfOrigins.Update(certificate);
+        }
+
+        await Context.SaveChangesAsync();
+    }
+
+    public async Task<List<string>> GetActiveCertificateNumbersByIds(List<int> certificateIds, string? excludeCertificateNumber)
+    {
+        // sibling certificates on the same declaration, excluding cancelled/rejected/error and the current one
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => certificateIds.Contains(c.Id) &&
+                        c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled &&
+                        c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Rejected &&
+                        c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Error &&
+                        c.CertificateNumber != excludeCertificateNumber)
+            .Select(c => c.CertificateNumber)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<T?> GetTemplateData<T>(int templateId, int entityId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TemplateId", templateId, DbType.Int32);
+        parameters.Add("@EntityId", entityId, DbType.Int32);
+        var result = await ReadOnlyContext.GetTemplateData<T>(parameters);
+        return result.FirstOrDefault();
+    }
 }

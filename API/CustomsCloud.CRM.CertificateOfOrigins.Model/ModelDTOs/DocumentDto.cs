@@ -1,7 +1,7 @@
 namespace CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
 // Mirrors the Documents microservice DocumentDto (CustomsCloud.Infrastructure.Documents.Model.DTO.DocumentDto)
-// — the response shape of External/GetDocumentsByEntity. Also reused as the SP projection for the
+// — the response shape of Documents/DocumentsByEntity. Also reused as the SP projection for the
 // authentication-request document result set (extra fields stay null there).
 public class DocumentDto
 {

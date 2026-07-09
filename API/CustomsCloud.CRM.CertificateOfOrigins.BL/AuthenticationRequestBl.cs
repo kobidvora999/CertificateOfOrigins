@@ -257,7 +257,7 @@ public class AuthenticationRequestBl(
         var (file, requests, itemDetails) = await DataLayer.GetAuthenticationFileDetailsAndRequests(fileId);
         if (file == null)
         {
-            return null;
+            throw new RestNotFoundException(); // route-style endpoint → 404 (C1)
         }
 
         file.CustomerIdList = new List<int>(); // legacy: initialized empty, never populated in this path
@@ -338,7 +338,7 @@ public class AuthenticationRequestBl(
         var importAuthenticationRequest = await DataLayer.GetAuthenticationRequestById(documentId);
         if (importAuthenticationRequest == null)
         {
-            return null;
+            throw new RestNotFoundException(); // route-style endpoint → 404 (C1)
         }
 
         // ItemDetails arrive from the SP's 2nd result set (attached in the DAL)

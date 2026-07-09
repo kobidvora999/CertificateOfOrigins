@@ -17,6 +17,8 @@ public class Program
             .SetMicroService(InfrastructureCore.CustomsMicroServices.CertificateOfOrigins)
             .AddServiceConfiguration<ServicesConfiguration>();
 
+        // TODO(blocking): .AddValidationMessages<ValidationMessages>() — re-enable when the
+        // InfrastructureCore package containing BaseValidationMessages reaches the external feed (see ValidationMessages.cs)
         var app = CloudWebApp.Build(builder);
         DatabaseMigrationUtil.Handle(app, "CertificateOfOrigins");
         app.Run();
