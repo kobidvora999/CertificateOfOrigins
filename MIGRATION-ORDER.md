@@ -12,7 +12,7 @@
 | # | מתודה | חוזה (ClassName) | סטטוס |
 |---|---|---|---|
 | 1 | GetCertificateOfOriginID | External (CertificateOfOriginsExternalService) | ✅ הומרה (branch `feature/migrate-get-certificate-of-origin-id`) |
-| 2 | IsCertificateOfOriginByExternalIdExist | Internal (CertificateOfOriginsInternalService) | ⬜ |
+| 2 | IsCertificateOfOriginByExternalIdExist | Internal (CertificateOfOriginsInternalService) | ✅ הומרה (branch `feature/migrate-is-certificate-of-origin-by-external-id-exist`) — SP dbo.GetCertificateOfOriginsByFilter (JOIN הוסר) + Customer proxy (mock) |
 | 3 | CheckImporterOfImportAuthentication | Internal | ⬜ |
 | 4 | GetGoodsItemCerificateDTO | External | ⬜ |
 

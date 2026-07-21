@@ -11,6 +11,8 @@
 	<ItemGroup>
 		<Compile Remove="DbContext\CertificateOfOriginsDbContext.cs" />
 		<None Include="DbContext\CertificateOfOriginsDbContext.cs" />
+		<Compile Remove="DbContext\CertificateOfOriginsDbContextExtension.cs" />
+		<None Include="DbContext\CertificateOfOriginsDbContextExtension.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

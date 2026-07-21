@@ -54,6 +54,29 @@
               ]
             }
           }
+        },
+        {
+          "name": "CertificateOfOriginByExternalIdExist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=COO-2026-000123",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginByExternalIdExist"
+              ],
+              "query": [
+                {
+                  "key": "certificateOfOriginExternalId",
+                  "value": "COO-2026-000123"
+                }
+              ]
+            }
+          }
         }
       ]
     }

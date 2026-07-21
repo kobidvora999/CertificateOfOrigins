@@ -4,6 +4,7 @@
        DAL assembly against InfrastructureCore's EF Core version. -->
   <ItemGroup>
     <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginsDbContext.cs" Link="DbContext\CertificateOfOriginsDbContext.cs" />
+    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginsDbContextExtension.cs" Link="DbContext\CertificateOfOriginsDbContextExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
