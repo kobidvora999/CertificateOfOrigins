@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- DbContext physically lives in the Model project but is linked here so it compiles into the
+       DAL assembly against InfrastructureCore's EF Core version. -->
+  <ItemGroup>
+    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginsDbContext.cs" Link="DbContext\CertificateOfOriginsDbContext.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\CustomsCloud.CRM.CertificateOfOrigins.Model.csproj" />
   </ItemGroup>

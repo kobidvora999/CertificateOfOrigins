@@ -6,6 +6,13 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
+	<!-- DbContext files live here but compile into the DAL project (linked there) so they bind to
+	     InfrastructureCore's EF Core version, not the newer EF Core pulled in by EntityFrameworkCore.Design. -->
+	<ItemGroup>
+		<Compile Remove="DbContext\CertificateOfOriginsDbContext.cs" />
+		<None Include="DbContext\CertificateOfOriginsDbContext.cs" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.11" />
 		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.24" />
