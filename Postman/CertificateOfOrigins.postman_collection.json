@@ -43,14 +43,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginID/COO-2026-000123",
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginID/IL0000116895",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "CertificateOfOrigins",
                 "CertificateOfOriginID",
-                "COO-2026-000123"
+                "IL0000116895"
               ]
             }
           }
@@ -61,7 +61,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=COO-2026-000123",
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=IL0000116895",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -72,7 +72,7 @@
               "query": [
                 {
                   "key": "certificateOfOriginExternalId",
-                  "value": "COO-2026-000123"
+                  "value": "IL0000116895"
                 }
               ]
             }
