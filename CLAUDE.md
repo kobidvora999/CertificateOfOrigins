@@ -38,12 +38,26 @@ Planar/                                              ← Scheduled jobs (BaseJob
 Postman/                                             ← Postman collection
 ```
 
-`{S}` = service name — detect from `.sln` / project folder names at the start of each session.
+`{S}` = **CertificateOfOrigins** (this service). Projects live under `API/CustomsCloud.CRM.CertificateOfOrigins.{WebApi,BL,DAL,Model,Test}`.
 
-## Build
+## Migration context
+
+This repo is an **in-progress WCF → .NET 10 migration**, not a greenfield service. Before starting migration work, read the three root tracking docs — they are the source of truth for what's done, what's blocked, and why:
+
+- [MIGRATION-STATUS.md](MIGRATION-STATUS.md) — per-method status across all 3 WCF contracts (External/Internal/Incoming), with recommended unblock order.
+- [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) — detailed blockers per un-migrated method (design decisions still owed to a developer; do not guess a value-source — halt and ask).
+- [REWIRE-PLAN.md](REWIRE-PLAN.md) — LINQ→stored-procedure rewiring plan for migrated read methods.
+
+Keep these docs updated as work progresses (they are written in Hebrew).
+
+## Build & Test
+
+Solutions use the newer `.slnx` format. Two exist: `CertificateOfOrigins.slnx` (full: API + tests + Postman) and `API/CertificateOfOriginsApi.slnx` (API only).
 
 ```bash
-dotnet build
+dotnet build                                    # builds the solution in the working dir
+dotnet test                                     # runs the NUnit test project (net10.0)
+dotnet test --filter "FullyQualifiedName~MethodName"   # run a single test / class
 ```
 
 After build failure: fix obvious issues (missing usings, missing interface methods) and rebuild once. If still failing — show errors and ask.

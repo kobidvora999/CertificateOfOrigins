@@ -7,11 +7,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Remove="DbContext\CertificateOfOriginDbContext.cs" />
-		<Compile Remove="DbContext\CertificateOfOriginDbContextExtension.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.11" />
 		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.24" />
 		<PackageReference Include="CustomsCloud.InfrastructureCore.Lookup" Version="1.10.37" />
@@ -32,16 +27,6 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Include="DbContext\CertificateOfOriginDbContext.cs" />
-	  <None Include="DbContext\CertificateOfOriginDbContextExtension.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="CertificateOfOriginDb\" />
-	  <Folder Include="ModelDTOs\Enums\" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

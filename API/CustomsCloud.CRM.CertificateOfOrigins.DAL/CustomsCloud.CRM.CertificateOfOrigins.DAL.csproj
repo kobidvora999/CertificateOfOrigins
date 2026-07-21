@@ -1,11 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginDbContext.cs" Link="DbContext\CertificateOfOriginDbContext.cs" />
-    <Compile Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\DbContext\CertificateOfOriginDbContextExtension.cs" Link="DbContext\CertificateOfOriginDbContextExtension.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\CustomsCloud.CRM.CertificateOfOrigins.Model.csproj" />
   </ItemGroup>
 
