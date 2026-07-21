@@ -16,19 +16,19 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.11" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.24" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Lookup" Version="1.10.37" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Model" Version="1.10.15" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Parameters" Version="1.10.29" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Proxy" Version="1.10.28" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.37" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.WebApi" Version="1.10.39" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.25" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.38" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Lookup" Version="1.10.74" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Model" Version="1.10.27" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Parameters" Version="1.10.66" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Proxy" Version="1.10.65" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.84" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.WebApi" Version="1.10.77" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.27.0.140913">
+		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.29.0.143774">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>

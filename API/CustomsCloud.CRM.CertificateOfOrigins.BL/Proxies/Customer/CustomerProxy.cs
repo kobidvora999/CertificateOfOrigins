@@ -15,7 +15,7 @@ public class CustomerProxy(IRestProxy restProxy)
             .UsePostMethod()
             .WithResource("Customer/CustomersByIds") // TODO(blocking): confirm endpoint name/route with the Customers microservice
             .AddBody(customerIds);
-        var result = await ExecuteAsync<List<CustomerDto>>(req);
-        return result.Data;
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<List<CustomerDto>>();
     }
 }
