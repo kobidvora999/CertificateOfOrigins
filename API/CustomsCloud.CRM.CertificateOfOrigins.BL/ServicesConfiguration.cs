@@ -2,6 +2,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
+using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
@@ -16,11 +17,11 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddDataLayer<ICertificateOfOriginsDal, CertificateOfOriginsDal>();
         services.AddBusinessLayer<CertificateOfOriginsBl>();
         services.AddBusinessLayer<AuthenticationRequestBl>();
-        services.AddRestProxy();
 
-        // TODO(blocking): switch to the real CustomerProxy via the C4 mock-proxy pattern (AddProxy<I,Real,Mock>
-        // + x-mock-proxy header + ProxyMocking shim) once the Customers endpoint is verified. Mock registered
-        // directly for now so the service runs locally without the Customers microservice.
-        services.AddScoped<ICustomerProxy, CustomerMockProxy>();
+        // Platform mock-proxy convention: REAL is the default; a request selects the mock per interface via the
+        // x-mock-proxy header. TODO(blocking): verify the real Customers endpoint (CustomersByIds) before ROLLOUT.
+        services.AddRestProxy();  // IRestProxy for the real proxies' BaseMicroServiceProxyAdapter
+        services.AddHttpProxy();  // IProxyMockUtil + per-request mock selection
+        services.AddProxy<ICustomerProxy, CustomerProxy, CustomerMockProxy>();
     }
 }

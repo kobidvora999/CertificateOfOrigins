@@ -360,3 +360,26 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ===== CustomsCloud canonical block (repo-hygiene.md / C2) =====
+# Postman sync credentials (local only)
+Postman/.postman.env
+
+# --- Postman workload-test generated run artifacts (regenerated each run; do NOT commit) ---
+# Keep: *.postman_collection.json, .env.*.json, run.ps1/sh, gap.md, reports/*.md
+Postman/**/reports/*.html
+Postman/**/reports/*.log
+Postman/**/reports/*.cobertura.xml
+Postman/**/reports/Summary.txt
+Postman/**/reports/last-run.json
+Postman/**/reports/coverage-baseline.json
+Postman/**/reports/coverage-html/
+Postman/**/reports/_js/
+Postman/**/reports/newman-*.json
+Postman/**/reports/*.js
+Postman/**/reports/*.css
+Postman/**/reports/*.svg
+Postman/**/reports/*.htm
+
+# session render-verification leftovers (never repo content)
+_rendered/

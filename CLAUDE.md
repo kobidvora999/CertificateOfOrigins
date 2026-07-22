@@ -99,3 +99,11 @@ Controllers are added on demand via `/net10-controller`. Three types exist:
 - `External` — exposed to external clients / internet
 - `Internal` — inter-service communication
 - `Incoming` — inbound form/data submissions from external systems
+
+## File Hygiene — חובה (C2)
+
+- כל דבר זמני (סקריפט עזר, בדיקה חד-פעמית, פלט ביניים, probe, לוג) נכתב ל-scratchpad של הסשן בלבד —
+  לעולם לא לתיקיות ה-repo. רק תוצרים שנדרשים ברשת הפנימית נכנסים ל-repo.
+- בתים מוגדרים: SQL → `API/**/WebApi/Scripts/` · Postman → `Postman/` · דוחות gap → `Postman/**/reports/*.md|*.docx`
+  · סקריפטי תפעול קבועים → `tools/` · אפיונים → `Specification Documents/` · תבניות → `Templates/` · seed → `_seed/`.
+- ה-`.gitignore` מכיל את הבלוק הקנוני של CustomsCloud (מקור: `_shared/repo-hygiene.md` ב-repo ה-skills) — לא מוסיפים תבניות אד-הוק.

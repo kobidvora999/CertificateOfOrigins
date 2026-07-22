@@ -12,6 +12,21 @@
       "type": "string"
     }
   ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Platform mock-proxy convention (C4): REAL proxies are the default; route the outbound proxy",
+          "// calls to the in-service mock during local/test runs via the x-mock-proxy header (per interface).",
+          "['ICustomerProxy'].forEach(function (p) {",
+          "    pm.request.headers.upsert({ key: 'x-mock-proxy', value: p });",
+          "});"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "CertificateOfOrigins",

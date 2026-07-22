@@ -1,14 +1,20 @@
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
-public class CustomerMockProxy : ICustomerProxy
+public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockProxy
 {
-    // Returns hardcoded dummy data — used while the real Customers service endpoint is unavailable.
+    // Default = realistic dummy customers; feature "Customers.NotFound" flips to the not-found branch.
     public Task<List<CustomerDto>?> GetCustomersByIds(List<int> customerIds)
     {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<List<CustomerDto>?>(null);
+        }
+
         var result = customerIds.Select(id => new CustomerDto
         {
             Id = id,                          // TODO: dummy data
