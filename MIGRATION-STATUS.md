@@ -1,7 +1,35 @@
-# מצאי המרה — CertificateOfOrigins (wcf-orchestrate, 2026-07-05)
+# מצאי המרה — CertificateOfOrigins
 
-**סיכום: 35 מתודות בחוזי ה-WCF · ‏26 הומרו ✅ · ‏8 חסומות 🔴 · ‏1 לא נדרשת ⏭️ · ‏0 מוכנות ללא חסם.**
-השירות ממוצה עד גבול החסמים — כל התקדמות נוספת דורשת פתיחת אחד המסלולים בסוף המסמך.
+> ## ⚠️ קרא קודם — עדכון סטטוס (2026-07-22)
+>
+> **הרפו אופס ל-scratch slate** (commit `5fce824` "Reset service to a clean scratch slate for from-scratch migration").
+> כל עבודת ההמרה שקדמה ל-reset **נמחקה מ-master** — ההמרה מתבצעת עכשיו **מאפס**.
+>
+> לכן: **הטבלאות שלמטה (המסומנות ✅ הומרה / 🔴 חסומה מ-2026-07-05) הן מצאי-הלגאסי = רשימת היעד** —
+> מה קיים במונוליט WCF שצריך להמיר, ומה חסום שם. הן **אינן** מד-התקדמות של המאמץ הנוכחי.
+>
+> ### מה הומר בפועל על master (post-reset) — מקור-האמת להתקדמות
+>
+> | # | Commit | מתודה | חוזה | Controller |
+> |---|---|---|---|---|
+> | 1 | `f3fe10d` | GetCertificateOfOriginID | External | CertificateOfOrigins |
+> | 2 | `ff5b089` | IsCertificateOfOriginByExternalIdExist | Internal | CertificateOfOrigins |
+> | 3 | `db8b09e` | CheckImporterOfImportAuthentication | Internal | AuthenticationRequest |
+>
+> **בפועל: 2 controllers (`CertificateOfOriginsController`, `AuthenticationRequestController`), 3 endpoints מומרים.**
+> תשתית משותפת שכבר קיימת אך **טרם חשופה כ-endpoint**: מתודת ה-BL `GetCertificateOfOriginsByFilter`
+> (+ SP `dbo.GetCertificateOfOriginsByFilter` + DAL + `CertificateOfOriginResultDto` + Customer proxy) —
+> נוצרה כתשתית ל-#2; ההמרה המלאה שלה (עם endpoint) היא #7 בתוכנית.
+> כל שאר המתודות שמסומנות ✅ למטה (מ-2026-07-05) **צריכות המרה מחדש**.
+>
+> **מתכונת עבודה מסודרת:** מתודה אחת בכל פעם, במאגר הראשי (לא ב-worktrees מקבילים), **commit בסוף כל מיגרציה**.
+> עדכן את הטבלה הזו אחרי כל commit.
+
+---
+
+## מצאי-הלגאסי (wcf-orchestrate, 2026-07-05) — רשימת היעד
+
+**סיכום המונוליט: 35 מתודות בחוזי ה-WCF · ‏26 קיימות/הומרו-לפני-reset · ‏8 חסומות 🔴 · ‏1 לא נדרשת ⏭️.**
 פירוט החסמים המלא: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md).
 
 ## External — ICertificateOfOriginsExternalContract (7)
