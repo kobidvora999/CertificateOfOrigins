@@ -77,6 +77,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "GoodsItemCerificateDTO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  { \"goodsItemId\": 1, \"certificateNumber\": \"IL0000116895\" },\n  { \"goodsItemId\": 2, \"certificateNumber\": \"ZZZ-NONE\" }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/GoodsItemCerificateDTO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "GoodsItemCerificateDTO"
+              ]
+            }
+          }
         }
       ]
     },

@@ -29,4 +29,14 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.GetCertificateOfOriginID(certificateNumber);
         return Ok(result);
     }
+
+    // External WCF: GetGoodsItemCerificateDTO(list) — enriches each item with its certificate id (latest by
+    // number); the payload is a list of DTOs bound from the body, hence POST. Per-item miss → null (no 404).
+    [HttpPost("GoodsItemCerificateDTO")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GoodsItemCerificateDto>))]
+    public async Task<ActionResult<List<GoodsItemCerificateDto>>> GoodsItemCerificateDTO([FromBody] List<GoodsItemCerificateDto> goodsItemCerificateDTOs)
+    {
+        var result = await BusinessLayer.GetGoodsItemCerificateDTO(goodsItemCerificateDTOs);
+        return Ok(result);
+    }
 }

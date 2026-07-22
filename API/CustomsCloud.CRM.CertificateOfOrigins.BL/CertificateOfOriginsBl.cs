@@ -35,6 +35,19 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     // }
     #endregion
 
+    public async Task<List<GoodsItemCerificateDto>> GetGoodsItemCerificateDTO(List<GoodsItemCerificateDto> goodsItemCerificateDTOs)
+    {
+        foreach (var item in goodsItemCerificateDTOs)
+        {
+            if (item.CertificateNumber != null)
+            {
+                item.CertificateOfOriginId = await DataLayer.GetCertificateOfOriginIdByNumber(item.CertificateNumber);
+            }
+        }
+
+        return goodsItemCerificateDTOs;
+    }
+
     public async Task<CertificateOfOriginResultDto?> IsCertificateOfOriginByExternalIdExist(string certificateOfOriginExternalId)
     {
         var filter = new CertificateOfOriginFilterDto { CertificateNumber = certificateOfOriginExternalId };
