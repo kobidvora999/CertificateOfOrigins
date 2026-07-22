@@ -13,7 +13,7 @@
 |---|---|---|---|
 | 1 | GetCertificateOfOriginID | External (CertificateOfOriginsExternalService) | ✅ הומרה (branch `feature/migrate-get-certificate-of-origin-id`) |
 | 2 | IsCertificateOfOriginByExternalIdExist | Internal (CertificateOfOriginsInternalService) | ✅ הומרה (branch `feature/migrate-is-certificate-of-origin-by-external-id-exist`) — SP dbo.GetCertificateOfOriginsByFilter (JOIN הוסר) + Customer proxy (mock) |
-| 3 | CheckImporterOfImportAuthentication | Internal | ⬜ |
+| 3 | CheckImporterOfImportAuthentication | Internal | ✅ הומרה (branch `feature/migrate-check-importer-of-import-authentication`) — BL+controller חדשים `AuthenticationRequest` + entity VerificationProhibitedImporters |
 | 4 | GetGoodsItemCerificateDTO | External | ⬜ |
 
 ## גל 2 — SP סקלרי + חיפוש לפי פילטר (YAML + DbContextExtension + SP)

@@ -15,6 +15,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddCustomsDbContext<CertificateOfOriginsDbContext, CertificateOfOriginsDbReadOnlyContext>();
         services.AddDataLayer<ICertificateOfOriginsDal, CertificateOfOriginsDal>();
         services.AddBusinessLayer<CertificateOfOriginsBl>();
+        services.AddBusinessLayer<AuthenticationRequestBl>();
         services.AddRestProxy();
 
         // TODO(blocking): switch to the real CustomerProxy via the C4 mock-proxy pattern (AddProxy<I,Real,Mock>

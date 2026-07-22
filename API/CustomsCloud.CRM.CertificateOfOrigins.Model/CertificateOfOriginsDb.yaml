@@ -4,6 +4,7 @@ database:
   connection string: Password=CustomsDev123!;Persist Security Info=True;User ID=sa;Initial Catalog=CertificateOfOrigins;Data Source=localhost;Encrypt=False
 tables:
   - CRM.CertificateOfOrigins_CertificateOfOrigin
+  - CRM.CertificateOfOrigins_c_VerificationProhibitedImporters
 stored procedures:
   - name: dbo.GetCertificateOfOriginsByFilter
     function: GetCertificateOfOriginsByFilter

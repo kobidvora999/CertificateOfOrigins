@@ -13,6 +13,8 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOrigin> CertificateOfOrigins { get; set; }
 
+    public virtual DbSet<VerificationProhibitedImporters> VerificationProhibitedImporters { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         OnModelCreatingPartial(modelBuilder);

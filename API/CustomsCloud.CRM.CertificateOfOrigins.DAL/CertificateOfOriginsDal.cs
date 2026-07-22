@@ -24,4 +24,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         var result = await ReadOnlyContext.GetCertificateOfOriginsByFilter(parameters);
         return result.ToList();
     }
+
+    public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
+    {
+        var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
+            .AnyAsync(c => c.CustomerId == importerId);
+        return isProhibited ? null : importerId;
+    }
 }

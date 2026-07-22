@@ -79,6 +79,34 @@
           }
         }
       ]
+    },
+    {
+      "name": "AuthenticationRequest",
+      "item": [
+        {
+          "name": "CheckImporterOfImportAuthentication",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CheckImporterOfImportAuthentication?importerId=12345",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CheckImporterOfImportAuthentication"
+              ],
+              "query": [
+                {
+                  "key": "importerId",
+                  "value": "12345"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
