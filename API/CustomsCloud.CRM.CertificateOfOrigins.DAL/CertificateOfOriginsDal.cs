@@ -1,6 +1,8 @@
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.DAL;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.DAL;
 
@@ -30,5 +32,13 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
             .AnyAsync(c => c.CustomerId == importerId);
         return isProhibited ? null : importerId;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForVendor(parameters);
+        return result;
     }
 }

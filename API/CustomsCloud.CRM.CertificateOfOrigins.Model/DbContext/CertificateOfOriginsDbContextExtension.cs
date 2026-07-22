@@ -21,4 +21,18 @@ public partial class CertificateOfOriginsDbContext
         var result = await conn.QueryAsync<CertificateOfOriginResultDto>(cmd);
         return result;
     }
+
+    // dbo.CheckIfExistsAdditionalRequestsForVendor — scalar bit: >1 import-authentication request for the
+    // vendor within the last 3 years.
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.CheckIfExistsAdditionalRequestsForVendor",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.ExecuteScalarAsync<bool>(cmd);
+        return result;
+    }
 }

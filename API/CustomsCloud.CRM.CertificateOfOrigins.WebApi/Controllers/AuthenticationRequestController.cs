@@ -18,4 +18,14 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.CheckImporterOfImportAuthentication(importerId);
         return Ok(result);
     }
+
+    // Internal WCF: CheckIfExistsAdditionalRequestsForVendor(vendorId) — true if the vendor has more than one
+    // import-authentication request in the last 3 years. A check → returns bool (no 404).
+    [HttpGet("CheckIfExistsAdditionalRequestsForVendor")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForVendor([FromQuery] int vendorId)
+    {
+        var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForVendor(vendorId);
+        return Ok(result);
+    }
 }

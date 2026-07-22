@@ -151,6 +151,29 @@
               ]
             }
           }
+        },
+        {
+          "name": "CheckIfExistsAdditionalRequestsForVendor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId=555",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CheckIfExistsAdditionalRequestsForVendor"
+              ],
+              "query": [
+                {
+                  "key": "vendorId",
+                  "value": "555"
+                }
+              ]
+            }
+          }
         }
       ]
     }

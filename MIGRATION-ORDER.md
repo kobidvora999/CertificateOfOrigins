@@ -19,7 +19,7 @@
 ## גל 2 — SP סקלרי + חיפוש לפי פילטר (YAML + DbContextExtension + SP)
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
-| 5 | CheckIfExistsAdditionalRequestsForVendor | Internal | ⬜ |
+| 5 | CheckIfExistsAdditionalRequestsForVendor | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-vendor`) — SP סקלרי dbo.CheckIfExistsAdditionalRequestsForVendor (execute-scalar) |
 | 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ⬜ |
 | 7 | GetCertificateOfOriginsByFilter | Internal | ⬜ |
 | 8 | GetAuthenticationRequestByFilter | Internal | ⬜ |

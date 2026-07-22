@@ -12,6 +12,12 @@ public class AuthenticationRequestBl(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
+    {
+        var result = await DataLayer.CheckIfExistsAdditionalRequestsForVendor(vendorId);
+        return result;
+    }
+
     #region LEGACY_WCF
 
     // Original WCF (AuthenticationRequestBL.CheckImporterOfImportAuthentication):
