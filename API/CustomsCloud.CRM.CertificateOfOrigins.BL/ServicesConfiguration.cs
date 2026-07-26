@@ -2,7 +2,10 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
+using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
+using Lookup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
@@ -23,5 +26,12 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddRestProxy();  // IRestProxy for the real proxies' BaseMicroServiceProxyAdapter
         services.AddHttpProxy();  // IProxyMockUtil + per-request mock selection
         services.AddProxy<ICustomerProxy, CustomerProxy, CustomerMockProxy>();
+
+        // TODO(blocking): verify the real Vendors endpoint (VendorsByIds) before ROLLOUT.
+        services.AddProxy<IVendorProxy, VendorProxy, VendorMockProxy>();
+
+        // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
+        services.AddLookup<Country>();
+        services.AddLookup<OrganizationUnit>();
     }
 }

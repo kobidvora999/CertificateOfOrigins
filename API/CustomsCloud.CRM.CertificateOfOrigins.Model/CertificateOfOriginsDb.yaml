@@ -11,6 +11,11 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginResultDto
+  - name: dbo.GetImportAuthenticationRequestByFilter
+    function: GetImportAuthenticationRequestByFilter
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: GetImportAuthenticationRequestResultDto
   - name: dbo.CheckIfExistsAdditionalRequestsForVendor
     function: CheckIfExistsAdditionalRequestsForVendor
     method: execute-scalar

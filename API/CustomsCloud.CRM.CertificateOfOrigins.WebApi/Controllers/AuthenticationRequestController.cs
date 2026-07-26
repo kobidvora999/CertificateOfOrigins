@@ -1,4 +1,5 @@
 using CustomsCloud.CRM.CertificateOfOrigins.BL;
+using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,18 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 public class AuthenticationRequestController(IServiceProvider serviceProvider)
     : BaseController<AuthenticationRequestBl>(serviceProvider)
 {
+    // Internal WCF: GetAuthenticationRequestByFilter(filter) — import-authentication-request search. Returns the
+    // matching requests (empty list when none — a search, never 404). ImporterName/VendorName are enriched via
+    // proxies and IssuingCountry/OrganizationUnit names via lookups; only LeadDocument title stays null (raw id
+    // returned). Supply the request-date range — the SP always applies it.
+    [HttpGet("AuthenticationRequestByFilter")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetImportAuthenticationRequestResultDto>))]
+    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>>> AuthenticationRequestByFilter([FromQuery] ImportAuthenticationRequestFilterDto filter)
+    {
+        var result = await BusinessLayer.GetAuthenticationRequestByFilter(filter);
+        return Ok(result);
+    }
+
     // Internal WCF: CheckImporterOfImportAuthentication(importerId) — returns the importer id when the importer
     // is NOT on the verification-prohibited list, or null when it is. A check (not a resource lookup) → no 404.
     [HttpGet("CheckImporterOfImportAuthentication")]

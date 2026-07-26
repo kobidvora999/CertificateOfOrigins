@@ -27,6 +27,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result.ToList();
     }
 
+    public async Task<List<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters)
+    {
+        // dbo.GetImportAuthenticationRequestByFilter — dynamic-SQL search; importer/vendor/country names return
+        // NULL from the SP (cross-service JOINs removed) and are enriched in the BL (proxies + Country lookup).
+        var result = await ReadOnlyContext.GetImportAuthenticationRequestByFilter(parameters);
+        return result.ToList();
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

@@ -22,7 +22,7 @@
 | 5 | CheckIfExistsAdditionalRequestsForVendor | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-vendor`) — SP סקלרי dbo.CheckIfExistsAdditionalRequestsForVendor (execute-scalar) |
 | 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-importer`) — SP סקלרי dbo (Infrastructure.Parameters במקום General_enum_GlobalParam); חתימה שוטחה entity→4 סקלרים |
 | 7 | GetCertificateOfOriginsByFilter | Internal | ✅ הומרה (branch `feature/migrate-get-certificate-of-origins-by-filter`) — כל התשתית (SP/DAL/BL/DTO/enrichment) כבר הוקמה ב-#2; נוסף רק ה-controller endpoint |
-| 8 | GetAuthenticationRequestByFilter | Internal | ⬜ |
+| 8 | GetAuthenticationRequestByFilter | Internal | ✅ הומרה (branch `feature/migrate-get-authentication-request-by-filter`) — SP דינמי dbo.GetImportAuthenticationRequestByFilter (5 JOINs בין-שירותיים הוסרו, UDF+CONTAINS הוחלפו) + 2 DTOs חדשים + IVendorProxy חדש (mock) + ILookupUtil<Country>+<OrganizationUnit>; רק LeadDocumentTitle נשאר null (CRP.DealFile — צריך proxy) |
 | 9 | GetExportDocumentAuthenticationRequestSearch | Internal | ⬜ |
 | 10 | GetAuthenticationRequestByLeadDocumentIDs (TVP) | Internal | ⬜ |
 

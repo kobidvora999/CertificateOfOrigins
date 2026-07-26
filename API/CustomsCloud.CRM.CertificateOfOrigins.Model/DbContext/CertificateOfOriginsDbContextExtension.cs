@@ -22,6 +22,21 @@ public partial class CertificateOfOriginsDbContext
         return result;
     }
 
+    // dbo.GetImportAuthenticationRequestByFilter — dynamic-SQL search; importer/vendor/country names are NULL
+    // from the SP (cross-service JOINs removed) and enriched in the BL. A search legitimately returns an empty
+    // set, so no row-count assertion is applied.
+    public async Task<IEnumerable<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetImportAuthenticationRequestByFilter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<GetImportAuthenticationRequestResultDto>(cmd);
+        return result;
+    }
+
     // dbo.CheckIfExistsAdditionalRequestsForVendor — scalar bit: >1 import-authentication request for the
     // vendor within the last 3 years.
     public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(object? parameters = null, CancellationToken cancellationToken = default)
