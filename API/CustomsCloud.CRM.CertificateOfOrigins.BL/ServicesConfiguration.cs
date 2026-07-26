@@ -20,6 +20,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddDataLayer<ICertificateOfOriginsDal, CertificateOfOriginsDal>();
         services.AddBusinessLayer<CertificateOfOriginsBl>();
         services.AddBusinessLayer<AuthenticationRequestBl>();
+        services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
 
         // Platform mock-proxy convention: REAL is the default; a request selects the mock per interface via the
         // x-mock-proxy header. TODO(blocking): verify the real Customers endpoint (CustomersByIds) before ROLLOUT.

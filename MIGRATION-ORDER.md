@@ -23,7 +23,7 @@
 | 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-importer`) — SP סקלרי dbo (Infrastructure.Parameters במקום General_enum_GlobalParam); חתימה שוטחה entity→4 סקלרים |
 | 7 | GetCertificateOfOriginsByFilter | Internal | ✅ הומרה (branch `feature/migrate-get-certificate-of-origins-by-filter`) — כל התשתית (SP/DAL/BL/DTO/enrichment) כבר הוקמה ב-#2; נוסף רק ה-controller endpoint |
 | 8 | GetAuthenticationRequestByFilter | Internal | ✅ הומרה (branch `feature/migrate-get-authentication-request-by-filter`) — SP דינמי dbo.GetImportAuthenticationRequestByFilter (5 JOINs בין-שירותיים הוסרו, UDF+CONTAINS הוחלפו) + 2 DTOs חדשים + IVendorProxy חדש (mock) + ILookupUtil<Country>+<OrganizationUnit>; רק LeadDocumentTitle נשאר null (CRP.DealFile — צריך proxy) |
-| 9 | GetExportDocumentAuthenticationRequestSearch | Internal | ⬜ |
+| 9 | GetExportDocumentAuthenticationRequestSearch | Internal | ✅ הומרה (branch `feature/migrate-get-export-document-authentication-request-search`) — SP דינמי dbo.ExportDocumentAuthenticationRequestSearch (CROSS_ הוסר, 3 JOINs בין-שירותיים הוסרו, FTS→LIKE) + 2 DTOs + BL+controller חדשים (ExportDocumentAuthenticationRequest); העשרה: Country lookup + Customer proxy (x2: foreign-customs-house + issuer) |
 | 10 | GetAuthenticationRequestByLeadDocumentIDs (TVP) | Internal | ⬜ |
 
 ## גל 3 — קריאות עם proxy יחיד (תבנית proxy)
