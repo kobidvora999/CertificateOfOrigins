@@ -35,4 +35,19 @@ public partial class CertificateOfOriginsDbContext
         var result = await conn.ExecuteScalarAsync<bool>(cmd);
         return result;
     }
+
+    // dbo.CheckIfExistsAdditionalRequestsForImporter — scalar bit: an additional import-authentication request
+    // exists for the importer within the last @DaysForLastDelivery days (config, read inside the SP from the
+    // local Infrastructure.Parameters), branching on vendor vs customer by the country's delivery config.
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.CheckIfExistsAdditionalRequestsForImporter",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.ExecuteScalarAsync<bool>(cmd);
+        return result;
+    }
 }

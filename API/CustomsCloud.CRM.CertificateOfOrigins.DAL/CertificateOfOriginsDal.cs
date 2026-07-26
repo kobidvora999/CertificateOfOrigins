@@ -41,4 +41,15 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForVendor(parameters);
         return result;
     }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@ImporterID", importerId, DbType.Int32);
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        parameters.Add("@CustomerID", customerId, DbType.Int32);
+        parameters.Add("@CountryID", countryId, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForImporter(parameters);
+        return result;
+    }
 }

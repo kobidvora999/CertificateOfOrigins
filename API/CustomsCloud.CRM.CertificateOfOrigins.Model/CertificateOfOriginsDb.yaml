@@ -14,3 +14,6 @@ stored procedures:
   - name: dbo.CheckIfExistsAdditionalRequestsForVendor
     function: CheckIfExistsAdditionalRequestsForVendor
     method: execute-scalar
+  - name: dbo.CheckIfExistsAdditionalRequestsForImporter
+    function: CheckIfExistsAdditionalRequestsForImporter
+    method: execute-scalar

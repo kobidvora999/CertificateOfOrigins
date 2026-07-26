@@ -18,6 +18,15 @@ public class AuthenticationRequestBl(IServiceProvider serviceProvider)
         return result;
     }
 
+    // The WCF took the full ImportAuthenticationRequest entity but used only these 4 scalar fields
+    // (ImporterID, VendorId, CustomerID, IssuingCountryID). The @DaysForLastDelivery window stays inside the SP
+    // (read from the local Infrastructure.Parameters), so it is not a BL/config concern here.
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId)
+    {
+        var result = await DataLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
+        return result;
+    }
+
     #region LEGACY_WCF
 
     // Original WCF (AuthenticationRequestBL.CheckImporterOfImportAuthentication):

@@ -28,4 +28,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForVendor(vendorId);
         return Ok(result);
     }
+
+    // Internal WCF: CheckIfExistsAdditionalRequestsForImporter(request) — the WCF took the full request entity
+    // but used only 4 scalar fields; flattened to query params here. True if an additional import-authentication
+    // request exists for the importer within the config window. A check → returns bool (no 404).
+    [HttpGet("CheckIfExistsAdditionalRequestsForImporter")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForImporter([FromQuery] int importerId, [FromQuery] int? vendorId, [FromQuery] int? customerId, [FromQuery] int countryId)
+    {
+        var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
+        return Ok(result);
+    }
 }

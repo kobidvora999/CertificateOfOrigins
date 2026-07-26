@@ -20,7 +20,7 @@
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
 | 5 | CheckIfExistsAdditionalRequestsForVendor | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-vendor`) — SP סקלרי dbo.CheckIfExistsAdditionalRequestsForVendor (execute-scalar) |
-| 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ⬜ |
+| 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-importer`) — SP סקלרי dbo (Infrastructure.Parameters במקום General_enum_GlobalParam); חתימה שוטחה entity→4 סקלרים |
 | 7 | GetCertificateOfOriginsByFilter | Internal | ⬜ |
 | 8 | GetAuthenticationRequestByFilter | Internal | ⬜ |
 | 9 | GetExportDocumentAuthenticationRequestSearch | Internal | ⬜ |
