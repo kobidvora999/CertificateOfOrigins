@@ -107,6 +107,53 @@ public class AuthenticationRequestBl(
         // owning service's proxy, not yet established). The raw LeadDocumentId is returned for a later pass.
     }
 
+    public async Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(List<int> leadDocumentIds)
+    {
+        var parameters = BuildLeadDocumentIdsParameter(leadDocumentIds);
+        var result = await DataLayer.GetAuthenticationRequestByLeadDocumentIDs(parameters);
+        await FillLeadDocumentRequestNames(result);
+        return result;
+    }
+
+    private static DynamicParameters BuildLeadDocumentIdsParameter(List<int> leadDocumentIds)
+    {
+        // Pass the id list as the Shared.IntArray table-valued parameter (@LeadDocumentIDs).
+        var table = new DataTable();
+        table.Columns.Add("val", typeof(int));
+        if (leadDocumentIds != null)
+        {
+            foreach (var id in leadDocumentIds)
+            {
+                table.Rows.Add(id);
+            }
+        }
+
+        var parameters = new DynamicParameters();
+        parameters.Add("@LeadDocumentIDs", table.AsTableValuedParameter("Shared.IntArray"));
+        return parameters;
+    }
+
+    private async Task FillLeadDocumentRequestNames(List<GetAuthenticationRequestByLeadDocumentResultDto> results)
+    {
+        if (results.Count == 0)
+        {
+            return;
+        }
+
+        // ImportCountryName + OrganizationUnitName via the shared lookups (raw ids returned by the SP).
+        await lookupUtil.FillName<Country, GetAuthenticationRequestByLeadDocumentResultDto>(
+            results,
+            r => r.ImportCountryId ?? 0,
+            (r, name) => r.ImportCountryName = name);
+
+        await lookupUtil.FillName<OrganizationUnit, GetAuthenticationRequestByLeadDocumentResultDto>(
+            results,
+            r => r.OrganizationUnitId ?? 0,
+            (r, name) => r.OrganizationUnitName = name);
+
+        // TODO(migration): LeadDocumentTitle stays null — CRP.DealFile document, needs the owning service's proxy.
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var result = await DataLayer.CheckImporterOfImportAuthentication(importerId);

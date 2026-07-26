@@ -260,6 +260,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "AuthenticationRequestByLeadDocumentIDs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[1]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/AuthenticationRequestByLeadDocumentIDs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "AuthenticationRequestByLeadDocumentIDs"
+              ]
+            }
+          }
         }
       ]
     },

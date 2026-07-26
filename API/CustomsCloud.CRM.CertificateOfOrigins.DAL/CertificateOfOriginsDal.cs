@@ -43,6 +43,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result.ToList();
     }
 
+    public async Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(object? parameters)
+    {
+        // dbo.GetAuthenticationRequestByLeadDocumentID — TVP-filtered (Shared.IntArray) query; country/org-unit
+        // names return NULL from the SP (cross-service JOINs removed) and are enriched in the BL via lookups.
+        var result = await ReadOnlyContext.GetAuthenticationRequestByLeadDocumentID(parameters);
+        return result.ToList();
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

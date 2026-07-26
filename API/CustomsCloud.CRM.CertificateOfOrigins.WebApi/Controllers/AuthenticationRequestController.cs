@@ -22,6 +22,18 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         return Ok(result);
     }
 
+    // Internal WCF: GetAuthenticationRequestByLeadDocumentIDs(list) — fetch the import-authentication requests for
+    // the given lead-document ids (bound as a Shared.IntArray TVP). The payload is a list of ids, hence POST.
+    // Returns the matching requests (empty when none). ImportCountry + OrganizationUnit names are enriched in the
+    // BL via lookups; LeadDocumentTitle stays null (no owning-service proxy).
+    [HttpPost("AuthenticationRequestByLeadDocumentIDs")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetAuthenticationRequestByLeadDocumentResultDto>))]
+    public async Task<ActionResult<List<GetAuthenticationRequestByLeadDocumentResultDto>>> AuthenticationRequestByLeadDocumentIDs([FromBody] List<int> leadDocumentIds)
+    {
+        var result = await BusinessLayer.GetAuthenticationRequestByLeadDocumentIDs(leadDocumentIds);
+        return Ok(result);
+    }
+
     // Internal WCF: CheckImporterOfImportAuthentication(importerId) — returns the importer id when the importer
     // is NOT on the verification-prohibited list, or null when it is. A check (not a resource lookup) → no 404.
     [HttpGet("CheckImporterOfImportAuthentication")]

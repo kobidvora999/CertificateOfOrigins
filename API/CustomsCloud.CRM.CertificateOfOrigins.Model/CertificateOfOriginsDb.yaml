@@ -21,6 +21,11 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: GetExportDocumentAuthenticationRequestSearchResultDto
+  - name: dbo.GetAuthenticationRequestByLeadDocumentID
+    function: GetAuthenticationRequestByLeadDocumentID
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: GetAuthenticationRequestByLeadDocumentResultDto
   - name: dbo.CheckIfExistsAdditionalRequestsForVendor
     function: CheckIfExistsAdditionalRequestsForVendor
     method: execute-scalar

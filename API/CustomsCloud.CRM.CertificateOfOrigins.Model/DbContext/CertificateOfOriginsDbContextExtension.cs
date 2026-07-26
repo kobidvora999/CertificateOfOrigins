@@ -52,6 +52,21 @@ public partial class CertificateOfOriginsDbContext
         return result;
     }
 
+    // dbo.GetAuthenticationRequestByLeadDocumentID — import-authentication requests for a set of lead-document ids
+    // passed as a Shared.IntArray TVP (@LeadDocumentIDs). Country/org-unit names are NULL from the SP (cross-service
+    // JOINs removed) and enriched in the BL. A lookup by ids legitimately returns an empty set — no row assertion.
+    public async Task<IEnumerable<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentID(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetAuthenticationRequestByLeadDocumentID",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<GetAuthenticationRequestByLeadDocumentResultDto>(cmd);
+        return result;
+    }
+
     // dbo.CheckIfExistsAdditionalRequestsForVendor — scalar bit: >1 import-authentication request for the
     // vendor within the last 3 years.
     public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(object? parameters = null, CancellationToken cancellationToken = default)
