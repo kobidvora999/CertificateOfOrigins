@@ -123,6 +123,29 @@
               ]
             }
           }
+        },
+        {
+          "name": "CertificateOfOriginsByFilter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginsByFilter?certificateNumber=IL0000116895",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginsByFilter"
+              ],
+              "query": [
+                {
+                  "key": "certificateNumber",
+                  "value": "IL0000116895"
+                }
+              ]
+            }
+          }
         }
       ]
     },

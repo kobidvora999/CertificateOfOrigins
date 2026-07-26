@@ -21,7 +21,7 @@
 |---|---|---|---|
 | 5 | CheckIfExistsAdditionalRequestsForVendor | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-vendor`) — SP סקלרי dbo.CheckIfExistsAdditionalRequestsForVendor (execute-scalar) |
 | 6 | CheckIfExistsAdditionalRequestsForImporter | Internal | ✅ הומרה (branch `feature/migrate-check-if-exists-additional-requests-for-importer`) — SP סקלרי dbo (Infrastructure.Parameters במקום General_enum_GlobalParam); חתימה שוטחה entity→4 סקלרים |
-| 7 | GetCertificateOfOriginsByFilter | Internal | ⬜ |
+| 7 | GetCertificateOfOriginsByFilter | Internal | ✅ הומרה (branch `feature/migrate-get-certificate-of-origins-by-filter`) — כל התשתית (SP/DAL/BL/DTO/enrichment) כבר הוקמה ב-#2; נוסף רק ה-controller endpoint |
 | 8 | GetAuthenticationRequestByFilter | Internal | ⬜ |
 | 9 | GetExportDocumentAuthenticationRequestSearch | Internal | ⬜ |
 | 10 | GetAuthenticationRequestByLeadDocumentIDs (TVP) | Internal | ⬜ |
