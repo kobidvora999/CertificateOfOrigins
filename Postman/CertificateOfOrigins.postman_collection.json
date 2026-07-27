@@ -22,7 +22,7 @@
           "// calls to the in-service mock during local/test runs via the x-mock-proxy header. The framework",
           "// parses a single comma-separated header, so set ONE header (upsert per-interface would overwrite,",
           "// leaving only the last interface mocked and the others hitting the real service).",
-          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy'].join(',') });"
+          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy', 'IUserProxy'].join(',') });"
         ]
       }
     }
@@ -66,6 +66,45 @@
                 "CertificateOfOrigins",
                 "CertificateOfOriginID",
                 "IL0000116895"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginById",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {\r",
+                  "    eval(pm.globals.get('utility'));\r",
+                  "} catch (error) {\r",
+                  "    console.error(\"Error evaluating \\\"utility\\\": \\n\", error);\r",
+                  "}\r",
+                  "\r",
+                  "checkResponseIsOkayToProcess();\r",
+                  "\r",
+                  "const responseJson = pm.response.json();\r",
+                  "console.log(\"Full response:\", JSON.stringify(responseJson));"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginById/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginById",
+                "1"
               ]
             }
           }
