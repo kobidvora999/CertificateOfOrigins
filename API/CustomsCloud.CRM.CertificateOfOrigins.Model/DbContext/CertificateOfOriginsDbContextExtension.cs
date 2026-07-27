@@ -95,4 +95,67 @@ public partial class CertificateOfOriginsDbContext
         var result = await conn.ExecuteScalarAsync<bool>(cmd);
         return result;
     }
+
+    // dbo.GetCertificateOfOriginByID — a single certificate with its full graph, materialized from a 7-result-set SP
+    // (1 header · 2 declaration errors · 3 detail type-code lookup · 4 details · 5 invoices · 6 invoice items · 7
+    // milestones). Ports the legacy MaterializeForCertificateOfOrigin: result set 3 enriches each detail's type-code
+    // (by id), result set 6 nests each invoice's item lines (by invoice id). Returns null when the id has no header row.
+    public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetCertificateOfOriginByID",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+
+        using var grid = await conn.QueryMultipleAsync(cmd);
+
+        var certificate = (await grid.ReadAsync<CertificateOfOriginDto>()).FirstOrDefault();
+        if (certificate == null)
+        {
+            return null;
+        }
+
+        var declarationErrors = (await grid.ReadAsync<CertificateOfOriginVsDeclarationErrorDto>()).ToList();
+        var detailTypeCodes = (await grid.ReadAsync<CertificateDetailsTypeCodeDto>()).ToList();
+        var details = (await grid.ReadAsync<CertificateOfOriginDetailDto>()).ToList();
+        var invoices = (await grid.ReadAsync<CertificateOfOriginInvoiceDetailDto>()).ToList();
+        var invoiceItems = (await grid.ReadAsync<CertificateOfOriginItemDetailDto>()).ToList();
+        var milestones = (await grid.ReadAsync<CertificateMilestoneDto>()).ToList();
+
+        // Computed in the legacy materializer: exporter (CustomerId) + customs-agent (CreateCustomerId).
+        certificate.StakeholdersIds = [certificate.CustomerId, certificate.CreateCustomerId];
+        certificate.Milestones = milestones;
+        certificate.CertificateOfOriginVsDeclarationError = declarationErrors;
+
+        // result set 3 → each detail's type-code (by CertificateDetailsTypeCodeId). No match ⇒ left null
+        // (legacy assumed a matching type-code row always exists).
+        var typeCodeById = detailTypeCodes
+            .GroupBy(t => t.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+        foreach (var detail in details)
+        {
+            typeCodeById.TryGetValue(detail.CertificateDetailsTypeCodeId, out var typeCode);
+            detail.CertificateDetailsTypeCode = typeCode;
+        }
+
+        certificate.CertificateOfOriginDetails = details;
+
+        // result set 6 → invoice item lines nested under their invoice (by CertificateOfOriginInvoiceDetailId).
+        var itemsByInvoiceId = invoiceItems
+            .GroupBy(i => i.CertificateOfOriginInvoiceDetailId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var invoice in invoices)
+        {
+            if (itemsByInvoiceId.TryGetValue(invoice.Id, out var items))
+            {
+                invoice.CertificateOfOriginItemDetail = items;
+            }
+        }
+
+        certificate.CertificateOfOriginInvoiceDetail = invoices;
+
+        return certificate;
+    }
 }

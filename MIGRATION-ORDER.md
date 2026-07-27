@@ -39,7 +39,7 @@
 ## גל 4 — קריאות multi-result-set
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
-| 17 | GetCertificateOfOriginById (7 sets) | Internal | ⬜ |
+| 17 | GetCertificateOfOriginById (7 sets) | Internal | ✅ הומרה (branch `feature/migrate-get-certificate-of-origin-by-id`) — SP רב-תוצאות `dbo.GetCertificateOfOriginByID` (7 result sets) דרך `QueryMultipleAsync` ב-DbContextExtension + מיזוג (type-code→details, items→invoices) שמשחזר את `MaterializeForCertificateOfOrigin` (ה-`AcceptChanges` של WCF STE נושר). 7 DTOs חדשים (root `CertificateOfOriginDto` + 6 nested). result set 7 (Milestones): הוסרו ה-JOINs החוצי-שירות ל-`Infrastructure.UserMng_User`, מוחזר `UserId` גולמי, ו-`UserName` מועשר ב-BL דרך `IUserProxy` חדש (+real+mock, `CustomsMicroServices.Users`; endpoint `User/UsersByIds` לא מאומת → mock דיפולט, TODO(blocking)). +N prefix לליטרלי ActionName העבריים. endpoint GET CertificateOfOriginById/{id} (404 על חוסר). Scripts: `API_20260727172359 - dbo.GetCertificateOfOriginByID.sql` |
 | 18 | GetCertificateRequestByGuid (5 sets + reflection) | Incoming (CertificateOfOriginsIncomingMessageService) | ⬜ |
 | 19 | GetEntityDocuments (Documents proxy) | Internal | ⬜ |
 

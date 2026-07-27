@@ -61,6 +61,17 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         return Ok(result);
     }
 
+    // Internal WCF: GetCertificateOfOriginById(id) — a single certificate with its full graph (header + declaration
+    // errors + details + invoices + item lines + milestones), from the 7-result-set dbo.GetCertificateOfOriginByID.
+    // Missing id → 404 (BL throws RestNotFoundException). Milestone user names are enriched in the BL via IUserProxy.
+    [HttpGet("CertificateOfOriginById/{certificateOfOriginId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
+    public async Task<ActionResult<CertificateOfOriginDto>> CertificateOfOriginById([FromRoute] int certificateOfOriginId)
+    {
+        var result = await BusinessLayer.GetCertificateOfOriginById(certificateOfOriginId);
+        return Ok(result);
+    }
+
     // Internal WCF: LoadDataFromExportDeclaration(certificateOfOrigin) — looks up the certificate's export
     // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity

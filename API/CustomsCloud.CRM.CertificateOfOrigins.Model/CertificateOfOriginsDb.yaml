@@ -36,3 +36,10 @@ stored procedures:
   - name: dbo.CheckIfExistsAdditionalRequestsForImporter
     function: CheckIfExistsAdditionalRequestsForImporter
     method: execute-scalar
+  # Multi-result-set SP (7 sets) — DbContextExtension.GetCertificateOfOriginById is hand-written
+  # (QueryMultipleAsync + merge); the generated single-QueryAsync path does not apply.
+  - name: dbo.GetCertificateOfOriginByID
+    function: GetCertificateOfOriginById
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: CertificateOfOriginDto

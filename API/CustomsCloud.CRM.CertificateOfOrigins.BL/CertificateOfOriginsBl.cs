@@ -8,9 +8,48 @@ using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy)
+public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
+    {
+        // Single certificate with its full graph (7 result sets). Missing id → 404 (the legacy returned null,
+        // which callers treated as not-found). Milestone user display-names are enriched here — the SP returns only
+        // the acting user id (the cross-service Infrastructure.UserMng_User JOIN was removed).
+        var certificate = await DataLayer.GetCertificateOfOriginById(certificateOfOriginId)
+            ?? throw new RestNotFoundException();
+        await FillMilestoneUserNames(certificate);
+        return certificate;
+    }
+
+    private async Task FillMilestoneUserNames(CertificateOfOriginDto certificate)
+    {
+        var userIds = certificate.Milestones
+            .Where(m => m.UserId.HasValue)
+            .Select(m => m.UserId!.Value)
+            .Distinct()
+            .ToList();
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var users = await userProxy.GetUsersByIds(userIds);
+        if (users == null)
+        {
+            return;
+        }
+
+        var usersById = users.ToDictionary(u => u.Id);
+        foreach (var milestone in certificate.Milestones)
+        {
+            if (milestone.UserId.HasValue && usersById.TryGetValue(milestone.UserId.Value, out var user))
+            {
+                milestone.UserName = user.Name;
+            }
+        }
+    }
+
     public async Task<VirtualEntityDto> Convert(ConnectedEntityDto connectedEntity)
     {
         // ESB/EAI Convert: resolve the connected-entity key (the certificate number) into a generic entity link.

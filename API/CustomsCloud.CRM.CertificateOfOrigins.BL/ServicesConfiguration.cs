@@ -31,6 +31,11 @@ public class ServicesConfiguration : IServicesConfiguration
         // TODO(blocking): verify the real Vendors endpoint (VendorsByIds) before ROLLOUT.
         services.AddProxy<IVendorProxy, VendorProxy, VendorMockProxy>();
 
+        // Milestone user-name enrichment for GetCertificateOfOriginById (the SP returns only the acting user id;
+        // the cross-service Infrastructure.UserMng_User JOIN was removed).
+        // TODO(blocking): verify the real Users endpoint (User/UsersByIds) before ROLLOUT.
+        services.AddProxy<IUserProxy, UserProxy, UserMockProxy>();
+
         // TODO(blocking): the ExportDealFile microservice is not yet stood up — the mock is the practical
         // default (selected via x-mock-proxy); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();

@@ -100,6 +100,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId)
+    {
+        // dbo.GetCertificateOfOriginByID — a single certificate's full graph (7 result sets), composed in the
+        // DbContext extension. Milestone user display-names are NULL from the SP (cross-service JOIN removed) and
+        // are enriched in the BL via IUserProxy.
+        var parameters = new DynamicParameters();
+        parameters.Add("@CertificateOfOriginID", certificateOfOriginId, DbType.Int32);
+        var result = await ReadOnlyContext.GetCertificateOfOriginById(parameters);
+        return result;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
