@@ -22,7 +22,7 @@
           "// calls to the in-service mock during local/test runs via the x-mock-proxy header. The framework",
           "// parses a single comma-separated header, so set ONE header (upsert per-interface would overwrite,",
           "// leaving only the last interface mocked and the others hitting the real service).",
-          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy'].join(',') });"
+          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy'].join(',') });"
         ]
       }
     }
@@ -142,6 +142,38 @@
                 {
                   "key": "certificateNumber",
                   "value": "IL0000116895"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "LoadDataFromExportDeclaration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/LoadDataFromExportDeclaration?leadDocumentId=12345&requestReasonCode=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "LoadDataFromExportDeclaration"
+              ],
+              "query": [
+                {
+                  "key": "leadDocumentId",
+                  "value": "12345"
+                },
+                {
+                  "key": "exportDeclarationNumber",
+                  "value": "IL-EXP-001",
+                  "disabled": true
+                },
+                {
+                  "key": "requestReasonCode",
+                  "value": "1"
                 }
               ]
             }

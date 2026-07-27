@@ -31,6 +31,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // TODO(blocking): verify the real Vendors endpoint (VendorsByIds) before ROLLOUT.
         services.AddProxy<IVendorProxy, VendorProxy, VendorMockProxy>();
 
+        // TODO(blocking): the ExportDealFile microservice is not yet stood up — the mock is the practical
+        // default (selected via x-mock-proxy); switch to the real endpoint once it exists.
+        services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
+
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();

@@ -8,9 +8,27 @@ using System.Data;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy)
+public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    public async Task<bool> LoadDataFromExportDeclaration(LoadDataFromExportDeclarationRequestDto request)
+    {
+        // Guard: without a lead-document id or an export-declaration number there is nothing to look up.
+        if (request.LeadDocumentId is null && string.IsNullOrEmpty(request.ExportDeclarationNumber))
+        {
+            return false;
+        }
+
+        var details = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(
+            request.LeadDocumentId, request.ExportDeclarationNumber);
+
+        // The legacy set IsDeclarationReleased/IsCargoExitedOfCustomsRegulation back on the entity (by-ref) and
+        // returned this computed flag; over REST only the flag is returned (developer decision 2026-07-27). It is
+        // true only when the cargo has exited customs regulation and the request is not a retrospective certificate.
+        var isCargoExited = details?.IsCargoExitedOfCustomsRegulation ?? false;
+        return isCargoExited && request.RequestReasonCode != (int)ERequestReason.RetrospectiveCertificate;
+    }
+
     public async Task<int> GetCertificateOfOriginID(string certificateNumber)
     {
         // route-style alternate key → not-found owns the 404 contract (RestNotFoundException)

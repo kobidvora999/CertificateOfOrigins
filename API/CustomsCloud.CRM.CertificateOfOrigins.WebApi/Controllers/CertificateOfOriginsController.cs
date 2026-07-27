@@ -49,4 +49,16 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.GetCertificateOfOriginsByFilter(filter);
         return Ok(result);
     }
+
+    // Internal WCF: LoadDataFromExportDeclaration(certificateOfOrigin) — looks up the certificate's export
+    // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
+    // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity
+    // by-reference (IsDeclarationReleased/IsCargoExitedOfCustomsRegulation); over REST only the flag is returned.
+    [HttpGet("LoadDataFromExportDeclaration")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> LoadDataFromExportDeclaration([FromQuery] LoadDataFromExportDeclarationRequestDto request)
+    {
+        var result = await BusinessLayer.LoadDataFromExportDeclaration(request);
+        return Ok(result);
+    }
 }
