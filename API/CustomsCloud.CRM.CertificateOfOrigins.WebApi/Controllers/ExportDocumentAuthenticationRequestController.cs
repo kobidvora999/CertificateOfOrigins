@@ -36,6 +36,17 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
         return Ok(result);
     }
 
+    // Internal WCF: GetExportDocumentAuthenticationRequestByID(id) — a single export-document authentication
+    // request by id, with its child collections (customs items, lead documents, manufacturing areas). Missing
+    // id → 404 (BL throws RestNotFoundException). OriginalStatusId + ExportDeclarationIds are computed in the BL.
+    [HttpGet("ExportDocumentAuthenticationRequestByID/{id}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
+    public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> ExportDocumentAuthenticationRequestByID([FromRoute] int id)
+    {
+        var result = await BusinessLayer.GetExportDocumentAuthenticationRequestById(id);
+        return Ok(result);
+    }
+
     [HttpGet("ExportDocumentAuthenticationRequestSearch")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
     public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromQuery] ExportDocumentAuthenticationRequestSearchFilterDto filter)

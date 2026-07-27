@@ -330,6 +330,24 @@
       "name": "ExportDocumentAuthenticationRequest",
       "item": [
         {
+          "name": "ExportDocumentAuthenticationRequestByID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/ExportDocumentAuthenticationRequestByID/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "ExportDocumentAuthenticationRequestByID",
+                "1"
+              ]
+            }
+          }
+        },
+        {
           "name": "ExportDocumentAuthenticationRequestSearch",
           "request": {
             "method": "GET",

@@ -39,6 +39,76 @@ public class ExportDocumentAuthenticationRequestBl(
         return customers.First();
     }
 
+    public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> GetExportDocumentAuthenticationRequestById(int id)
+    {
+        // Single request by id + its three child collections; a missing id owns the 404 contract (the legacy
+        // .Single threw, so no-match is not a valid result).
+        var entity = await DataLayer.GetExportDocumentAuthenticationRequestById(id)
+            ?? throw new RestNotFoundException();
+
+        // Map entity + children. OriginalStatusId snapshots the status for the later optimistic dirty-check on
+        // Save. ExportDeclarationIds replaces the legacy EntityTypeAndIDsToSearch dictionary (which only drove the
+        // old WPF document-attach picker): the lead-document ids the client can attach documents to.
+        var result = new GetExportDocumentAuthenticationRequestByIdResultDto
+        {
+            Id = entity.Id,
+            TypeId = entity.TypeId,
+            Title = entity.Title,
+            TimeStamp = entity.TimeStamp,
+            CustomerId = entity.CustomerId,
+            AuthenticationDocumentTypeId = entity.AuthenticationDocumentTypeId,
+            ExporterCustomerId = entity.ExporterCustomerId,
+            StatusId = entity.StatusId,
+            OriginalStatusId = entity.StatusId ?? 0,
+            CountryId = entity.CountryId,
+            CustomsHouseAddress = entity.CustomsHouseAddress,
+            VendorId = entity.VendorId,
+            AuthenticationRequestArrivalDate = entity.AuthenticationRequestArrivalDate,
+            AuthenticationRequestedByName = entity.AuthenticationRequestedByName,
+            AuthenticationRequestedByEmail = entity.AuthenticationRequestedByEmail,
+            AuthenticationRequestedByPhone = entity.AuthenticationRequestedByPhone,
+            AuthenticationRequestNotes = entity.AuthenticationRequestNotes,
+            ExportLeadDocumentId = entity.ExportLeadDocumentId,
+            DocumentId = entity.DocumentId,
+            MainDocumentTitle = entity.MainDocumentTitle,
+            LastDeliveryDate = entity.LastDeliveryDate,
+            DeliveryMethodId = entity.DeliveryMethodId,
+            InvoiceNumbers = entity.InvoiceNumbers,
+            DetailedDecision = entity.DetailedDecision,
+            ReferenceNumber = entity.ReferenceNumber,
+            CommentForCustomsHouseLetter = entity.CommentForCustomsHouseLetter,
+            TotalDocuments = entity.TotalDocuments,
+            TotalInvoices = entity.TotalInvoices,
+            DocumentDate = entity.DocumentDate,
+            InvoiceDate = entity.InvoiceDate,
+            CustomsItems = entity.CustomsItems.Select(i => new ExportDocumentAuthenticationRequestCustomsItemDto
+            {
+                Id = i.Id,
+                ExportDocumentAuthenticationRequestId = i.ExportDocumentAuthenticationRequestId,
+                CustomsItemId = i.CustomsItemId,
+            }).ToList(),
+            LeadDocuments = entity.LeadDocuments.Select(l => new ExportDocumentAuthenticationRequestLeadDocumentDto
+            {
+                Id = l.Id,
+                ExportRequestId = l.ExportRequestId,
+                LeadDocumentId = l.LeadDocumentId,
+                LeadDocumentTitle = l.LeadDocumentTitle,
+            }).ToList(),
+            ManufacturingAreas = entity.ManufacturingAreas.Select(m => new ExportAuthenticationRequestManufacturingAreaDto
+            {
+                Id = m.Id,
+                ExportAuthenticationRequestId = m.ExportAuthenticationRequestId,
+                ManufacturingArea = m.ManufacturingArea,
+                ManufacturingZipcode = m.ManufacturingZipcode,
+            }).ToList(),
+            ExportDeclarationIds = entity.LeadDocuments
+                .Where(l => l.LeadDocumentId.HasValue)
+                .Select(l => l.LeadDocumentId!.Value)
+                .ToList(),
+        };
+        return result;
+    }
+
     public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
         var parameters = BuildParameterForProcedure(filter);

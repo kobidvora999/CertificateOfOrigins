@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.DAL;
 using Dapper;
@@ -49,6 +50,54 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // names return NULL from the SP (cross-service JOINs removed) and are enriched in the BL via lookups.
         var result = await ReadOnlyContext.GetAuthenticationRequestByLeadDocumentID(parameters);
         return result.ToList();
+    }
+
+    public async Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id)
+    {
+        // Single request by id + its three child collections (mirrors the legacy Single + 3x LoadProperty).
+        // TEMPORARY: the entity has 35 columns but the platform MaxCountExceededInterceptor errors at >=30 result
+        // columns. Until a CertificateOfOrigins entry is added to InfrastructureCore's InterceptorList (then use
+        // .Include(...) + .ExcludeInterceptor("<hash>") with the full column set), we project to 29 columns and
+        // drop 6 fields: State, CreateDate, CreateUserId, UpdateDate, UpdateUserId, OrganizationUnitId.
+        var result = await ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(r => r.Id == id)
+            .Select(r => new ExportDocumentAuthenticationRequest
+            {
+                Id = r.Id,
+                TypeId = r.TypeId,
+                Title = r.Title,
+                TimeStamp = r.TimeStamp,
+                CustomerId = r.CustomerId,
+                AuthenticationDocumentTypeId = r.AuthenticationDocumentTypeId,
+                ExporterCustomerId = r.ExporterCustomerId,
+                StatusId = r.StatusId,
+                CountryId = r.CountryId,
+                CustomsHouseAddress = r.CustomsHouseAddress,
+                VendorId = r.VendorId,
+                AuthenticationRequestArrivalDate = r.AuthenticationRequestArrivalDate,
+                AuthenticationRequestedByName = r.AuthenticationRequestedByName,
+                AuthenticationRequestedByEmail = r.AuthenticationRequestedByEmail,
+                AuthenticationRequestedByPhone = r.AuthenticationRequestedByPhone,
+                AuthenticationRequestNotes = r.AuthenticationRequestNotes,
+                ExportLeadDocumentId = r.ExportLeadDocumentId,
+                DocumentId = r.DocumentId,
+                MainDocumentTitle = r.MainDocumentTitle,
+                LastDeliveryDate = r.LastDeliveryDate,
+                DeliveryMethodId = r.DeliveryMethodId,
+                InvoiceNumbers = r.InvoiceNumbers,
+                DetailedDecision = r.DetailedDecision,
+                ReferenceNumber = r.ReferenceNumber,
+                CommentForCustomsHouseLetter = r.CommentForCustomsHouseLetter,
+                TotalDocuments = r.TotalDocuments,
+                TotalInvoices = r.TotalInvoices,
+                DocumentDate = r.DocumentDate,
+                InvoiceDate = r.InvoiceDate,
+                CustomsItems = r.CustomsItems.ToList(),
+                LeadDocuments = r.LeadDocuments.ToList(),
+                ManufacturingAreas = r.ManufacturingAreas.ToList(),
+            })
+            .FirstOrDefaultAsync();
+        return result;
     }
 
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
