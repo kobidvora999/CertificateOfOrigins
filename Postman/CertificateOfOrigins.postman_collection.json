@@ -343,6 +343,24 @@
               ]
             }
           }
+        },
+        {
+          "name": "CustomerInformationByCountry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "CustomerInformationByCountry",
+                "32"
+              ]
+            }
+          }
         }
       ]
     }

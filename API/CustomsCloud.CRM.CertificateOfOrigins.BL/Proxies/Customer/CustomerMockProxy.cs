@@ -45,4 +45,24 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
         };
         return Task.FromResult<CustomerDto?>(result);
     }
+
+    public Task<List<CustomerDto>?> GetCustomersByCountry(int countryId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<List<CustomerDto>?>(null);
+        }
+
+        var result = new List<CustomerDto>
+        {
+            new()
+            {
+                Id = countryId * 100,                          // TODO: dummy data
+                Name = "Foreign Customs House " + countryId,   // TODO: dummy data
+                ExternalIdNum = "000000000",
+                IsActive = true,
+            },
+        };
+        return Task.FromResult<List<CustomerDto>?>(result);
+    }
 }

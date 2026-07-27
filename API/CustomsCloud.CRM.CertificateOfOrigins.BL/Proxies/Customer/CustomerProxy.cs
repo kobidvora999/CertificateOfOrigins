@@ -27,4 +27,18 @@ public class CustomerProxy(IRestProxy restProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<CustomerDto>();
     }
+
+    public async Task<List<CustomerDto>?> GetCustomersByCountry(int countryId)
+    {
+        // Foreign customs-houses in the given country. The legacy passed the fixed activity-type filter
+        // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) alongside the country id.
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"Customer/CustomersByCountry/{countryId}/{ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<List<CustomerDto>>();
+    }
+
+    // ECustomerActivityType.Foreign_customs_house = 40 (MalamTeam.Infrastructure.GeneralServices.Environment.Enums)
+    private const int ForeignCustomsHouseActivityType = 40;
 }

@@ -25,6 +25,17 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
         return Ok(result);
     }
 
+    // Internal WCF: GetCustomerInformationByCountry(countryId) — the foreign customs-house for a country
+    // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 404
+    // (BL throws RestNotFoundException). Returns the first matching customer.
+    [HttpGet("CustomerInformationByCountry/{countryId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CustomerDto))]
+    public async Task<ActionResult<CustomerDto>> CustomerInformationByCountry([FromRoute] int countryId)
+    {
+        var result = await BusinessLayer.GetCustomerInformationByCountry(countryId);
+        return Ok(result);
+    }
+
     [HttpGet("ExportDocumentAuthenticationRequestSearch")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
     public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromQuery] ExportDocumentAuthenticationRequestSearchFilterDto filter)

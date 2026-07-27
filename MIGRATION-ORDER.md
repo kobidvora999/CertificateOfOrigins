@@ -30,7 +30,7 @@
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
 | 11 | GetCustomerInformation | Internal | ✅ הומרה (branch `feature/migrate-get-customer-information`) — proxy-only (אין SP/DB): מתודת proxy חדשה `ICustomerProxy.GetCustomerInformation(int)` (+mock), CustomerDto הורחב ב-Addresses+CustomerAddressDto, endpoint GET CustomerInformation/{id} ב-ExportDocumentAuthenticationRequest (404 על חוסר) |
-| 12 | GetCustomerInformationByCountry | Internal | ⬜ |
+| 12 | GetCustomerInformationByCountry | Internal | ✅ הומרה (branch `feature/migrate-get-customer-information-by-country`) — proxy-only (אין SP/DB, כמו #11): מתודת proxy חדשה `ICustomerProxy.GetCustomersByCountry(int)` (+mock) עם פילטר activity-type קבוע Foreign_customs_house=40 baked-in, מחזירה `List<CustomerDto>?`; BL `GetCustomerInformationByCountry` (404 על ריק, מחזיר `.First()` — פאריטי עם FirstOrDefault הלגאסי), endpoint GET CustomerInformationByCountry/{countryId} ב-ExportDocumentAuthenticationRequest |
 | 13 | LoadDataFromExportDeclaration (DealFile/mock) | Internal | ⬜ |
 | 14 | GetExportDocumentAuthenticationRequestByID | Internal | ⬜ |
 | 15 | Convert (תלוי ב-#7) | External | ⬜ |
