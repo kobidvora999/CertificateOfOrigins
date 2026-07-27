@@ -29,7 +29,7 @@
 ## גל 3 — קריאות עם proxy יחיד (תבנית proxy)
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
-| 11 | GetCustomerInformation | Internal | ⬜ |
+| 11 | GetCustomerInformation | Internal | ✅ הומרה (branch `feature/migrate-get-customer-information`) — proxy-only (אין SP/DB): מתודת proxy חדשה `ICustomerProxy.GetCustomerInformation(int)` (+mock), CustomerDto הורחב ב-Addresses+CustomerAddressDto, endpoint GET CustomerInformation/{id} ב-ExportDocumentAuthenticationRequest (404 על חוסר) |
 | 12 | GetCustomerInformationByCountry | Internal | ⬜ |
 | 13 | LoadDataFromExportDeclaration (DealFile/mock) | Internal | ⬜ |
 | 14 | GetExportDocumentAuthenticationRequestByID | Internal | ⬜ |

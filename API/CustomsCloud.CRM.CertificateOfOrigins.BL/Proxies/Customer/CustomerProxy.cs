@@ -18,4 +18,13 @@ public class CustomerProxy(IRestProxy restProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
     }
+
+    public async Task<CustomerDto?> GetCustomerInformation(int customerId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"Customer/CustomerInformation/{customerId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<CustomerDto>();
+    }
 }

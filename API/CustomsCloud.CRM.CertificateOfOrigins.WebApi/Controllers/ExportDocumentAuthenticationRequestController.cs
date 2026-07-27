@@ -14,6 +14,17 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // search. Returns the matching requests (empty list when none — a search, never 404). CountryName +
     // ForeignCustomsHouseName + RequestIssuerName are enriched in the BL (Country lookup + Customers proxy);
     // DocumentType/RequestStatus/ExportDeclaration names come from local joins.
+    // Internal WCF: GetCustomerInformation(customerId) — fetch a single customer's information (incl. addresses)
+    // from the Customers service by id. Missing id → 404 (BL throws RestNotFoundException). The SPA picks the
+    // Authentication-purpose address (else the first) from Addresses as the customs-house address.
+    [HttpGet("CustomerInformation/{customerId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CustomerDto))]
+    public async Task<ActionResult<CustomerDto>> CustomerInformation([FromRoute] int customerId)
+    {
+        var result = await BusinessLayer.GetCustomerInformation(customerId);
+        return Ok(result);
+    }
+
     [HttpGet("ExportDocumentAuthenticationRequestSearch")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
     public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromQuery] ExportDocumentAuthenticationRequestSearchFilterDto filter)

@@ -2,6 +2,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
 using Dapper;
 using Lookup;
@@ -15,6 +16,15 @@ public class ExportDocumentAuthenticationRequestBl(
     ILookupUtil lookupUtil)
     : BaseBL<ExportDocumentAuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    public async Task<CustomerDto> GetCustomerInformation(int customerId)
+    {
+        // Single-customer lookup against the Customers service by id; the legacy threw on a missing customer,
+        // so a not-found id owns the 404 contract. Address selection was client-side (SPA), not in the BL.
+        var customer = await customerProxy.GetCustomerInformation(customerId)
+            ?? throw new RestNotFoundException();
+        return customer;
+    }
+
     public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
         var parameters = BuildParameterForProcedure(filter);

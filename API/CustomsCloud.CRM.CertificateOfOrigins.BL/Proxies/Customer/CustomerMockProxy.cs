@@ -24,4 +24,25 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
         }).ToList();
         return Task.FromResult<List<CustomerDto>?>(result);
     }
+
+    public Task<CustomerDto?> GetCustomerInformation(int customerId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<CustomerDto?>(null);
+        }
+
+        var result = new CustomerDto
+        {
+            Id = customerId,                  // TODO: dummy data
+            Name = "Test Customer " + customerId,
+            ExternalIdNum = "000000000",
+            IsActive = true,
+            Addresses =
+            [
+                new CustomerAddressDto { AddressPurpose = 1, AddressSingleLine = "רחוב הבדיקה 1, חיפה" }, // TODO: dummy authentication address
+            ],
+        };
+        return Task.FromResult<CustomerDto?>(result);
+    }
 }

@@ -325,6 +325,24 @@
               ]
             }
           }
+        },
+        {
+          "name": "CustomerInformation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformation/777",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "CustomerInformation",
+                "777"
+              ]
+            }
+          }
         }
       ]
     }
