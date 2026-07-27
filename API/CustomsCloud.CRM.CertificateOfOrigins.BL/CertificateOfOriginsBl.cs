@@ -11,6 +11,24 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    public async Task<VirtualEntityDto> Convert(ConnectedEntityDto connectedEntity)
+    {
+        // ESB/EAI Convert: resolve the connected-entity key (the certificate number) into a generic entity link.
+        // Reuses the #7 filter search; a missing certificate owns the 404 contract (legacy threw not-exist).
+        var filter = new CertificateOfOriginFilterDto { CertificateNumber = connectedEntity.EntityIdKey1 };
+        var certificate = (await GetCertificateOfOriginsByFilter(filter)).FirstOrDefault()
+            ?? throw new RestNotFoundException();
+
+        var result = new VirtualEntityDto
+        {
+            Id = certificate.Id,
+            Title = certificate.Name,
+            EntityType = 12319, // EEntityType.CertificateOfOrigin (MalamTeam.Infrastructure.GeneralServices.Environment.Enums.EEntityType)
+            CustomerId = certificate.CustomesAgentId,
+        };
+        return result;
+    }
+
     public async Task<bool> LoadDataFromExportDeclaration(LoadDataFromExportDeclarationRequestDto request)
     {
         // Guard: without a lead-document id or an export-declaration number there is nothing to look up.

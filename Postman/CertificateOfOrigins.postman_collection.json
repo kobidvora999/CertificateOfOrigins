@@ -148,6 +148,37 @@
           }
         },
         {
+          "name": "Convert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityIdKey1\": \"IL0000116895\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Convert"
+              ]
+            }
+          }
+        },
+        {
           "name": "LoadDataFromExportDeclaration",
           "request": {
             "method": "GET",

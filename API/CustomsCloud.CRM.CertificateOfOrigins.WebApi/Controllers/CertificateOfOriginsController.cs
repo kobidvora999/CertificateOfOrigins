@@ -50,6 +50,17 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         return Ok(result);
     }
 
+    // External WCF: Convert(connectedEntity) — the ESB/EAI entity-resolution operation. Resolves the connected
+    // entity's key (EntityIdKey1 = certificate number) to a generic VirtualEntity link. Missing certificate → 404
+    // (BL throws RestNotFoundException). POST because it takes the ConnectedEntity payload in the body.
+    [HttpPost("Convert")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(VirtualEntityDto))]
+    public async Task<ActionResult<VirtualEntityDto>> Convert([FromBody] ConnectedEntityDto connectedEntity)
+    {
+        var result = await BusinessLayer.Convert(connectedEntity);
+        return Ok(result);
+    }
+
     // Internal WCF: LoadDataFromExportDeclaration(certificateOfOrigin) — looks up the certificate's export
     // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity
