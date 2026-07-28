@@ -20,6 +20,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId);
 
+    Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters);
+
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
 
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);

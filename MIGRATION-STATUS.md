@@ -80,12 +80,12 @@
 | מתודה | סטטוס | הערה |
 |---|---|---|
 | GetPC_MSG2280_2281_CertificateOfOriginRequest | 🔴 חסומה | תלויה ב-SaveCertificateOfOrigin + תשתית EAI + מנוע ולידציה |
-| GetCertificateRequestByGuid | 🔴 חסומה | "מוכנה להמרה מהירה" אחרי אימות SP + הכרעות (הקרובה ביותר לפתיחה) |
+| GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים דרך proxy ל-SystemTables (+mock) — אין להם lookup type בפלטפורמה. נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. חוסם שנותר: DocumentID (NULL — Docs חוצה-סכמה, TODO(blocking)). Rollout: אימות נתיבי endpoint של SystemTables (CurrencyTypesByIds, DataDictionaryFieldsByIds). |
 
-*(אין עדיין Incoming controller ברפו.)*
+*(אין עדיין Incoming controller ברפו — מתודות Incoming שהומרו נחשפות דרך ה-controller של ה-BL הרלוונטי.)*
 
 ## מסלולי פתיחה (לפי סדר מומלץ)
-1. **GetCertificateRequestByGuid** — אימות ה-SP הפרוס + 4 הכרעות נקודתיות → המרה מהירה.
+1. ~~**GetCertificateRequestByGuid**~~ — ✅ הומרה (2026-07-28).
 2. **GetPathsForNavigationToVendor** — בירור מוצר בלבד (רלוונטי ל-SPA?).
 3. **גל ההודעות** — התקנת `CustomsCloud.Infrastructure.Notifications` + אימות SendMessage פותחת את שלוש מתודות ה-Save יחד.
 4. **SaveCertificateOfOrigin** → פותחת אחריה את ה-Incoming הראשי.

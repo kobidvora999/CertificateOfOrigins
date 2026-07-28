@@ -43,3 +43,10 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginDto
+  # Multi-result-set SP (5 sets) — DbContextExtension.GetCertificateOfOriginDataForWebQuery is hand-written
+  # (QueryMultipleAsync + merge); the generated single-QueryAsync path does not apply.
+  - name: dbo.GetCertificateOfOriginDataForWebQuery
+    function: GetCertificateOfOriginDataForWebQuery
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: CertificateOfOriginWebQueryDto

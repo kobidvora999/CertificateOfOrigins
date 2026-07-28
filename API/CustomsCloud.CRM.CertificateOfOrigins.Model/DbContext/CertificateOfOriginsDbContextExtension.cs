@@ -158,4 +158,55 @@ public partial class CertificateOfOriginsDbContext
 
         return certificate;
     }
+
+    // dbo.GetCertificateOfOriginDataForWebQuery — the public-portal certificate-verification query (Incoming
+    // GetCertificateRequestByGuid), materialized from a 5-result-set SP (1 header · 2 invoices · 3 details · 4
+    // detail-type-code lookup · 5 web print-out). Ports the legacy MaterializeCertificateOfOriginDataForWebQuerySP:
+    // result set 4 attaches each detail's type-code (by CertificateDetailsTypeCodeId), result set 5 attaches each
+    // detail's web print-out row (by the same id). Returns null when the key (guid, or number + issuing-date)
+    // matches no header row. DocumentId is NULL from the SP (cross-service Docs JOIN removed).
+    public async Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetCertificateOfOriginDataForWebQuery",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+
+        using var grid = await conn.QueryMultipleAsync(cmd);
+
+        var certificate = (await grid.ReadAsync<CertificateOfOriginWebQueryDto>()).FirstOrDefault();
+        if (certificate == null)
+        {
+            return null;
+        }
+
+        var invoices = (await grid.ReadAsync<CertificateOfOriginInvoiceDetailDto>()).ToList();
+        var details = (await grid.ReadAsync<CertificateOfOriginWebDetailDto>()).ToList();
+        var detailTypeCodes = (await grid.ReadAsync<CertificateDetailsTypeCodeDto>()).ToList();
+        var webPrintOuts = (await grid.ReadAsync<CertificateOfOriginWebPrintOutDto>()).ToList();
+
+        // result set 4 → each detail's type-code (by CertificateDetailsTypeCodeId). No match ⇒ left null.
+        var typeCodeById = detailTypeCodes
+            .GroupBy(t => t.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // result set 5 → each detail's web print-out row (by detail-type-code id). No match ⇒ left null.
+        var printOutByTypeId = webPrintOuts
+            .GroupBy(p => p.CertificateDetailsTypeId)
+            .ToDictionary(g => g.Key, g => g.First());
+        foreach (var detail in details)
+        {
+            typeCodeById.TryGetValue(detail.CertificateDetailsTypeCodeId, out var typeCode);
+            detail.CertificateDetailsTypeCode = typeCode;
+            printOutByTypeId.TryGetValue(detail.CertificateDetailsTypeCodeId, out var printOut);
+            detail.CertificateOfOriginWebPrintOut = printOut;
+        }
+
+        certificate.CertificateOfOriginDetails = details;
+        certificate.CertificateOfOriginInvoiceDetail = invoices;
+
+        return certificate;
+    }
 }

@@ -111,6 +111,15 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters)
+    {
+        // dbo.GetCertificateOfOriginDataForWebQuery — the public-portal certificate-verification query (5 result
+        // sets), composed in the DbContext extension. DocumentId is NULL from the SP (cross-service Docs JOIN
+        // removed) and is left unresolved in the BL (TODO(blocking)).
+        var result = await ReadOnlyContext.GetCertificateOfOriginDataForWebQuery(parameters);
+        return result;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

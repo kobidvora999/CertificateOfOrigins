@@ -115,17 +115,33 @@
 
 ‏stub מת ב-WCF (`throw new NotImplementedException()`) — לא הועבר בכוונה.
 
-## Incoming: GetCertificateRequestByGuid — ❌ לא בוצע (סתירות הדורשות הכרעת מפתח בחוזה ציבורי)
+## Incoming: GetCertificateRequestByGuid — ✅ הומרה (2026-07-28)
 
-זהו שאילתת אימות תעודה לפורטל הציבורי (GetPC_Web_9096_CertificateRequest). הלוגיקה מנותחת במלואה
-(ניתוח מפורט זמין), אך נמצאו סתירות שאסור לנחש בהן:
-1. **סטיית SP**: ‏result set 5 של ‏usp_CertificateOfOrigin_GetCertificateOfOriginDataForWebQuery בסקריפט
-   אינו מחזיר עמודת IsToPrint, אך ה-BL קורא אותה (שדות Consignee ב-EUR1/EURMED לעולם לא יודפסו לפי
-   הסקריפט) — לוודא מול ה-SP הפרוס בפועל לפני המרה.
-2. **FieldID של ExportDeclarationNumber** לא נמצא על הישות — סיכון NRE קיים במקור; נדרש הערך האמיתי.
-3. ‏lookups לא מאומתים ביעד: DataDictionaryField (תוויות לפי FieldID 20306/20310), CurrencyType (קוד מטבע).
-4. ‏DocumentID נפתר ב-SP מטבלאות Infrastructure.Docs_* (שירות Documents) — נדרש endpoint מתאים.
-5. באג קדימות אופרטורים בפילטר החשבוניות (MERCOSUR בלבד מותנה ב-IsToPrint) — לשמר או לתקן? הכרעת מוצר.
+שאילתת אימות תעודה לפורטל הציבורי (GetPC_Web_9096_CertificateRequest). הומרה end-to-end: DTOs, SP רב-תוצאות
+`dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ב-DbContextExtension), DAL, BL
+(`GetCertificateRequestByGuid` ב-CertificateOfOriginsBl), ו-GET endpoint ב-CertificateOfOriginsController.
 
-**מוכן להמרה מהירה לאחר ההכרעות** — צורת ה-Incoming controller (סינכרוני, PreRulings precedent) כבר קבועה,
-וכל שאר הישויות קיימות.
+**הכרעות מפתח שהתקבלו (2026-07-28):**
+1. **result set 5 בלי IsToPrint** (blocker #1 המקורי) — אומת מול המקור **וגם** מול העותק הפרוס ב-Scripts:
+   ה-SP באמת לא מחזיר IsToPrint (הטבלה הזמנית `#CertificateDetailsTypeCodeForWebDisplay` היא dead code).
+   **הוכרע: לשמר bug-for-bug** — Consignee ב-EUR1/EURMED לעולם לא מודפס.
+2. **FieldID של ExportDeclarationNumber** — טענת ה-NRE הייתה שגויה: `[FieldID(20661)]` קיים בישות.
+   הערכים (20306/20310/20661) נכתבו כקבועים ב-BL (ה-DTO ביעד לא נושא attributes → אין reflection).
+3. **lookups** — אומת ב-reflection ש-`CurrencyType` ו-`DataDictionaryField` **לא קיימים** כ-lookup type בפלטפורמה
+   (`ILookup` אף לא מכיל `CurrencyCode`). לכן ההחלטה המקורית "ILookupUtil.Get<T>" בלתי-אפשרית. **הוכרע (2026-07-28):
+   שניהם דרך proxy ל-`CustomsMicroServices.SystemTables` + MockProxy** — `IDataDictionaryFieldProxy` (תוויות
+   EnglishName) ו-`ICurrencyTypeProxy` (CurrencyCode). CurrencyCode מאוכלס בפועל (נבדק חי מול mock → "ILS").
+4. **DocumentID** — נפתר במקור ב-SP מ-Infrastructure.Docs_* (חוצה-סכמה). **הוכרע: 0/NULL + TODO(blocking)**;
+   ה-JOIN הוסר מה-SP (מחזיר NULL). לפתור עתידית דרך שירות Documents.
+5. **באג קדימות אופרטורים** בפילטר החשבוניות (blocker #5 המקורי) — **הוכרע: לשמר bug-for-bug**
+   (IsToPrint מגביל רק MERCOSUR). נוספו סוגריים מפורשים שמשמרים את ההתנהגות (דרישת SA1408).
+6. **CertificateOfOriginItemDetailDTOs** — תמיד רשימה ריקה (dead-init לגאסי). **הוכרע: לשמר.**
+
+**נפתר מאז (2026-07-28):** SP הוחל ואומת מול DB חי (פרמטרים תואמים) + סקריפט גרסה ב-Scripts/ ·
+`CertificateOfOriginQueryURL` קיים ומאומת ב-Infrastructure.Parameters (ה-TODO השגוי הוסר) ·
+CurrencyCode מומש דרך `ICurrencyTypeProxy` · נבדק חי end-to-end (GET מול השירות).
+
+**חוסרים חוסמים שנותרו (Manual follow-up — blocking):** ראה TODO(blocking) בקוד —
+(1) **DocumentID** מוחזר NULL/0 (ה-JOIN ל-Infrastructure.Docs_* הוסר מה-SP) — לפתור דרך שירות Documents.
+(2) **אימות נתיבי endpoint ב-SystemTables לפני rollout:** `CurrencyType/CurrencyTypesByIds` ו-
+`DataDictionaryField/DataDictionaryFieldsByIds` (נכתבו כ-best-guess).

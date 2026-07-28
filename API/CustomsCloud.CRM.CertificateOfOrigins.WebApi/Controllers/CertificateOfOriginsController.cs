@@ -72,6 +72,18 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         return Ok(result);
     }
 
+    // Incoming/portal WCF: GetCertificateRequestByGuid (GetPC_Web_9096_CertificateRequest) — certificate
+    // verification for the public portal, located by guid or by CertificateOfOriginNumber + IssuingDate. Returns
+    // the web-query response. The legacy in-band error contract is preserved: an invalid guid or no matching
+    // certificate returns an HTTP 200 with ExceptionDescription set (not a 404), so the external portal is unaffected.
+    [HttpGet("CertificateRequestByGuid")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
+    public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
+    {
+        var result = await BusinessLayer.GetCertificateRequestByGuid(request);
+        return Ok(result);
+    }
+
     // Internal WCF: LoadDataFromExportDeclaration(certificateOfOrigin) — looks up the certificate's export
     // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity

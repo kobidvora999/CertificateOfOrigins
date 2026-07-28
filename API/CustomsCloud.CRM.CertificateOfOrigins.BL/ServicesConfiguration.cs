@@ -4,6 +4,7 @@ using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
+using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using Lookup;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +40,18 @@ public class ServicesConfiguration : IServicesConfiguration
         // TODO(blocking): the ExportDealFile microservice is not yet stood up — the mock is the practical
         // default (selected via x-mock-proxy); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
+
+        // Web-query field labels for GetCertificateRequestByGuid (was SystemTablesUtil.GetCodeById<DataDictionaryField>;
+        // no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
+        services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
+
+        // Invoice currency codes for GetCertificateRequestByGuid (was SystemTablesUtil.GetCodeById<CurrencyType>;
+        // no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
+        services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
+
+        // QueryURL config for GetCertificateRequestByGuid (was Configuration.GetConfig<string>).
+        // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
+        services.AddParametersService();
 
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
