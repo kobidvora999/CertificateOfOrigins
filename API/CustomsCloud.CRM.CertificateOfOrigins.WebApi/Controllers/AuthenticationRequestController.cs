@@ -87,4 +87,16 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.ChangeStatusAfterDeliverySent(request);
         return Ok(result);
     }
+
+    // Internal WCF: HandleSendRemindDeliverNotification(fileDetails) — the BL method is named CloseReminderTask.
+    // Raises CloseTaskReminderNotice3Months for the authentication-request file (the Events microservice closes the
+    // 3-month reminder task). A state-changing action with a body → POST; the full-entity input is flattened to
+    // Id + OrganizationUnitId. Returns true.
+    [HttpPost("CloseReminderTask")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> CloseReminderTask([FromBody] CloseReminderTaskRequestDto request)
+    {
+        var result = await BusinessLayer.CloseReminderTask(request);
+        return Ok(result);
+    }
 }

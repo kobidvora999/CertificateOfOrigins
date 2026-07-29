@@ -211,6 +211,34 @@
 
 ---
 
+### CloseReminderTask
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | POST |
+| **נתיב** | `/AuthenticationRequest/CloseReminderTask` |
+| **תיאור** | העלאת אירוע סגירת משימת תזכורת 3 חודשים לתיק אימות יבוא (Internal WCF: `HandleSendRemindDeliverNotification`; שם המתודה ב-BL/endpoint שונה משם המתודה בחוזה ה-WCF המקורי — `CloseReminderTask`) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `request` | `CloseReminderTaskRequestDto` (מגוף הבקשה) | מזהה תיק האימות ומזהה היחידה הארגונית |
+
+**ערך מוחזר:** `bool` — `true` תמיד (הצלחה)
+
+**לוגיקה עסקית:**
+
+**מקבל:** `Id` (מזהה תיק אימות) ו-`OrganizationUnitId` — במקור ה-WCF קיבל את ישות `CertificateOfOriginsImportAuthenticationFileDetails` המלאה, אך השתמש רק בשני השדות הללו; כאן שוטחו לשני שדות סקלריים ב-DTO ייעודי (אותו תקדים כמו `ChangeStatusAfterDeliverySent`)
+
+**מבצע:**
+1. מעביר passthrough טהור: אינו כותב שום דבר ל-DB (אין DAL, אין proxy)
+2. בונה ומעלה (`IEventUtil`) אירוע מסוג `CloseTaskReminderNotice3Months` (event-type id 1745) עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385), עם `EntityId` = `Id`, `Title` = כותרת עברית מחושבת של תיק האימות ("אימות מסמך מקור (יבוא) מספר פניה {Id}"), ו-`OrganizationUnitId` = `OrganizationUnitId`
+3. מוסיף related-entity הצבעה על אותה ישות (`AuthenticationRequestFile` באותו `Id`)
+4. שירות ה-Events הוא זה שמטפל בפועל בסגירת משימת התזכורת (3 חודשים) עבור קובץ בקשת האימות, דרך handler התגובה שלו
+
+**מחזיר:** `true` (תמיד — האירוע הועלה בהצלחה; אין כאן סמנטיקת 404 שכן אין שליפת/עדכון ישות ב-DB)
+
+---
+
 ## 3. מודלי נתונים
 
 ### ImportAuthenticationRequestFilterDto
@@ -299,6 +327,12 @@
 | `Id` | `int` | ✓ | מזהה תיק בקשת האימות (`EntityId` של האירוע המועלה) |
 | `OrganizationUnitId` | `int` | ✓ | מזהה היחידה הארגונית (מועבר לאירוע) |
 
+### CloseReminderTaskRequestDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה תיק בקשת האימות (`EntityId` של האירוע המועלה, וגם ה-related-entity) |
+| `OrganizationUnitId` | `int` | ✓ | מזהה היחידה הארגונית (מועבר לאירוע) |
+
 ---
 
 ## 4. תלויות חיצוניות
@@ -310,7 +344,7 @@
 | `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש; העשרת שם סוג מסמך (`DocumentType`) ב-`EntityDocuments` |
 | `IParametersUtil` | קריאת רשימת סוגי המסמכים המותרים (מפתח `CertificateOfOriginsDocumentsFilter`) ב-`EntityDocuments` |
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
-| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
+| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, ואירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
 
 ---
 
@@ -318,3 +352,4 @@
 - `LeadDocumentTitle` נשאר `null` בשתי מתודות החיפוש — TODO(migration): דורש proxy לשירות הבעלים של מסמך ה-CRP.DealFile, שטרם קיים
 - `EntityDocuments`: הנתיב (route) של ה-endpoint בשירות המסמכים (Documents microservice) טרם אושר מול הצוות האחראי — TODO(blocking) ב-`DocumentsProxy.GetDocumentsByEntity`, ראו הערה בקוד
 - `ChangeStatusAfterDeliverySent`: אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) מועלה עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385). ה-endpoint הוא passthrough בלבד — אינו כותב סטטוס ל-DB; שינוי הסטטוס בפועל וסגירת המשימות מטופלים ב-side של שירות ה-Events (response handler). החלטת מפתח (29/07/2026): לשמור נאמנות מלאה ל-WCF המקורי — event-raise בלבד
+- `CloseReminderTask`: שם המתודה ב-BL/endpoint (`CloseReminderTask`) שונה משם המתודה בחוזה ה-WCF המקורי (`HandleSendRemindDeliverNotification`) — נשמר כאן לתיעוד. אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) מועלה עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385), כולל related-entity לאותה ישות. ה-endpoint הוא passthrough בלבד — אינו כותב ל-DB; סגירת משימת התזכורת בפועל מטופלת ב-side של שירות ה-Events (response handler). אין DAL, אין proxy — תלות יחידה היא `IEventUtil`

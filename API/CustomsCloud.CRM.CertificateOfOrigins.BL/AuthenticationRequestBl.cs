@@ -38,6 +38,25 @@ public class AuthenticationRequestBl(
         return true;
     }
 
+    // Internal WCF: HandleSendRemindDeliverNotification(fileDetails) → BL CloseReminderTask — a pure event-raise
+    // passthrough. It raises CloseTaskReminderNotice3Months; the Events microservice's response handler closes the
+    // 3-month reminder-notice task for the file. No DB write. The WCF took the full file-details entity but used only
+    // Id + OrganizationUnitId (Title is the file's computed Hebrew label, replicated here for parity).
+    public async Task<bool> CloseReminderTask(CloseReminderTaskRequestDto request)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        var eventRequest = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.CloseTaskReminderNotice3Months)
+            .WithEntityId(request.Id)
+            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithTitle($"  אימות מסמך מקור (יבוא) מספר פניה {request.Id}")
+            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
+            .Build();
+        await eventUtil.RaiseEvent(eventRequest);
+        return true;
+    }
+
     // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used
     // only its LeadDocumentID, so it is flattened to that scalar here (same precedent as
     // CheckIfExistsAdditionalRequestsForImporter). Returns the entity's documents (from the Documents service),

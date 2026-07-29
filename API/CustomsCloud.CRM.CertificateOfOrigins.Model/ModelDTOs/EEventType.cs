@@ -8,4 +8,7 @@ public enum EEventType
     // Closes all open tasks for an import authentication-request file. The Events microservice's response handler
     // performs the task closure; the caller only raises the event.
     CloseAllTaskForImportAuthenticationRequestFile = 1525,
+
+    // Closes the 3-month reminder-notice task for an import authentication-request file (raised by CloseReminderTask).
+    CloseTaskReminderNotice3Months = 1745,
 }

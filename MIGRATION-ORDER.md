@@ -47,7 +47,7 @@
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
 | 20 | ChangeStatusAfterDeliverySent | Internal | ✅ הומרה (2026-07-29, branch `feature/migrate-change-status-after-delivery-sent`) — passthrough שמעלה event בלבד: `IEventUtil` builder (`CloseAllTaskForImportAuthenticationRequestFile`=1525, entity `AuthenticationRequestFile`=12385) → שירות האירועים סוגר את המשימות. אין כתיבת DB (החלטת מפתח: נאמן ל-WCF; שינוי הסטטוס קורה upstream). החתימה שוטחה entity→DTO {Id, OrganizationUnitId}, מחזיר bool. enum EEventType חדש + EEntityType.AuthenticationRequestFile נוסף. IEventUtil דרך `Resolve<>` (bl-rules) + `AddEventUtil()`. endpoint POST AuthenticationRequest/ChangeStatusAfterDeliverySent. Build נקי |
-| 21 | HandleSendRemindDeliverNotification (→CloseReminderTask) | Internal | ⬜ |
+| 21 | HandleSendRemindDeliverNotification (→CloseReminderTask) | Internal | ✅ הומרה (2026-07-29, branch `feature/migrate-handle-send-remind-deliver-notification`) — passthrough שמעלה event בלבד (כמו #20): `IEventUtil` builder (`CloseTaskReminderNotice3Months`=1745, entity `AuthenticationRequestFile`=12385, + AddRelatedEntity לאותה ישות, Title עברי מהישות משוחזר). שם ה-BL/endpoint = `CloseReminderTask` (שונה מהחוזה). DTO {Id, OrganizationUnitId}, מחזיר bool. אין כתיבת DB. endpoint POST AuthenticationRequest/CloseReminderTask. Build נקי |
 | 22 | HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent | Internal | ⬜ |
 | 23 | HandleImportAuthenticationRequestDeliveryForImporterSent | Internal | ⬜ |
 | 24 | HandleImportAuthenticationRequestDeliveryReminderForImporterSent | Internal | ⬜ |
