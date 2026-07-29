@@ -46,7 +46,7 @@
 ## גל 5 — writers עם events (IEventUtil + כתיבה)
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
-| 20 | ChangeStatusAfterDeliverySent | Internal | ⬜ |
+| 20 | ChangeStatusAfterDeliverySent | Internal | ✅ הומרה (2026-07-29, branch `feature/migrate-change-status-after-delivery-sent`) — passthrough שמעלה event בלבד: `IEventUtil` builder (`CloseAllTaskForImportAuthenticationRequestFile`=1525, entity `AuthenticationRequestFile`=12385) → שירות האירועים סוגר את המשימות. אין כתיבת DB (החלטת מפתח: נאמן ל-WCF; שינוי הסטטוס קורה upstream). החתימה שוטחה entity→DTO {Id, OrganizationUnitId}, מחזיר bool. enum EEventType חדש + EEntityType.AuthenticationRequestFile נוסף. IEventUtil דרך `Resolve<>` (bl-rules) + `AddEventUtil()`. endpoint POST AuthenticationRequest/ChangeStatusAfterDeliverySent. Build נקי |
 | 21 | HandleSendRemindDeliverNotification (→CloseReminderTask) | Internal | ⬜ |
 | 22 | HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent | Internal | ⬜ |
 | 23 | HandleImportAuthenticationRequestDeliveryForImporterSent | Internal | ⬜ |

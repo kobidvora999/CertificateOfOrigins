@@ -184,6 +184,33 @@
 
 ---
 
+### ChangeStatusAfterDeliverySent
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | POST |
+| **נתיב** | `/AuthenticationRequest/ChangeStatusAfterDeliverySent` |
+| **תיאור** | העלאת אירוע סגירת משימות פתוחות לתיק אימות יבוא לאחר משלוח (Internal WCF: `ChangeStatusAfterDeliverySent`) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `request` | `ChangeStatusAfterDeliverySentRequestDto` (מגוף הבקשה) | מזהה תיק האימות ומזהה היחידה הארגונית |
+
+**ערך מוחזר:** `bool` — `true` תמיד (הצלחה)
+
+**לוגיקה עסקית:**
+
+**מקבל:** `Id` (מזהה תיק אימות) ו-`OrganizationUnitId` — במקור ה-WCF קיבל את ישות `CertificateOfOriginsImportAuthenticationFileDetails` המלאה, אך השתמש רק בשני השדות הללו; כאן שוטחו לשני שדות סקלריים ב-DTO ייעודי
+
+**מבצע:**
+1. מעביר passthrough טהור: אינו כותב שום דבר ל-DB בעצמו (שינוי הסטטוס בפועל התבצע במקור בצד הלקוח לפני הקריאה)
+2. בונה ומעלה (`IEventUtil`) אירוע מסוג `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385), עם `EntityId` = `Id`, `Title` = `Id` (כמחרוזת), ו-`OrganizationUnitId` = `OrganizationUnitId`
+3. שירות ה-Events הוא זה שמטפל בפועל בסגירת המשימות הפתוחות עבור קובץ בקשת האימות, דרך handler התגובה שלו
+
+**מחזיר:** `true` (תמיד — האירוע הועלה בהצלחה; אין כאן סמנטיקת 404 שכן אין שליפת/עדכון ישות ב-DB)
+
+---
+
 ## 3. מודלי נתונים
 
 ### ImportAuthenticationRequestFilterDto
@@ -266,6 +293,12 @@
 | `EntityId` | `int` | ✓ | מזהה הישות המקושרת |
 | `EntityTypeId` | `int` | ✓ | סוג הישות המקושרת |
 
+### ChangeStatusAfterDeliverySentRequestDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה תיק בקשת האימות (`EntityId` של האירוע המועלה) |
+| `OrganizationUnitId` | `int` | ✓ | מזהה היחידה הארגונית (מועבר לאירוע) |
+
 ---
 
 ## 4. תלויות חיצוניות
@@ -277,9 +310,11 @@
 | `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש; העשרת שם סוג מסמך (`DocumentType`) ב-`EntityDocuments` |
 | `IParametersUtil` | קריאת רשימת סוגי המסמכים המותרים (מפתח `CertificateOfOriginsDocumentsFilter`) ב-`EntityDocuments` |
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
+| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
 
 ---
 
 ## 5. הערות
 - `LeadDocumentTitle` נשאר `null` בשתי מתודות החיפוש — TODO(migration): דורש proxy לשירות הבעלים של מסמך ה-CRP.DealFile, שטרם קיים
 - `EntityDocuments`: הנתיב (route) של ה-endpoint בשירות המסמכים (Documents microservice) טרם אושר מול הצוות האחראי — TODO(blocking) ב-`DocumentsProxy.GetDocumentsByEntity`, ראו הערה בקוד
+- `ChangeStatusAfterDeliverySent`: אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) מועלה עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385). ה-endpoint הוא passthrough בלבד — אינו כותב סטטוס ל-DB; שינוי הסטטוס בפועל וסגירת המשימות מטופלים ב-side של שירות ה-Events (response handler). החלטת מפתח (29/07/2026): לשמור נאמנות מלאה ל-WCF המקורי — event-raise בלבד

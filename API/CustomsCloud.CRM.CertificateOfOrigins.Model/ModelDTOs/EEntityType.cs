@@ -8,4 +8,6 @@ public enum EEntityType
     ImportDeclaration = 1055,
 
     CertificateOfOrigin = 12319,
+
+    AuthenticationRequestFile = 12385,
 }

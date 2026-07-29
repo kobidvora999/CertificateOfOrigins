@@ -57,6 +57,9 @@ public class ServicesConfiguration : IServicesConfiguration
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
         services.AddParametersService();
 
+        // Event raising for ChangeStatusAfterDeliverySent (was EventUtil.RaiseEvent) — resolved lazily via IEventUtil.
+        services.AddEventUtil();
+
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();

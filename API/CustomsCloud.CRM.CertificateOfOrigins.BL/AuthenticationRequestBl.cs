@@ -4,6 +4,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
+using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
 using Lookup;
 using System.Data;
@@ -19,6 +20,24 @@ public class AuthenticationRequestBl(
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    // Internal WCF: ChangeStatusAfterDeliverySent(fileDetails) — a pure event-raise passthrough. It raises
+    // CloseAllTaskForImportAuthenticationRequestFile; the Events microservice's response handler closes the open
+    // tasks for the file. No DB write here (the legacy status change happened client-side before the call). The WCF
+    // took the full file-details entity but used only Id + OrganizationUnitId, so those are flattened into the DTO.
+    public async Task<bool> ChangeStatusAfterDeliverySent(ChangeStatusAfterDeliverySentRequestDto request)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        var eventRequest = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
+            .WithEntityId(request.Id)
+            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithTitle(request.Id.ToString())
+            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .Build();
+        await eventUtil.RaiseEvent(eventRequest);
+        return true;
+    }
+
     // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used
     // only its LeadDocumentID, so it is flattened to that scalar here (same precedent as
     // CheckIfExistsAdditionalRequestsForImporter). Returns the entity's documents (from the Documents service),

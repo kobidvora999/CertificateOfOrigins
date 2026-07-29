@@ -76,4 +76,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
         return Ok(result);
     }
+
+    // Internal WCF: ChangeStatusAfterDeliverySent(fileDetails) — raises CloseAllTaskForImportAuthenticationRequestFile
+    // for the authentication-request file (the Events microservice closes the open tasks). A state-changing action
+    // with a body → POST. The legacy full-entity input is flattened to Id + OrganizationUnitId. Returns true.
+    [HttpPost("ChangeStatusAfterDeliverySent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> ChangeStatusAfterDeliverySent([FromBody] ChangeStatusAfterDeliverySentRequestDto request)
+    {
+        var result = await BusinessLayer.ChangeStatusAfterDeliverySent(request);
+        return Ok(result);
+    }
 }

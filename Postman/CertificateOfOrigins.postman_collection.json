@@ -465,6 +465,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "ChangeStatusAfterDeliverySent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 999,\n  \"organizationUnitId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/ChangeStatusAfterDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "ChangeStatusAfterDeliverySent"
+              ]
+            }
+          }
         }
       ]
     },
