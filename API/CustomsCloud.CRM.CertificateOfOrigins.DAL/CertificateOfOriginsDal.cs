@@ -142,6 +142,29 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId)
+    {
+        // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
+        // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
+        // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
+        var now = DateTimeOffset.Now;
+        var today = new DateTimeOffset(now.Date, now.Offset);
+
+        await Context.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
+                .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
+                .SetProperty(f => f.LastDelivery, today)
+                .SetProperty(f => f.UpdateDate, today));
+
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.UpdateDate, now));
+
+        return true;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

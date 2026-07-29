@@ -1,12 +1,12 @@
 # אפיון: CertificateOfOrigins — AuthenticationRequest API
 
-> **תאריך:** 28/07/2026
+> **תאריך:** 29/07/2026
 > **Controller:** `AuthenticationRequestController` (`/AuthenticationRequest`)
 
 ---
 
 ## 1. תיאור כללי
-ה-controller חושף חיפוש ובדיקות עבור בקשות אימות יבוא (Import Authentication Request) — התהליך שבו יבואן מבקש אימות מסמך העדפה (Preference Document) מול בית מכס. צרכן: ה-SPA הפנימי (Internal). כולל חיפוש לפי מסנן, שליפה לפי מסמכים מובילים, שליפת המסמכים המצורפים למסמך מוביל (לצורך צירוף לבקשת אימות), ובדיקות עסקיות (יבואן ברשימה חסומה, ריבוי בקשות).
+ה-controller חושף חיפוש, בדיקות, ועדכוני מצב עבור בקשות אימות יבוא (Import Authentication Request) — התהליך שבו יבואן מבקש אימות מסמך העדפה (Preference Document) מול בית מכס. צרכן: ה-SPA הפנימי (Internal). כולל חיפוש לפי מסנן, שליפה לפי מסמכים מובילים, שליפת המסמכים המצורפים למסמך מוביל (לצורך צירוף לבקשת אימות), בדיקות עסקיות (יבואן ברשימה חסומה, ריבוי בקשות), העלאת אירועי סגירת משימות, ועדכון סטטוס/שיטת משלוח של תיק בקשת האימות בעקבות משלוח לספק/בית מכס או תזכורת (`HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` — הכותב הראשון בפועל ל-DB בשירות זה).
 
 ---
 
@@ -239,6 +239,39 @@
 
 ---
 
+### HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | POST |
+| **נתיב** | `/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` |
+| **תיאור** | עדכון סטטוס ושיטת משלוח של תיק בקשת אימות יבוא בעקבות משלוח לספק/בית מכס או תזכורת (Internal WCF: `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `request` | `HandleDeliveryAndReminderForVendorSentRequestDto` (מגוף הבקשה) | מזהה תיק האימות, הסטטוס הנוכחי, שיטת המשלוח הנוכחית, והאם זהו משלוח בפועל (`true`) או תזכורת (`false`) |
+
+**ערך מוחזר:** `HandleDeliveryAndReminderForVendorSentResultDto` — מזהה התיק, הסטטוס החדש ושיטת המשלוח החדשה לאחר הרצת מכונת המצבים
+
+**לוגיקה עסקית:**
+
+**מקבל:** `Id`, `AuthenticationFileStatusId`, `DeliveryMethodId`, `IsDelivery` — הזרימה הראשונה בשירות זה שכותבת בפועל ל-DB. החלטת מפתח (29/07/2026): נאמנות מלאה ל-WCF המקורי — מכונת המצבים פועלת על הסטטוס ושיטת המשלוח **כפי שנשלחו מהלקוח** (ללא שליפה מה-DB, "trust the client"); אין העלאת אירוע בזרימה זו
+
+**מבצע:**
+1. אם `IsDelivery=false` (תזכורת ולא משלוח בפועל) — הסטטוס מוגדר תחילה ל-`AuthenticationRequestReminderWasSend`(3); אם `IsDelivery=true` — הסטטוס נשאר כפי שנשלח מהלקוח (`AuthenticationFileStatusId`)
+2. מריץ את מכונת המצבים הישנה (`UpdateFileAfterDelivery`, מועתקת 1:1 מה-WCF) על הסטטוס ושיטת המשלוח שחושבו בצעד 1 (טבלת המעברים המלאה מפורטת בסעיף 5 — הערות):
+   - אם הסטטוס `WaitingForSendingLetter`(1) — הסטטוס הופך ל-`AuthenticationRequestWasSend`(2) ושיטת המשלוח הופכת ל-`PostedMailing`(2), ללא תלות בשיטת המשלוח שנשלחה
+   - אחרת אם הסטטוס `AuthenticationRequestWasSend`(2) ושיטת המשלוח `PostedMailing`(2) או `SentByEmailRequest`(3) — שיטת המשלוח הופכת ל-`FirstRemindSent`(4) (הסטטוס עצמו נשאר `AuthenticationRequestWasSend`)
+   - אחרת אם הסטטוס `AuthenticationRequestWasSend`(2) ושיטת המשלוח `FirstRemindSent`(4) — שיטת המשלוח הופכת ל-`SecondRemindSent`(5) (הסטטוס נשאר `AuthenticationRequestWasSend`)
+   - אחרת אם הסטטוס `AuthenticationRequestReminderWasSend`(3) ושיטת המשלוח `FirstRemindSent`(4) — שיטת המשלוח הופכת ל-`SecondRemindSent`(5) (הסטטוס נשאר `AuthenticationRequestReminderWasSend`)
+   - בכל שילוב אחר — אין שינוי נוסף מעבר למחושב בצעד 1
+3. מעדכן (set-based, `Context.ExecuteUpdateAsync`, ללא טעינת שורה) את שורת תיק האימות (`CRM.CertificateOfOrigins_ImportAuthenticationFileDetails` לפי `Id`): `AuthenticationFileStatusId` ו-`DeliveryMethodId` לערכים שחושבו, וכן `LastDelivery` ו-`UpdateDate` לזמן הנוכחי
+4. מעדכן (set-based) את `UpdateDate` של כל בקשות האימות המשויכות (`CRM.CertificateOfOrigins_ImportAuthenticationRequest` שבהן `AuthenticationFileID = Id`)
+
+**מחזיר:** `HandleDeliveryAndReminderForVendorSentResultDto` עם מזהה התיק, הסטטוס החדש ושיטת המשלוח החדשה (לא 404 — כתיבה set-based ללא בדיקת קיום השורה מראש)
+
+---
+
 ## 3. מודלי נתונים
 
 ### ImportAuthenticationRequestFilterDto
@@ -333,6 +366,47 @@
 | `Id` | `int` | ✓ | מזהה תיק בקשת האימות (`EntityId` של האירוע המועלה, וגם ה-related-entity) |
 | `OrganizationUnitId` | `int` | ✓ | מזהה היחידה הארגונית (מועבר לאירוע) |
 
+### HandleDeliveryAndReminderForVendorSentRequestDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה תיק בקשת האימות |
+| `AuthenticationFileStatusId` | `int` | ✓ | סטטוס נוכחי של התיק כפי שנשלח מהלקוח (`EAuthenticationFileStatus`) — קלט למכונת המצבים; לא נשלף מה-DB |
+| `DeliveryMethodId` | `int` | ✓ | שיטת משלוח נוכחית כפי שנשלחה מהלקוח (`EDeliveryMethod`) — קלט למכונת המצבים; לא נשלף מה-DB |
+| `IsDelivery` | `bool` | ✓ | `true` = משלוח בפועל; `false` = תזכורת (הסטטוס מוגדר תחילה ל-`AuthenticationRequestReminderWasSend` לפני הרצת מכונת המצבים) |
+
+### HandleDeliveryAndReminderForVendorSentResultDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה תיק בקשת האימות |
+| `AuthenticationFileStatusId` | `int` | ✓ | הסטטוס החדש לאחר הרצת מכונת המצבים (`EAuthenticationFileStatus`) |
+| `DeliveryMethodId` | `int` | ✓ | שיטת המשלוח החדשה לאחר הרצת מכונת המצבים (`EDeliveryMethod`) |
+
+### EAuthenticationFileStatus (enum)
+| ערך | שם | תיאור |
+|-----|-----|--------|
+| 1 | WaitingForSendingLetter | ממתין למשלוח מכתב |
+| 2 | AuthenticationRequestWasSend | בקשת האימות נשלחה |
+| 3 | AuthenticationRequestReminderWasSend | תזכורת לבקשת האימות נשלחה |
+| 4 | ReceivedPartialAnswerInFile | התקבלה תשובה חלקית בתיק |
+| 5 | ReceivedAnswerInFile | התקבלה תשובה בתיק |
+| 6 | RightAuthenticationAnswer | תשובת אימות תקינה |
+| 7 | ClarificationRequired | נדרש בירור |
+| 8 | WrongAuthenticationAnswer | תשובת אימות שגויה |
+| 9 | CancelledFile | תיק בוטל |
+
+מקור: `CRM.CertificateOfOrigins_enum_AuthenticationFileStatus` (ערכי enum פלטפורמה — לא הומצאו). רלוונטי ל-`HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`.
+
+### EDeliveryMethod (enum)
+| ערך | שם | תיאור |
+|-----|-----|--------|
+| 1 | WasNotSend | טרם נשלח |
+| 2 | PostedMailing | נשלח בדואר |
+| 3 | SentByEmailRequest | נשלח בבקשת דוא"ל |
+| 4 | FirstRemindSent | תזכורת ראשונה נשלחה |
+| 5 | SecondRemindSent | תזכורת שנייה נשלחה |
+
+מקור: `CRM.CertificateOfOrigins_enum_DeliveryMethod` (ערכי enum פלטפורמה — לא הומצאו). רלוונטי ל-`HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`.
+
 ---
 
 ## 4. תלויות חיצוניות
@@ -346,6 +420,8 @@
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
 | `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, ואירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
 
+`HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`: **אין** תלויות חיצוניות — כתיבת DAL טהורה (ללא proxy, ללא lookup, ללא אירוע).
+
 ---
 
 ## 5. הערות
@@ -353,3 +429,14 @@
 - `EntityDocuments`: הנתיב (route) של ה-endpoint בשירות המסמכים (Documents microservice) טרם אושר מול הצוות האחראי — TODO(blocking) ב-`DocumentsProxy.GetDocumentsByEntity`, ראו הערה בקוד
 - `ChangeStatusAfterDeliverySent`: אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) מועלה עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385). ה-endpoint הוא passthrough בלבד — אינו כותב סטטוס ל-DB; שינוי הסטטוס בפועל וסגירת המשימות מטופלים ב-side של שירות ה-Events (response handler). החלטת מפתח (29/07/2026): לשמור נאמנות מלאה ל-WCF המקורי — event-raise בלבד
 - `CloseReminderTask`: שם המתודה ב-BL/endpoint (`CloseReminderTask`) שונה משם המתודה בחוזה ה-WCF המקורי (`HandleSendRemindDeliverNotification`) — נשמר כאן לתיעוד. אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) מועלה עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385), כולל related-entity לאותה ישות. ה-endpoint הוא passthrough בלבד — אינו כותב ל-DB; סגירת משימת התזכורת בפועל מטופלת ב-side של שירות ה-Events (response handler). אין DAL, אין proxy — תלות יחידה היא `IEventUtil`
+- `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`: הכותב הראשון בפועל לבסיס הנתונים בשירות זה (DAL כתיבה set-based, ללא proxy/lookup/event). ישות חדשה שהוכנסה (onboarded): `CRM.CertificateOfOrigins_ImportAuthenticationFileDetails`; enums חדשים: `EAuthenticationFileStatus`, `EDeliveryMethod` (ראו סעיף 3). החלטת מפתח (29/07/2026): נאמנות מלאה ל-WCF המקורי — מכונת המצבים (`UpdateFileAfterDelivery`, מועתקת 1:1) פועלת על הסטטוס ושיטת המשלוח **כפי שנשלחו מהלקוח**, ללא שליפה מה-DB ("trust the client"); אין העלאת אירוע בזרימה זו. טבלת המעברים המלאה של מכונת המצבים:
+
+  | סטטוס בכניסה למכונה | שיטת משלוח בכניסה למכונה | סטטוס ביציאה | שיטת משלוח ביציאה |
+  |---|---|---|---|
+  | `WaitingForSendingLetter`(1) | כל ערך | `AuthenticationRequestWasSend`(2) | `PostedMailing`(2) |
+  | `AuthenticationRequestWasSend`(2) | `PostedMailing`(2) או `SentByEmailRequest`(3) | ללא שינוי (`AuthenticationRequestWasSend`) | `FirstRemindSent`(4) |
+  | `AuthenticationRequestWasSend`(2) | `FirstRemindSent`(4) | ללא שינוי (`AuthenticationRequestWasSend`) | `SecondRemindSent`(5) |
+  | `AuthenticationRequestReminderWasSend`(3) | `FirstRemindSent`(4) | ללא שינוי (`AuthenticationRequestReminderWasSend`) | `SecondRemindSent`(5) |
+  | כל שילוב אחר | כל ערך | ללא שינוי (כפי שחושב בצעד ה-`IsDelivery`) | ללא שינוי (כפי שנשלח מהלקוח) |
+
+  לפני הרצת המכונה: אם `IsDelivery=false` הסטטוס בכניסה נקבע ל-`AuthenticationRequestReminderWasSend`(3) (במקום הערך שנשלח); אם `IsDelivery=true` הסטטוס בכניסה הוא `AuthenticationFileStatusId` שנשלח כמות שהוא. לאחר הרצת המכונה: `LastDelivery` ו-`UpdateDate` מתעדכנים על תיק האימות (`CRM.CertificateOfOrigins_ImportAuthenticationFileDetails`), ו-`UpdateDate` מתעדכן על כל בקשות האימות המשויכות (`CRM.CertificateOfOrigins_ImportAuthenticationRequest` שבהן `AuthenticationFileID = Id`) — שתי הכתיבות set-based (`ExecuteUpdateAsync`), ללא טעינת שורות

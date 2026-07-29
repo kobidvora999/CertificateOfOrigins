@@ -527,6 +527,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"deliveryMethodId\": 1,\n  \"isDelivery\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent"
+              ]
+            }
+          }
         }
       ]
     },

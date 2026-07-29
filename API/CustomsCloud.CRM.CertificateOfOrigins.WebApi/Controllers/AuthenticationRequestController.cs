@@ -99,4 +99,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.CloseReminderTask(request);
         return Ok(result);
     }
+
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(file, isDelivery) — the vendor/
+    // customs-house delivery flow. Advances the file's status + delivery method and stamps the delivery dates on the
+    // file and its child requests. A state-changing write with a body → POST. Returns the file's new status + method.
+    [HttpPost("HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryAndReminderForVendorSentResultDto))]
+    public async Task<ActionResult<HandleDeliveryAndReminderForVendorSentResultDto>> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent([FromBody] HandleDeliveryAndReminderForVendorSentRequestDto request)
+    {
+        var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(request);
+        return Ok(result);
+    }
 }

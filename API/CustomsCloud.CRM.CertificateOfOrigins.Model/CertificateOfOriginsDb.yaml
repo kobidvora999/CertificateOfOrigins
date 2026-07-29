@@ -10,6 +10,7 @@ tables:
   - CRM.CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument
   - CRM.CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea
   - CRM.CertificateOfOrigins_ImportAuthenticationRequest
+  - CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
 stored procedures:
   - name: dbo.GetCertificateOfOriginsByFilter
     function: GetCertificateOfOriginsByFilter

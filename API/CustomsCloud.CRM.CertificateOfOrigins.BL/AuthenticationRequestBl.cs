@@ -57,6 +57,53 @@ public class AuthenticationRequestBl(
         return true;
     }
 
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(file, isDelivery) — the vendor/
+    // customs-house delivery flow. Advances the file's status + delivery method via the legacy status machine and
+    // stamps the delivery dates on the file and its child requests. Faithful to the WCF (developer decision
+    // 2026-07-29): the machine runs on the CLIENT-supplied current status + delivery method (no DB fetch); no event.
+    public async Task<HandleDeliveryAndReminderForVendorSentResultDto> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(HandleDeliveryAndReminderForVendorSentRequestDto request)
+    {
+        // A reminder (not a delivery) first flips the status to "reminder was sent".
+        var status = request.IsDelivery
+            ? request.AuthenticationFileStatusId
+            : (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend;
+        var deliveryMethod = request.DeliveryMethodId;
+
+        // Legacy UpdateFileAfterDelivery status machine (ported 1:1).
+        if (status == (int)EAuthenticationFileStatus.WaitingForSendingLetter)
+        {
+            status = (int)EAuthenticationFileStatus.AuthenticationRequestWasSend;
+            deliveryMethod = (int)EDeliveryMethod.PostedMailing;
+        }
+        else if (status == (int)EAuthenticationFileStatus.AuthenticationRequestWasSend)
+        {
+            if (deliveryMethod == (int)EDeliveryMethod.PostedMailing || deliveryMethod == (int)EDeliveryMethod.SentByEmailRequest)
+            {
+                deliveryMethod = (int)EDeliveryMethod.FirstRemindSent;
+            }
+            else if (deliveryMethod == (int)EDeliveryMethod.FirstRemindSent)
+            {
+                deliveryMethod = (int)EDeliveryMethod.SecondRemindSent;
+            }
+        }
+        else if (status == (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend)
+        {
+            if (deliveryMethod == (int)EDeliveryMethod.FirstRemindSent)
+            {
+                deliveryMethod = (int)EDeliveryMethod.SecondRemindSent;
+            }
+        }
+
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod);
+
+        return new HandleDeliveryAndReminderForVendorSentResultDto
+        {
+            Id = request.Id,
+            AuthenticationFileStatusId = status,
+            DeliveryMethodId = deliveryMethod,
+        };
+    }
+
     // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used
     // only its LeadDocumentID, so it is flattened to that scalar here (same precedent as
     // CheckIfExistsAdditionalRequestsForImporter). Returns the entity's documents (from the Documents service),
