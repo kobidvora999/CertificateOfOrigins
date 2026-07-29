@@ -377,7 +377,7 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
         {
             Id = certificate.Id,
             Title = certificate.Name,
-            EntityType = 12319, // EEntityType.CertificateOfOrigin (MalamTeam.Infrastructure.GeneralServices.Environment.Enums.EEntityType)
+            EntityType = (int)EEntityType.CertificateOfOrigin,
             CustomerId = certificate.CustomesAgentId,
         };
         return result;
@@ -410,6 +410,7 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     }
 
     #region LEGACY_WCF
+#pragma warning disable S125 // migration convention: preserve the original WCF body as a reference comment
 
     // Original WCF (CertificateOfOriginsExternalService.InternalGetCertificateOfOriginID):
     //
@@ -423,6 +424,7 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     //         return certificateOfOrigin?.ID;
     //     }
     // }
+#pragma warning restore S125
     #endregion
 
     public async Task<List<GoodsItemCerificateDto>> GetGoodsItemCerificateDTO(List<GoodsItemCerificateDto> goodsItemCerificateDTOs)

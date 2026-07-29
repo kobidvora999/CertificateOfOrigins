@@ -11,9 +11,9 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     : BaseController<ExportDocumentAuthenticationRequestBl>(serviceProvider)
 {
     // Internal WCF: GetExportDocumentAuthenticationRequestSearch(filter) — export-document authentication-request
-    // search. Returns the matching requests (empty list when none — a search, never 404). CountryName +
-    // ForeignCustomsHouseName + RequestIssuerName are enriched in the BL (Country lookup + Customers proxy);
-    // DocumentType/RequestStatus/ExportDeclaration names come from local joins.
+    // search. Returns the matching requests (empty list when none — a search, never 404). The CountryName,
+    // ForeignCustomsHouseName and RequestIssuerName are enriched in the BL via the Country lookup and Customers
+    // proxy, while the DocumentType, RequestStatus and ExportDeclaration names come from local joins.
     // Internal WCF: GetCustomerInformation(customerId) — fetch a single customer's information (incl. addresses)
     // from the Customers service by id. Missing id → 404 (BL throws RestNotFoundException). The SPA picks the
     // Authentication-purpose address (else the first) from Addresses as the customs-house address.

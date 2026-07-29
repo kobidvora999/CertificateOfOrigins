@@ -6,7 +6,7 @@
 ---
 
 ## 1. תיאור כללי
-ה-controller חושף חיפוש ובדיקות עבור בקשות אימות יבוא (Import Authentication Request) — התהליך שבו יבואן מבקש אימות מסמך העדפה (Preference Document) מול בית מכס. צרכן: ה-SPA הפנימי (Internal). כולל חיפוש לפי מסנן, שליפה לפי מסמכים מובילים, ובדיקות עסקיות (יבואן ברשימה חסומה, ריבוי בקשות).
+ה-controller חושף חיפוש ובדיקות עבור בקשות אימות יבוא (Import Authentication Request) — התהליך שבו יבואן מבקש אימות מסמך העדפה (Preference Document) מול בית מכס. צרכן: ה-SPA הפנימי (Internal). כולל חיפוש לפי מסנן, שליפה לפי מסמכים מובילים, שליפת המסמכים המצורפים למסמך מוביל (לצורך צירוף לבקשת אימות), ובדיקות עסקיות (יבואן ברשימה חסומה, ריבוי בקשות).
 
 ---
 
@@ -122,6 +122,39 @@
 
 ---
 
+### EntityDocuments
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | GET |
+| **נתיב** | `/AuthenticationRequest/EntityDocuments/{leadDocumentId}` |
+| **תיאור** | שליפת המסמכים המצורפים למסמך המוביל, הזמינים לצירוף לבקשת אימות (Internal WCF: `GetEntityDocuments`) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `leadDocumentId` | `int` (route) | מזהה מסמך מוביל |
+
+**ערך מוחזר:** `List<DocumentDto>` — רשימת מסמכים תואמים (ריקה אם אין)
+
+**לוגיקה עסקית:**
+
+**מקבל:** מזהה מסמך מוביל (`leadDocumentId`) — במקור ה-WCF קיבל את ישות הבקשה המלאה, אך השתמש רק בשדה `LeadDocumentID` שלה; כאן שוטח לפרמטר סקלרי (אותו תקדים כמו `CheckIfExistsAdditionalRequestsForImporter`)
+
+**מבצע:**
+1. שולף מה-DAL את רשימת מזהי המסמכים שכבר רשומים תחת מסמך מוביל זה (`CRM.CertificateOfOrigins_ImportAuthenticationRequest`)
+2. שולף מפרמטרי התשתית (`IParametersUtil`, מפתח `CertificateOfOriginsDocumentsFilter`) את רשימת סוגי המסמכים המותרים (CSV של TypeIDs)
+3. שולף משירות המסמכים (Documents microservice, דרך `IDocumentsProxy`) את המסמכים המצורפים להצהרת היבוא של המסמך המוביל (`EEntityType.ImportDeclaration` = 1055)
+4. מסנן החוצה מסמכים שכבר רשומים תחת מסמך מוביל זה (מהצעד 1)
+5. משאיר רק מסמכים מסוג מותר (מהצעד 2)
+6. שולף מה-DAL אילו מהמסמכים שנותרו כבר נתפסו (claimed) ע"י מסמך מוביל **אחר**, ומסנן אותם החוצה
+7. אם הרשימה שנותרה ריקה — מחזיר רשימה ריקה
+8. מעשיר כל מסמך בשם סוג המסמך (`TypeName`) דרך lookup משותף של DocumentType, לפי `TypeId`
+9. מרכיב לכל מסמך שדה `Notes` בפורמט `"{Id} {Title} {TypeName}"` (תאימות לגרסה הישנה); `StringDynamicParams` נשאר עם הערות המסמך הגולמיות מהשירות; `OtherRelatedEntities` (קישורי הישות של המסמך) מגיע כפי שהוא מהשירות
+
+**מחזיר:** רשימת מסמכים מסוננים ומועשרים; רשימה ריקה אם אין מסמכים תואמים (שליפה — אף פעם לא 404)
+
+---
+
 ### CheckIfExistsAdditionalRequestsForImporter
 | שדה | ערך |
 |-----|-----|
@@ -211,6 +244,28 @@
 | `CollateralId` | `int?` | — | מזהה בטוחה |
 | `IsCollateralExists` | `bool` | ✓ | האם קיימת בטוחה |
 
+### DocumentDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה מסמך |
+| `TypeId` | `int` | ✓ | מזהה סוג מסמך |
+| `TypeName` | `string?` | — | שם סוג מסמך (מועשר ע"י ה-BL דרך lookup של DocumentType) |
+| `IsIncoming` | `bool?` | — | האם מסמך נכנס |
+| `CreateDate` | `DateTime` | ✓ | תאריך יצירה |
+| `Title` | `string?` | — | כותרת המסמך |
+| `IsAccepted` | `bool` | ✓ | האם המסמך אושר |
+| `IsRequired` | `bool` | ✓ | האם המסמך נדרש |
+| `Notes` | `string?` | — | מורכב ע"י ה-BL: `"{Id} {Title} {TypeName}"` (תאימות לגרסה הישנה) |
+| `ExternalId` | `string?` | — | מזהה חיצוני (משירות המסמכים) |
+| `StringDynamicParams` | `string?` | — | הערות המסמך הגולמיות (Notes המקורי משירות המסמכים) |
+| `OtherRelatedEntities` | `List<EntityDocumentDto>` | ✓ | ישויות נוספות שהמסמך מקושר אליהן |
+
+### EntityDocumentDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `EntityId` | `int` | ✓ | מזהה הישות המקושרת |
+| `EntityTypeId` | `int` | ✓ | סוג הישות המקושרת |
+
 ---
 
 ## 4. תלויות חיצוניות
@@ -218,10 +273,13 @@
 |-------|-------------|
 | `ICustomerProxy` | העשרת שם היבואן (`ImporterName`) לפי `CustomerId` |
 | `IVendorProxy` | העשרת שם הספק (`VendorName`) לפי `VendorId` |
-| `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש |
+| `IDocumentsProxy` | שליפת המסמכים המצורפים למסמך המוביל משירות המסמכים (Documents microservice) ב-`EntityDocuments` |
+| `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש; העשרת שם סוג מסמך (`DocumentType`) ב-`EntityDocuments` |
+| `IParametersUtil` | קריאת רשימת סוגי המסמכים המותרים (מפתח `CertificateOfOriginsDocumentsFilter`) ב-`EntityDocuments` |
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
 
 ---
 
 ## 5. הערות
 - `LeadDocumentTitle` נשאר `null` בשתי מתודות החיפוש — TODO(migration): דורש proxy לשירות הבעלים של מסמך ה-CRP.DealFile, שטרם קיים
+- `EntityDocuments`: הנתיב (route) של ה-endpoint בשירות המסמכים (Documents microservice) טרם אושר מול הצוות האחראי — TODO(blocking) ב-`DocumentsProxy.GetDocumentsByEntity`, ראו הערה בקוד

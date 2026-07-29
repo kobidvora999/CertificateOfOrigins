@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Central security floor for transitive packages (net10-code-review warnings policy).
+    Remove each pin once the infrastructure packages bring the fixed version transitively.
+  -->
+  <ItemGroup>
+    <!-- NU1903 GHSA-v5pm-xwqc-g5wc (CVE-2026-49451): Microsoft.OpenApi <= 2.7.4 stack-overflow on circular
+         schema refs. Pulled transitively at 2.0.0; pin the first patched 2.x (same major → low risk). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <!-- System.Security.Cryptography.Xml <= 8.0.2 (NU1903 GHSA-w3x6-4m5h-cxqf + GHSA-mmjf-rqrv-855v). Pulled
+       transitively at 8.0.2; pin the patched 8.0.x. Excluded from the WebApi project where it is framework-provided
+       and auto-pruned (would otherwise raise NU1510). -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'CustomsCloud.CRM.CertificateOfOrigins.WebApi'">
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />
+  </ItemGroup>
+
+</Project>

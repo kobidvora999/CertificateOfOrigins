@@ -54,6 +54,18 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         return Ok(result);
     }
 
+    // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used
+    // only its LeadDocumentID, so it is flattened to a route param here. Returns the lead document's documents
+    // (from the Documents service), filtered to the allowed types and to documents not already requested/claimed.
+    // An empty result is legitimate (no 404).
+    [HttpGet("EntityDocuments/{leadDocumentId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<DocumentDto>))]
+    public async Task<ActionResult<List<DocumentDto>>> EntityDocuments([FromRoute] int leadDocumentId)
+    {
+        var result = await BusinessLayer.GetEntityDocuments(leadDocumentId);
+        return Ok(result);
+    }
+
     // Internal WCF: CheckIfExistsAdditionalRequestsForImporter(request) — the WCF took the full request entity
     // but used only 4 scalar fields; flattened to query params here. True if an additional import-authentication
     // request exists for the importer within the config window. A check → returns bool (no 404).

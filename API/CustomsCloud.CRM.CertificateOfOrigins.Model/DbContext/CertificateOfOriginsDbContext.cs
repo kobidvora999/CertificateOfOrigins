@@ -17,6 +17,8 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<ExportDocumentAuthenticationRequest> ExportDocumentAuthenticationRequests { get; set; }
 
+    public virtual DbSet<CertificateOfOriginsImportAuthenticationRequest> CertificateOfOriginsImportAuthenticationRequests { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         OnModelCreatingPartial(modelBuilder);

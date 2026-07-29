@@ -6,8 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
-public class VendorProxy(IRestProxy restProxy)
-    : BaseMicroServiceProxyAdapter(restProxy, CustomsMicroServices.Vendors), IVendorProxy
+public class VendorProxy(IHttpProxy httpProxy)
+    : BaseCustomsProxy(httpProxy, CustomsMicroServices.Vendors), IVendorProxy
 {
     public async Task<List<VendorDto>?> GetVendorsByIds(List<int> vendorIds)
     {

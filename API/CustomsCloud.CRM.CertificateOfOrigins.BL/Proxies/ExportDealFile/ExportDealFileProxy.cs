@@ -6,8 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
-public class ExportDealFileProxy(IRestProxy restProxy)
-    : BaseMicroServiceProxyAdapter(restProxy, CustomsMicroServices.ExportDealFile), IExportDealFileProxy
+public class ExportDealFileProxy(IHttpProxy httpProxy)
+    : BaseCustomsProxy(httpProxy, CustomsMicroServices.ExportDealFile), IExportDealFileProxy
 {
     public async Task<ExportDeclarationDetailsDto?> GetExportDeclarationDetailsForCertificateOfOrigion(int? leadDocumentId, string? exportDeclarationNumber)
     {

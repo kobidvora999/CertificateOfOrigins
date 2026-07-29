@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Parameters;
 using Dapper;
 using Lookup;
 using System.Data;
@@ -13,9 +14,70 @@ public class AuthenticationRequestBl(
     IServiceProvider serviceProvider,
     ICustomerProxy customerProxy,
     IVendorProxy vendorProxy,
+    IDocumentsProxy documentsProxy,
+    IParametersUtil parametersUtil,
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used
+    // only its LeadDocumentID, so it is flattened to that scalar here (same precedent as
+    // CheckIfExistsAdditionalRequestsForImporter). Returns the entity's documents (from the Documents service),
+    // filtered to the allowed document types and to documents not already requested / claimed by another lead doc.
+    public async Task<List<DocumentDto>> GetEntityDocuments(int leadDocumentId)
+    {
+        // DocumentIDs already registered under this lead document.
+        var requestedDocumentIds = await DataLayer.GetImportAuthenticationRequestDocumentIdsByLeadDocumentId(leadDocumentId);
+
+        // Allowed document types — CSV of TypeIDs (was Configuration.GetConfig<string>).
+        var documentTypeIds = await parametersUtil.Get<string>("CertificateOfOriginsDocumentsFilter");
+        var documentFilter = (documentTypeIds ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => Convert.ToInt32(s))
+            .ToList();
+
+        // Documents attached to the lead document's import declaration (Documents microservice).
+        var entityDocuments = await documentsProxy.GetDocumentsByEntity(leadDocumentId, (int)EEntityType.ImportDeclaration) ?? [];
+
+        // Drop ones already requested, then keep only the allowed document types.
+        entityDocuments = entityDocuments.Where(entDoc => !requestedDocumentIds.Contains(entDoc.Id)).ToList();
+        var filteredList = entityDocuments.Where(d => documentFilter.Any(f => f == d.TypeId)).ToList();
+
+        if (requestedDocumentIds.Count > 0)
+        {
+            filteredList = filteredList
+                .Where(d => requestedDocumentIds.All(rid => rid != d.Id) && d.Id != 0)
+                .ToList();
+        }
+
+        // Exclude documents already claimed by a different lead document.
+        var ids = filteredList.Select(d => d.Id).ToList();
+        var claimedByOthers = await DataLayer.GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(ids, leadDocumentId);
+        if (claimedByOthers.Count > 0)
+        {
+            filteredList = filteredList.Where(d => !claimedByOthers.Contains(d.Id)).ToList();
+        }
+
+        if (filteredList.Count == 0)
+        {
+            return [];
+        }
+
+        // TypeName — was SystemTablesUtil.GetCodeById<DocumentType>(TypeID).Name; via the shared DocumentType lookup.
+        await lookupUtil.FillName<DocumentType, DocumentDto>(
+            filteredList,
+            d => d.TypeId,
+            (d, name) => d.TypeName = name);
+
+        // Composed Notes (legacy parity: "{Id} {Title} {TypeName}"). StringDynamicParams (raw notes) and
+        // OtherRelatedEntities are already populated by the proxy.
+        foreach (var doc in filteredList)
+        {
+            doc.Notes = $"{doc.Id} {doc.Title} {doc.TypeName}";
+        }
+
+        return filteredList;
+    }
+
     public async Task<List<GetImportAuthenticationRequestResultDto>> GetAuthenticationRequestByFilter(ImportAuthenticationRequestFilterDto filter)
     {
         var parameters = BuildParameterForProcedure(filter);
@@ -176,6 +238,7 @@ public class AuthenticationRequestBl(
     }
 
     #region LEGACY_WCF
+#pragma warning disable S125 // migration convention: preserve the original WCF body as a reference comment
 
     // Original WCF (AuthenticationRequestBL.CheckImporterOfImportAuthentication):
     //
@@ -186,5 +249,6 @@ public class AuthenticationRequestBl(
     // }
     //
     // Returns the importer id when the importer is NOT on the prohibited list; null when it is.
+#pragma warning restore S125
     #endregion
 }

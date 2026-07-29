@@ -6,8 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
-public class UserProxy(IRestProxy restProxy)
-    : BaseMicroServiceProxyAdapter(restProxy, CustomsMicroServices.Users), IUserProxy
+public class UserProxy(IHttpProxy httpProxy)
+    : BaseCustomsProxy(httpProxy, CustomsMicroServices.Users), IUserProxy
 {
     public async Task<List<UserDto>?> GetUsersByIds(List<int> userIds)
     {

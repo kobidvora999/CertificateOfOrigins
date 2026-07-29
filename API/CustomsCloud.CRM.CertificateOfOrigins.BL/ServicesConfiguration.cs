@@ -25,15 +25,14 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // Platform mock-proxy convention: REAL is the default; a request selects the mock per interface via the
         // x-mock-proxy header. TODO(blocking): verify the real Customers endpoint (CustomersByIds) before ROLLOUT.
-        services.AddRestProxy();  // IRestProxy for the real proxies' BaseMicroServiceProxyAdapter
-        services.AddHttpProxy();  // IProxyMockUtil + per-request mock selection
+        services.AddHttpProxy();  // IHttpProxy for the real proxies (BaseCustomsProxy) + IProxyMockUtil + per-request mock selection
         services.AddProxy<ICustomerProxy, CustomerProxy, CustomerMockProxy>();
 
         // TODO(blocking): verify the real Vendors endpoint (VendorsByIds) before ROLLOUT.
         services.AddProxy<IVendorProxy, VendorProxy, VendorMockProxy>();
 
-        // Milestone user-name enrichment for GetCertificateOfOriginById (the SP returns only the acting user id;
-        // the cross-service Infrastructure.UserMng_User JOIN was removed).
+        // Milestone user-name enrichment for GetCertificateOfOriginById. The SP returns only the acting user id
+        // (the cross-service Infrastructure.UserMng_User JOIN was removed).
         // TODO(blocking): verify the real Users endpoint (User/UsersByIds) before ROLLOUT.
         services.AddProxy<IUserProxy, UserProxy, UserMockProxy>();
 
@@ -41,20 +40,28 @@ public class ServicesConfiguration : IServicesConfiguration
         // default (selected via x-mock-proxy); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
 
-        // Web-query field labels for GetCertificateRequestByGuid (was SystemTablesUtil.GetCodeById<DataDictionaryField>;
-        // no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
+        // Web-query field labels for GetCertificateRequestByGuid — legacy read them from SystemTables DataDictionaryField
+        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
 
-        // Invoice currency codes for GetCertificateRequestByGuid (was SystemTablesUtil.GetCodeById<CurrencyType>;
-        // no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
+        // Invoice currency codes for GetCertificateRequestByGuid — legacy read them from SystemTables CurrencyType
+        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
-        // QueryURL config for GetCertificateRequestByGuid (was Configuration.GetConfig<string>).
+        // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
+        // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
+        services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
+
+        // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
+        // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
         services.AddParametersService();
 
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
+
+        // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
+        services.AddLookup<DocumentType>();
     }
 }

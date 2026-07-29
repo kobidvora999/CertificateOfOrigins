@@ -36,7 +36,7 @@ public class ExportDocumentAuthenticationRequestBl(
             throw new RestNotFoundException();
         }
 
-        return customers.First();
+        return customers[0];
     }
 
     public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> GetExportDocumentAuthenticationRequestById(int id)

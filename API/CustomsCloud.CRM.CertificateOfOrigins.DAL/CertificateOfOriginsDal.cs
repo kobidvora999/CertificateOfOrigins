@@ -120,6 +120,28 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<List<int>> GetImportAuthenticationRequestDocumentIdsByLeadDocumentId(int leadDocumentId)
+    {
+        // The DocumentIDs of the import-authentication requests already registered under this lead document
+        // (legacy: GetQuery<...ImportAuthenticationRequest>().Where(LeadDocumentID == x).Select(DocumentID)).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.LeadDocumentId == leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<int>> GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId)
+    {
+        // Of the given document ids, those already claimed by a DIFFERENT lead document (legacy second query:
+        // Where(Ids.Contains(DocumentID) && LeadDocumentID != x).Select(DocumentID)).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.LeadDocumentId != leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
