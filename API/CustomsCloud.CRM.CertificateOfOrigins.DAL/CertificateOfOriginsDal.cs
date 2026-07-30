@@ -180,6 +180,34 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
+    public async Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds)
+    {
+        // The first of the given requests that already belongs to a file — drives the FileExistForRequest validation.
+        var row = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId != null)
+            .Select(r => new { r.DocumentId, r.AuthenticationFileId })
+            .FirstOrDefaultAsync();
+        return row is null ? null : (row.DocumentId, row.AuthenticationFileId!.Value);
+    }
+
+    public async Task<int> InsertAuthenticationFile(CertificateOfOriginsImportAuthenticationFileDetails file)
+    {
+        Context.CertificateOfOriginsImportAuthenticationFileDetails.Add(file);
+        await Context.SaveChangesAsync();
+        return file.Id;
+    }
+
+    public async Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId)
+    {
+        // Faithful to usp_CertificateOfOrigins_UpdateImportAuthenticationRequest: link only requests not already
+        // attached to a file (set-based ExecuteUpdate, replacing the legacy SP + Shared.IntArray TVP — developer
+        // decision 2026-07-30).
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.AuthenticationFileId, fileId));
+        return true;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

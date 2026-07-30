@@ -131,4 +131,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryReminderForImporterSent(request);
         return Ok(result);
     }
+
+    // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
+    // set of requests and links them to it. Fails with 400 (RestValidationException) if any request already belongs
+    // to a file. A state-changing write with a body → POST. Returns the created file.
+    [HttpPost("CreateNewAuthenticationFile")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CreateNewAuthenticationFileResultDto))]
+    public async Task<ActionResult<CreateNewAuthenticationFileResultDto>> CreateNewAuthenticationFile([FromBody] List<GetImportAuthenticationRequestResultDto> importAuthenticationRequests)
+    {
+        var result = await BusinessLayer.CreateNewAuthenticationFile(importAuthenticationRequests);
+        return Ok(result);
+    }
 }

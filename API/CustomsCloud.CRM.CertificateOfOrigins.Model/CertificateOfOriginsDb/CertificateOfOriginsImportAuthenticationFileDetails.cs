@@ -16,7 +16,10 @@ public class CertificateOfOriginsImportAuthenticationFileDetails
     [Column("State")]
     public int State { get; set; }
 
+    // SQL rowversion — DB-generated; excluded from INSERT/UPDATE (the file INSERT in CreateNewAuthenticationFile
+    // would otherwise fail trying to write this column).
     [Column("TimeStamp")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public byte[]? TimeStamp { get; set; }
 
     [Column("CreateDate")]

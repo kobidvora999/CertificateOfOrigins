@@ -30,6 +30,12 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId);
 
+    Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds);
+
+    Task<int> InsertAuthenticationFile(CertificateOfOriginsImportAuthenticationFileDetails file);
+
+    Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId);
+
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
 
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);

@@ -1,7 +1,9 @@
 using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Utils.Events;
@@ -20,6 +22,100 @@ public class AuthenticationRequestBl(
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
+    // set of requests and links them to it. Validates that none of the requests already belongs to a file (throws
+    // RestValidationException / FileExistForRequest otherwise). Faithful to the WCF (developer decision 2026-07-30):
+    // the file is built from the FIRST request's client-supplied values (trust-client, no DB fetch); CustomerIDList
+    // is dropped (transient/unused). Raises NewDecisionBeforeAssociation per request, then NewAuthenticationRequestFile.
+    public async Task<CreateNewAuthenticationFileResultDto?> CreateNewAuthenticationFile(List<GetImportAuthenticationRequestResultDto> importAuthenticationRequests)
+    {
+        if (importAuthenticationRequests is null || importAuthenticationRequests.Count == 0)
+        {
+            return null;
+        }
+
+        var documentIds = importAuthenticationRequests.Select(a => a.DocumentId ?? 0).ToList();
+
+        // Validation: reject if any of these requests already belongs to a file.
+        var existingLink = await DataLayer.GetFirstRequestAlreadyLinkedToFile(documentIds);
+        if (existingLink is not null)
+        {
+            throw new RestValidationException(
+                nameof(importAuthenticationRequests),
+                string.Format(ErrorMessagesResources.FileExistForRequest, existingLink.Value.DocumentId, existingLink.Value.FileId));
+        }
+
+        var first = importAuthenticationRequests[0];
+        var userId = RequestMetadata.UserId ?? 0;
+        var now = DateTimeOffset.Now;
+
+        // Build the new file from the first request (trust-client). "gg"/"ss" are the legacy placeholder literals,
+        // preserved as-is (developer-confirmed, not TODOs).
+        var file = new CertificateOfOriginsImportAuthenticationFileDetails
+        {
+            State = 1,
+            AuthenticationFileStatusId = (int)EAuthenticationFileStatus.WaitingForSendingLetter,
+            RequestCountryId = first.IssuingCountryIdNum ?? 0,
+            UserId = userId,
+            PostalAdress = "gg",
+            DeliveryMethodId = 1,
+            EmailAdress = first.ResponseNameEmail,
+            ReminderMethodId = 1,
+            UserNameIssuingLetter = "ss",
+            CreateDate = now,
+            UpdateDate = now,
+            CreateUserId = userId,
+            UpdateUserId = userId,
+        };
+
+        // Per-request event: NewDecisionBeforeAssociation (closes each request's SetDecisionBeforeAssociation task).
+        // Raised before the insert, matching the legacy order.
+        var eventUtil = Resolve<IEventUtil>();
+        foreach (var request in importAuthenticationRequests)
+        {
+            var documentId = request.DocumentId ?? 0;
+            var decisionEvent = eventUtil.CreatBuilder()
+                .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
+                .WithEntityId(documentId)
+                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithTitle(documentId.ToString())
+                .WithAdditionalInfo(documentId.ToString())
+                .Build();
+            await eventUtil.RaiseEvent(decisionEvent);
+        }
+
+        // OrganizationUnitId is a transient (non-column) field on the legacy entity — used for the file event only.
+        var organizationUnitId = first.OrganizationUnitIdNum ?? 0;
+
+        // INSERT the file, then link the requests to it.
+        var fileId = await DataLayer.InsertAuthenticationFile(file);
+        await DataLayer.LinkRequestsToAuthenticationFile(documentIds, fileId);
+
+        // Final event: NewAuthenticationRequestFile (opens the HandleAuthenticationRequestFile task).
+        var fileEvent = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.NewAuthenticationRequestFile)
+            .WithEntityId(fileId)
+            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithTitle(fileId.ToString())
+            .WithOrganizationUnitId(organizationUnitId)
+            .WithAdditionalInfo(fileId.ToString())
+            .Build();
+        await eventUtil.RaiseEvent(fileEvent);
+
+        return new CreateNewAuthenticationFileResultDto
+        {
+            Id = fileId,
+            AuthenticationFileStatusId = file.AuthenticationFileStatusId,
+            OrganizationUnitId = organizationUnitId,
+            RequestCountryId = file.RequestCountryId,
+            CustomerId = first.CustomerId ?? 1,
+            DeliveryMethodId = file.DeliveryMethodId,
+            ReminderMethodId = file.ReminderMethodId,
+            EmailAdress = file.EmailAdress,
+            CreateDate = file.CreateDate,
+        };
+    }
+
     // Internal WCF: ChangeStatusAfterDeliverySent(fileDetails) — a pure event-raise passthrough. It raises
     // CloseAllTaskForImportAuthenticationRequestFile; the Events microservice's response handler closes the open
     // tasks for the file. No DB write here (the legacy status change happened client-side before the call). The WCF

@@ -328,6 +328,37 @@
 
 ---
 
+### CreateNewAuthenticationFile
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | POST |
+| **נתיב** | `/AuthenticationRequest/CreateNewAuthenticationFile` |
+| **תיאור** | יצירת תיק בקשת אימות יבוא חדש מתוך קבוצת בקשות וקישורן אליו (Internal WCF: `CreateNewAuthenticationFile`, אותו שם) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `importAuthenticationRequests` | `List<GetImportAuthenticationRequestResultDto>` (מגוף הבקשה) | קבוצת בקשות האימות שיש לקשר לתיק החדש (אותו DTO המוחזר מ-`AuthenticationRequestByFilter`, ראו סעיף 3 — לא מתועד כפול כאן) |
+
+**ערך מוחזר:** `CreateNewAuthenticationFileResultDto` — תיק בקשת האימות שנוצר
+
+**לוגיקה עסקית:**
+
+**מקבל:** רשימת בקשות אימות יבוא (`GetImportAuthenticationRequestResultDto`); רשימה ריקה/`null` מחזירה `null` (קלט לא תקין — אין כאן סמנטיקת 404)
+
+**מבצע:**
+1. אוסף את `DocumentId` מכל הבקשות ברשימה
+2. **ולידציה:** בודק מול ה-DAL (`GetFirstRequestAlreadyLinkedToFile`) האם מי מהבקשות כבר משויכת לתיק קיים (`AuthenticationFileId != null`); אם כן — זורק `RestValidationException` (400) עם ההודעה "עבור בקשה {DocumentId} קיים תיק מספר {FileId}" (Legacy `EMessages.FileExistForRequest`, message id 14070)
+3. בונה את התיק החדש (`CertificateOfOriginsImportAuthenticationFileDetails`) מהשדות של הבקשה **הראשונה** ברשימה בלבד (trust-client, ללא שליפת DB) — נאמנות מלאה ל-WCF המקורי (החלטת מפתח 30/07/2026): `RequestCountryId` = `IssuingCountryIdNum` של הבקשה הראשונה, `EmailAdress` = `ResponseNameEmail` שלה, `AuthenticationFileStatusId` = `WaitingForSendingLetter`(1) קבוע, `DeliveryMethodId`/`ReminderMethodId` = 1 קבועים, `PostalAdress`/`UserNameIssuingLetter` = placeholder-ים ליטרליים מהמקור ("gg"/"ss" בהתאמה, נשמרו כפי שהם — לא TODO), `UserId`/`CreateUserId`/`UpdateUserId` = `RequestMetadata.UserId`, `CreateDate`/`UpdateDate` = הזמן הנוכחי. השדה הישן הזמני `CustomerIDList` הושמט במכוון (transient/לא בשימוש, החלטת מפתח 2026-07-30)
+4. לכל בקשה ברשימה (**לפני** ה-INSERT, נאמנות לסדר ב-WCF המקורי) — בונה ומעלה (`IEventUtil`) אירוע `NewDecisionBeforeAssociation` (event-type id 1515) עבור VirtualEntity מסוג `ImportAuthenticationRequest` (entity-type id 12384), עם `EntityId`=`DocumentId`, `Title`=`DocumentId` (כמחרוזת), `AdditionalInfo`=`DocumentId` (כמחרוזת) — סוגר את משימת `SetDecisionBeforeAssociation` של כל בקשה
+5. מכניס (`Context.Add` + `SaveChanges`) את שורת התיק החדש (`CRM.CertificateOfOrigins_ImportAuthenticationFileDetails`) ומקבל את מזהה התיק שנוצר
+6. מקשר (set-based, `Context.ExecuteUpdateAsync`) את הבקשות ברשימה לתיק החדש: מעדכן `AuthenticationFileID` רק בשורות שעדיין אינן משויכות לתיק אחר (`AuthenticationFileID == null`) — מחליף את ה-SP+TVP הישן (`usp_CertificateOfOrigins_UpdateImportAuthenticationRequest` + `Shared.IntArray`), החלטת מפתח 2026-07-30
+7. בונה ומעלה (`IEventUtil`) אירוע סופי `NewAuthenticationRequestFile` (event-type id 1517) עבור VirtualEntity מסוג `AuthenticationRequestFile` (entity-type id 12385), עם `EntityId`=מזהה התיק החדש, `Title`=מזהה התיק (כמחרוזת), `OrganizationUnitId`=`OrganizationUnitIdNum` של הבקשה הראשונה (שדה transient על הישות הישנה, בשימוש לאירוע זה בלבד), `AdditionalInfo`=מזהה התיק (כמחרוזת) — פותח את משימת `HandleAuthenticationRequestFile`
+
+**מחזיר:** `CreateNewAuthenticationFileResultDto` עם מזהה התיק החדש, הסטטוס, מדינת הבקשה, היחידה הארגונית, שיטת המשלוח/התזכורת, הדוא"ל, ותאריך היצירה; `CustomerId` = `CustomerId` של הבקשה הראשונה (או 1 כברירת מחדל אם `null`) — לא 404 (יצירה, לא שליפה); 400 (`RestValidationException`) אם מי מהבקשות כבר משויכת לתיק אחר
+
+---
+
 ## 3. מודלי נתונים
 
 ### ImportAuthenticationRequestFilterDto
@@ -454,6 +485,21 @@
 | `AuthenticationFileStatusId` | `int` | ✓ | הסטטוס החדש של תיק האב לאחר הרצת מכונת המצבים (`EAuthenticationFileStatus`) |
 | `DeliveryMethodId` | `int` | ✓ | שיטת המשלוח החדשה של תיק האב לאחר הרצת מכונת המצבים (`EDeliveryMethod`) |
 
+### CreateNewAuthenticationFileResultDto
+| שדה | סוג | חובה | תיאור |
+|-----|-----|------|--------|
+| `Id` | `int` | ✓ | מזהה התיק שנוצר |
+| `AuthenticationFileStatusId` | `int` | ✓ | סטטוס התיק החדש (קבוע: `WaitingForSendingLetter`=1) |
+| `OrganizationUnitId` | `int` | ✓ | מזהה היחידה הארגונית — מ-`OrganizationUnitIdNum` של הבקשה הראשונה (שדה transient על הישות הישנה) |
+| `RequestCountryId` | `int` | ✓ | מדינת הבקשה — מ-`IssuingCountryIdNum` של הבקשה הראשונה |
+| `CustomerId` | `int` | ✓ | מזהה הלקוח — מ-`CustomerId` של הבקשה הראשונה (1 כברירת מחדל אם `null`) |
+| `DeliveryMethodId` | `int` | ✓ | שיטת משלוח (קבוע: 1) |
+| `ReminderMethodId` | `int` | ✓ | שיטת תזכורת (קבוע: 1) |
+| `EmailAdress` | `string?` | — | דוא"ל למענה — מ-`ResponseNameEmail` של הבקשה הראשונה |
+| `CreateDate` | `DateTimeOffset` | ✓ | תאריך יצירת התיק |
+
+הערה: הקלט לפעולה זו (`GetImportAuthenticationRequestResultDto`) כבר מתועד לעיל; השדה הישן הזמני `CustomerIDList` הושמט במכוון מ-DTO זה (transient, לא בשימוש).
+
 ### EAuthenticationFileStatus (enum)
 | ערך | שם | תיאור |
 |-----|-----|--------|
@@ -499,13 +545,15 @@
 | `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש; העשרת שם סוג מסמך (`DocumentType`) ב-`EntityDocuments` |
 | `IParametersUtil` | קריאת רשימת סוגי המסמכים המותרים (מפתח `CertificateOfOriginsDocumentsFilter`) ב-`EntityDocuments` |
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
-| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`, אירוע `NewDeliveryForImporterSent` (event-type id 1511) ב-`HandleImportAuthenticationRequestDeliveryForImporterSent`, ואירוע `NewDeliveryReminderForImporterSent` (event-type id 1512) ב-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
+| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`, אירוע `NewDeliveryForImporterSent` (event-type id 1511) ב-`HandleImportAuthenticationRequestDeliveryForImporterSent`, אירוע `NewDeliveryReminderForImporterSent` (event-type id 1512) ב-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, אירוע `NewDecisionBeforeAssociation` (event-type id 1515, פר בקשה) ואירוע `NewAuthenticationRequestFile` (event-type id 1517, סופי) ב-`CreateNewAuthenticationFile`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
 
 `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`: **אין** תלויות חיצוניות — כתיבת DAL טהורה (ללא proxy, ללא lookup, ללא אירוע).
 
 `HandleImportAuthenticationRequestDeliveryForImporterSent`: תלות יחידה — `IEventUtil` (העלאת `NewDeliveryForImporterSent`, בשילוב עם כתיבת DAL set-based; ללא proxy, ללא lookup).
 
 `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`: תלות יחידה, זהה ל-#23 — `IEventUtil` (העלאת `NewDeliveryReminderForImporterSent`, בשילוב עם כתיבת DAL set-based; ללא proxy, ללא lookup).
+
+`CreateNewAuthenticationFile`: תלות יחידה — `IEventUtil` (העלאת `NewDecisionBeforeAssociation` פר-בקשה ו-`NewAuthenticationRequestFile` סופי), בשילוב עם כתיבות DAL (ולידציית שיוך-קיים, INSERT של התיק, ו-`ExecuteUpdateAsync` set-based לקישור הבקשות); ללא proxy, ללא lookup.
 
 ---
 
@@ -527,3 +575,4 @@
   לפני הרצת המכונה: אם `IsDelivery=false` הסטטוס בכניסה נקבע ל-`AuthenticationRequestReminderWasSend`(3) (במקום הערך שנשלח); אם `IsDelivery=true` הסטטוס בכניסה הוא `AuthenticationFileStatusId` שנשלח כמות שהוא. לאחר הרצת המכונה: `LastDelivery` ו-`UpdateDate` מתעדכנים על תיק האימות (`CRM.CertificateOfOrigins_ImportAuthenticationFileDetails`), ו-`UpdateDate` מתעדכן על כל בקשות האימות המשויכות (`CRM.CertificateOfOrigins_ImportAuthenticationRequest` שבהן `AuthenticationFileID = Id`) — שתי הכתיבות set-based (`ExecuteUpdateAsync`), ללא טעינת שורות
 - `HandleImportAuthenticationRequestDeliveryForImporterSent`: הכתיבה השנייה בפועל לבסיס הנתונים בשירות זה, וגם הראשונה המשלבת כתיבת DB עם העלאת אירוע באותה זרימה. המתודה הפומבית היא עטיפה דקה סביב פעולת עזר משותפת פרטית, `HandleReminderOrDeliveryRequestSentToImporter(request, eventTypeId, decisionId)`, שמקורה במתודת ה-WCF המשותפת `HandleReminderOrDeliveryRequestSentToImporter` (לא נחשפה כ-endpoint משל עצמה בחוזה המקורי). היא חולקת עם `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` הן את מכונת המצבים `AdvanceDeliveryStatus` והן את ה-DAL `UpdateFileAfterDelivery`; ומוסיפה DAL חדש — `UpdateRequestDecisionAfterDelivery` (מחתים `DecisionID`/`LastDeliveryForImporter`/`UpdateDate` על שורת הבקשה). enums חדשים: `EAuthenticationRequestDecision` (LetterForImporterWasSent=8, ReminderForImporterWasSent=9); `EEventType` התווסף `NewDeliveryForImporterSent`=1511 ו-`NewDeliveryReminderForImporterSent`=1512 (האחרון בשימוש ב-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, #24 — ראו הבא); `EEntityType` התווסף `ImportAuthenticationRequest`=12384 (ה-VirtualEntity שעליו מועלה האירוע כאן, להבדיל מ-`AuthenticationRequestFile`=12385 שהוא ה-related-entity של תיק האב). החלטת מפתח (29–30/07/2026): נאמנות מלאה ל-WCF המקורי — מכונת המצבים פועלת על הסטטוס ושיטת המשלוח של תיק האב **כפי שנשלחו מהלקוח** (ללא שליפה מה-DB, "trust the client"), בדיוק כמו בזרימת הספק; **בשונה** מזרימת הספק, זרימה זו **אינה** קובעת מראש סטטוס "תזכורת" לפני הרצת המכונה (אין דגל `IsDelivery` — הקריאה הזו היא תמיד "משלוח", לא תזכורת; תזכורת ליבואן היא `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, #24, עם אותה פעולת עזר ו-decision/event שונים)
 - `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`: התאום-תזכורת של `HandleImportAuthenticationRequestDeliveryForImporterSent` (#23) — ההתנהגות זהה במדויק (אותה מכונת מצבים `AdvanceDeliveryStatus`, אותם DAL `UpdateRequestDecisionAfterDelivery`/`UpdateFileAfterDelivery`, אותה עטיפה דקה סביב פעולת העזר המשותפת `HandleReminderOrDeliveryRequestSentToImporter`, אותה "trust the client" ואותה סמנטיקת "לא 404"); ההבדל היחיד: מעלה אירוע `NewDeliveryReminderForImporterSent` (event-type id 1512, במקום `NewDeliveryForImporterSent`=1511) ומחתים החלטה `ReminderForImporterWasSent` (decision id 9, במקום `LetterForImporterWasSent`=8). לא הוצגו enums/DTOs חדשים — כולם כבר תועדו עבור #23 (ראו סעיף 3). תלות יחידה, זהה ל-#23 — `IEventUtil` בלבד (ללא proxy, ללא lookup)
+- `CreateNewAuthenticationFile`: המתודה האחרונה בקונטרולר זה. החלטת מפתח (30/07/2026) — נאמנות מלאה ל-WCF המקורי: התיק החדש נבנה מהשדות של הבקשה **הראשונה** ברשימה בלבד ("trust the client", ללא שליפת ישויות מה-DB, בדיוק כמו בזרימות ה-delivery/reminder לעיל); השדה הישן הזמני `CustomerIDList` הושמט במכוון (transient/לא בשימוש). ה-SP+TVP הישן לקישור הבקשות לתיק (`usp_CertificateOfOrigins_UpdateImportAuthenticationRequest` + `Shared.IntArray`) הומר ל-`Context.ExecuteUpdateAsync` set-based (החלטת מפתח 2026-07-30) — מקשר רק בקשות שעדיין לא משויכות לתיק אחר. ולידציה: `RestValidationException` (400) אם מי מהבקשות כבר משויכת לתיק קיים, עם הודעת ה-legacy `EMessages.FileExistForRequest` (message id 14070): "עבור בקשה {DocumentId} קיים תיק מספר {FileId}". אירועים חדשים: `NewDecisionBeforeAssociation` (event-type id 1515) מועלה פר-בקשה **לפני** ה-INSERT (סדר תואם ל-WCF המקורי), ו-`NewAuthenticationRequestFile` (event-type id 1517) מועלה פעם אחת בסוף עבור VirtualEntity `AuthenticationRequestFile` (entity-type id 12385), עם `OrganizationUnitId` מהבקשה הראשונה. `UserId` (על התיק עצמו, וגם `CreateUserId`/`UpdateUserId`) מגיע מ-`RequestMetadata.UserId`

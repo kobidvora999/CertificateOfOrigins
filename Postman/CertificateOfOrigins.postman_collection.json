@@ -620,6 +620,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "CreateNewAuthenticationFile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"documentId\": 900001,\n    \"organizationUnitIdNum\": 1,\n    \"issuingCountryIdNum\": 32,\n    \"customerId\": 123,\n    \"responseNameEmail\": \"test@example.com\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CreateNewAuthenticationFile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CreateNewAuthenticationFile"
+              ]
+            }
+          }
         }
       ]
     },

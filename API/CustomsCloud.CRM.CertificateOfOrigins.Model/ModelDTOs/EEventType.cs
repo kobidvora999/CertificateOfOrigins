@@ -16,4 +16,10 @@ public enum EEventType
     NewDeliveryForImporterSent = 1511,
 
     NewDeliveryReminderForImporterSent = 1512,
+
+    // Closes the SetDecisionBeforeAssociation task for a request (raised per request when a new file is created).
+    NewDecisionBeforeAssociation = 1515,
+
+    // Opens the HandleAuthenticationRequestFile task for a newly created authentication-request file.
+    NewAuthenticationRequestFile = 1517,
 }
