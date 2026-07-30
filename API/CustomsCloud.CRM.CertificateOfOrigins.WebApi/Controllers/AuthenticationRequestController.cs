@@ -110,4 +110,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(request);
         return Ok(result);
     }
+
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryForImporterSent(request) — the importer delivery flow.
+    // Stamps the request's decision + date, advances the parent file's status machine (touching the file + its child
+    // requests), and raises the NewDeliveryForImporterSent event. A state-changing write with a body → POST.
+    [HttpPost("HandleImportAuthenticationRequestDeliveryForImporterSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryOrReminderForImporterSentResultDto))]
+    public async Task<ActionResult<HandleDeliveryOrReminderForImporterSentResultDto>> HandleImportAuthenticationRequestDeliveryForImporterSent([FromBody] HandleDeliveryOrReminderForImporterSentRequestDto request)
+    {
+        var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryForImporterSent(request);
+        return Ok(result);
+    }
 }

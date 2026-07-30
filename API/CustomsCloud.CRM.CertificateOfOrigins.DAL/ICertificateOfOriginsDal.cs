@@ -28,6 +28,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId);
 
+    Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId);
+
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
 
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);

@@ -11,4 +11,9 @@ public enum EEventType
 
     // Closes the 3-month reminder-notice task for an import authentication-request file (raised by CloseReminderTask).
     CloseTaskReminderNotice3Months = 1745,
+
+    // A delivery / reminder letter was sent to the importer (raised by the importer delivery/reminder flow).
+    NewDeliveryForImporterSent = 1511,
+
+    NewDeliveryReminderForImporterSent = 1512,
 }

@@ -165,6 +165,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
+    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId)
+    {
+        // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
+        // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
+        // which — matching the legacy loop — overrides this request's UpdateDate to "now".) Set-based, no row loaded.
+        var today = new DateTimeOffset(DateTimeOffset.Now.Date, DateTimeOffset.Now.Offset);
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.DecisionId, decisionId)
+                .SetProperty(r => r.LastDeliveryForImporter, today)
+                .SetProperty(r => r.UpdateDate, today));
+        return true;
+    }
+
     public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
     {
         var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters

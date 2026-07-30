@@ -63,13 +63,78 @@ public class AuthenticationRequestBl(
     // 2026-07-29): the machine runs on the CLIENT-supplied current status + delivery method (no DB fetch); no event.
     public async Task<HandleDeliveryAndReminderForVendorSentResultDto> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(HandleDeliveryAndReminderForVendorSentRequestDto request)
     {
-        // A reminder (not a delivery) first flips the status to "reminder was sent".
-        var status = request.IsDelivery
+        // A reminder (not a delivery) first flips the status to "reminder was sent" (vendor flow only).
+        var initialStatus = request.IsDelivery
             ? request.AuthenticationFileStatusId
             : (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend;
-        var deliveryMethod = request.DeliveryMethodId;
+        var (status, deliveryMethod) = AdvanceDeliveryStatus(initialStatus, request.DeliveryMethodId);
 
-        // Legacy UpdateFileAfterDelivery status machine (ported 1:1).
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod);
+
+        return new HandleDeliveryAndReminderForVendorSentResultDto
+        {
+            Id = request.Id,
+            AuthenticationFileStatusId = status,
+            DeliveryMethodId = deliveryMethod,
+        };
+    }
+
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryForImporterSent(request) — the importer delivery flow.
+    // Delegates to the shared helper with NewDeliveryForImporterSent + LetterForImporterWasSent (mirrors the WCF).
+    public async Task<HandleDeliveryOrReminderForImporterSentResultDto> HandleImportAuthenticationRequestDeliveryForImporterSent(HandleDeliveryOrReminderForImporterSentRequestDto request)
+    {
+        var result = await HandleReminderOrDeliveryRequestSentToImporter(
+            request,
+            (int)EEventType.NewDeliveryForImporterSent,
+            (int)EAuthenticationRequestDecision.LetterForImporterWasSent);
+        return result;
+    }
+
+    // Shared importer delivery/reminder flow (legacy HandleReminderOrDeliveryRequestSentToImporter). Faithful order:
+    // stamp the request's decision + date, advance the parent file's status machine (trust-client current values, no
+    // DB fetch) which also touches the file's child requests' UpdateDate, then raise the event. #23 and #24 differ
+    // only in the event type + decision passed in.
+    private async Task<HandleDeliveryOrReminderForImporterSentResultDto> HandleReminderOrDeliveryRequestSentToImporter(
+        HandleDeliveryOrReminderForImporterSentRequestDto request, int eventTypeId, int decisionId)
+    {
+        // 1. Stamp the request (DecisionID + LastDeliveryForImporter + UpdateDate).
+        await DataLayer.UpdateRequestDecisionAfterDelivery(request.DocumentId, decisionId);
+
+        // 2. Advance the parent file's status machine + touch its child requests (only if the request has a file).
+        var (status, deliveryMethod) = AdvanceDeliveryStatus(request.AuthenticationFileStatusId, request.DeliveryMethodId);
+        if (request.AuthenticationFileId.HasValue)
+        {
+            await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod);
+        }
+
+        // 3. Raise the event on the request (after the save, as in the legacy). Related entity = the file, if any.
+        var eventUtil = Resolve<IEventUtil>();
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType(eventTypeId)
+            .WithEntityId(request.DocumentId)
+            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithTitle(request.DocumentId.ToString())
+            .WithOrganizationUnitId(request.OrganizationUnitId);
+        if (request.AuthenticationFileId.HasValue)
+        {
+            builder = builder.AddRelatedEntity(request.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
+        }
+
+        await eventUtil.RaiseEvent(builder.Build());
+
+        return new HandleDeliveryOrReminderForImporterSentResultDto
+        {
+            DocumentId = request.DocumentId,
+            DecisionId = decisionId,
+            AuthenticationFileStatusId = status,
+            DeliveryMethodId = deliveryMethod,
+        };
+    }
+
+    // Legacy UpdateFileAfterDelivery status machine (ported 1:1) — advances the file's status + delivery method from
+    // their current values. Shared by the vendor (#22) and importer (#23/#24) flows.
+    private static (int Status, int DeliveryMethod) AdvanceDeliveryStatus(int status, int deliveryMethod)
+    {
         if (status == (int)EAuthenticationFileStatus.WaitingForSendingLetter)
         {
             status = (int)EAuthenticationFileStatus.AuthenticationRequestWasSend;
@@ -94,14 +159,7 @@ public class AuthenticationRequestBl(
             }
         }
 
-        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod);
-
-        return new HandleDeliveryAndReminderForVendorSentResultDto
-        {
-            Id = request.Id,
-            AuthenticationFileStatusId = status,
-            DeliveryMethodId = deliveryMethod,
-        };
+        return (status, deliveryMethod);
     }
 
     // Internal WCF: GetEntityDocuments(importAuthenticationRequest) — the WCF took the full request entity but used

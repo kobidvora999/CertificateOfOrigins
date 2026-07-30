@@ -558,6 +558,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryForImporterSent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 900500,\n  \"organizationUnitId\": 1,\n  \"authenticationFileId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"deliveryMethodId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryForImporterSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleImportAuthenticationRequestDeliveryForImporterSent"
+              ]
+            }
+          }
         }
       ]
     },
