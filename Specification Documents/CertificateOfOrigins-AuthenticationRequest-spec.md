@@ -288,7 +288,7 @@
 
 **לוגיקה עסקית:**
 
-**מקבל:** `DocumentId`, `OrganizationUnitId`, `AuthenticationFileId` (אופציונלי — מזהה תיק אימות האב), `AuthenticationFileStatusId` ו-`DeliveryMethodId` (הסטטוס ושיטת המשלוח הנוכחיים של תיק האב, **כפי שנשלחו מהלקוח**). המתודה עצמה היא עטיפה דקה: מאצילה לפעולת עזר משותפת (`HandleReminderOrDeliveryRequestSentToImporter`) עם `EEventType.NewDeliveryForImporterSent`(1511) ו-`EAuthenticationRequestDecision.LetterForImporterWasSent`(8). הערה: מתודה אחות עתידית (#24, `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, טרם הומרה) תשתמש באותה פעולת עזר עם `NewDeliveryReminderForImporterSent`(1512) ו-`ReminderForImporterWasSent`(9) — ההבדל היחיד בין השתיים הוא זוג הערכים הזה
+**מקבל:** `DocumentId`, `OrganizationUnitId`, `AuthenticationFileId` (אופציונלי — מזהה תיק אימות האב), `AuthenticationFileStatusId` ו-`DeliveryMethodId` (הסטטוס ושיטת המשלוח הנוכחיים של תיק האב, **כפי שנשלחו מהלקוח**). המתודה עצמה היא עטיפה דקה: מאצילה לפעולת עזר משותפת (`HandleReminderOrDeliveryRequestSentToImporter`) עם `EEventType.NewDeliveryForImporterSent`(1511) ו-`EAuthenticationRequestDecision.LetterForImporterWasSent`(8). הערה: מתודת האחות `HandleImportAuthenticationRequestDeliveryReminderForImporterSent` (#24, ראו להלן) משתמשת באותה פעולת עזר עם `NewDeliveryReminderForImporterSent`(1512) ו-`ReminderForImporterWasSent`(9) — ההבדל היחיד בין השתיים הוא זוג הערכים הזה
 
 **מבצע** (בפעולת העזר המשותפת `HandleReminderOrDeliveryRequestSentToImporter`):
 1. מחתים (set-based, `Context.ExecuteUpdateAsync`) את שורת הבקשה (`CRM.CertificateOfOrigins_ImportAuthenticationRequest` לפי `DocumentId`): `DecisionID` = ההחלטה שהועברה (כאן `LetterForImporterWasSent`=8), וכן `LastDeliveryForImporter` ו-`UpdateDate` לתאריך היום (DAL: `UpdateRequestDecisionAfterDelivery`)
@@ -297,6 +297,34 @@
 4. בונה ומעלה (`IEventUtil`) אירוע מסוג `NewDeliveryForImporterSent` (event-type id 1511) עבור VirtualEntity מסוג `ImportAuthenticationRequest` (entity-type id 12384), עם `EntityId` = `DocumentId`, `Title` = `DocumentId` (כמחרוזת), ו-`OrganizationUnitId` = `OrganizationUnitId`; אם `AuthenticationFileId` קיים — מוסיף related-entity המצביע על `AuthenticationRequestFile` (entity-type id 12385) באותו מזהה
 
 **מחזיר:** `HandleDeliveryOrReminderForImporterSentResultDto` עם `DocumentId`, `DecisionId` (ההחלטה שהוחתמה), ו-`AuthenticationFileStatusId`/`DeliveryMethodId` החדשים כפי שחושבו ע"י מכונת המצבים (לא 404 — כתיבה set-based ללא בדיקת קיום השורה מראש)
+
+---
+
+### HandleImportAuthenticationRequestDeliveryReminderForImporterSent
+| שדה | ערך |
+|-----|-----|
+| **HTTP** | POST |
+| **נתיב** | `/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryReminderForImporterSent` |
+| **תיאור** | עדכון סטטוס/שיטת משלוח של תיק בקשת אימות יבוא והחלטת הבקשה, בעקבות **תזכורת** משלוח ליבואן — התאום-תזכורת של `HandleImportAuthenticationRequestDeliveryForImporterSent` (#23) (Internal WCF: `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, אותו שם) |
+
+**פרמטרים:**
+| שם | סוג | תיאור |
+|----|-----|--------|
+| `request` | `HandleDeliveryOrReminderForImporterSentRequestDto` (מגוף הבקשה) | אותו DTO בדיוק כמו ב-`HandleImportAuthenticationRequestDeliveryForImporterSent` (ראו סעיף 3) |
+
+**ערך מוחזר:** `HandleDeliveryOrReminderForImporterSentResultDto` — אותו DTO בדיוק (ראו סעיף 3)
+
+**לוגיקה עסקית:**
+
+**מקבל:** זהה במלואו ל-`HandleImportAuthenticationRequestDeliveryForImporterSent` (#23) — `DocumentId`, `OrganizationUnitId`, `AuthenticationFileId` (אופציונלי), `AuthenticationFileStatusId` ו-`DeliveryMethodId` (הסטטוס ושיטת המשלוח הנוכחיים של תיק האב, **כפי שנשלחו מהלקוח**). המתודה היא עטיפה דקה זהה במבנה, מאצילה לאותה פעולת עזר משותפת `HandleReminderOrDeliveryRequestSentToImporter`, אך עם זוג ערכים שונה: `EEventType.NewDeliveryReminderForImporterSent`(1512) ו-`EAuthenticationRequestDecision.ReminderForImporterWasSent`(9) — במקום `NewDeliveryForImporterSent`(1511)/`LetterForImporterWasSent`(8) ב-#23. זהו **ההבדל היחיד** בין שתי המתודות; כל שאר ההתנהגות (מכונת המצבים, כתיבות ה-DB, "trust the client") זהה במדויק ל-#23
+
+**מבצע** (באותה פעולת עזר משותפת `HandleReminderOrDeliveryRequestSentToImporter` — ראו פירוט מלא בסעיף `HandleImportAuthenticationRequestDeliveryForImporterSent` לעיל; להלן רק ההבדלים):
+1. מחתים (set-based, DAL: `UpdateRequestDecisionAfterDelivery`) את שורת הבקשה: `DecisionID` = `ReminderForImporterWasSent`(9) — במקום 8 ב-#23 — וכן `LastDeliveryForImporter`/`UpdateDate`
+2. מריץ את מכונת המצבים המשותפת `AdvanceDeliveryStatus` על `AuthenticationFileStatusId`/`DeliveryMethodId` כפי שנשלחו מהלקוח — זהה ל-#23
+3. אם `AuthenticationFileId` קיים — מעדכן (DAL: `UpdateFileAfterDelivery`) את תיק האב ובקשותיו המשויכות — זהה ל-#23
+4. בונה ומעלה (`IEventUtil`) אירוע מסוג `NewDeliveryReminderForImporterSent` (event-type id 1512 — במקום 1511 ב-#23) עבור אותו VirtualEntity (`ImportAuthenticationRequest`, entity-type id 12384), עם `EntityId`=`DocumentId`, `Title`=`DocumentId` (כמחרוזת), ו-`OrganizationUnitId`; אם `AuthenticationFileId` קיים — אותו related-entity ל-`AuthenticationRequestFile` (entity-type id 12385) — זהה במבנה ל-#23
+
+**מחזיר:** `HandleDeliveryOrReminderForImporterSentResultDto` עם `DocumentId`, `DecisionId`=9, ו-`AuthenticationFileStatusId`/`DeliveryMethodId` החדשים כפי שחושבו ע"י מכונת המצבים (לא 404 — כתיבה set-based ללא בדיקת קיום השורה מראש)
 
 ---
 
@@ -458,7 +486,7 @@
 | 8 | LetterForImporterWasSent | מכתב ליבואן נשלח |
 | 9 | ReminderForImporterWasSent | תזכורת ליבואן נשלחה |
 
-מקור: `CRM.CertificateOfOrigins_enum...Decision` (ערכי enum פלטפורמה — קבוצת-משנה נבחרת (curated subset), רק ההחלטות שהשירות קובע; לא הומצאו). רלוונטי ל-`HandleImportAuthenticationRequestDeliveryForImporterSent` (משתמש ב-8) ולזרימת האחות העתידית #24 (תשתמש ב-9).
+מקור: `CRM.CertificateOfOrigins_enum...Decision` (ערכי enum פלטפורמה — קבוצת-משנה נבחרת (curated subset), רק ההחלטות שהשירות קובע; לא הומצאו). רלוונטי ל-`HandleImportAuthenticationRequestDeliveryForImporterSent` (#23, משתמש ב-8) ול-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent` (#24, משתמש ב-9).
 
 ---
 
@@ -471,11 +499,13 @@
 | `ILookupUtil` | העשרת שמות מדינה (`Country`) ויחידה ארגונית (`OrganizationUnit`) בשתי מתודות החיפוש; העשרת שם סוג מסמך (`DocumentType`) ב-`EntityDocuments` |
 | `IParametersUtil` | קריאת רשימת סוגי המסמכים המותרים (מפתח `CertificateOfOriginsDocumentsFilter`) ב-`EntityDocuments` |
 | TVP `Shared.IntArray` | העברת רשימת מזהי מסמכים מובילים ל-stored procedure ב-`AuthenticationRequestByLeadDocumentIDs` |
-| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`, ואירוע `NewDeliveryForImporterSent` (event-type id 1511) ב-`HandleImportAuthenticationRequestDeliveryForImporterSent`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
+| `IEventUtil` | העלאת אירוע `CloseAllTaskForImportAuthenticationRequestFile` (event-type id 1525) ב-`ChangeStatusAfterDeliverySent`, אירוע `CloseTaskReminderNotice3Months` (event-type id 1745) ב-`CloseReminderTask`, אירוע `NewDeliveryForImporterSent` (event-type id 1511) ב-`HandleImportAuthenticationRequestDeliveryForImporterSent`, ואירוע `NewDeliveryReminderForImporterSent` (event-type id 1512) ב-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`; נפתר lazily (`Resolve<IEventUtil>()`), רשום דרך `AddEventUtil()` |
 
 `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`: **אין** תלויות חיצוניות — כתיבת DAL טהורה (ללא proxy, ללא lookup, ללא אירוע).
 
 `HandleImportAuthenticationRequestDeliveryForImporterSent`: תלות יחידה — `IEventUtil` (העלאת `NewDeliveryForImporterSent`, בשילוב עם כתיבת DAL set-based; ללא proxy, ללא lookup).
+
+`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`: תלות יחידה, זהה ל-#23 — `IEventUtil` (העלאת `NewDeliveryReminderForImporterSent`, בשילוב עם כתיבת DAL set-based; ללא proxy, ללא lookup).
 
 ---
 
@@ -495,4 +525,5 @@
   | כל שילוב אחר | כל ערך | ללא שינוי (כפי שחושב בצעד ה-`IsDelivery`) | ללא שינוי (כפי שנשלח מהלקוח) |
 
   לפני הרצת המכונה: אם `IsDelivery=false` הסטטוס בכניסה נקבע ל-`AuthenticationRequestReminderWasSend`(3) (במקום הערך שנשלח); אם `IsDelivery=true` הסטטוס בכניסה הוא `AuthenticationFileStatusId` שנשלח כמות שהוא. לאחר הרצת המכונה: `LastDelivery` ו-`UpdateDate` מתעדכנים על תיק האימות (`CRM.CertificateOfOrigins_ImportAuthenticationFileDetails`), ו-`UpdateDate` מתעדכן על כל בקשות האימות המשויכות (`CRM.CertificateOfOrigins_ImportAuthenticationRequest` שבהן `AuthenticationFileID = Id`) — שתי הכתיבות set-based (`ExecuteUpdateAsync`), ללא טעינת שורות
-- `HandleImportAuthenticationRequestDeliveryForImporterSent`: הכתיבה השנייה בפועל לבסיס הנתונים בשירות זה, וגם הראשונה המשלבת כתיבת DB עם העלאת אירוע באותה זרימה. המתודה הפומבית היא עטיפה דקה סביב פעולת עזר משותפת פרטית, `HandleReminderOrDeliveryRequestSentToImporter(request, eventTypeId, decisionId)`, שמקורה במתודת ה-WCF המשותפת `HandleReminderOrDeliveryRequestSentToImporter` (לא נחשפה כ-endpoint משל עצמה בחוזה המקורי). היא חולקת עם `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` הן את מכונת המצבים `AdvanceDeliveryStatus` והן את ה-DAL `UpdateFileAfterDelivery`; ומוסיפה DAL חדש — `UpdateRequestDecisionAfterDelivery` (מחתים `DecisionID`/`LastDeliveryForImporter`/`UpdateDate` על שורת הבקשה). enums חדשים: `EAuthenticationRequestDecision` (LetterForImporterWasSent=8, ReminderForImporterWasSent=9); `EEventType` התווסף `NewDeliveryForImporterSent`=1511 ו-`NewDeliveryReminderForImporterSent`=1512 (האחרון טרם בשימוש — ל-#24 העתידית); `EEntityType` התווסף `ImportAuthenticationRequest`=12384 (ה-VirtualEntity שעליו מועלה האירוע כאן, להבדיל מ-`AuthenticationRequestFile`=12385 שהוא ה-related-entity של תיק האב). החלטת מפתח (29–30/07/2026): נאמנות מלאה ל-WCF המקורי — מכונת המצבים פועלת על הסטטוס ושיטת המשלוח של תיק האב **כפי שנשלחו מהלקוח** (ללא שליפה מה-DB, "trust the client"), בדיוק כמו בזרימת הספק; **בשונה** מזרימת הספק, זרימה זו **אינה** קובעת מראש סטטוס "תזכורת" לפני הרצת המכונה (אין דגל `IsDelivery` — הקריאה הזו היא תמיד "משלוח", לא תזכורת; תזכורת ליבואן היא #24 העתידית, עם אותה פעולת עזר ו-decision/event שונים)
+- `HandleImportAuthenticationRequestDeliveryForImporterSent`: הכתיבה השנייה בפועל לבסיס הנתונים בשירות זה, וגם הראשונה המשלבת כתיבת DB עם העלאת אירוע באותה זרימה. המתודה הפומבית היא עטיפה דקה סביב פעולת עזר משותפת פרטית, `HandleReminderOrDeliveryRequestSentToImporter(request, eventTypeId, decisionId)`, שמקורה במתודת ה-WCF המשותפת `HandleReminderOrDeliveryRequestSentToImporter` (לא נחשפה כ-endpoint משל עצמה בחוזה המקורי). היא חולקת עם `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` הן את מכונת המצבים `AdvanceDeliveryStatus` והן את ה-DAL `UpdateFileAfterDelivery`; ומוסיפה DAL חדש — `UpdateRequestDecisionAfterDelivery` (מחתים `DecisionID`/`LastDeliveryForImporter`/`UpdateDate` על שורת הבקשה). enums חדשים: `EAuthenticationRequestDecision` (LetterForImporterWasSent=8, ReminderForImporterWasSent=9); `EEventType` התווסף `NewDeliveryForImporterSent`=1511 ו-`NewDeliveryReminderForImporterSent`=1512 (האחרון בשימוש ב-`HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, #24 — ראו הבא); `EEntityType` התווסף `ImportAuthenticationRequest`=12384 (ה-VirtualEntity שעליו מועלה האירוע כאן, להבדיל מ-`AuthenticationRequestFile`=12385 שהוא ה-related-entity של תיק האב). החלטת מפתח (29–30/07/2026): נאמנות מלאה ל-WCF המקורי — מכונת המצבים פועלת על הסטטוס ושיטת המשלוח של תיק האב **כפי שנשלחו מהלקוח** (ללא שליפה מה-DB, "trust the client"), בדיוק כמו בזרימת הספק; **בשונה** מזרימת הספק, זרימה זו **אינה** קובעת מראש סטטוס "תזכורת" לפני הרצת המכונה (אין דגל `IsDelivery` — הקריאה הזו היא תמיד "משלוח", לא תזכורת; תזכורת ליבואן היא `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, #24, עם אותה פעולת עזר ו-decision/event שונים)
+- `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`: התאום-תזכורת של `HandleImportAuthenticationRequestDeliveryForImporterSent` (#23) — ההתנהגות זהה במדויק (אותה מכונת מצבים `AdvanceDeliveryStatus`, אותם DAL `UpdateRequestDecisionAfterDelivery`/`UpdateFileAfterDelivery`, אותה עטיפה דקה סביב פעולת העזר המשותפת `HandleReminderOrDeliveryRequestSentToImporter`, אותה "trust the client" ואותה סמנטיקת "לא 404"); ההבדל היחיד: מעלה אירוע `NewDeliveryReminderForImporterSent` (event-type id 1512, במקום `NewDeliveryForImporterSent`=1511) ומחתים החלטה `ReminderForImporterWasSent` (decision id 9, במקום `LetterForImporterWasSent`=8). לא הוצגו enums/DTOs חדשים — כולם כבר תועדו עבור #23 (ראו סעיף 3). תלות יחידה, זהה ל-#23 — `IEventUtil` בלבד (ללא proxy, ללא lookup)

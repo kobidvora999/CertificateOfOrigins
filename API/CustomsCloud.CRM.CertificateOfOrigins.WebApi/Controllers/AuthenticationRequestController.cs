@@ -121,4 +121,14 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryForImporterSent(request);
         return Ok(result);
     }
+
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryReminderForImporterSent(request) — the importer reminder
+    // flow. Same behaviour as the importer delivery endpoint, with the reminder event + decision. A write → POST.
+    [HttpPost("HandleImportAuthenticationRequestDeliveryReminderForImporterSent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryOrReminderForImporterSentResultDto))]
+    public async Task<ActionResult<HandleDeliveryOrReminderForImporterSentResultDto>> HandleImportAuthenticationRequestDeliveryReminderForImporterSent([FromBody] HandleDeliveryOrReminderForImporterSentRequestDto request)
+    {
+        var result = await BusinessLayer.HandleImportAuthenticationRequestDeliveryReminderForImporterSent(request);
+        return Ok(result);
+    }
 }

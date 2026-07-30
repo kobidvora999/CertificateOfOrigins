@@ -90,6 +90,17 @@ public class AuthenticationRequestBl(
         return result;
     }
 
+    // Internal WCF: HandleImportAuthenticationRequestDeliveryReminderForImporterSent(request) — the importer reminder
+    // flow. Same shared helper as the delivery flow, only with the reminder event + decision (mirrors the WCF).
+    public async Task<HandleDeliveryOrReminderForImporterSentResultDto> HandleImportAuthenticationRequestDeliveryReminderForImporterSent(HandleDeliveryOrReminderForImporterSentRequestDto request)
+    {
+        var result = await HandleReminderOrDeliveryRequestSentToImporter(
+            request,
+            (int)EEventType.NewDeliveryReminderForImporterSent,
+            (int)EAuthenticationRequestDecision.ReminderForImporterWasSent);
+        return result;
+    }
+
     // Shared importer delivery/reminder flow (legacy HandleReminderOrDeliveryRequestSentToImporter). Faithful order:
     // stamp the request's decision + date, advance the parent file's status machine (trust-client current values, no
     // DB fetch) which also touches the file's child requests' UpdateDate, then raise the event. #23 and #24 differ
