@@ -4,13 +4,17 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Parameters;
+using CustomsCloud.InfrastructureCore.Utils.Documents;
 using Dapper;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Globalization;
+using System.Reflection;
+using System.Text;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IParametersUtil parametersUtil)
+public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, IParametersUtil parametersUtil)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
     public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
@@ -54,18 +58,6 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
 
     #region GetCertificateRequestByGuid (Incoming / public-portal web query)
 
-    // Legacy field labels came from SystemTablesUtil.GetCodeById<DataDictionaryField>(fieldId), where fieldId was
-    // read via reflection off the entity's [FieldID] attributes. The target DTO carries no such attributes, so the
-    // verified attribute values are used as constants (source of truth: the EF4 entity — 2026-07-28).
-    private const int CertificateIdToCancelFieldId = 20306;     // [FieldID] on CertificateIDToCancel
-    private const int RequestReasonCodeFieldId = 20310;         // [FieldID] on RequestReasonCode
-    private const int ExportDeclarationNumberFieldId = 20661;   // [FieldID] on ExportDeclarationNumber
-
-    // Legacy CertificateOfOriginsConsts (source of truth — not invented).
-    private const string IssuingDateLabel = "Issuing Date";
-    private const string InvalidGuid = "Invalid Guid";
-    private const string NoMatchingCertificate = "No Matching Certificate";
-
     // Incoming/portal WCF: GetCertificateRequestByGuid (GetPC_Web_9096_CertificateRequest) → CertificateOfOriginWebBL
     // .GetCertificateDetailForWeb. Certificate verification for the public portal, located by guid or by
     // number + issuing-date. The legacy in-band error contract is preserved: an invalid guid or no matching
@@ -75,7 +67,7 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     {
         if (request.CertificateOfOriginGuid != null && !Guid.TryParse(request.CertificateOfOriginGuid, out _))
         {
-            return new CertificateOfOriginsResponseDto { ExceptionDescription = InvalidGuid };
+            return new CertificateOfOriginsResponseDto { ExceptionDescription = CertificateOfOriginsConsts.InvalidGuid };
         }
 
         var parameters = new DynamicParameters();
@@ -86,7 +78,7 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
         var certificate = await DataLayer.GetCertificateOfOriginDataForWebQuery(parameters);
         if (certificate == null)
         {
-            return new CertificateOfOriginsResponseDto { ExceptionDescription = NoMatchingCertificate };
+            return new CertificateOfOriginsResponseDto { ExceptionDescription = CertificateOfOriginsConsts.NoMatchingCertificate };
         }
 
         var response = await ConstructWebResponse(certificate);
@@ -207,40 +199,40 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
         var labelFieldIds = new List<int>();
         if (isRetrospective)
         {
-            labelFieldIds.Add(RequestReasonCodeFieldId);
+            labelFieldIds.Add(CertificateOfOriginsConsts.RequestReasonCodeFieldId);
         }
 
         if (certificate.CertificateIdToCancel.HasValue)
         {
-            labelFieldIds.Add(CertificateIdToCancelFieldId);
+            labelFieldIds.Add(CertificateOfOriginsConsts.CertificateIdToCancelFieldId);
         }
 
         if (isExportDecForPrint)
         {
-            labelFieldIds.Add(ExportDeclarationNumberFieldId);
+            labelFieldIds.Add(CertificateOfOriginsConsts.ExportDeclarationNumberFieldId);
         }
 
         var labelsByFieldId = await GetFieldLabels(labelFieldIds);
 
         if (isRetrospective)
         {
-            fieldDataDtos.Add(new FieldDataDto { Label = labelsByFieldId.GetValueOrDefault(RequestReasonCodeFieldId), Value = "Issued Retrospectively" });
+            fieldDataDtos.Add(new FieldDataDto { Label = labelsByFieldId.GetValueOrDefault(CertificateOfOriginsConsts.RequestReasonCodeFieldId), Value = "Issued Retrospectively" });
         }
 
         if (certificate.CertificateIdToCancel.HasValue)
         {
             fieldDataDtos.Add(new FieldDataDto
             {
-                Label = labelsByFieldId.GetValueOrDefault(CertificateIdToCancelFieldId),
+                Label = labelsByFieldId.GetValueOrDefault(CertificateOfOriginsConsts.CertificateIdToCancelFieldId),
                 Value = $"Replacing certificate {certificate.CertificateIdToCancel.Value}"
             });
         }
 
-        fieldDataDtos.Add(new FieldDataDto { Label = IssuingDateLabel, Value = certificate.IssuingDate });
+        fieldDataDtos.Add(new FieldDataDto { Label = CertificateOfOriginsConsts.IssuingDateLabel, Value = certificate.IssuingDate });
 
         if (isExportDecForPrint)
         {
-            fieldDataDtos.Add(new FieldDataDto { Label = labelsByFieldId.GetValueOrDefault(ExportDeclarationNumberFieldId), Value = certificate.ExportDeclarationNumber });
+            fieldDataDtos.Add(new FieldDataDto { Label = labelsByFieldId.GetValueOrDefault(CertificateOfOriginsConsts.ExportDeclarationNumberFieldId), Value = certificate.ExportDeclarationNumber });
         }
 
         return fieldDataDtos;
@@ -511,4 +503,114 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
             }
         }
     }
+
+    #region SaveCertificateOfOriginAttachments (External / print-and-save)
+
+    // External WCF: SaveCertificateOfOriginAttachments(args) — saves the generated certificate template(s) as
+    // attachments on the certificate. For each template it clears the certificate's existing documents and uploads
+    // the new one (via IDocumentUtil). The legacy loop structure is preserved bug-for-bug — the fetch+delete of the
+    // existing documents sits INSIDE the loop, so each template replaces whatever is currently attached.
+    public async Task<bool> SaveCertificateOfOriginAttachments(SaveCertificateAttachmentsArgsDto request)
+    {
+        // Legacy: SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>(CertificateTypeID).Name. No ILookupUtil
+        // type exists for this SystemTable, so the certificate-type display name is taken from the
+        // ECertificateOfOriginType enum instead (developer decision 2026-08-02).
+        var certificateTypeName = GetCertificateTypeName(request.CertificateTypeId);
+
+        var isDraft = request.CertificateRequestReasonCode == (int)ERequestReason.Draft ||
+                      request.AdditionalInfo == CertificateOfOriginsConsts.IsDraftSentinel;
+        var title = $"{certificateTypeName} - {(isDraft ? CertificateOfOriginsConsts.DraftLabel : CertificateOfOriginsConsts.FinalLabel)}";
+
+        // Legacy: UserUtil.Current.OrganizationUnitID — the current user's organization unit. RequestMetadata.User is
+        // not populated in this service's request pipeline (only the flat RequestMetadata.UserId is, from the
+        // CC-USER-ID header), so the org unit is resolved from the Users microservice by that user id.
+        var organizationUnitId = await GetCurrentUserOrganizationUnitId();
+
+        var documentUtil = Resolve<IDocumentUtil>();
+
+        // Legacy: FileName = string.Format(CertificateName, type, number) — a Hebrew filename with spaces. The .NET10
+        // IDocumentUtil validates the filename and rejects the legacy chars, so it is sanitized against the util's own
+        // invalid-char set (the human-readable Hebrew name is preserved in the Title, which is not validated).
+        var fileName = SanitizeFileName(documentUtil, string.Format(CultureInfo.CurrentCulture, CertificateOfOriginsConsts.CertificateNameFormat, certificateTypeName, request.CertificateNumber));
+
+        foreach (var certificateTemplate in request.CertificatesTemplates)
+        {
+            // Replace the certificate's currently-attached documents before uploading (legacy: GetDocumentsByEntitySync
+            // + DeleteDocument, both inside the loop).
+            var existingDocuments = await documentsProxy.GetDocumentsByEntity(request.CertificateId, (int)EEntityType.CertificateOfOrigin);
+            if (existingDocuments != null && existingDocuments.Count > 0)
+            {
+                var entity = new VirtualEntityDto { Id = request.CertificateId, EntityType = (int)EEntityType.CertificateOfOrigin };
+                await documentsProxy.DeleteDocuments(existingDocuments.Select(document => document.Id).ToList(), entity);
+            }
+
+            var documentBuilder = documentUtil.CreateDocumentBuilder()
+                .WithFileName(fileName)
+                .WithTitle(title)
+                .WithContent(certificateTemplate.Content)
+                .WithTypeId((DocumentType)certificateTemplate.DocumentTypeId)
+                .WithEntityId(request.CertificateId)
+                .WithEntityTypeId((int)EEntityType.CertificateOfOrigin)
+                .WithOrganizationUnitId(organizationUnitId);
+
+            // Legacy: only the ExportCertificateOfOrigin document type carried the certificate-number additional field.
+            if (certificateTemplate.DocumentTypeId == CertificateOfOriginsConsts.ExportCertificateOfOriginDocumentTypeId)
+            {
+                documentBuilder.AddAdditionalFields(field => field
+                    .WithId(CertificateOfOriginsConsts.CertificateNumberAdditionalFieldId)
+                    .WithValue(request.CertificateNumber));
+            }
+
+            await documentUtil.UploadDocument(documentBuilder.Build());
+        }
+
+        return true;
+    }
+
+    // The current user's organization unit (legacy UserUtil.Current.OrganizationUnitID). RequestMetadata.User is not
+    // populated in this pipeline, so it is resolved from the Users microservice by RequestMetadata.UserId (which IS
+    // populated, from the CC-USER-ID header). Falls back to 0 when there is no current user / the user is not found.
+    private async Task<int> GetCurrentUserOrganizationUnitId()
+    {
+        if (RequestMetadata.UserId is not int userId)
+        {
+            return 0;
+        }
+
+        var users = await userProxy.GetUsersByIds([userId]);
+        return users?.FirstOrDefault()?.OrganizationUnit ?? 0;
+    }
+
+    // The certificate-type display name (replaces SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>.Name)
+    // — taken from the ECertificateOfOriginType [Display(Name)] attribute, falling back to the member name.
+    private static string GetCertificateTypeName(int certificateTypeId)
+    {
+        var certificateType = (ECertificateOfOriginType)certificateTypeId;
+        var memberName = certificateType.ToString();
+        var member = typeof(ECertificateOfOriginType).GetMember(memberName).FirstOrDefault();
+        var display = member?.GetCustomAttribute<DisplayAttribute>();
+        return display?.Name ?? memberName;
+    }
+
+    // The .NET10 IDocumentUtil validates the filename and rejects chars the legacy Documents service accepted
+    // (the legacy filename is Hebrew with spaces). Replace every char the util reports as invalid with '_' so the
+    // upload succeeds; the readable Hebrew name lives on the document Title, which is not validated.
+    private static string SanitizeFileName(IDocumentUtil documentUtil, string fileName)
+    {
+        var invalidChars = documentUtil.GetInvalidFilenameChars().ToHashSet();
+        if (invalidChars.Count == 0)
+        {
+            return fileName;
+        }
+
+        var builder = new StringBuilder(fileName.Length);
+        foreach (var character in fileName)
+        {
+            builder.Append(invalidChars.Contains(character) ? '_' : character);
+        }
+
+        return builder.ToString();
+    }
+
+    #endregion
 }

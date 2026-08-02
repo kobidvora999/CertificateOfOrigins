@@ -46,4 +46,10 @@ public class DocumentsMockProxy(IProxyMockUtil mockUtil) : IDocumentsProxy, IMoc
         };
         return Task.FromResult<List<DocumentDto>?>(result);
     }
+
+    // No-op delete for local/testing (the real delete hits the Documents microservice).
+    public Task DeleteDocuments(List<int> documentIds, VirtualEntityDto entity)
+    {
+        return Task.CompletedTask;
+    }
 }

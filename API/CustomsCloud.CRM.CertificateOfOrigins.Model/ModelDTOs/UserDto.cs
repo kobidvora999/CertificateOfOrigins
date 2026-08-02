@@ -6,4 +6,8 @@ public class UserDto
 {
     public int Id { get; set; }
     public string? Name { get; set; }
+
+    // The user's organization unit — used as the current user's OrganizationUnitID when saving certificate
+    // attachments. TODO(blocking): confirm the field name exposed by the Users microservice (User/UsersByIds).
+    public int OrganizationUnit { get; set; }
 }

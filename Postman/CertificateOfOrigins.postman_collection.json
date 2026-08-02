@@ -302,6 +302,41 @@
               ]
             }
           }
+        },
+        {
+          "name": "SaveCertificateOfOriginAttachments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "CC-USER-ID",
+                "value": "5"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificatesTemplates\": [\n    {\n      \"id\": 1,\n      \"name\": \"certificate\",\n      \"content\": \"dGVzdA==\",\n      \"documentTypeId\": 329,\n      \"isPdfFormat\": true\n    }\n  ],\n  \"certificateNumber\": \"CN-9\",\n  \"certificateId\": 10,\n  \"certificateRequestReasonCode\": 1,\n  \"certificateTypeId\": 2,\n  \"additionalInfo\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/SaveCertificateOfOriginAttachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "SaveCertificateOfOriginAttachments"
+              ]
+            }
+          }
         }
       ]
     },

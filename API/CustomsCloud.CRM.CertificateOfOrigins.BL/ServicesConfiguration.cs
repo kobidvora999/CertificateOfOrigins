@@ -60,6 +60,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // Event raising for ChangeStatusAfterDeliverySent (was EventUtil.RaiseEvent) — resolved lazily via IEventUtil.
         services.AddEventUtil();
 
+        // Attachment upload for SaveCertificateOfOriginAttachments (was IDocumentServiceAdapter.UploadDocumentAndSave)
+        // — resolved lazily via IDocumentUtil.
+        services.AddDocumentUtil();
+
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();

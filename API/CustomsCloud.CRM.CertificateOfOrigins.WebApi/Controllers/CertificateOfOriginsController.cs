@@ -95,4 +95,15 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.LoadDataFromExportDeclaration(request);
         return Ok(result);
     }
+
+    // External WCF: SaveCertificateOfOriginAttachments(args) — saves the generated certificate template(s) as
+    // attachments on the certificate, replacing whatever documents are currently attached. A state-changing write
+    // with a body → POST. Returns true.
+    [HttpPost("SaveCertificateOfOriginAttachments")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> SaveCertificateOfOriginAttachments([FromBody] SaveCertificateAttachmentsArgsDto request)
+    {
+        var result = await BusinessLayer.SaveCertificateOfOriginAttachments(request);
+        return Ok(result);
+    }
 }

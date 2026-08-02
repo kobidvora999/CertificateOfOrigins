@@ -19,4 +19,15 @@ public class DocumentsProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<DocumentDto>>();
     }
+
+    // Legacy: Container.Resolve<IDocumentsExternalProxy>().DeleteDocument(docIds, VirtualEntity) — removes the given
+    // documents from the entity in the Documents microservice.
+    public async Task DeleteDocuments(List<int> documentIds, VirtualEntityDto entity)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Document/DeleteDocuments") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .AddBody(new { DocumentIds = documentIds, Entity = entity });
+        await ExecuteAsync(req);
+    }
 }

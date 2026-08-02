@@ -34,11 +34,8 @@ public class CustomerProxy(IHttpProxy httpProxy)
         // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) alongside the country id.
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Customer/CustomersByCountry/{countryId}/{ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource($"Customer/CustomersByCountry/{countryId}/{CertificateOfOriginsConsts.ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
     }
-
-    // ECustomerActivityType.Foreign_customs_house = 40 (MalamTeam.Infrastructure.GeneralServices.Environment.Enums)
-    private const int ForeignCustomsHouseActivityType = 40;
 }
