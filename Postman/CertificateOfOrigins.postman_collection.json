@@ -732,6 +732,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "HandleAuthenticationRequestDeliverySent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relatedEntities\": [\n    {\n      \"id\": 1,\n      \"entityType\": 12385\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleAuthenticationRequestDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleAuthenticationRequestDeliverySent"
+              ]
+            }
+          }
         }
       ]
     },

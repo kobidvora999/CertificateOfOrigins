@@ -297,6 +297,31 @@ public class AuthenticationRequestBl(
         return requestDto;
     }
 
+    // External WCF: HandleAuthenticationRequestDeliverySent(raiseEventArgs) — an Events-subsystem callback fired when
+    // a delivery-sent event is raised for an authentication file. As shipped it is a pure existence check: it locates
+    // the AuthenticationRequestFile related entity and returns whether the file exists. The legacy status-write
+    // (UpdateFileAfterDelivery) is COMMENTED OUT in the WCF source (developer-disabled — "is an event needed?"), so no
+    // status change / event is performed — faithful to production (developer decision 2026-08-02). The file-existence
+    // is checked via the DAL header read (null on missing) rather than GetAuthenticationRequestFileByID, to preserve
+    // the legacy "not found → false" (the migrated BL read throws 404 instead) and skip the unused full enrichment.
+    public async Task<bool> HandleAuthenticationRequestDeliverySent(RaiseEventArgsDto request)
+    {
+        if (request.RelatedEntities is null || request.RelatedEntities.Count == 0)
+        {
+            return false;
+        }
+
+        var fileEntity = request.RelatedEntities
+            .SingleOrDefault(entity => entity.EntityType == (int)EEntityType.AuthenticationRequestFile);
+        if (fileEntity is null)
+        {
+            return false;
+        }
+
+        var file = await DataLayer.GetAuthenticationFileById(fileEntity.Id);
+        return file is not null;
+    }
+
     // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
     // set of requests and links them to it. Validates that none of the requests already belongs to a file (throws
     // RestValidationException / FileExistForRequest otherwise). Faithful to the WCF (developer decision 2026-07-30):

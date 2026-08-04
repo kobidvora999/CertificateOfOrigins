@@ -165,4 +165,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.GetAuthenticationRequestFileByID(fileId);
         return Ok(result);
     }
+
+    // External WCF: HandleAuthenticationRequestDeliverySent(raiseEventArgs) — an Events-subsystem callback fired on a
+    // delivery-sent event for an authentication file. As shipped it is a pure existence check (the legacy status-write
+    // is commented out): it verifies the file exists and returns true/false. A callback with a body → POST.
+    [HttpPost("HandleAuthenticationRequestDeliverySent")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] RaiseEventArgsDto request)
+    {
+        var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(request);
+        return Ok(result);
+    }
 }
