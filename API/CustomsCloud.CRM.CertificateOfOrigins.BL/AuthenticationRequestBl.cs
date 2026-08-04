@@ -135,6 +135,168 @@ public class AuthenticationRequestBl(
         return result;
     }
 
+    // Internal WCF: GetAuthenticationRequestFileByID(fileId) — a single authentication file with its child requests
+    // (each enriched with document, item lines, decisions, collaterals, submission date, and the SendReminderForImporter
+    // task flag), the file-status lookup, and the current-user handling flag. Missing id → 404. The legacy SP embedded
+    // the CRP.DealFile submission-date JOIN and the Tasks_Task existence OUTER APPLY in SQL; here they are resolved via
+    // proxies (consistent with #27). CustomerId has no SP column — always -1 (legacy 0 -> -1 fix-up).
+    public async Task<GetAuthenticationRequestFileByIdResultDto> GetAuthenticationRequestFileByID(int fileId)
+    {
+        var file = await DataLayer.GetAuthenticationFileById(fileId)
+            ?? throw new RestNotFoundException();
+
+        var requests = await DataLayer.GetRequestsByFileId(fileId);
+        var requestIds = requests.Select(request => request.DocumentId).ToList();
+
+        // Full lookup tables (legacy: the same list shared across all requests / the file).
+        var decisions = (await DataLayer.GetAllDecisions())
+            .Select(decision => new CertificateOfOriginsDecisionDto
+            {
+                Id = decision.Id,
+                Name = decision.Name,
+                State = decision.State,
+                Description = decision.Description,
+                EnglishName = decision.EnglishName,
+                Enumeration = decision.Enumeration,
+                StartDate = decision.StartDate,
+            })
+            .ToList();
+        var fileStatuses = (await DataLayer.GetAllFileStatuses())
+            .Select(status => new AuthenticationFileStatusDto
+            {
+                Id = status.Id,
+                Name = status.Name,
+                State = status.State,
+                Description = status.Description,
+                EnglishName = status.EnglishName,
+                Enumeration = status.Enumeration,
+                StartDate = status.StartDate,
+                EndDate = status.EndDate,
+                IsAutomatic = status.IsAutomatic,
+            })
+            .ToList();
+
+        // Item lines for all requests (SP result-set #4, batched).
+        var allItemDetails = await DataLayer.GetItemDetailsByRequestIds(requestIds);
+
+        var result = new GetAuthenticationRequestFileByIdResultDto
+        {
+            Id = file.Id,
+            State = file.State,
+            CreateDate = file.CreateDate,
+            AuthenticationFileStatusId = file.AuthenticationFileStatusId,
+            Notes = file.Notes,
+            PostalAdress = file.PostalAdress,
+            DeliveryMethodId = file.DeliveryMethodId,
+            EmailAdress = file.EmailAdress,
+            ReminderMethodId = file.ReminderMethodId,
+            RequestCountryId = file.RequestCountryId,
+            UserId = file.UserId,
+            UserNameIssuingLetter = file.UserNameIssuingLetter,
+            LastDelivery = file.LastDelivery,
+            ImporterContactingReasonId = file.ImporterContactingReasonId,
+            FirstProvideContactDate = file.FirstProvideContactDate,
+            CustomerId = -1,
+            FileStatuses = fileStatuses,
+        };
+
+        foreach (var request in requests)
+        {
+            result.Requests.Add(await BuildFileRequestDto(request, decisions, allItemDetails));
+        }
+
+        // File-level related entity ids: all child requests' lead documents.
+        result.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            [(int)EEntityType.ImportDeclaration] = requests.Select(request => request.LeadDocumentId).ToList(),
+        };
+
+        // File-level IsCurrentUserHandleFile — the current user (RequestMetadata.UserId) owns an open file task.
+        var fileTaskTypeIds = new List<int>
+        {
+            (int)ETaskType.ReminderNotice6Months,
+            (int)ETaskType.ReminderNotice10Months,
+            (int)ETaskType.HandleAuthenticationRequestFile,
+            (int)ETaskType.SendReminderForImporter,
+        };
+        var fileTasks = await tasksProxy.IsTaskExist(file.Id, (int)EEntityType.AuthenticationRequestFile, fileTaskTypeIds) ?? [];
+        var currentUserId = RequestMetadata.UserId;
+        result.IsCurrentUserHandleFile = fileTasks.Any(task => task.UserId == currentUserId);
+
+        return result;
+    }
+
+    // Builds one enriched child-request DTO: scalars + item lines + the shared decision lookup, plus the per-request
+    // document (Documents service, TypeName-enriched via DocumentType lookup), submission date (DealFile service), the
+    // SendReminderForImporter task flag (Tasks service), and collaterals (Collateral service).
+    private async Task<AuthenticationFileRequestDto> BuildFileRequestDto(
+        CertificateOfOriginsImportAuthenticationRequest request,
+        List<CertificateOfOriginsDecisionDto> decisions,
+        List<CertificateOfOriginsItemDetails> allItemDetails)
+    {
+        var requestDto = new AuthenticationFileRequestDto
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = request.CreateDate,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            OrganizationUnitId = request.OrganizationUnitId,
+            VendorId = request.VendorId,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+            Decisions = decisions,
+            ItemDetails = allItemDetails
+                .Where(item => item.ImportAuthenticationRequestId == request.DocumentId)
+                .Select(item => new AuthenticationRequestItemDetailDto
+                {
+                    Id = item.Id,
+                    ImportAuthenticationRequestId = item.ImportAuthenticationRequestId,
+                    CustomItemId = item.CustomItemId,
+                })
+                .ToList(),
+            EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+            {
+                [(int)EEntityType.ImportDeclaration] = [request.LeadDocumentId],
+            },
+        };
+
+        // Document (Documents service, by DocumentId) + TypeName enrichment (DocumentType lookup).
+        var document = await documentsProxy.GetDocumentById(request.DocumentId);
+        if (document is not null)
+        {
+            await lookupUtil.FillName<DocumentType, DocumentDto>(
+                [document],
+                d => d.TypeId,
+                (d, name) => d.TypeName = name);
+        }
+
+        requestDto.Document = document;
+
+        // Lead-document submission date (DealFile service; legacy CRP.DealFile_LeadDocumentSubmissionData JOIN).
+        requestDto.LeadDocumentSubmissionDate = await exportDealFileProxy.GetLeadDocumentSubmissionDate(request.LeadDocumentId);
+
+        // IsSendReminderForImporterTaskExists — an open SendReminderForImporter (404) task on the request (legacy
+        // Infrastructure.Tasks_Task OUTER APPLY).
+        var reminderTasks = await tasksProxy.IsTaskExist(request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SendReminderForImporter]);
+        requestDto.IsSendReminderForImporterTaskExists = reminderTasks is { Count: > 0 };
+
+        // Collaterals (Collateral service).
+        var collaterals = await collateralProxy.GetCollateralRequest((int)EEntityType.ImportAuthenticationRequest, request.DocumentId);
+        requestDto.Collaterals = collaterals ?? [];
+
+        return requestDto;
+    }
+
     // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
     // set of requests and links them to it. Validates that none of the requests already belongs to a file (throws
     // RestValidationException / FileExistForRequest otherwise). Faithful to the WCF (developer decision 2026-07-30):

@@ -49,4 +49,12 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
 
     Task<bool> IsSupplierDeliveryCountry(int countryId);
+
+    Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId);
+
+    Task<List<CertificateOfOriginsImportAuthenticationRequest>> GetRequestsByFileId(int fileId);
+
+    Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses();
+
+    Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds);
 }

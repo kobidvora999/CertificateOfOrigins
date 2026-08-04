@@ -28,6 +28,8 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginsSupplierDeliveryCountryConfig> CertificateOfOriginsSupplierDeliveryCountryConfigs { get; set; }
 
+    public virtual DbSet<CertificateOfOriginsAuthenticationFileStatus> CertificateOfOriginsAuthenticationFileStatuses { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // The legacy SQL columns are `datetime` (CLR DateTime) while the entities map them as DateTimeOffset (repo

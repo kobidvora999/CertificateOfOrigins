@@ -709,6 +709,29 @@
               ]
             }
           }
+        },
+        {
+          "name": "AuthenticationRequestFileByID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CC-USER-ID",
+                "value": "5"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/AuthenticationRequestFileByID/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "AuthenticationRequestFileByID",
+                "1"
+              ]
+            }
+          }
         }
       ]
     },

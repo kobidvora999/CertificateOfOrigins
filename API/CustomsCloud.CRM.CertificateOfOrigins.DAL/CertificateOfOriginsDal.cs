@@ -97,6 +97,101 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #1 (file header), local table. Missing → null (404 in BL).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == fileId)
+            .Select(f => new CertificateOfOriginsImportAuthenticationFileDetails
+            {
+                Id = f.Id,
+                State = f.State,
+                CreateDate = f.CreateDate,
+                AuthenticationFileStatusId = f.AuthenticationFileStatusId,
+                Notes = f.Notes,
+                PostalAdress = f.PostalAdress,
+                DeliveryMethodId = f.DeliveryMethodId,
+                EmailAdress = f.EmailAdress,
+                ReminderMethodId = f.ReminderMethodId,
+                RequestCountryId = f.RequestCountryId,
+                UserId = f.UserId,
+                UserNameIssuingLetter = f.UserNameIssuingLetter,
+                LastDelivery = f.LastDelivery,
+                ImporterContactingReasonId = f.ImporterContactingReasonId,
+                FirstProvideContactDate = f.FirstProvideContactDate,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsImportAuthenticationRequest>> GetRequestsByFileId(int fileId)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #2 (child requests), local table by AuthenticationFileID.
+        // Projected to the needed columns (< 30 for the platform interceptor); the CRP.DealFile join +
+        // Infrastructure.Tasks_Task OUTER APPLY are resolved in the BL via proxies (LeadDocumentSubmissionDate,
+        // IsSendReminderForImporterTaskExists).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .Select(r => new CertificateOfOriginsImportAuthenticationRequest
+            {
+                DocumentId = r.DocumentId,
+                CreateDate = r.CreateDate,
+                AuthenticationFileId = r.AuthenticationFileId,
+                AuthenticationRequestDate = r.AuthenticationRequestDate,
+                DecisionId = r.DecisionId,
+                LeadDocumentId = r.LeadDocumentId,
+                DocumentIssuingDate = r.DocumentIssuingDate,
+                ImportCountryId = r.ImportCountryId,
+                IssuingCountryId = r.IssuingCountryId,
+                OriginCountryId = r.OriginCountryId,
+                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
+                ResponseNameEmail = r.ResponseNameEmail,
+                OrganizationUnitId = r.OrganizationUnitId,
+                VendorId = r.VendorId,
+                CustomerId = r.CustomerId,
+                ImporterId = r.ImporterId,
+                LastDeliveryForImporter = r.LastDeliveryForImporter,
+                InvoiceNumber = r.InvoiceNumber,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses()
+    {
+        // Legacy GetQuery<CertificateOfOriginsAuthenticationFileStatus>().ToList() — the full file-status lookup table.
+        var result = await ReadOnlyContext.CertificateOfOriginsAuthenticationFileStatuses
+            .Select(s => new CertificateOfOriginsAuthenticationFileStatus
+            {
+                Id = s.Id,
+                Name = s.Name,
+                State = s.State,
+                Description = s.Description,
+                EnglishName = s.EnglishName,
+                Enumeration = s.Enumeration,
+                StartDate = s.StartDate,
+                EndDate = s.EndDate,
+                IsAutomatic = s.IsAutomatic,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #4 — item lines for all the file's requests (batched).
+        var result = await ReadOnlyContext.CertificateOfOriginsItemDetails
+            .Where(i => i.ImportAuthenticationRequestId != null && requestIds.Contains(i.ImportAuthenticationRequestId.Value))
+            .Select(i => new CertificateOfOriginsItemDetails
+            {
+                Id = i.Id,
+                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
+                CustomItemId = i.CustomItemId,
+            })
+            .ToListAsync();
+        return result;
+    }
+
     public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters)
     {
         // dbo.GetCertificateOfOriginsByFilter — dynamic-SQL search; exporter/agent titles return NULL from the

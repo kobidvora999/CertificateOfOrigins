@@ -154,4 +154,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.GetAuthenticationRequestByID(documentId);
         return Ok(result);
     }
+
+    // Internal WCF: GetAuthenticationRequestFileByID(fileId) — a single authentication file with its child requests
+    // (each enriched), the file-status lookup, and the current-user handling flag. Missing id → 404 (BL throws
+    // RestNotFoundException).
+    [HttpGet("AuthenticationRequestFileByID/{fileId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]
+    public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> AuthenticationRequestFileByID([FromRoute] int fileId)
+    {
+        var result = await BusinessLayer.GetAuthenticationRequestFileByID(fileId);
+        return Ok(result);
+    }
 }
