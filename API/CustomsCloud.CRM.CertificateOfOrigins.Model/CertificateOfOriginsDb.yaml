@@ -11,6 +11,9 @@ tables:
   - CRM.CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea
   - CRM.CertificateOfOrigins_ImportAuthenticationRequest
   - CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
+  - CRM.CertificateOfOrigins_ItemDetails
+  - CRM.CertificateOfOrigins_enum_Decision
+  - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
 stored procedures:
   - name: dbo.GetCertificateOfOriginsByFilter
     function: GetCertificateOfOriginsByFilter

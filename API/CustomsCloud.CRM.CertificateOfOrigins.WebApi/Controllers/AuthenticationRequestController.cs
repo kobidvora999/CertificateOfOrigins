@@ -142,4 +142,16 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.CreateNewAuthenticationFile(importAuthenticationRequests);
         return Ok(result);
     }
+
+    // Internal WCF: GetAuthenticationRequestByID(documentId) — a single import authentication request with its item
+    // lines, decision lookup, collaterals (Collateral service), and current-user task flags (Tasks service). Missing
+    // id → 404 (BL throws RestNotFoundException). The lead Document + LeadDocumentSubmissionDate are cross-service and
+    // deferred (null).
+    [HttpGet("AuthenticationRequestByID/{documentId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
+    public async Task<ActionResult<GetAuthenticationRequestByIdResultDto>> AuthenticationRequestByID([FromRoute] int documentId)
+    {
+        var result = await BusinessLayer.GetAuthenticationRequestByID(documentId);
+        return Ok(result);
+    }
 }

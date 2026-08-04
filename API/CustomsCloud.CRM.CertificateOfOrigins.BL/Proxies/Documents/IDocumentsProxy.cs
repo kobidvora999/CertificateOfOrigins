@@ -11,4 +11,8 @@ public interface IDocumentsProxy
     // Legacy: IDocumentsExternalProxy.DeleteDocument(docIds, VirtualEntity). Removes the given documents from the
     // entity in the Documents microservice.
     Task DeleteDocuments(List<int> documentIds, VirtualEntityDto entity);
+
+    // Legacy: SELECT ... FROM Infrastructure.Docs_Document WHERE ID = @DocumentID (GetAuthenticationRequestByID SP
+    // result-set #3) — a single document by its id from the Documents microservice.
+    Task<DocumentDto?> GetDocumentById(int documentId);
 }

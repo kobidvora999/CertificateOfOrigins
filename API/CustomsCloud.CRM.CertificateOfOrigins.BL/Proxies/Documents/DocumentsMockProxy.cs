@@ -43,6 +43,19 @@ public class DocumentsMockProxy(IProxyMockUtil mockUtil) : IDocumentsProxy, IMoc
                 StringDynamicParams = "mock notes B",  // TODO: dummy data
                 OtherRelatedEntities = [],
             },
+            new()
+            {
+                Id = (entityId * 10) + 3,               // TODO: dummy data
+                TypeId = 329,                            // ExportCertificateOfOrigin — matches the web-query DocumentId filter (#18)
+                IsIncoming = false,
+                CreateDate = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                Title = "Mock certificate document",    // TODO: dummy data
+                IsAccepted = true,
+                IsRequired = false,
+                ExternalId = "EXT-" + ((entityId * 10) + 3),
+                StringDynamicParams = "mock notes C",  // TODO: dummy data
+                OtherRelatedEntities = [],
+            },
         };
         return Task.FromResult<List<DocumentDto>?>(result);
     }
@@ -51,5 +64,25 @@ public class DocumentsMockProxy(IProxyMockUtil mockUtil) : IDocumentsProxy, IMoc
     public Task DeleteDocuments(List<int> documentIds, VirtualEntityDto entity)
     {
         return Task.CompletedTask;
+    }
+
+    // Default = one realistic dummy document with the requested id; feature "Documents.ByIdNotFound" returns null.
+    public Task<DocumentDto?> GetDocumentById(int documentId)
+    {
+        if (mockUtil.HasMockFeature("Documents.ByIdNotFound"))
+        {
+            return Task.FromResult<DocumentDto?>(null);
+        }
+
+        var result = new DocumentDto
+        {
+            Id = documentId,                                        // TODO: dummy data
+            TypeId = 124,                                           // TODO: dummy data
+            Title = "Mock lead document",                          // TODO: dummy data
+            CreateDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            ExternalId = "EXT-" + documentId,                      // TODO: dummy data
+            StringDynamicParams = "mock notes",                    // TODO: dummy data
+        };
+        return Task.FromResult<DocumentDto?>(result);
     }
 }

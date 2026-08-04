@@ -20,6 +20,83 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId)
+    {
+        // GetAuthenticationRequestByID SP result-set #1 (main row), local table only — the legacy CRP.DealFile
+        // LEFT JOIN (LeadDocumentSubmissionDate) is dropped (cross-service, deferred). Projected to the needed
+        // columns (< 30) to stay under the platform column-count interceptor. Missing → null (404 in the BL).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .Select(r => new CertificateOfOriginsImportAuthenticationRequest
+            {
+                DocumentId = r.DocumentId,
+                CreateDate = r.CreateDate,
+                AuthenticationFileId = r.AuthenticationFileId,
+                AuthenticationRequestDate = r.AuthenticationRequestDate,
+                CollateralId = r.CollateralId,
+                DecisionId = r.DecisionId,
+                LeadDocumentId = r.LeadDocumentId,
+                DocumentIssuingDate = r.DocumentIssuingDate,
+                ImportCountryId = r.ImportCountryId,
+                IssuingCountryId = r.IssuingCountryId,
+                Number = r.Number,
+                OriginCountryId = r.OriginCountryId,
+                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
+                ResponseNameEmail = r.ResponseNameEmail,
+                OrganizationUnitId = r.OrganizationUnitId,
+                VendorId = r.VendorId,
+                VendorName = r.VendorName,
+                CustomerId = r.CustomerId,
+                ImporterId = r.ImporterId,
+                LastDeliveryForImporter = r.LastDeliveryForImporter,
+                InvoiceNumber = r.InvoiceNumber,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestId(int documentId)
+    {
+        // GetAuthenticationRequestByID SP result-set #2 — the item lines of the request.
+        var result = await ReadOnlyContext.CertificateOfOriginsItemDetails
+            .Where(i => i.ImportAuthenticationRequestId == documentId)
+            .Select(i => new CertificateOfOriginsItemDetails
+            {
+                Id = i.Id,
+                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
+                CustomItemId = i.CustomItemId,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsDecision>> GetAllDecisions()
+    {
+        // Legacy GetQuery<CertificateOfOriginsDecision>().ToList() — the full decision lookup table.
+        var result = await ReadOnlyContext.CertificateOfOriginsDecisions
+            .Select(d => new CertificateOfOriginsDecision
+            {
+                Id = d.Id,
+                Name = d.Name,
+                State = d.State,
+                Description = d.Description,
+                EnglishName = d.EnglishName,
+                Enumeration = d.Enumeration,
+                StartDate = d.StartDate,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<bool> IsSupplierDeliveryCountry(int countryId)
+    {
+        // Legacy IsVendor: GetIdByCode<...>("ConutryID", countryId) > 0 — true when the issuing country has an active
+        // supplier-delivery config row (soft-delete filter State != 99 per repo convention).
+        var result = await ReadOnlyContext.CertificateOfOriginsSupplierDeliveryCountryConfigs
+            .AnyAsync(c => c.ConutryId == countryId && c.State != 99);
+        return result;
+    }
+
     public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters)
     {
         // dbo.GetCertificateOfOriginsByFilter — dynamic-SQL search; exporter/agent titles return NULL from the

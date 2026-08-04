@@ -29,4 +29,15 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<ExportDeclarationDetailsDto>();
     }
+
+    // Legacy: CRP.DealFile_LeadDocumentSubmissionData.SubmitDate (LEFT JOIN by LeadDocumentID) — the lead document's
+    // submission date from the DealFile service.
+    public async Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"ExportDealFile/LeadDocumentSubmissionDate/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<DateTimeOffset?>();
+    }
 }

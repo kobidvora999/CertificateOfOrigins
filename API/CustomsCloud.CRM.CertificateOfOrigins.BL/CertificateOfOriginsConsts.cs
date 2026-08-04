@@ -33,6 +33,10 @@ internal static class CertificateOfOriginsConsts
     public const string InvalidGuid = "Invalid Guid";
     public const string NoMatchingCertificate = "No Matching Certificate";
 
+    // Legacy SP filter for the web-query DocumentId — the newest attached document of these types
+    // (Infrastructure.Docs_Document.TypeID IN (329, 461); 329 = ExportCertificateOfOrigin).
+    public static readonly int[] WebQueryDocumentTypeIds = [329, 461];
+
     // --- Customers proxy ---
 
     // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) — the fixed activity-type filter for

@@ -41,4 +41,12 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);
 
     Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId);
+
+    Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId);
+
+    Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestId(int documentId);
+
+    Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
+
+    Task<bool> IsSupplierDeliveryCountry(int countryId);
 }

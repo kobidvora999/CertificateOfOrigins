@@ -52,6 +52,13 @@ public class ServicesConfiguration : IServicesConfiguration
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
         services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
 
+        // Collateral + Tasks enrichment for GetAuthenticationRequestByID.
+        // TODO(blocking): verify the real Collateral (Collateral/CollateralRequestByEntity) endpoint before ROLLOUT.
+        services.AddProxy<ICollateralProxy, CollateralProxy, CollateralMockProxy>();
+
+        // TODO(blocking): verify the real Tasks (Task/IsTaskExist) endpoint before ROLLOUT.
+        services.AddProxy<ITasksProxy, TasksProxy, TasksMockProxy>();
+
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.

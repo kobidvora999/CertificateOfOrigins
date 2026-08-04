@@ -18,10 +18,123 @@ public class AuthenticationRequestBl(
     ICustomerProxy customerProxy,
     IVendorProxy vendorProxy,
     IDocumentsProxy documentsProxy,
+    IExportDealFileProxy exportDealFileProxy,
+    ICollateralProxy collateralProxy,
+    ITasksProxy tasksProxy,
     IParametersUtil parametersUtil,
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    // Internal WCF: GetAuthenticationRequestByID(documentId) — a single import authentication request with its item
+    // lines, the decision lookup, collaterals (Collateral service), and current-user task flags (Tasks service).
+    // Missing id → 404: the legacy dereferenced a null row (a latent NRE); replaced here with the repo's not-found
+    // contract (developer decision 2026-08-02). The lead Document (Documents service, SP result-set #3) and
+    // LeadDocumentSubmissionDate (DealFile service, dropped cross-service JOIN) are deferred — left null.
+    public async Task<GetAuthenticationRequestByIdResultDto> GetAuthenticationRequestByID(int documentId)
+    {
+        var request = await DataLayer.GetImportAuthenticationRequestById(documentId)
+            ?? throw new RestNotFoundException();
+
+        var result = new GetAuthenticationRequestByIdResultDto
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = request.CreateDate,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            OrganizationUnitId = request.OrganizationUnitId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+        };
+
+        // SP result-set #2: item lines.
+        var itemDetails = await DataLayer.GetItemDetailsByRequestId(documentId);
+        result.ItemDetails = itemDetails
+            .Select(i => new AuthenticationRequestItemDetailDto
+            {
+                Id = i.Id,
+                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
+                CustomItemId = i.CustomItemId,
+            })
+            .ToList();
+
+        // Full decision lookup table (legacy GetQuery<CertificateOfOriginsDecision>().ToList()).
+        var decisions = await DataLayer.GetAllDecisions();
+        result.Decisions = decisions
+            .Select(d => new CertificateOfOriginsDecisionDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                State = d.State,
+                Description = d.Description,
+                EnglishName = d.EnglishName,
+                Enumeration = d.Enumeration,
+                StartDate = d.StartDate,
+            })
+            .ToList();
+
+        // Collaterals (Collateral microservice).
+        var collaterals = await collateralProxy.GetCollateralRequest((int)EEntityType.ImportAuthenticationRequest, documentId);
+        result.Collaterals = collaterals ?? [];
+
+        // Current-user task flags (Tasks microservice) — the legacy compared each task's UserID to UserUtil.Current.ID.
+        var taskTypeIds = new List<int>
+        {
+            (int)ETaskType.SetDecisionBeforeAssociation,
+            (int)ETaskType.SendReminderForImporter,
+            (int)ETaskType.HandleRejectedAuthenticationRequest,
+        };
+        var tasks = await tasksProxy.IsTaskExist(documentId, (int)EEntityType.ImportAuthenticationRequest, taskTypeIds) ?? [];
+        var currentUserId = RequestMetadata.UserId;
+        result.IsCurrentUserHandleRequest = tasks.Any(t => t.UserId == currentUserId);
+        result.IsCurrentUserHasOpenTask = tasks.Any(t => t.UserId == currentUserId && t.IsTaskInProgress);
+
+        // Related entity ids to search: the import declaration behind the lead document.
+        result.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
+        {
+            [(int)EEntityType.ImportDeclaration] = [request.LeadDocumentId],
+        };
+
+        // Config: additional-requests search window (legacy Configuration.GetConfig<int>).
+        result.AdditionalRequestsForSearchInDays = await parametersUtil.Get<int>("AdditionalRequestsForSearchInDays");
+
+        // IsVendor: the issuing country is configured as a supplier-delivery (vendor) country (legacy IsVendor helper).
+        result.IsVendorByIssuingCountryId = await DataLayer.IsSupplierDeliveryCountry(request.IssuingCountryId);
+
+        // Lead document (SP result-set #3, Infrastructure.Docs_Document) — fetched by the request's DocumentId from
+        // the Documents service. The legacy set Document.FileUrl to the DocumentType name; that name is enriched here
+        // onto TypeName via the shared DocumentType lookup.
+        var document = await documentsProxy.GetDocumentById(documentId);
+        if (document is not null)
+        {
+            await lookupUtil.FillName<DocumentType, DocumentDto>(
+                [document],
+                d => d.TypeId,
+                (d, name) => d.TypeName = name);
+        }
+
+        result.Document = document;
+
+        // Lead-document submission date (the dropped CRP.DealFile_LeadDocumentSubmissionData JOIN) — from the
+        // DealFile service by LeadDocumentId.
+        result.LeadDocumentSubmissionDate = await exportDealFileProxy.GetLeadDocumentSubmissionDate(request.LeadDocumentId);
+
+        return result;
+    }
+
     // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
     // set of requests and links them to it. Validates that none of the requests already belongs to a file (throws
     // RestValidationException / FileExistForRequest otherwise). Faithful to the WCF (developer decision 2026-07-30):

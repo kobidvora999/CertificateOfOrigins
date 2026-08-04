@@ -30,4 +30,15 @@ public class DocumentsProxy(IHttpProxy httpProxy)
             .AddBody(new { DocumentIds = documentIds, Entity = entity });
         await ExecuteAsync(req);
     }
+
+    // Legacy: SELECT ID, TypeID, Title, CreateDate, ExternalIDNum, Notes FROM Infrastructure.Docs_Document
+    // WHERE ID = @DocumentID — a single document by its id from the Documents microservice.
+    public async Task<DocumentDto?> GetDocumentById(int documentId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"Document/{documentId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<DocumentDto>();
+    }
 }

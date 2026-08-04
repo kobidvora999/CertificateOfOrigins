@@ -4,7 +4,7 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 // 3 details · 4 detail-type-code lookup · 5 web print-out). Composed in the DbContext extension; the BL
 // (GetCertificateRequestByGuid) transforms it into CertificateOfOriginsResponseDto. Only the header columns the
 // BL consumes are declared — Dapper ignores the rest. DocumentId is NULL from the SP (the cross-service
-// Infrastructure.Docs_* JOIN was removed); see the BL TODO(blocking).
+// Infrastructure.Docs_* JOIN was removed); the BL resolves it via the Documents service (ResolveWebQueryDocumentId).
 public class CertificateOfOriginWebQueryDto
 {
     public int Id { get; set; }

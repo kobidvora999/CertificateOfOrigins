@@ -89,15 +89,30 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     {
         var response = new CertificateOfOriginsResponseDto
         {
-            // TODO(blocking): DocumentID was resolved in the SP from Infrastructure.Docs_* (Documents service,
-            // cross-schema, not owned by this module) — the SP now returns NULL. Resolve via the Documents service.
-            DocumentId = certificate.DocumentId ?? 0,
+            // The SP no longer resolves DocumentID (the cross-service Infrastructure.Docs_* JOIN was removed); it is
+            // resolved from the Documents service instead — the newest document of type 329/461 attached to the
+            // certificate (legacy SP: DED.EntityID=cert, EntityTypeID=12319, DD.TypeID IN (329,461), newest first).
+            DocumentId = await ResolveWebQueryDocumentId(certificate.Id),
             CertificateNumber = certificate.CertificateNumber,
             QueryUrl = await GetQueryUrl(certificate.Guid),
             CertificateOfOriginDetails = await GetCertificateOfOriginDetails(certificate),
             CertificateOfOriginInvoiceDetails = await GetCertificateOfOriginInvoiceDetails(certificate),
         };
         return response;
+    }
+
+    // Legacy SP resolved DocumentID via Infrastructure.Docs_EntityDocument + Docs_Document: the newest document of
+    // type 329/461 attached to the certificate (EntityTypeID = CertificateOfOrigin). Resolved here via the Documents
+    // service (IDocumentsProxy.GetDocumentsByEntity; route is a rollout TODO(blocking)); 0 when there is no such document.
+    private async Task<int> ResolveWebQueryDocumentId(int certificateId)
+    {
+        var documents = await documentsProxy.GetDocumentsByEntity(certificateId, (int)EEntityType.CertificateOfOrigin);
+        var documentId = documents?
+            .Where(document => CertificateOfOriginsConsts.WebQueryDocumentTypeIds.Contains(document.TypeId))
+            .OrderByDescending(document => document.CreateDate)
+            .Select(document => document.Id)
+            .FirstOrDefault() ?? 0;
+        return documentId;
     }
 
     private async Task<List<CertificateOfOriginWebInvoiceDetailDto>> GetCertificateOfOriginInvoiceDetails(CertificateOfOriginWebQueryDto certificateOfOrigin)

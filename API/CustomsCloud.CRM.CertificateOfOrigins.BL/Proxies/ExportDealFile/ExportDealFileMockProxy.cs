@@ -27,4 +27,15 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
         };
         return Task.FromResult<ExportDeclarationDetailsDto?>(result);
     }
+
+    // Default = a fixed submission date; feature "DealFile.NoSubmissionDate" returns none.
+    public Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId)
+    {
+        if (mockUtil.HasMockFeature("DealFile.NoSubmissionDate"))
+        {
+            return Task.FromResult<DateTimeOffset?>(null);
+        }
+
+        return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero)); // TODO: dummy data
+    }
 }
