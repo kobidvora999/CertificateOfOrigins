@@ -21,6 +21,7 @@ public class AuthenticationRequestBl(
     IExportDealFileProxy exportDealFileProxy,
     ICollateralProxy collateralProxy,
     ITasksProxy tasksProxy,
+    IMessageManagementProxy messageManagementProxy,
     IParametersUtil parametersUtil,
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
@@ -785,6 +786,209 @@ public class AuthenticationRequestBl(
     {
         var result = await DataLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
         return result;
+    }
+
+    // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
+    // edits. Faithful to the WCF (developer decisions 2026-08-05): (1) the first collateral supplies CollateralId and
+    // all collaterals are pushed to permanent (Collateral service) — collaterals are NOT a local child table; (2) the
+    // decision switch raises the matching events (Tasks-service task checks reuse IsTaskExist) and, on a central
+    // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
+    // additionally raises a rejection event assigning the opened task to the responder. The persist is Fetch & Merge on
+    // the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404. Returns the
+    // fresh graph (re-read via GetAuthenticationRequestByID, matching the sibling Save*).
+    public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
+    {
+        // The first collateral supplies CollateralId; all collaterals are converted from temporary to permanent.
+        if (request.Collaterals.Count > 0)
+        {
+            request.CollateralId = request.Collaterals[0].CollateralRequestId;
+            await ChangeTempCollateralRequest(request.Collaterals);
+        }
+
+        var eventUtil = Resolve<IEventUtil>();
+
+        // Decision-driven events / message (mirrors the legacy switch).
+        switch (request.DecisionId)
+        {
+            case (int)EAuthenticationRequestDecision.NewAuthenticationRequest:
+            {
+                // Open the SetDecisionBeforeAssociation task, unless the current user already handles the request or
+                // such a task already exists (legacy IsTaskExistsOnEntity → reuse IsTaskExist).
+                var setDecisionTasks = await tasksProxy.IsTaskExist(
+                    request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SetDecisionBeforeAssociation]);
+                if (!request.IsCurrentUserHandleRequest && (setDecisionTasks is null || setDecisionTasks.Count == 0))
+                {
+                    await RaiseNewRequestEvent(eventUtil, request);
+                }
+
+                break;
+            }
+
+            case (int)EAuthenticationRequestDecision.AuthenticationRequried:
+            {
+                // If a HandleRejectedAuthenticationRequest task exists, mark the request processed-after-rejection and
+                // re-open the new-request flow.
+                var rejectedTasks = await tasksProxy.IsTaskExist(
+                    request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.HandleRejectedAuthenticationRequest]);
+                if (rejectedTasks is { Count: > 0 })
+                {
+                    var processedEvent = eventUtil.CreatBuilder()
+                        .WithEventType((int)EEventType.ImportAuthenticationRequestProcessedWithWasRejected)
+                        .WithEntityId(request.DocumentId)
+                        .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                        .WithTitle(request.DocumentId.ToString())
+                        .Build();
+                    await eventUtil.RaiseEvent(processedEvent);
+                    await RaiseNewRequestEvent(eventUtil, request);
+                }
+
+                break;
+            }
+
+            default:
+            {
+                // Close the SetDecisionBeforeAssociation task + notify the handling user(s) of the central decision.
+                var decisionEvent = eventUtil.CreatBuilder()
+                    .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
+                    .WithEntityId(request.DocumentId)
+                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithTitle(request.DocumentId.ToString())
+                    .WithAdditionalInfo(request.DocumentId.ToString())
+                    .Build();
+                await eventUtil.RaiseEvent(decisionEvent);
+                await SendDecisionMessage(request);
+                break;
+            }
+        }
+
+        // VendorId 0 → null (legacy normalization).
+        if (request.VendorId == 0)
+        {
+            request.VendorId = null;
+        }
+
+        // AuthenticationNeedless additionally raises a rejection event, assigning the opened task to the responder.
+        if (request.DecisionId == (int)EAuthenticationRequestDecision.AuthenticationNeedless)
+        {
+            var rejectedEvent = eventUtil.CreatBuilder()
+                .WithEventType((int)EEventType.AuthenticationRequestRejected)
+                .WithEntityId(request.DocumentId)
+                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithTitle(request.DocumentId.ToString())
+                .WithTaskArguments(task => task.WithTaskAssignmentUser(request.UserResponseId))
+                .Build();
+            await eventUtil.RaiseEvent(rejectedEvent);
+        }
+
+        // Persist (Fetch & Merge) — 404 if the request row is gone.
+        var userId = RequestMetadata.UserId ?? 0;
+        var saved = await DataLayer.SaveImportAuthenticationRequest(request, userId);
+        if (!saved)
+        {
+            throw new RestNotFoundException();
+        }
+
+        // Return the fresh graph (re-read via GetAuthenticationRequestByID, matching the sibling Save*).
+        return await GetAuthenticationRequestByID(request.DocumentId);
+    }
+
+    // Legacy RaiseNewRequestEvent — NewAuthenticationRequest event on the request (opens the SetDecisionBeforeAssociation
+    // task). The file, if any, is added as a related entity.
+    private static async Task RaiseNewRequestEvent(IEventUtil eventUtil, SaveImportAuthenticationRequestRequestDto request)
+    {
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.NewAuthenticationRequest)
+            .WithEntityId(request.DocumentId)
+            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithTitle(request.DocumentId.ToString())
+            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithAdditionalInfo(request.DocumentId.ToString());
+        if (request.AuthenticationFileId.HasValue)
+        {
+            builder = builder.AddRelatedEntity(request.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
+        }
+
+        await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    // Legacy SendDecisionMessage — notifies the responder (and the creating user, if different) of the central
+    // decision (Message-Management service). Rejection uses a different message type + parameters.
+    private async Task SendDecisionMessage(SaveImportAuthenticationRequestRequestDto request)
+    {
+        // On creation UserID == UserResponseID; a later change makes them differ, so message both.
+        var userIds = new List<int> { request.UserResponseId };
+        if (request.UserId != request.UserResponseId)
+        {
+            userIds.Add(request.UserId);
+        }
+
+        var destinations = userIds.Select(id => new MessageDestinationDto { UserId = id }).ToList();
+
+        var message = new SendMessageDto
+        {
+            RelatedEntity = new VirtualEntityDto
+            {
+                Id = request.DocumentId,
+                EntityType = (int)EEntityType.ImportAuthenticationRequest,
+            },
+            MessageTypeId = (int)EMessageTypes.ImportRequestCentralDecision,
+        };
+
+        switch (request.DecisionId)
+        {
+            case (int)EAuthenticationRequestDecision.AuthenticationRequried:
+            case (int)EAuthenticationRequestDecision.AuthenticationNeedless:
+            case (int)EAuthenticationRequestDecision.Approval:
+            case (int)EAuthenticationRequestDecision.Partly:
+            case (int)EAuthenticationRequestDecision.DemandAnotherClarification:
+            {
+                var decisionName = await GetDecisionName(request.DecisionId ?? 0);
+                message.MessageParameters = [decisionName, request.DocumentId.ToString()];
+                break;
+            }
+
+            case (int)EAuthenticationRequestDecision.Rejection:
+            {
+                message.MessageTypeId = (int)EMessageTypes.ImportRequestRejection;
+                message.MessageParameters = [request.DocumentId.ToString(), request.AuthenticationFileId?.ToString() ?? string.Empty];
+                break;
+            }
+        }
+
+        if (destinations.Count > 1)
+        {
+            message.IsGroupMessage = true;
+            message.MultipleMessageDestinations = destinations;
+        }
+        else
+        {
+            message.UserIdToSendMessage = request.UserResponseId;
+        }
+
+        await messageManagementProxy.SendMessage(message);
+    }
+
+    // Legacy SystemTablesUtil.GetCodeById<CertificateOfOriginsDecision>(decisionId).Name — the decision's Hebrew name
+    // from the enum_Decision lookup table (used as a message parameter).
+    private async Task<string> GetDecisionName(int decisionId)
+    {
+        var decisions = await DataLayer.GetAllDecisions();
+        return decisions.FirstOrDefault(d => d.Id == decisionId)?.Name ?? string.Empty;
+    }
+
+    // Legacy ChangeTempCollateralRequest — converts the request's temporary collaterals into permanent ones bound to
+    // the request (Collateral service).
+    private async Task ChangeTempCollateralRequest(List<CollateralRequestDto> collaterals)
+    {
+        var payload = collaterals
+            .Select(collateral => new ChangeTempCollateralRequestDto
+            {
+                CollateralRequestId = collateral.CollateralRequestId,
+                RelatedEntityId = collateral.RelatedEntity?.Id ?? 0,
+                EntityExternalId = (collateral.RelatedEntity?.Id ?? 0).ToString(),
+            })
+            .ToList();
+        await collateralProxy.ChangeTempCollateralRequest(payload);
     }
 
     #region LEGACY_WCF

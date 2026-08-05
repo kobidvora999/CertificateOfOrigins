@@ -32,4 +32,13 @@ public enum EEventType
     ExportAuthenticationRequestAfterClosing = 1617,
 
     ChangeFileStatus = 2047,
+
+    // Import authentication-request decision flow (SaveImportAuthenticationRequest). NewAuthenticationRequest opens the
+    // SetDecisionBeforeAssociation task; AuthenticationRequestRejected opens the rejection task (assigned to the
+    // responder); ImportAuthenticationRequestProcessedWithWasRejected marks a re-processed rejected request.
+    NewAuthenticationRequest = 1283,
+
+    AuthenticationRequestRejected = 1516,
+
+    ImportAuthenticationRequestProcessedWithWasRejected = 1990,
 }

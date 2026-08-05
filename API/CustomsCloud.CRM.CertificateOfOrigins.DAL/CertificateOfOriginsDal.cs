@@ -192,12 +192,51 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    {
+        // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). The Save DTO carries
+        // only the round-trip editable fields (a subset of the entity's ~37 columns), so this updates exactly those
+        // columns + the update-audit stamp and leaves everything else (CreateDate/CreateUserId, ItemDetailID, the
+        // circumstance/remark columns, …) untouched — a genuine merge without fetching the full row (a tracked full-row
+        // fetch would also trip the 30-column read interceptor). DocumentID is a non-identity, externally-assigned key
+        // — this method only ever edits an existing request; no matching row → false (404 in the BL).
+        var now = DateTimeOffset.Now;
+        var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == request.DocumentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(r => r.AuthenticationFileId, request.AuthenticationFileId)
+                .SetProperty(r => r.AuthenticationRequestDate, request.AuthenticationRequestDate)
+                .SetProperty(r => r.CollateralId, request.CollateralId)
+                .SetProperty(r => r.DecisionId, request.DecisionId)
+                .SetProperty(r => r.LeadDocumentId, request.LeadDocumentId)
+                .SetProperty(r => r.DocumentIssuingDate, request.DocumentIssuingDate)
+                .SetProperty(r => r.ImportCountryId, request.ImportCountryId)
+                .SetProperty(r => r.IssuingCountryId, request.IssuingCountryId)
+                .SetProperty(r => r.Number, request.Number)
+                .SetProperty(r => r.OriginCountryId, request.OriginCountryId)
+                .SetProperty(r => r.PreferenceDocumentTypeId, request.PreferenceDocumentTypeId)
+                .SetProperty(r => r.ResponseNameEmail, request.ResponseNameEmail)
+                .SetProperty(r => r.OrganizationUnitId, request.OrganizationUnitId)
+                .SetProperty(r => r.VendorId, request.VendorId)
+                .SetProperty(r => r.VendorName, request.VendorName)
+                .SetProperty(r => r.CustomerId, request.CustomerId)
+                .SetProperty(r => r.ImporterId, request.ImporterId)
+                .SetProperty(r => r.LastDeliveryForImporter, request.LastDeliveryForImporter)
+                .SetProperty(r => r.InvoiceNumber, request.InvoiceNumber)
+                .SetProperty(r => r.UserId, request.UserId)
+                .SetProperty(r => r.UserResponseId, request.UserResponseId)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+
+        return affected > 0;
+    }
+
     public async Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity)
     {
         // Upsert the parent (Id == 0 → insert, else update via the round-tripped TimeStamp for concurrency), then
-        // REPLACE-ALL its three child collections (developer decision 2026-08-05: trust-client — delete the existing
-        // child rows and re-insert the incoming ones). The children are held aside so the parent Add/Update touches
-        // only the parent row.
+        // DIFF-MERGE its three child collections by surrogate id (developer decision 2026-08-05, revised: reproduce
+        // the legacy Self-Tracking-Entity Save — update round-tripped children in place, insert new ones, delete the
+        // dropped ones). The children are held aside so the parent Add/Update touches only the parent row.
         var customsItems = entity.CustomsItems;
         var leadDocuments = entity.LeadDocuments;
         var manufacturingAreas = entity.ManufacturingAreas;
@@ -221,45 +260,73 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
         await Context.SaveChangesAsync();
 
-        // Replace-all children: drop the existing rows for this parent.
-        await Context.Set<CustomsItemToExportDocumentAuthenticationRequest>()
-            .Where(c => c.ExportDocumentAuthenticationRequestId == entity.Id)
-            .ExecuteDeleteAsync();
-        await Context.Set<ExportDocumentAuthenticationRequestLeadDocument>()
-            .Where(l => l.ExportRequestId == entity.Id)
-            .ExecuteDeleteAsync();
-        await Context.Set<ExportAuthenticationRequestManufacturingArea>()
-            .Where(m => m.ExportAuthenticationRequestId == entity.Id)
-            .ExecuteDeleteAsync();
-
-        // Insert the incoming children as new rows carrying the parent id.
+        // Bind the incoming children to the (now known) parent id and detach the nav so the merge touches only the
+        // child rows. Ids are preserved (NOT reset) so round-tripped children update in place.
         foreach (var item in customsItems)
         {
-            item.Id = 0;
             item.ExportDocumentAuthenticationRequestId = entity.Id;
             item.Request = null;
         }
 
         foreach (var leadDocument in leadDocuments)
         {
-            leadDocument.Id = 0;
             leadDocument.ExportRequestId = entity.Id;
             leadDocument.Request = null;
         }
 
         foreach (var area in manufacturingAreas)
         {
-            area.Id = 0;
             area.ExportAuthenticationRequestId = entity.Id;
             area.Request = null;
         }
 
-        Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().AddRange(customsItems);
-        Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().AddRange(leadDocuments);
-        Context.Set<ExportAuthenticationRequestManufacturingArea>().AddRange(manufacturingAreas);
+        await MergeChildrenAsync(
+            customsItems,
+            Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().Where(c => c.ExportDocumentAuthenticationRequestId == entity.Id),
+            item => item.Id);
+        await MergeChildrenAsync(
+            leadDocuments,
+            Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().Where(l => l.ExportRequestId == entity.Id),
+            leadDocument => leadDocument.Id);
+        await MergeChildrenAsync(
+            manufacturingAreas,
+            Context.Set<ExportAuthenticationRequestManufacturingArea>().Where(m => m.ExportAuthenticationRequestId == entity.Id),
+            area => area.Id);
+
         await Context.SaveChangesAsync();
 
         return entity.Id;
+    }
+
+    // Diff-merge a child collection against the DB by surrogate id (reproduces the legacy Self-Tracking-Entity Save):
+    // delete the rows the client dropped, update the round-tripped rows (Id > 0) in place, and insert the new ones
+    // (Id == 0) — preserving unchanged children's ids instead of re-creating every row. Used by
+    // SaveExportDocumentAuthenticationRequest.
+    private async Task MergeChildrenAsync<TChild>(
+        List<TChild> incoming,
+        IQueryable<TChild> existingForParent,
+        Func<TChild, int> getId)
+        where TChild : class
+    {
+        var keptIds = incoming.Where(child => getId(child) != 0).Select(getId).ToList();
+
+        // Delete existing rows under this parent that the client did not send back (empty keptIds → delete all).
+        await existingForParent
+            .Where(child => !keptIds.Contains(EF.Property<int>(child, "Id")))
+            .ExecuteDeleteAsync();
+
+        var set = Context.Set<TChild>();
+        foreach (var child in incoming)
+        {
+            if (getId(child) == 0)
+            {
+                set.Add(child);
+            }
+            else
+            {
+                set.Update(child);
+            }
+        }
     }
 
     public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters)

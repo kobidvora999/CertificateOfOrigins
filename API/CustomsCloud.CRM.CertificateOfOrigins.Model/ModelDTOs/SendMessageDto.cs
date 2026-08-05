@@ -13,4 +13,10 @@ public class SendMessageDto
     public List<string> MessageParameters { get; set; } = [];
 
     public List<MessageDestinationDto> MultipleMessageDestinations { get; set; } = [];
+
+    // Set when the message goes to more than one recipient (then MultipleMessageDestinations is used); otherwise the
+    // message goes to the single UserIdToSendMessage.
+    public bool IsGroupMessage { get; set; }
+
+    public int? UserIdToSendMessage { get; set; }
 }

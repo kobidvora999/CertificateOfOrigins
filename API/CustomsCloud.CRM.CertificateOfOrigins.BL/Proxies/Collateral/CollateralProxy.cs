@@ -19,4 +19,15 @@ public class CollateralProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CollateralRequestDto>>();
     }
+
+    // Legacy: Container.Resolve<ICollateralServiceAdapter>().ChangeTempCollateralRequest(list) — converts the request's
+    // temporary collaterals into permanent ones bound to the entity.
+    public async Task ChangeTempCollateralRequest(List<ChangeTempCollateralRequestDto> requests)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Collateral/ChangeTempCollateralRequest") // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .AddBody(requests);
+        await ExecuteAsync(req);
+    }
 }

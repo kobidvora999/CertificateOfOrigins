@@ -176,4 +176,16 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(request);
         return Ok(result);
     }
+
+    // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
+    // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
+    // updates the request row (Fetch & Merge). Missing request row → 404. A state-changing write with a body → POST.
+    // Returns the fresh graph (same shape as GetAuthenticationRequestByID).
+    [HttpPost("SaveImportAuthenticationRequest")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
+    public async Task<ActionResult<GetAuthenticationRequestByIdResultDto>> SaveImportAuthenticationRequest([FromBody] SaveImportAuthenticationRequestRequestDto request)
+    {
+        var result = await BusinessLayer.SaveImportAuthenticationRequest(request);
+        return Ok(result);
+    }
 }

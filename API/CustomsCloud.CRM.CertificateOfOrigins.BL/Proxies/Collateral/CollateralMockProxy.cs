@@ -30,4 +30,16 @@ public class CollateralMockProxy(IProxyMockUtil mockUtil) : ICollateralProxy, IM
         };
         return Task.FromResult<List<CollateralRequestDto>?>(result);
     }
+
+    // No-op for local/testing (the real call converts temp collaterals in the Collateral service); the
+    // "Collateral.ChangeFail" feature simulates a transport failure.
+    public Task ChangeTempCollateralRequest(List<ChangeTempCollateralRequestDto> requests)
+    {
+        if (mockUtil.HasMockFeature("Collateral.ChangeFail"))
+        {
+            throw new InvalidOperationException("Mock: Collateral ChangeTempCollateralRequest failed.");
+        }
+
+        return Task.CompletedTask;
+    }
 }

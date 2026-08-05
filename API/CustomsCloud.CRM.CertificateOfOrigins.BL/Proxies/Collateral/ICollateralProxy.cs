@@ -7,4 +7,8 @@ public interface ICollateralProxy
     // Legacy: ICollateralExternalProxy.GetCollateralRequest(EEntityType?, entityId, null). The collaterals attached
     // to an entity, from the Collateral microservice.
     Task<List<CollateralRequestDto>?> GetCollateralRequest(int entityType, int entityId);
+
+    // Legacy: ICollateralServiceAdapter.ChangeTempCollateralRequest(list) — converts temporary collateral requests to
+    // permanent ones bound to the saved entity (SaveImportAuthenticationRequest).
+    Task ChangeTempCollateralRequest(List<ChangeTempCollateralRequestDto> requests);
 }

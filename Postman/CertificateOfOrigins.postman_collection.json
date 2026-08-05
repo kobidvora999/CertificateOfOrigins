@@ -763,6 +763,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "SaveImportAuthenticationRequest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 900001,\n  \"authenticationFileId\": null,\n  \"authenticationRequestDate\": \"2024-01-01T00:00:00+02:00\",\n  \"collateralId\": null,\n  \"decisionId\": 3,\n  \"leadDocumentId\": 1,\n  \"documentIssuingDate\": \"2024-01-01T00:00:00+02:00\",\n  \"importCountryId\": 32,\n  \"issuingCountryId\": 32,\n  \"number\": 1,\n  \"originCountryId\": 32,\n  \"preferenceDocumentTypeId\": 1,\n  \"responseNameEmail\": \"test@test.gov.il\",\n  \"organizationUnitId\": 1,\n  \"vendorId\": 555,\n  \"vendorName\": null,\n  \"customerId\": null,\n  \"importerId\": null,\n  \"lastDeliveryForImporter\": null,\n  \"invoiceNumber\": null,\n  \"userId\": 5,\n  \"userResponseId\": 5,\n  \"isCurrentUserHandleRequest\": false,\n  \"collaterals\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/SaveImportAuthenticationRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "SaveImportAuthenticationRequest"
+              ]
+            }
+          }
         }
       ]
     },
