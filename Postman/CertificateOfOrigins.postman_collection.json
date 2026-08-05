@@ -22,7 +22,7 @@
           "// calls to the in-service mock during local/test runs via the x-mock-proxy header. The framework",
           "// parses a single comma-separated header, so set ONE header (upsert per-interface would overwrite,",
           "// leaving only the last interface mocked and the others hitting the real service).",
-          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy', 'IUserProxy', 'IDataDictionaryFieldProxy', 'ICurrencyTypeProxy', 'IDocumentsProxy', 'ICollateralProxy', 'ITasksProxy'].join(',') });"
+          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy', 'IUserProxy', 'IDataDictionaryFieldProxy', 'ICurrencyTypeProxy', 'IDocumentsProxy', 'ICollateralProxy', 'ITasksProxy', 'IMessageManagementProxy'].join(',') });"
         ]
       }
     }
@@ -848,6 +848,37 @@
                 "ExportDocumentAuthenticationRequest",
                 "CustomerInformationByCountry",
                 "32"
+              ]
+            }
+          }
+        },
+        {
+          "name": "SaveExportDocumentAuthenticationRequest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 0,\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"statusId\": 2,\n  \"originalStatusId\": 0,\n  \"title\": \"בקשת אימות מסמך יצוא\",\n  \"customerId\": 777,\n  \"typeId\": 1,\n  \"countryId\": 32,\n  \"authenticationRequestNotes\": \"\",\n  \"listOfAdditionalDocumentsIds\": [],\n  \"customsItems\": [],\n  \"leadDocuments\": [],\n  \"manufacturingAreas\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/SaveExportDocumentAuthenticationRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "SaveExportDocumentAuthenticationRequest"
               ]
             }
           }

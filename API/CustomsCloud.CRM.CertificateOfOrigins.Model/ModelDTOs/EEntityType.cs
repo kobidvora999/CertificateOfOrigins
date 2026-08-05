@@ -12,4 +12,7 @@ public enum EEntityType
     AuthenticationRequestFile = 12385,
 
     ImportAuthenticationRequest = 12384,
+
+    // The export-document authentication request (SaveExportDocumentAuthenticationRequest events/messages).
+    ExportDocumentAuthenticationRequest = 12386,
 }

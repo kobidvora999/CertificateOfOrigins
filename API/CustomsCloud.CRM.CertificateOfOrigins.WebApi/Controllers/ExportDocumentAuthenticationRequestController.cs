@@ -54,4 +54,16 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
         var result = await BusinessLayer.GetExportDocumentAuthenticationRequestSearch(filter);
         return Ok(result);
     }
+
+    // Internal WCF: SaveExportDocumentAuthenticationRequest(entity) — inserts (Id == 0) or updates the export-document
+    // authentication request + its child collections (replace-all); on a status transition raises the status events
+    // and sends the status message; and attaches any additional documents. A write with a body → POST. Returns the
+    // saved graph.
+    [HttpPost("SaveExportDocumentAuthenticationRequest")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
+    public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> SaveExportDocumentAuthenticationRequest([FromBody] SaveExportDocumentAuthenticationRequestRequestDto request)
+    {
+        var result = await BusinessLayer.SaveExportDocumentAuthenticationRequest(request);
+        return Ok(result);
+    }
 }

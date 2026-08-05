@@ -59,6 +59,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // TODO(blocking): verify the real Tasks (Task/IsTaskExist) endpoint before ROLLOUT.
         services.AddProxy<ITasksProxy, TasksProxy, TasksMockProxy>();
 
+        // Status-change messages for SaveExportDocumentAuthenticationRequest (was IMessageManagementExternalProxy via
+        // the Common service). TODO(blocking): verify the real Message-Management (Message/SendMessage) endpoint before ROLLOUT.
+        services.AddProxy<IMessageManagementProxy, MessageManagementProxy, MessageManagementMockProxy>();
+
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.

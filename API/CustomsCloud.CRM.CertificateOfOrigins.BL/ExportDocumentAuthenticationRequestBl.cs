@@ -1,21 +1,31 @@
 using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
 using Lookup;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
+using System.Reflection;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
 public class ExportDocumentAuthenticationRequestBl(
     IServiceProvider serviceProvider,
     ICustomerProxy customerProxy,
+    IDocumentsProxy documentsProxy,
+    IMessageManagementProxy messageManagementProxy,
     ILookupUtil lookupUtil)
     : BaseBL<ExportDocumentAuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
+    // EMessageTypes.ImportRequestDecision (Customs.Inf.CommonService.ExternalCommon.MessagesEnums) — the message
+    // type sent on an export-request status change.
+    private const int ImportRequestDecisionMessageTypeId = 11102;
+
     public async Task<CustomerDto> GetCustomerInformation(int customerId)
     {
         // Single-customer lookup against the Customers service by id; the legacy threw on a missing customer,
@@ -107,6 +117,193 @@ public class ExportDocumentAuthenticationRequestBl(
                 .ToList(),
         };
         return result;
+    }
+
+    // Internal WCF: SaveExportDocumentAuthenticationRequest(entity) — inserts (Id == 0) or updates the export-document
+    // authentication request + its three child collections (replace-all, developer decision 2026-08-05); on a status
+    // transition raises the status events and (for some statuses) sends the status message; finally attaches any
+    // additional documents. Returns the freshly-saved graph. current-user = RequestMetadata.UserId, DisplayName =
+    // RequestMetadata.Fullname. The legacy status name came from a SystemTable lookup — resolved here from the
+    // EExportAuthenticationRequestStatus Display name (no ILookupUtil type exists, consistent with #26).
+    public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> SaveExportDocumentAuthenticationRequest(SaveExportDocumentAuthenticationRequestRequestDto request)
+    {
+        var entity = BuildEntity(request);
+
+        var userId = RequestMetadata.UserId ?? 0;
+        var now = DateTime.Now;
+        if (entity.Id == 0)
+        {
+            entity.CreateDate = now;
+            entity.CreateUserId = userId;
+        }
+
+        entity.UpdateDate = now;
+        entity.UpdateUserId = userId;
+
+        var id = await DataLayer.SaveExportDocumentAuthenticationRequest(entity);
+
+        // Status transition → status-update event (+ a status-specific event) and, for some statuses, a message.
+        if (request.StatusId != request.OriginalStatusId)
+        {
+            await CheckStatusAndNotify(id, entity.StatusId);
+        }
+
+        // Post-save document attach (legacy IDocumentServiceAdapter.AttachDocumentsToEntity).
+        if (request.ListOfAdditionalDocumentsIds.Count > 0)
+        {
+            await documentsProxy.AttachDocumentsToEntity(new DocumentsToEntityDto
+            {
+                Entity = new VirtualEntityDto { Id = id, EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest },
+                DocumentIds = request.ListOfAdditionalDocumentsIds,
+            });
+        }
+
+        return await GetExportDocumentAuthenticationRequestById(id);
+    }
+
+    private static ExportDocumentAuthenticationRequest BuildEntity(SaveExportDocumentAuthenticationRequestRequestDto request)
+    {
+        return new ExportDocumentAuthenticationRequest
+        {
+            Id = request.Id,
+            TypeId = request.TypeId,
+            Title = request.Title,
+            State = request.State,
+            TimeStamp = request.TimeStamp!,
+            OrganizationUnitId = request.OrganizationUnitId,
+            CustomerId = request.CustomerId,
+            AuthenticationDocumentTypeId = request.AuthenticationDocumentTypeId,
+            ExporterCustomerId = request.ExporterCustomerId,
+            StatusId = request.StatusId,
+            CountryId = request.CountryId,
+            CustomsHouseAddress = request.CustomsHouseAddress,
+            VendorId = request.VendorId,
+            AuthenticationRequestArrivalDate = request.AuthenticationRequestArrivalDate,
+            AuthenticationRequestedByName = request.AuthenticationRequestedByName,
+            AuthenticationRequestedByEmail = request.AuthenticationRequestedByEmail,
+            AuthenticationRequestedByPhone = request.AuthenticationRequestedByPhone,
+            AuthenticationRequestNotes = request.AuthenticationRequestNotes,
+            ExportLeadDocumentId = request.ExportLeadDocumentId,
+            DocumentId = request.DocumentId,
+            MainDocumentTitle = request.MainDocumentTitle,
+            LastDeliveryDate = request.LastDeliveryDate,
+            DeliveryMethodId = request.DeliveryMethodId,
+            InvoiceNumbers = request.InvoiceNumbers,
+            DetailedDecision = request.DetailedDecision,
+            ReferenceNumber = request.ReferenceNumber,
+            CommentForCustomsHouseLetter = request.CommentForCustomsHouseLetter,
+            TotalDocuments = request.TotalDocuments,
+            TotalInvoices = request.TotalInvoices,
+            DocumentDate = request.DocumentDate,
+            InvoiceDate = request.InvoiceDate,
+            CustomsItems = request.CustomsItems.Select(item => new CustomsItemToExportDocumentAuthenticationRequest
+            {
+                Id = item.Id,
+                ExportDocumentAuthenticationRequestId = item.ExportDocumentAuthenticationRequestId,
+                CustomsItemId = item.CustomsItemId,
+            }).ToList(),
+            LeadDocuments = request.LeadDocuments.Select(leadDocument => new ExportDocumentAuthenticationRequestLeadDocument
+            {
+                Id = leadDocument.Id,
+                ExportRequestId = leadDocument.ExportRequestId,
+                LeadDocumentId = leadDocument.LeadDocumentId,
+                LeadDocumentTitle = leadDocument.LeadDocumentTitle,
+            }).ToList(),
+            ManufacturingAreas = request.ManufacturingAreas.Select(area => new ExportAuthenticationRequestManufacturingArea
+            {
+                Id = area.Id,
+                ExportAuthenticationRequestId = area.ExportAuthenticationRequestId,
+                ManufacturingArea = area.ManufacturingArea,
+                ManufacturingZipcode = area.ManufacturingZipcode,
+            }).ToList(),
+        };
+    }
+
+    // Legacy CheckStatus: a switch on the new status decides which status-specific event to raise (in addition to the
+    // always-raised status-update event), and whether to also send a status message to the current user.
+    private async Task CheckStatusAndNotify(int id, int? statusId)
+    {
+        switch (statusId)
+        {
+            case (int)EExportAuthenticationRequestStatus.ReadyForProfessionalTreatment:
+                await RaiseStatusEvents(id, statusId, EEventType.ExportNewAuthenticationRequest, id.ToString());
+                await SendStatusMessage(id, statusId);
+                break;
+            case (int)EExportAuthenticationRequestStatus.ClosedValid:
+            case (int)EExportAuthenticationRequestStatus.ClosedNotValid:
+            case (int)EExportAuthenticationRequestStatus.ClosedSemiValid:
+                await RaiseStatusEvents(id, statusId, EEventType.ExportAuthenticationRequestAfterClosing, null);
+                break;
+            case (int)EExportAuthenticationRequestStatus.Cancelled:
+            case (int)EExportAuthenticationRequestStatus.WaitingForExporter:
+                await RaiseStatusEvents(id, statusId, EEventType.ChangeFileStatus, null);
+                break;
+            default:
+                await RaiseStatusEvents(id, statusId, null, null);
+                await SendStatusMessage(id, statusId);
+                break;
+        }
+    }
+
+    // Always raises ExportAuthenticationRequestFileStatusUpdate (with the "changed by X on date" info), then a
+    // status-specific event when one applies.
+    private async Task RaiseStatusEvents(int id, int? statusId, EEventType? specificEvent, string? additionalInfo)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        var updateInfo = string.Format(
+            "עודכן הסטאטוס ל{0} על ידי {1} בתאריך {2} ",
+            GetStatusName(statusId),
+            RequestMetadata.Fullname,
+            DateTime.Today.ToShortDateString());
+
+        var statusUpdate = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.ExportAuthenticationRequestFileStatusUpdate)
+            .WithEntityId(id)
+            .WithEntityType((int)EEntityType.ExportDocumentAuthenticationRequest)
+            .WithTitle(id.ToString())
+            .WithAdditionalInfo(updateInfo)
+            .Build();
+        await eventUtil.RaiseEvent(statusUpdate);
+
+        if (specificEvent.HasValue)
+        {
+            var specific = eventUtil.CreatBuilder()
+                .WithEventType((int)specificEvent.Value)
+                .WithEntityId(id)
+                .WithEntityType((int)EEntityType.ExportDocumentAuthenticationRequest)
+                .WithTitle(id.ToString())
+                .WithAdditionalInfo(additionalInfo ?? string.Empty)
+                .Build();
+            await eventUtil.RaiseEvent(specific);
+        }
+    }
+
+    // Legacy RaiseStatusMessage: send the current user a message (file id + new status name) via Message-Management.
+    private async Task SendStatusMessage(int id, int? statusId)
+    {
+        var message = new SendMessageDto
+        {
+            RelatedEntity = new VirtualEntityDto { Id = id, EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest },
+            MessageTypeId = ImportRequestDecisionMessageTypeId,
+            MessageParameters = [id.ToString(), GetStatusName(statusId)],
+            MultipleMessageDestinations = [new MessageDestinationDto { UserId = RequestMetadata.UserId }],
+        };
+        await messageManagementProxy.SendMessage(message);
+    }
+
+    // The status display name (legacy SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>.Name) — taken
+    // from the EExportAuthenticationRequestStatus [Display(Name)] attribute.
+    private static string GetStatusName(int? statusId)
+    {
+        if (statusId is null)
+        {
+            return string.Empty;
+        }
+
+        var status = (EExportAuthenticationRequestStatus)statusId.Value;
+        var member = typeof(EExportAuthenticationRequestStatus).GetMember(status.ToString()).FirstOrDefault();
+        var display = member?.GetCustomAttribute<DisplayAttribute>();
+        return display?.Name ?? status.ToString();
     }
 
     public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)

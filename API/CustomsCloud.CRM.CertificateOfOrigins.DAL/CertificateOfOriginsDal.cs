@@ -192,6 +192,76 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity)
+    {
+        // Upsert the parent (Id == 0 → insert, else update via the round-tripped TimeStamp for concurrency), then
+        // REPLACE-ALL its three child collections (developer decision 2026-08-05: trust-client — delete the existing
+        // child rows and re-insert the incoming ones). The children are held aside so the parent Add/Update touches
+        // only the parent row.
+        var customsItems = entity.CustomsItems;
+        var leadDocuments = entity.LeadDocuments;
+        var manufacturingAreas = entity.ManufacturingAreas;
+        entity.CustomsItems = [];
+        entity.LeadDocuments = [];
+        entity.ManufacturingAreas = [];
+
+        if (entity.Id == 0)
+        {
+            Context.ExportDocumentAuthenticationRequests.Add(entity);
+        }
+        else
+        {
+            Context.ExportDocumentAuthenticationRequests.Update(entity);
+
+            // The round-tripped DTO does not carry the immutable audit columns, so Update would overwrite them with
+            // defaults (CreateDate = 0001-01-01 → SqlDateTime overflow). Keep the existing DB values.
+            Context.Entry(entity).Property(e => e.CreateDate).IsModified = false;
+            Context.Entry(entity).Property(e => e.CreateUserId).IsModified = false;
+        }
+
+        await Context.SaveChangesAsync();
+
+        // Replace-all children: drop the existing rows for this parent.
+        await Context.Set<CustomsItemToExportDocumentAuthenticationRequest>()
+            .Where(c => c.ExportDocumentAuthenticationRequestId == entity.Id)
+            .ExecuteDeleteAsync();
+        await Context.Set<ExportDocumentAuthenticationRequestLeadDocument>()
+            .Where(l => l.ExportRequestId == entity.Id)
+            .ExecuteDeleteAsync();
+        await Context.Set<ExportAuthenticationRequestManufacturingArea>()
+            .Where(m => m.ExportAuthenticationRequestId == entity.Id)
+            .ExecuteDeleteAsync();
+
+        // Insert the incoming children as new rows carrying the parent id.
+        foreach (var item in customsItems)
+        {
+            item.Id = 0;
+            item.ExportDocumentAuthenticationRequestId = entity.Id;
+            item.Request = null;
+        }
+
+        foreach (var leadDocument in leadDocuments)
+        {
+            leadDocument.Id = 0;
+            leadDocument.ExportRequestId = entity.Id;
+            leadDocument.Request = null;
+        }
+
+        foreach (var area in manufacturingAreas)
+        {
+            area.Id = 0;
+            area.ExportAuthenticationRequestId = entity.Id;
+            area.Request = null;
+        }
+
+        Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().AddRange(customsItems);
+        Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().AddRange(leadDocuments);
+        Context.Set<ExportAuthenticationRequestManufacturingArea>().AddRange(manufacturingAreas);
+        await Context.SaveChangesAsync();
+
+        return entity.Id;
+    }
+
     public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters)
     {
         // dbo.GetCertificateOfOriginsByFilter — dynamic-SQL search; exporter/agent titles return NULL from the

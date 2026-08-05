@@ -41,4 +41,14 @@ public class DocumentsProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<DocumentDto>();
     }
+
+    // Legacy: Container.Resolve<IDocumentsExternalProxy>().AttachDocumentsToEntity([DocumentsToEntityDTO]).
+    public async Task AttachDocumentsToEntity(DocumentsToEntityDto documents)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Document/AttachDocumentsToEntity") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .AddBody(new List<DocumentsToEntityDto> { documents });
+        await ExecuteAsync(req);
+    }
 }

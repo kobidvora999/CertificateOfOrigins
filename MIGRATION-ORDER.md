@@ -64,7 +64,7 @@
 ## גל 7 — Saves עם תשתית הודעות (Notifications)
 | # | מתודה | חוזה | סטטוס |
 |---|---|---|---|
-| 30 | SaveExportDocumentAuthenticationRequest | Internal | ⬜ |
+| 30 | SaveExportDocumentAuthenticationRequest | Internal | ✅ הומרה (2026-08-05, branch `feature/migrate-save-export-document-authentication-request`) — insert (Id==0) / update של בקשת-אימות-מסמך-יצוא + 3 אוספי-ילדים (customs items, lead documents, manufacturing areas) בשיטת **replace-all** (trust-client): Context.Add/Update על האב, ExecuteDelete על הילדים הקיימים, AddRange לנכנסים. ב-update עמודות ה-audit (CreateDate/CreateUserId) מסומנות `IsModified=false` כדי לא לדרוס אותן ב-0001 (SqlDateTime overflow). על מעבר-סטטוס (StatusId≠OriginalStatusId): event עדכון-סטטוס תמיד (1282) + event ספציפי לפי היעד (1307/1617/2047) דרך `IEventUtil`, ומסר דרך `IMessageManagementProxy` (Common=9000, proxy+mock חדשים, MessageTypeId=11102). מצרף מסמכים נוספים דרך `IDocumentsProxy.AttachDocumentsToEntity`. current-user מ-`RequestMetadata.UserId`/`Fullname`; שם-סטטוס מ-enum `[Display]`. endpoint POST → מחזיר את הגרף השמור. נבדק חי: update (id 1, סטטוס 1→5)→200; insert (id 0)→200 id חדש=2, ילדים הוכנסו; נוקה אחרי. רגרסיה מלאה נקייה. |
 | 31 | SaveImportAuthenticationRequest | Internal | ⬜ |
 | 32 | SaveAuthenticationRequestFile | Internal | ⬜ |
 

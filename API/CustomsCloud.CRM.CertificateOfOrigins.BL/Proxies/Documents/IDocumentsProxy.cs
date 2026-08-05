@@ -15,4 +15,8 @@ public interface IDocumentsProxy
     // Legacy: SELECT ... FROM Infrastructure.Docs_Document WHERE ID = @DocumentID (GetAuthenticationRequestByID SP
     // result-set #3) — a single document by its id from the Documents microservice.
     Task<DocumentDto?> GetDocumentById(int documentId);
+
+    // Legacy: IDocumentServiceAdapter.AttachDocumentsToEntity([DocumentsToEntityDTO]). Attaches the given documents
+    // to an entity in the Documents microservice.
+    Task AttachDocumentsToEntity(DocumentsToEntityDto documents);
 }

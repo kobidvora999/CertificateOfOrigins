@@ -57,4 +57,6 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses();
 
     Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds);
+
+    Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity);
 }

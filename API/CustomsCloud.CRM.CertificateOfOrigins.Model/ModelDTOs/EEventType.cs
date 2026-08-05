@@ -22,4 +22,14 @@ public enum EEventType
 
     // Opens the HandleAuthenticationRequestFile task for a newly created authentication-request file.
     NewAuthenticationRequestFile = 1517,
+
+    // Export-document authentication-request status flow (SaveExportDocumentAuthenticationRequest). The generic
+    // status-update event is always raised; the others are raised per the target status.
+    ExportAuthenticationRequestFileStatusUpdate = 1282,
+
+    ExportNewAuthenticationRequest = 1307,
+
+    ExportAuthenticationRequestAfterClosing = 1617,
+
+    ChangeFileStatus = 2047,
 }

@@ -85,4 +85,10 @@ public class DocumentsMockProxy(IProxyMockUtil mockUtil) : IDocumentsProxy, IMoc
         };
         return Task.FromResult<DocumentDto?>(result);
     }
+
+    // No-op attach for local/testing (the real attach hits the Documents microservice).
+    public Task AttachDocumentsToEntity(DocumentsToEntityDto documents)
+    {
+        return Task.CompletedTask;
+    }
 }
