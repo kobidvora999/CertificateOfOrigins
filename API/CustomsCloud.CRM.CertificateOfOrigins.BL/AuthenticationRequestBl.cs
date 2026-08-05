@@ -559,12 +559,10 @@ public class AuthenticationRequestBl(
                 deliveryMethod = (int)EDeliveryMethod.SecondRemindSent;
             }
         }
-        else if (status == (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend)
+        else if (status == (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend
+            && deliveryMethod == (int)EDeliveryMethod.FirstRemindSent)
         {
-            if (deliveryMethod == (int)EDeliveryMethod.FirstRemindSent)
-            {
-                deliveryMethod = (int)EDeliveryMethod.SecondRemindSent;
-            }
+            deliveryMethod = (int)EDeliveryMethod.SecondRemindSent;
         }
 
         return (status, deliveryMethod);

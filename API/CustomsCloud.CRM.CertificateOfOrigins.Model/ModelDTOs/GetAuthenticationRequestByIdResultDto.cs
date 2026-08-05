@@ -56,8 +56,8 @@ public class GetAuthenticationRequestByIdResultDto
     // Collaterals for this request (Collateral microservice).
     public List<CollateralRequestDto> Collaterals { get; set; } = [];
 
-    // The lead document (SP result-set #3, Infrastructure.Docs_Document) — enriched via IDocumentsProxy.GetDocumentById;
-    // TypeName carries the legacy Document.FileUrl (DocumentType name). The proxy route is a rollout TODO(blocking).
+    // The lead document (SP result-set #3 / Infrastructure.Docs_Document) enriched via the Documents proxy GetDocumentById call.
+    // TypeName carries the legacy document FileUrl (the DocumentType name). The proxy route is a rollout TODO(blocking).
     public DocumentDto? Document { get; set; }
 
     // The lead-document submission date (legacy CRP.DealFile_LeadDocumentSubmissionData JOIN) — enriched via

@@ -7,11 +7,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CustomsCloud.InfrastructureCore.DatabaseMigration" Version="1.10.26" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.84" />
-		<PackageReference Include="CustomsCloud.InfrastructureCore.WebApi" Version="1.10.77" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.DatabaseMigration" Version="1.10.41" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.99" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.WebApi" Version="1.10.95" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.29.0.143774">
+		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.31.0.145097">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>

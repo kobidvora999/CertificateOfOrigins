@@ -66,7 +66,7 @@ public class ServicesConfiguration : IServicesConfiguration
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
-        services.AddParametersService();
+        services.AddParametersUtil();
 
         // Event raising for ChangeStatusAfterDeliverySent (was EventUtil.RaiseEvent) — resolved lazily via IEventUtil.
         services.AddEventUtil();
