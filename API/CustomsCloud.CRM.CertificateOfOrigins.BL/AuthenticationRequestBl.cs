@@ -793,9 +793,9 @@ public class AuthenticationRequestBl(
     // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
     // additionally raises a rejection event assigning the opened task to the responder. The persist is a set-based
     // update on the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404.
-    // Returns the authoritative saved row (light DAL projection re-read, no proxy enrichment — the SPA already holds
-    // the enrichment collections from the initial load).
-    public async Task<SaveImportAuthenticationRequestResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
+    // Returns the fully re-read request graph via GetAuthenticationRequestByID — consistent with the sibling
+    // SaveAuthenticationRequestFile (both saves return the same shape as their GetById read).
+    public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
     {
         // The first collateral supplies CollateralId; all collaterals are converted from temporary to permanent.
         if (request.Collaterals.Count > 0)
@@ -887,41 +887,9 @@ public class AuthenticationRequestBl(
             throw new RestNotFoundException();
         }
 
-        // Return the authoritative saved row — a light DAL projection re-read (no proxy enrichment; the SPA already
-        // holds the enrichment collections from the initial load).
-        var savedRequest = await DataLayer.GetImportAuthenticationRequestById(request.DocumentId)
-            ?? throw new RestNotFoundException();
-        return BuildSaveImportResult(savedRequest);
-    }
-
-    // Maps the authoritative saved request row to its result — the persisted scalar state, without the read-only
-    // enrichment collections (decisions, item lines, document, task flags).
-    private static SaveImportAuthenticationRequestResultDto BuildSaveImportResult(CertificateOfOriginsImportAuthenticationRequest request)
-    {
-        return new SaveImportAuthenticationRequestResultDto
-        {
-            DocumentId = request.DocumentId,
-            CreateDate = request.CreateDate,
-            AuthenticationFileId = request.AuthenticationFileId,
-            AuthenticationRequestDate = request.AuthenticationRequestDate,
-            CollateralId = request.CollateralId,
-            DecisionId = request.DecisionId,
-            LeadDocumentId = request.LeadDocumentId,
-            DocumentIssuingDate = request.DocumentIssuingDate,
-            ImportCountryId = request.ImportCountryId,
-            IssuingCountryId = request.IssuingCountryId,
-            Number = request.Number,
-            OriginCountryId = request.OriginCountryId,
-            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
-            ResponseNameEmail = request.ResponseNameEmail,
-            OrganizationUnitId = request.OrganizationUnitId,
-            VendorId = request.VendorId,
-            VendorName = request.VendorName,
-            CustomerId = request.CustomerId,
-            ImporterId = request.ImporterId,
-            LastDeliveryForImporter = request.LastDeliveryForImporter,
-            InvoiceNumber = request.InvoiceNumber,
-        };
+        // Return the fully re-read request graph (consistent with the sibling SaveAuthenticationRequestFile — the SPA
+        // gets the same authoritative, enriched shape as the GetById read).
+        return await GetAuthenticationRequestByID(request.DocumentId);
     }
 
     // Legacy RaiseNewRequestEvent — NewAuthenticationRequest event on the request (opens the SetDecisionBeforeAssociation
