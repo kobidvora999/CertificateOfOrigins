@@ -12,7 +12,7 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
     public async Task<ExportDeclarationDetailsDto?> GetExportDeclarationDetailsForCertificateOfOrigion(int? leadDocumentId, string? exportDeclarationNumber)
     {
         // TODO(blocking): the ExportDealFile microservice is not yet stood up — confirm the endpoint name/route
-        // and switch this proxy to the real service (until then the mock is selected via x-mock-proxy).
+        // and switch this proxy to the real service (until then the mock is enabled via x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource("ExportDealFile/ExportDeclarationDetailsForCertificateOfOrigin");

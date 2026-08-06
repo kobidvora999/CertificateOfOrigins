@@ -18,11 +18,11 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "// Platform mock-proxy convention (C4): REAL proxies are the default; route the outbound proxy",
-          "// calls to the in-service mock during local/test runs via the x-mock-proxy header. The framework",
-          "// parses a single comma-separated header, so set ONE header (upsert per-interface would overwrite,",
-          "// leaving only the last interface mocked and the others hitting the real service).",
-          "pm.request.headers.upsert({ key: 'x-mock-proxy', value: ['ICustomerProxy', 'IVendorProxy', 'IExportDealFileProxy', 'IUserProxy', 'IDataDictionaryFieldProxy', 'ICurrencyTypeProxy', 'IDocumentsProxy', 'ICollateralProxy', 'ITasksProxy', 'IMessageManagementProxy'].join(',') });"
+          "// Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single",
+          "// global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test",
+          "// runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario",
+          "// mock flags still use 'x-mock-feature--{Feature}' (double dash).",
+          "pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });"
         ]
       }
     }
@@ -791,6 +791,37 @@
               "path": [
                 "AuthenticationRequest",
                 "SaveImportAuthenticationRequest"
+              ]
+            }
+          }
+        },
+        {
+          "name": "SaveAuthenticationRequestFile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"authenticationFileStatusId\": 5,\n  \"originalAuthenticationFileStatusId\": 2,\n  \"notes\": null,\n  \"postalAdress\": \"gg\",\n  \"deliveryMethodId\": 1,\n  \"emailAdress\": null,\n  \"reminderMethodId\": 1,\n  \"requestCountryId\": 32,\n  \"userId\": 5,\n  \"userNameIssuingLetter\": \"ss\",\n  \"lastDelivery\": null,\n  \"importerContactingReasonId\": null,\n  \"firstProvideContactDate\": null,\n  \"organizationUnitId\": 1,\n  \"requests\": [\n    {\n      \"documentId\": 900500,\n      \"authenticationFileId\": 1,\n      \"decisionId\": 3,\n      \"originalRequestDecisionId\": 1,\n      \"documentIssuingDate\": \"2024-01-01T00:00:00+02:00\",\n      \"organizationUnitId\": 1,\n      \"userId\": 5,\n      \"userResponseId\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/SaveAuthenticationRequestFile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "SaveAuthenticationRequestFile"
               ]
             }
           }

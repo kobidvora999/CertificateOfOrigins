@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 
 // The real ExportDealFile service is not yet stood up, so this mock is the practical default for local/test
-// runs (selected via x-mock-proxy). Default = a released declaration whose cargo has exited customs regulation
+// runs (enabled via x-mock-mode). Default = a released declaration whose cargo has exited customs regulation
 // (so LoadDataFromExportDeclaration can return true); feature "ExportDealFile.NotFound" flips to no details.
 [ExcludeFromCodeCoverage]
 public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileProxy, IMockProxy

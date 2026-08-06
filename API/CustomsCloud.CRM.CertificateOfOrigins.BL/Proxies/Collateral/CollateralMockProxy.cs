@@ -42,4 +42,26 @@ public class CollateralMockProxy(IProxyMockUtil mockUtil) : ICollateralProxy, IM
 
         return Task.CompletedTask;
     }
+
+    // Default = a single dummy collateral-request id; feature "Collateral.Empty" returns none.
+    public Task<List<int>?> GetCollateralRequestIdsByRelatedEntity(int entityType, int entityId)
+    {
+        if (mockUtil.HasMockFeature("Collateral.Empty"))
+        {
+            return Task.FromResult<List<int>?>([]);
+        }
+
+        return Task.FromResult<List<int>?>([(entityId * 10) + 1]); // TODO: dummy data
+    }
+
+    // No-op grant for local/testing; the "Collateral.GrantFail" feature simulates a transport failure.
+    public Task GrantAllCollateralRequests(List<GrantCollateralRequestDto> requests)
+    {
+        if (mockUtil.HasMockFeature("Collateral.GrantFail"))
+        {
+            throw new InvalidOperationException("Mock: Collateral GrantAllCollateralRequests failed.");
+        }
+
+        return Task.CompletedTask;
+    }
 }

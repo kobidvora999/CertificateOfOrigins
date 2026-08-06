@@ -4,6 +4,9 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 // — only the message types this service sends. Values are the source of truth from the platform enum (not invented).
 public enum EMessageTypes
 {
+    // File-level status-change notification for an import authentication-request file (SaveAuthenticationRequestFile).
+    ImportRequestDecision = 11102,
+
     // Rejection notification for an import authentication request.
     ImportRequestRejection = 11113,
 

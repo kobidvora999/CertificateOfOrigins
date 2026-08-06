@@ -489,6 +489,58 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
+    public async Task UpdateImportRequestDecision(int documentId, int? decisionId, bool isOldIndication, int userId)
+    {
+        // SaveAuthenticationRequestFile step 1 (UpdateAndSaveImportAuthenticationRequest): stamp each child request's
+        // decision + the recomputed IsOldIndication flag + update-audit. Set-based, no row loaded.
+        var now = DateTimeOffset.Now;
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.DecisionId, decisionId)
+                .SetProperty(r => r.IsOldIndication, isOldIndication)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+    }
+
+    public async Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId)
+    {
+        // SaveAuthenticationRequestFile step 4: persist the file's editable scalar columns + update-audit. Set-based
+        // (the repo write convention) — CreateDate/CreateUserId/State/TimeStamp are left untouched. Missing row → false.
+        var now = DateTimeOffset.Now;
+        var affected = await Context.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == file.Id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.AuthenticationFileStatusId, file.AuthenticationFileStatusId)
+                .SetProperty(f => f.Notes, file.Notes)
+                .SetProperty(f => f.PostalAdress, file.PostalAdress)
+                .SetProperty(f => f.DeliveryMethodId, file.DeliveryMethodId)
+                .SetProperty(f => f.EmailAdress, file.EmailAdress)
+                .SetProperty(f => f.ReminderMethodId, file.ReminderMethodId)
+                .SetProperty(f => f.RequestCountryId, file.RequestCountryId)
+                .SetProperty(f => f.UserId, file.UserId)
+                .SetProperty(f => f.UserNameIssuingLetter, file.UserNameIssuingLetter)
+                .SetProperty(f => f.LastDelivery, file.LastDelivery)
+                .SetProperty(f => f.ImporterContactingReasonId, file.ImporterContactingReasonId)
+                .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
+                .SetProperty(f => f.UpdateDate, now)
+                .SetProperty(f => f.UpdateUserId, userId));
+        return affected > 0;
+    }
+
+    public async Task UnlinkAllRequestsFromFile(int fileId, int userId)
+    {
+        // SaveAuthenticationRequestFile / CheckStatusAndOpenTask CancelledFile branch: detach every child request from
+        // the cancelled file (AuthenticationFileID → null) + stamp update-audit. Set-based.
+        var now = DateTimeOffset.Now;
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.AuthenticationFileId, (int?)null)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+    }
+
     public async Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds)
     {
         // The first of the given requests that already belongs to a file — drives the FileExistForRequest validation.

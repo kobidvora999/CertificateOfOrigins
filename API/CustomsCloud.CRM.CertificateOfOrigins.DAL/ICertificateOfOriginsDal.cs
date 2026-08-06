@@ -61,4 +61,10 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity);
 
     Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+
+    Task UpdateImportRequestDecision(int documentId, int? decisionId, bool isOldIndication, int userId);
+
+    Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId);
+
+    Task UnlinkAllRequestsFromFile(int fileId, int userId);
 }

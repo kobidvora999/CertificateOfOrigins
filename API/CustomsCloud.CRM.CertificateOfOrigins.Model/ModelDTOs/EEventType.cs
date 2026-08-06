@@ -41,4 +41,20 @@ public enum EEventType
     AuthenticationRequestRejected = 1516,
 
     ImportAuthenticationRequestProcessedWithWasRejected = 1990,
+
+    // Import authentication-request FILE save flow (SaveAuthenticationRequestFile). Per changed request:
+    // CloseAllTaskForImportAuthenticationRequest closes its open tasks, AuthenticationRequestDecisionUpdate logs the
+    // decision change. Per file-status change: AuthenticationRequestFileStatusUpdate logs it, HandleImportAuthenticationRequest
+    // opens the handling task, and the two UpdateFileStatus* events fire on the specific target statuses.
+    AuthenticationRequestFileStatusUpdate = 1281,
+
+    AuthenticationRequestDecisionUpdate = 1472,
+
+    CloseAllTaskForImportAuthenticationRequest = 1524,
+
+    HandleImportAuthenticationRequest = 1641,
+
+    UpdateFileStatusVendorReminderNotice = 1906,
+
+    UpdateFileStatusFinalDecisionInCase = 1915,
 }

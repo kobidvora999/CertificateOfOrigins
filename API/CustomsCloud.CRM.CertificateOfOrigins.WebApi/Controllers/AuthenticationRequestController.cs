@@ -179,13 +179,25 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
     // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
-    // updates the request row (Fetch & Merge). Missing request row → 404. A state-changing write with a body → POST.
-    // Returns the fresh graph (same shape as GetAuthenticationRequestByID).
+    // updates the request row (set-based). Missing request row → 404. A state-changing write with a body → POST.
+    // Returns the authoritative saved row (persisted scalar state, no enrichment collections).
     [HttpPost("SaveImportAuthenticationRequest")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
-    public async Task<ActionResult<GetAuthenticationRequestByIdResultDto>> SaveImportAuthenticationRequest([FromBody] SaveImportAuthenticationRequestRequestDto request)
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(SaveImportAuthenticationRequestResultDto))]
+    public async Task<ActionResult<SaveImportAuthenticationRequestResultDto>> SaveImportAuthenticationRequest([FromBody] SaveImportAuthenticationRequestRequestDto request)
     {
         var result = await BusinessLayer.SaveImportAuthenticationRequest(request);
+        return Ok(result);
+    }
+
+    // Internal WCF: SaveAuthenticationRequestFile(file) — saves an authentication file's central-decision review:
+    // persists each child request's decision, raises the per-request + per-file status events, sends the decision /
+    // status messages, and grants collaterals on approval. A state-changing write with a body → POST. Missing file
+    // row → 404. Returns the fully re-read file (same shape as GetAuthenticationRequestFileByID).
+    [HttpPost("SaveAuthenticationRequestFile")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]
+    public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> SaveAuthenticationRequestFile([FromBody] SaveAuthenticationRequestFileRequestDto request)
+    {
+        var result = await BusinessLayer.SaveAuthenticationRequestFile(request);
         return Ok(result);
     }
 }

@@ -791,10 +791,11 @@ public class AuthenticationRequestBl(
     // all collaterals are pushed to permanent (Collateral service) — collaterals are NOT a local child table; (2) the
     // decision switch raises the matching events (Tasks-service task checks reuse IsTaskExist) and, on a central
     // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
-    // additionally raises a rejection event assigning the opened task to the responder. The persist is Fetch & Merge on
-    // the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404. Returns the
-    // fresh graph (re-read via GetAuthenticationRequestByID, matching the sibling Save*).
-    public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
+    // additionally raises a rejection event assigning the opened task to the responder. The persist is a set-based
+    // update on the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404.
+    // Returns the authoritative saved row (light DAL projection re-read, no proxy enrichment — the SPA already holds
+    // the enrichment collections from the initial load).
+    public async Task<SaveImportAuthenticationRequestResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
     {
         // The first collateral supplies CollateralId; all collaterals are converted from temporary to permanent.
         if (request.Collaterals.Count > 0)
@@ -854,7 +855,7 @@ public class AuthenticationRequestBl(
                     .WithAdditionalInfo(request.DocumentId.ToString())
                     .Build();
                 await eventUtil.RaiseEvent(decisionEvent);
-                await SendDecisionMessage(request);
+                await SendDecisionMessage(request.DocumentId, request.DecisionId, request.AuthenticationFileId, request.UserId, request.UserResponseId);
                 break;
             }
         }
@@ -878,7 +879,7 @@ public class AuthenticationRequestBl(
             await eventUtil.RaiseEvent(rejectedEvent);
         }
 
-        // Persist (Fetch & Merge) — 404 if the request row is gone.
+        // Persist (set-based update) — 404 if the request row is gone.
         var userId = RequestMetadata.UserId ?? 0;
         var saved = await DataLayer.SaveImportAuthenticationRequest(request, userId);
         if (!saved)
@@ -886,8 +887,41 @@ public class AuthenticationRequestBl(
             throw new RestNotFoundException();
         }
 
-        // Return the fresh graph (re-read via GetAuthenticationRequestByID, matching the sibling Save*).
-        return await GetAuthenticationRequestByID(request.DocumentId);
+        // Return the authoritative saved row — a light DAL projection re-read (no proxy enrichment; the SPA already
+        // holds the enrichment collections from the initial load).
+        var savedRequest = await DataLayer.GetImportAuthenticationRequestById(request.DocumentId)
+            ?? throw new RestNotFoundException();
+        return BuildSaveImportResult(savedRequest);
+    }
+
+    // Maps the authoritative saved request row to its result — the persisted scalar state, without the read-only
+    // enrichment collections (decisions, item lines, document, task flags).
+    private static SaveImportAuthenticationRequestResultDto BuildSaveImportResult(CertificateOfOriginsImportAuthenticationRequest request)
+    {
+        return new SaveImportAuthenticationRequestResultDto
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = request.CreateDate,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            OrganizationUnitId = request.OrganizationUnitId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+        };
     }
 
     // Legacy RaiseNewRequestEvent — NewAuthenticationRequest event on the request (opens the SetDecisionBeforeAssociation
@@ -910,14 +944,15 @@ public class AuthenticationRequestBl(
     }
 
     // Legacy SendDecisionMessage — notifies the responder (and the creating user, if different) of the central
-    // decision (Message-Management service). Rejection uses a different message type + parameters.
-    private async Task SendDecisionMessage(SaveImportAuthenticationRequestRequestDto request)
+    // decision (Message-Management service). Rejection uses a different message type + parameters. Shared by
+    // SaveImportAuthenticationRequest (#31) and SaveAuthenticationRequestFile (#32, per changed child request).
+    private async Task SendDecisionMessage(int documentId, int? decisionId, int? authenticationFileId, int userId, int userResponseId)
     {
         // On creation UserID == UserResponseID; a later change makes them differ, so message both.
-        var userIds = new List<int> { request.UserResponseId };
-        if (request.UserId != request.UserResponseId)
+        var userIds = new List<int> { userResponseId };
+        if (userId != userResponseId)
         {
-            userIds.Add(request.UserId);
+            userIds.Add(userId);
         }
 
         var destinations = userIds.Select(id => new MessageDestinationDto { UserId = id }).ToList();
@@ -926,13 +961,13 @@ public class AuthenticationRequestBl(
         {
             RelatedEntity = new VirtualEntityDto
             {
-                Id = request.DocumentId,
+                Id = documentId,
                 EntityType = (int)EEntityType.ImportAuthenticationRequest,
             },
             MessageTypeId = (int)EMessageTypes.ImportRequestCentralDecision,
         };
 
-        switch (request.DecisionId)
+        switch (decisionId)
         {
             case (int)EAuthenticationRequestDecision.AuthenticationRequried:
             case (int)EAuthenticationRequestDecision.AuthenticationNeedless:
@@ -940,15 +975,15 @@ public class AuthenticationRequestBl(
             case (int)EAuthenticationRequestDecision.Partly:
             case (int)EAuthenticationRequestDecision.DemandAnotherClarification:
             {
-                var decisionName = await GetDecisionName(request.DecisionId ?? 0);
-                message.MessageParameters = [decisionName, request.DocumentId.ToString()];
+                var decisionName = await GetDecisionName(decisionId ?? 0);
+                message.MessageParameters = [decisionName, documentId.ToString()];
                 break;
             }
 
             case (int)EAuthenticationRequestDecision.Rejection:
             {
                 message.MessageTypeId = (int)EMessageTypes.ImportRequestRejection;
-                message.MessageParameters = [request.DocumentId.ToString(), request.AuthenticationFileId?.ToString() ?? string.Empty];
+                message.MessageParameters = [documentId.ToString(), authenticationFileId?.ToString() ?? string.Empty];
                 break;
             }
         }
@@ -960,7 +995,7 @@ public class AuthenticationRequestBl(
         }
         else
         {
-            message.UserIdToSendMessage = request.UserResponseId;
+            message.UserIdToSendMessage = userResponseId;
         }
 
         await messageManagementProxy.SendMessage(message);
@@ -987,6 +1022,266 @@ public class AuthenticationRequestBl(
             })
             .ToList();
         await collateralProxy.ChangeTempCollateralRequest(payload);
+    }
+
+    // Internal WCF: SaveAuthenticationRequestFile(file) — saves an authentication file's central-decision review. Per
+    // changed child request: raises close-tasks + decision-update events, sends the decision message, and (on Approval
+    // with collaterals) grants them. Per file-status change: opens/closes the file tasks, handles the cancel/reminder/
+    // final transitions, raises the file status-update event, and sends the file status message. Faithful to the WCF
+    // (developer decisions 2026-08-05): updates are set-based (trust-client); the file + requests pre-exist (UPDATE
+    // only); the legacy WPF-only AuthenticationFileStatusIDPrev guard is replaced by the load snapshot
+    // OriginalAuthenticationFileStatusId (kept fresh by the save re-read). Returns the fully re-read file.
+    public async Task<GetAuthenticationRequestFileByIdResultDto> SaveAuthenticationRequestFile(SaveAuthenticationRequestFileRequestDto request)
+    {
+        var userId = RequestMetadata.UserId ?? 0;
+
+        // 1. Persist every child request's decision + recomputed IsOldIndication (3+ years since issuing).
+        var threeYearsAgo = DateTimeOffset.Now.AddYears(-3);
+        foreach (var child in request.Requests)
+        {
+            var isOldIndication = child.DocumentIssuingDate <= threeYearsAgo;
+            await DataLayer.UpdateImportRequestDecision(child.DocumentId, child.DecisionId, isOldIndication, userId);
+        }
+
+        // 2. Per changed child: events + decision message (+ grant collaterals on approval).
+        await ManageRequestStatus(request);
+
+        // 3. File-status change: tasks + status events/message.
+        await ManageFileStatus(request);
+
+        // 4. Persist the file's own scalar edits — 404 if the file row is gone.
+        var saved = await DataLayer.UpdateAuthenticationFile(request, userId);
+        if (!saved)
+        {
+            throw new RestNotFoundException();
+        }
+
+        // 5. Return the fully re-read file (the legacy returns GetAuthenticationRequestFileByID(id)).
+        return await GetAuthenticationRequestFileByID(request.Id);
+    }
+
+    // Legacy ManageImportAuthenticationRequestStatus — for each child whose decision changed vs the load snapshot:
+    // close its open tasks (unless "another clarification"), send the decision message, grant collaterals on approval,
+    // and log the decision change.
+    private async Task ManageRequestStatus(SaveAuthenticationRequestFileRequestDto request)
+    {
+        var eventUtil = Resolve<IEventUtil>();
+        foreach (var child in request.Requests)
+        {
+            if (child.DecisionId == child.OriginalRequestDecisionId)
+            {
+                continue;
+            }
+
+            var collateralIds = await collateralProxy.GetCollateralRequestIdsByRelatedEntity(
+                (int)EEntityType.ImportAuthenticationRequest, child.DocumentId) ?? [];
+
+            if (child.DecisionId != (int)EAuthenticationRequestDecision.DemandAnotherClarification)
+            {
+                var closeTasks = eventUtil.CreatBuilder()
+                    .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequest)
+                    .WithEntityId(child.DocumentId)
+                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithTitle(child.DocumentId.ToString())
+                    .WithOrganizationUnitId(child.OrganizationUnitId);
+                if (child.AuthenticationFileId.HasValue)
+                {
+                    closeTasks = closeTasks.AddRelatedEntity(child.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
+                }
+
+                await eventUtil.RaiseEvent(closeTasks.Build());
+            }
+
+            await SendDecisionMessage(child.DocumentId, child.DecisionId, child.AuthenticationFileId, child.UserId, child.UserResponseId);
+
+            // Legacy quirk preserved: the grant's EntityID is the FILE id (with EntityType ImportAuthenticationRequest).
+            if (child.DecisionId == (int)EAuthenticationRequestDecision.Approval && collateralIds.Count > 0)
+            {
+                await collateralProxy.GrantAllCollateralRequests(
+                [
+                    new GrantCollateralRequestDto
+                    {
+                        EntityId = request.Id,
+                        EntityTypeId = (int)EEntityType.ImportAuthenticationRequest,
+                    },
+                ]);
+            }
+
+            await RaiseRequestDecisionUpdateEvent(eventUtil, child);
+        }
+    }
+
+    // Legacy RaiseEventForAuthenticationRequest — logs the decision change on the request (AdditionalInfo = decision
+    // name + acting user + date). The file, if any, is a related entity.
+    private async Task RaiseRequestDecisionUpdateEvent(IEventUtil eventUtil, SaveAuthenticationRequestFileChildDto child)
+    {
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.AuthenticationRequestDecisionUpdate)
+            .WithEntityId(child.DocumentId)
+            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithTitle(child.DocumentId.ToString());
+        if (child.AuthenticationFileId.HasValue)
+        {
+            builder = builder.AddRelatedEntity(child.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
+        }
+
+        if (child.DecisionId.HasValue)
+        {
+            var decisionName = await GetDecisionName(child.DecisionId.Value);
+            builder = builder.WithAdditionalInfo(FormatStatusUpdateInfo(decisionName));
+        }
+
+        await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    // Legacy ManageImportAuthenticationFileStatus — only when the file status changed vs the load snapshot: open/close
+    // the file tasks, handle the cancel/reminder/final transitions, then raise the file status-update event + message.
+    private async Task ManageFileStatus(SaveAuthenticationRequestFileRequestDto request)
+    {
+        if (request.AuthenticationFileStatusId == request.OriginalAuthenticationFileStatusId)
+        {
+            return;
+        }
+
+        var eventUtil = Resolve<IEventUtil>();
+        var userId = RequestMetadata.UserId ?? 0;
+
+        await CheckStatusAndOpenTask(eventUtil, request, userId);
+
+        if (request.AuthenticationFileStatusId != (int)EAuthenticationFileStatus.ClarificationRequired)
+        {
+            var closeFileTasks = eventUtil.CreatBuilder()
+                .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
+                .WithEntityId(request.Id)
+                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithTitle(request.Id.ToString())
+                .WithOrganizationUnitId(request.OrganizationUnitId)
+                .Build();
+            await eventUtil.RaiseEvent(closeFileTasks);
+        }
+
+        foreach (var child in request.Requests.Where(c => c.DecisionId == (int)EAuthenticationRequestDecision.Rejection))
+        {
+            var rejected = eventUtil.CreatBuilder()
+                .WithEventType((int)EEventType.AuthenticationRequestRejected)
+                .WithEntityId(child.DocumentId)
+                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithTitle(child.DocumentId.ToString())
+                .WithOrganizationUnitId(child.OrganizationUnitId)
+                .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
+                .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
+                .Build();
+            await eventUtil.RaiseEvent(rejected);
+        }
+
+        await RaiseFileStatusUpdateEvent(eventUtil, request);
+        await RaiseStatusMessage(request);
+    }
+
+    // Legacy CheckStatusAndOpenTask — status-specific side effects: open the handling task for the answer/clarification
+    // statuses (or when any child is a partial decision); on cancellation detach the child requests; and fire the
+    // vendor-reminder / final-decision events on those specific target statuses (the legacy WPF-only "Prev" guard is
+    // dropped — the enclosing status-changed check already ensures a real transition).
+    private async Task CheckStatusAndOpenTask(IEventUtil eventUtil, SaveAuthenticationRequestFileRequestDto request, int userId)
+    {
+        var openTaskStatuses = new[]
+        {
+            (int)EAuthenticationFileStatus.ReceivedAnswerInFile,
+            (int)EAuthenticationFileStatus.RightAuthenticationAnswer,
+            (int)EAuthenticationFileStatus.ClarificationRequired,
+            (int)EAuthenticationFileStatus.WrongAuthenticationAnswer,
+        };
+        if (openTaskStatuses.Contains(request.AuthenticationFileStatusId)
+            || request.Requests.Any(c => c.DecisionId == (int)EAuthenticationRequestDecision.Partly))
+        {
+            var handle = eventUtil.CreatBuilder()
+                .WithEventType((int)EEventType.HandleImportAuthenticationRequest)
+                .WithEntityId(request.Id)
+                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithTitle(request.Id.ToString())
+                .WithOrganizationUnitId(request.OrganizationUnitId)
+                .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
+                .Build();
+            await eventUtil.RaiseEvent(handle);
+        }
+
+        if (request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.CancelledFile)
+        {
+            await DataLayer.UnlinkAllRequestsFromFile(request.Id, userId);
+        }
+
+        if (request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend)
+        {
+            await RaiseFileEvent(eventUtil, request, (int)EEventType.UpdateFileStatusVendorReminderNotice);
+        }
+
+        if (request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.ReceivedAnswerInFile)
+        {
+            await RaiseFileEvent(eventUtil, request, (int)EEventType.UpdateFileStatusFinalDecisionInCase);
+        }
+    }
+
+    // A bare file-scoped event (VirtualEntity(file)) — used for the vendor-reminder / final-decision transitions.
+    private static async Task RaiseFileEvent(IEventUtil eventUtil, SaveAuthenticationRequestFileRequestDto request, int eventTypeId)
+    {
+        var evt = eventUtil.CreatBuilder()
+            .WithEventType(eventTypeId)
+            .WithEntityId(request.Id)
+            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithTitle(request.Id.ToString())
+            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .Build();
+        await eventUtil.RaiseEvent(evt);
+    }
+
+    // Legacy RaiseEventForFile — logs the file status change (AdditionalInfo = file-status name + acting user + date).
+    private async Task RaiseFileStatusUpdateEvent(IEventUtil eventUtil, SaveAuthenticationRequestFileRequestDto request)
+    {
+        var statusName = await GetFileStatusName(request.AuthenticationFileStatusId);
+        var evt = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.AuthenticationRequestFileStatusUpdate)
+            .WithEntityId(request.Id)
+            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithTitle(request.Id.ToString())
+            .WithAdditionalInfo(FormatStatusUpdateInfo(statusName))
+            .Build();
+        await eventUtil.RaiseEvent(evt);
+    }
+
+    // Legacy RaiseStatusMessage — notifies the file's issuing user of the new file status (Message-Management service).
+    private async Task RaiseStatusMessage(SaveAuthenticationRequestFileRequestDto request)
+    {
+        var statusName = await GetFileStatusName(request.AuthenticationFileStatusId);
+        var message = new SendMessageDto
+        {
+            RelatedEntity = new VirtualEntityDto
+            {
+                Id = request.Id,
+                EntityType = (int)EEntityType.AuthenticationRequestFile,
+            },
+            MessageTypeId = (int)EMessageTypes.ImportRequestDecision,
+            MessageParameters = [request.Id.ToString(), statusName],
+            MultipleMessageDestinations = [new MessageDestinationDto { UserId = request.UserId }],
+        };
+        await messageManagementProxy.SendMessage(message);
+    }
+
+    // Legacy SystemTablesUtil.GetCodeById<CertificateOfOriginsAuthenticationFileStatus>(id).Name — the file-status
+    // Hebrew name from the enum_AuthenticationFileStatus lookup table.
+    private async Task<string> GetFileStatusName(int statusId)
+    {
+        var statuses = await DataLayer.GetAllFileStatuses();
+        return statuses.FirstOrDefault(s => s.Id == statusId)?.Name ?? string.Empty;
+    }
+
+    // Legacy AdditionalInfo string on the status/decision events: "עודכן הסטאטוס ל{name} על ידי {user} בתאריך {date} ".
+    private string FormatStatusUpdateInfo(string name)
+    {
+        return string.Format(
+            "עודכן הסטאטוס ל{0} על ידי {1} בתאריך {2} ",
+            name,
+            RequestMetadata.Fullname,
+            DateTime.Today.ToShortDateString());
     }
 
     #region LEGACY_WCF

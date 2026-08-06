@@ -23,9 +23,10 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddBusinessLayer<AuthenticationRequestBl>();
         services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
 
-        // Platform mock-proxy convention: REAL is the default; a request selects the mock per interface via the
-        // x-mock-proxy header. TODO(blocking): verify the real Customers endpoint (CustomersByIds) before ROLLOUT.
-        services.AddHttpProxy();  // IHttpProxy for the real proxies (BaseCustomsProxy) + IProxyMockUtil + per-request mock selection
+        // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a request
+        // enables ALL in-service mocks via the single global header 'x-mock-mode: x-mock-mode' (IMockUtil.IsMockMode).
+        // TODO(blocking): verify the real Customers endpoint (CustomersByIds) before ROLLOUT.
+        services.AddHttpProxy();  // IHttpProxy for the real proxies (BaseCustomsProxy) + IProxyMockUtil + global mock-mode selection
         services.AddProxy<ICustomerProxy, CustomerProxy, CustomerMockProxy>();
 
         // TODO(blocking): verify the real Vendors endpoint (VendorsByIds) before ROLLOUT.
@@ -37,7 +38,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddProxy<IUserProxy, UserProxy, UserMockProxy>();
 
         // TODO(blocking): the ExportDealFile microservice is not yet stood up — the mock is the practical
-        // default (selected via x-mock-proxy); switch to the real endpoint once it exists.
+        // default (enabled via x-mock-mode); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
 
         // Web-query field labels for GetCertificateRequestByGuid — legacy read them from SystemTables DataDictionaryField

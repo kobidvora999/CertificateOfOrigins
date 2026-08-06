@@ -30,4 +30,25 @@ public class CollateralProxy(IHttpProxy httpProxy)
             .AddBody(requests);
         await ExecuteAsync(req);
     }
+
+    // Legacy: ICollateralServiceAdapter.GetCollateralRequestIDsByRelatedEntityDTO(...) — the collateral-request ids on
+    // an entity (SaveAuthenticationRequestFile).
+    public async Task<List<int>?> GetCollateralRequestIdsByRelatedEntity(int entityType, int entityId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"Collateral/CollateralRequestIdsByEntity/{entityType}/{entityId}"); // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<List<int>>();
+    }
+
+    // Legacy: ICollateralServiceAdapter.GrantAllCollateralRequests(list) — grants all collateral requests on the entity.
+    public async Task GrantAllCollateralRequests(List<GrantCollateralRequestDto> requests)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Collateral/GrantAllCollateralRequests") // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .AddBody(requests);
+        await ExecuteAsync(req);
+    }
 }
