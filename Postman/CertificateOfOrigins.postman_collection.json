@@ -22,7 +22,9 @@
           "// global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test",
           "// runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario",
           "// mock flags still use 'x-mock-feature--{Feature}' (double dash).",
-          "pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });"
+          "pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });",
+          "// Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.",
+          "pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });"
         ]
       }
     }
