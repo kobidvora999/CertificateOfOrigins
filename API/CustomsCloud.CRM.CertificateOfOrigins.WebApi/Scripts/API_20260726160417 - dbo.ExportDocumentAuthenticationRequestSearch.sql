@@ -8,6 +8,8 @@
 --       - StockPileData.Customers_Customer (RequestIssuerName)       -> ICustomerProxy (raw ExporterCustomerId added)
 --     Local JOINs kept: enum DocumentType (DocumentTypeName), enum ExportAuthenticationRequestStatus
 --     (RequestStatusName), OUTER APPLY link-table (ExportDeclarationTitle).
+--     The removed INNER JOINs also FILTERED rows (excluded NULL/unmatched CountryID + ExporterCustomerID); that
+--     row-membership is preserved by the IS NOT NULL guards in @Where (see below) so the result set matches legacy.
 --   * FTS CONTAINS(InvoiceNumbers) -> LIKE (no full-text catalog locally; restores legacy's commented original).
 --   * MainDocumentTitle predicate parameterized (was inlined literal).
 --   * Removed WITH EXECUTE AS OWNER, READ UNCOMMITTED, and the SSMS Customs_DBA.Script.usp_PrintNvarcharMax block.
@@ -68,7 +70,12 @@ FROM    CRM.CertificateOfOrigins_ExportDocumentAuthenticationRequest EAR
                      ORDER BY coocedarld.ID ) LDT';
 
     SET @Where = N'
-WHERE   1 = 1';
+WHERE   1 = 1
+        -- Preserve the row-filtering of the removed cross-service INNER JOINs: they excluded rows whose (nullable)
+        -- CountryID / ExporterCustomerID was NULL. CustomerID is NOT NULL, so its INNER JOIN excluded no rows.
+        AND EAR.CountryID IS NOT NULL
+        AND EAR.ExporterCustomerID IS NOT NULL
+';
 
     SELECT @Filter += CASE WHEN Filter != '' THEN '   AND ('+Filter+') ' ELSE '' END
     FROM (

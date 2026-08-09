@@ -71,6 +71,12 @@ certificateToCancel.IsLastVersion = false;                                      
 **התיקון:** לבטל/לנקות IsLastVersion תמיד; לגדר רק את שיוך ה-replacement-id.
 **כלל:** למפות כל משמר legacy **בדיוק** לשורות שהוא עוטף — לא להרחיב `if(X){a;} b; c;` ל-`if(X){a;b;c;}`.
 
+### B4 — INNER JOIN חוצה-שירות שהוסר מ-SP, בלי לשמר את סינון-השורות (search SP, MED, SQL)
+לגאסי `usp_..._ExportDocumentAuthenticationRequestSearch` השתמש ב-3 `INNER JOIN` חוצי-סכימה (Country/Customer/ExporterCustomer).
+**הבאג:** ההמרה הסירה את ה-JOINs (הטבלאות שייכות לשירותים אחרים; עמודות-השם הועברו ל-proxy/lookup enrichment) — **נכון** לגבי העמודות, אבל ל-`INNER JOIN` יש **שתי** השפעות: (א) חשיפת עמודות, ו-(ב) **סינון שורות** (החרגת שורות שה-FK שלהן NULL/לא-תואם). ההמרה שימרה (א) והשמיטה בשקט את (ב). כיוון ש-CountryID/ExporterCustomerID nullable → שורות עם FK ריק שהלגסי החריג התחילו להופיע (הוכחה חיה: שורה 1003). CustomerID הוא NOT NULL → ה-JOIN שלו לא החריג כלום.
+**התיקון:** `AND EAR.CountryID IS NOT NULL AND EAR.ExporterCustomerID IS NOT NULL` ב-`@Where` (שקול ל-INNER JOIN על FK nullable). ⚠️ ב-dynamic SQL — לוודא שה-`@Where` מסתיים ב-newline כדי לא להידבק ל-`@Filter`/`@OrderBy` (נתקלנו ב-`NULLORDER`).
+**כלל:** בהמרת SP שמסיר JOIN חוצה-שירות — לסווג `LEFT` (עמודות בלבד → בטוח) מול `INNER` (**גם מסנן** → לשמר `AND fk IS NOT NULL`/EXISTS). לאמת set-membership (כמה/אילו שורות), לא רק עמודות.
+
 ---
 
 ## C. היקף דחייה
@@ -92,13 +98,15 @@ certificateToCancel.IsLastVersion = false;                                      
 ---
 
 ## המלצת עדכון סקילים (קונקרטי)
-1. **`_shared/bl-rules.md`** — תת-פרק חדש **"נאמנות זרימת-בקרה ומצב (legacy stateful → .NET 10 stateless)"** עם 6 הכללים (A1, A2, B1, B2, B3, C1), משפט-פתיחה = "התמה המאחדת" למעלה.
-2. **`net10-code-review`** — צ'קליסט:
+1. **`_shared/bl-rules.md`** — תת-פרק חדש **"נאמנות זרימת-בקרה ומצב (legacy stateful → .NET 10 stateless)"** עם הכללים A1, A2, B1, B2, B3, C1, משפט-פתיחה = "התמה המאחדת" למעלה.
+2. **`db-proc`** — כלל B4: בהמרת SP שמסיר JOIN חוצה-שירות, לסווג `LEFT` (עמודות → בטוח) מול `INNER` (**גם מסנן** → לשמר `AND fk IS NOT NULL`/EXISTS על FK nullable); לאמת set-membership, לא רק עמודות. ⚠️ ב-dynamic SQL — `@Where` חייב להסתיים ב-newline (הימנעות מ-`NULLORDER`).
+3. **`net10-code-review`** — צ'קליסט:
    - [ ] כל `ChangeTracker.OriginalValues`/`IsNewInstance` — שני הענפים שוחזרו (`Id==0`)?
    - [ ] אירוע שמפנה ליישות חדשה — קם **אחרי** ה-save?
    - [ ] כל `!X.Any(...)` — משמרי-הריקות של הלגסי נשמרו?
    - [ ] כל null-guard סביב proxy/lookup — null/ריק מתנהג כמו בלגסי (דילוג מול הפרה)?
    - [ ] כל משמר legacy — ממופה בדיוק לשורות שהוא עוטף (לא הורחב)?
+   - [ ] SP שהוסר ממנו `INNER JOIN` חוצה-שירות — שומר `AND fk IS NOT NULL`/EXISTS (set-membership)?
    - [ ] payload שמורכב מ-value דחוי (resx) — המבנה נבנה עם placeholder ולא דולג?
    - [ ] כל ממצא-השמטה — אומת מול אתר-הקריאה האמיתי (guards / פרמטרים null)?
-3. **`wcf-migrate`** — הפניה לתת-הפרק החדש בשלב BATCH 3 (שחזור גוף ה-BL לפי BODY_SEQUENCE).
+4. **`wcf-migrate`** — הפניה לתת-הפרק החדש בשלב BATCH 3 (שחזור גוף ה-BL לפי BODY_SEQUENCE).
