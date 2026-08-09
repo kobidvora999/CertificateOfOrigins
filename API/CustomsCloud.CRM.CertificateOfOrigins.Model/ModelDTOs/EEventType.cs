@@ -57,4 +57,37 @@ public enum EEventType
     UpdateFileStatusVendorReminderNotice = 1906,
 
     UpdateFileStatusFinalDecisionInCase = 1915,
+
+    // Certificate-of-origin save flow (SaveCertificateOfOrigin) — application received/corrected, user deny/approve/
+    // cancel, certificate issued/replaced, and the declaration match/mismatch + new-certificate events. Values are
+    // the source of truth from the platform enum (verified 2026-08-06).
+    CertificateOfOriginNewCertificateOfOriginCreated = 599,
+
+    CertificateOfOriginApplicationReceived = 609,
+
+    CertificateOfOriginApplicationCorrected = 610,
+
+    CertificateOfOriginUserDeniedCertificate = 636,
+
+    CertificateOfOriginUserApprovedCertificate = 637,
+
+    CertificateOfOriginUserCancelledCertificate = 638,
+
+    CertificateOfOriginCertificateReplaced = 639,
+
+    CertificateOfOriginCertificateIssued = 640,
+
+    CertificateOfOriginCertificateMatchDeclaration = 642,
+
+    CertificateOfOriginCertificateDeclarationMismatch = 643,
+
+    CertificateMatchDeclarationWithoutTask = 1913,
+
+    NewCertificateOfOriginCreatedWithoutTask = 1914,
+
+    // Certificate-vs-declaration reconciliation (UpdateCertificateOfOrigins): declaration-has-warnings (mismatch with
+    // warnings) + open the import-certificate-replacement handling task.
+    CertificateOfOriginCertificateDeclarationHasWarnings = 2171,
+
+    OpenTaskHandlingTheReplacementOfAnImportCertificate = 2172,
 }

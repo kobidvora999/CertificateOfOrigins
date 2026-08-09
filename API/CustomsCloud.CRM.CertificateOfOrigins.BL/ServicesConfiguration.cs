@@ -6,6 +6,7 @@ using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
+using CustomsCloud.InfrastructureCore.Queue;
 using Lookup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,17 @@ public class ServicesConfiguration : IServicesConfiguration
         // the Common service). TODO(blocking): verify the real Message-Management (Message/SendMessage) endpoint before ROLLOUT.
         services.AddProxy<IMessageManagementProxy, MessageManagementProxy, MessageManagementMockProxy>();
 
+        // SaveCertificateOfOrigin (#33) outbound proxies — the trade-agreement (CustomsBook), QR-code, Templates and
+        // org-unit services are not yet stood up, so the mocks are the practical default (via x-mock-mode).
+        // TODO(blocking): confirm each owning microservice + endpoint route before ROLLOUT.
+        services.AddProxy<ICustomsBookProxy, CustomsBookProxy, CustomsBookMockProxy>();
+        services.AddProxy<ICommonServicesProxy, CommonServicesProxy, CommonServicesMockProxy>();
+        services.AddProxy<IOrganizationUnitProxy, OrganizationUnitProxy, OrganizationUnitMockProxy>();
+
+        // UpdateCertificateOfOrigins reconciliation: the SystemTables CountryCountryGroup membership lookup used for the
+        // destination / origin country-group agreement checks. TODO(blocking): confirm the endpoint route before ROLLOUT.
+        services.AddProxy<ICountryGroupProxy, CountryGroupProxy, CountryGroupMockProxy>();
+
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
@@ -76,9 +88,21 @@ public class ServicesConfiguration : IServicesConfiguration
         // — resolved lazily via IDocumentUtil.
         services.AddDocumentUtil();
 
+        // Issue-by-worker publishing for SaveCertificateOfOrigin (was QueueUtilFactory → the IssueCertificateOfOrigin
+        // RabbitMQ exchange) — resolved lazily via IQueueUtil.
+        services.AddQueueUtil();
+
+        // Certificate template rendering (EUR1 pilot) — the Templates module renders {Name}.docx + {Name}.yml from the
+        // JSON produced by GetTemplateData. Rendered via ITemplateUtil (not a REST proxy).
+        services.AddTemplateUtil();
+
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
+
+        // Detail id→name display enrichment for SaveCertificateOfOrigin (city via ILookupUtil). No lookup type exists
+        // for country-group / international-site — those id→name lookups need a SystemTables proxy (rollout TODO).
+        services.AddLookup<City>();
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
         services.AddLookup<DocumentType>();

@@ -9,4 +9,8 @@ public interface ICustomerProxy
     Task<CustomerDto?> GetCustomerInformation(int customerId);
 
     Task<List<CustomerDto>?> GetCustomersByCountry(int countryId);
+
+    // Legacy: servicesAdapter.GetCustomerIDByExternalID(externalId) (SaveCertificateOfOrigin, ExporterId validation) —
+    // the internal customer id for an external customer id, or null when the customer is unknown.
+    Task<int?> GetCustomerIdByExternalId(string externalId);
 }

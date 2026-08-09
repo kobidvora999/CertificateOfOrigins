@@ -14,6 +14,16 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOrigin> CertificateOfOrigins { get; set; }
 
+    public virtual DbSet<CertificateOfOriginDetails> CertificateOfOriginDetails { get; set; }
+
+    public virtual DbSet<CertificateOfOriginVsDeclarationError> CertificateOfOriginVsDeclarationErrors { get; set; }
+
+    public virtual DbSet<CertificateOfOriginInvoiceDetail> CertificateOfOriginInvoiceDetails { get; set; }
+
+    public virtual DbSet<CertificateOfOriginItemDetail> CertificateOfOriginItemDetails { get; set; }
+
+    public virtual DbSet<CertificateOfOriginTypeCode> CertificateOfOriginTypeCodes { get; set; }
+
     public virtual DbSet<VerificationProhibitedImporters> VerificationProhibitedImporters { get; set; }
 
     public virtual DbSet<ExportDocumentAuthenticationRequest> ExportDocumentAuthenticationRequests { get; set; }

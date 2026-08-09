@@ -20,6 +20,266 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    // Generic template-data reader for the whole microservice (one per repo). Calls the generic template SP with
+    // @EntityID + @TemplateTypeID and folds any extra single-row result-sets into the primary row (a null target slot
+    // is filled from a later set, so set-1 values are never clobbered).
+    // TODO(SP contract, db-proc): a multi-row set (e.g. the EUR1 goods-item lines → GoodsItems) is NOT populated by
+    // this single-row merge — it needs its own read/handling once the SP's result-sets are defined.
+    public async Task<T?> GetTemplateData<T>(int templateId, int entityId)
+        where T : class
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@EntityID", entityId, DbType.Int32);
+        parameters.Add("@TemplateTypeID", templateId, DbType.Int32);
+
+        var connection = ReadOnlyContext.Database.GetDbConnection();
+        var command = new CommandDefinition(
+            "dbo.usp_Template_INNER_CROSS_CertificateOfOrigin",
+            parameters,
+            commandType: CommandType.StoredProcedure);
+
+        using var grid = await connection.QueryMultipleAsync(command);
+        var primary = (await grid.ReadAsync<T>()).FirstOrDefault();
+        while (primary != null && !grid.IsConsumed)
+        {
+            var extra = (await grid.ReadAsync<T>()).FirstOrDefault();
+            if (extra != null)
+            {
+                MergeNonNull(primary, extra);
+            }
+        }
+
+        return primary;
+    }
+
+    // Copy a source property into target only when the target slot is still null, so real values from result-set 1
+    // are never overwritten by the default (null) slots of a later single-row set.
+    private static void MergeNonNull<T>(T target, T source)
+    {
+        foreach (var property in typeof(T).GetProperties())
+        {
+            if (!property.CanRead || !property.CanWrite)
+            {
+                continue;
+            }
+
+            var incoming = property.GetValue(source);
+            if (incoming != null && property.GetValue(target) == null)
+            {
+                property.SetValue(target, incoming);
+            }
+        }
+    }
+
+    public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
+    {
+        // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance
+        // supersedes). Projected to the columns the cancel-previous-version logic needs.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.CertificateNumber == certificateNumber)
+            .OrderByDescending(c => c.Id)
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                VersionNumber = c.VersionNumber,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId)
+    {
+        // Upsert the certificate (Id == 0 → insert with fresh audit, else update via the round-tripped TimeStamp for
+        // concurrency, preserving the immutable audit columns), then DIFF-MERGE its detail rows by surrogate id.
+        var now = DateTime.Now;
+        if (entity.Id == 0)
+        {
+            entity.CreateDate = now;
+            entity.CreateUserId = userId;
+            entity.UpdateDate = now;
+            entity.UpdateUserId = userId;
+            Context.CertificateOfOrigins.Add(entity);
+        }
+        else
+        {
+            entity.UpdateDate = now;
+            entity.UpdateUserId = userId;
+            Context.CertificateOfOrigins.Update(entity);
+
+            // The round-tripped DTO does not carry the immutable audit columns, so Update would overwrite them with
+            // defaults (CreateDate = 0001-01-01 → SqlDateTime overflow). Keep the existing DB values.
+            Context.Entry(entity).Property(e => e.CreateDate).IsModified = false;
+            Context.Entry(entity).Property(e => e.CreateUserId).IsModified = false;
+        }
+
+        await Context.SaveChangesAsync();
+
+        foreach (var detail in details)
+        {
+            detail.CertificateOfOriginId = entity.Id;
+        }
+
+        await MergeChildrenAsync(
+            details,
+            Context.Set<CertificateOfOriginDetails>().Where(d => d.CertificateOfOriginId == entity.Id),
+            detail => detail.Id);
+        await Context.SaveChangesAsync();
+
+        return entity.Id;
+    }
+
+    public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
+    {
+        // UpdateCertificateOfOrigins: the certificates to reconcile against the export declaration. Projected to the
+        // columns the reconciler reads.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                TypeId = c.TypeId,
+                CertificateNumber = c.CertificateNumber,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                RequestReasonCode = c.RequestReasonCode,
+                LeadDocumentId = c.LeadDocumentId,
+                ExportDeclarationNumber = c.ExportDeclarationNumber,
+                OrganizationUnitId = c.OrganizationUnitId,
+                RejectCancelReason = c.RejectCancelReason,
+                CreateDate = c.CreateDate,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateReconcileInvoiceDto>> GetCertificateInvoiceDetailsByCertificateIds(List<int> certificateIds)
+    {
+        // UpdateCertificateOfOrigins reconciliation: each certificate invoice + its goods items' customs-item ids (the
+        // certificate side of the invoice / goods-item matching against the export declaration).
+        var result = await ReadOnlyContext.CertificateOfOriginInvoiceDetails
+            .Where(invoice => certificateIds.Contains(invoice.CertificateOfOriginId))
+            .Select(invoice => new CertificateReconcileInvoiceDto
+            {
+                CertificateOfOriginId = invoice.CertificateOfOriginId,
+                InvoiceNumber = invoice.InvoiceNumber,
+                CustomsItemIds = ReadOnlyContext.CertificateOfOriginItemDetails
+                    .Where(item => item.CertificateOfOriginInvoiceDetailId == invoice.Id && item.CustomsItemId.HasValue)
+                    .Select(item => item.CustomsItemId!.Value)
+                    .ToList(),
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<bool?> GetCertificateTypeIsCustomsItemMandatory(int certificateTypeId)
+    {
+        // UpdateCertificateOfOrigins reconciliation: whether the certificate type requires the customs-item (6-digit)
+        // match (legacy CertificateOfOriginsUtil.GetCertificateTypeCode(...).IsCustomsItemMandatory). Null (no row / bit
+        // NULL) means not mandatory.
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .Where(type => type.Id == certificateTypeId)
+            .Select(type => type.IsCustomsItemMandatory)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginDetails>> GetCertificateDetailsByCertificateIds(List<int> certificateIds)
+    {
+        // UpdateCertificateOfOrigins reconciliation: the certificates' detail rows (destination / origin country,
+        // exporter id, country groups) compared against the export declaration. Projected to the columns the validator
+        // reads. No navigation exists on CertificateOfOrigin, so the details are loaded here keyed by certificate id.
+        var result = await ReadOnlyContext.CertificateOfOriginDetails
+            .Where(d => certificateIds.Contains(d.CertificateOfOriginId))
+            .Select(d => new CertificateOfOriginDetails
+            {
+                Id = d.Id,
+                CertificateOfOriginId = d.CertificateOfOriginId,
+                CertificateDetailsTypeCodeId = d.CertificateDetailsTypeCodeId,
+                Value = d.Value,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts)
+    {
+        // UpdateCertificateOfOrigins: append one mismatch-log row per reconciliation error (append-only).
+        if (errorTexts.Count == 0)
+        {
+            return;
+        }
+
+        var rows = errorTexts
+            .Select(text => new CertificateOfOriginVsDeclarationError
+            {
+                CertificateOfOriginId = certificateOfOriginId,
+                ErrorText = text,
+                State = 1,
+            })
+            .ToList();
+        Context.Set<CertificateOfOriginVsDeclarationError>().AddRange(rows);
+        await Context.SaveChangesAsync();
+    }
+
+    public async Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId)
+    {
+        // UpdateCertificateOfOrigins: stamp the reconciled status + backfilled declaration link (+ reject reason on a
+        // mismatch) + update-audit. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, statusId)
+                .SetProperty(c => c.ExportDeclarationNumber, exportDeclarationNumber)
+                .SetProperty(c => c.LeadDocumentId, leadDocumentId)
+                .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId)
+    {
+        // SaveCertificateOfOrigin (publish): persist the issuing date + the issue-by-worker flag stamped after the main
+        // upsert (legacy PrintCertificateOfOriginAndSaveAttachments set these then Save(certificate)). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.IssuingDate, issuingDate)
+                .SetProperty(c => c.IsInPublishingProcess, isInPublishingProcess)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId)
+    {
+        // SaveCertificateOfOrigin (LinkLeadDocument): persist the lead-document + declaration-number backfill stamped
+        // after the main upsert (LinkLeadDocument needs the new certificate id, so it runs after the save). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.LeadDocumentId, leadDocumentId)
+                .SetProperty(c => c.ExportDeclarationNumber, exportDeclarationNumber)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId)
+    {
+        // SaveCertificateOfOrigin: when a new instance supersedes an existing certificate, cancel the old one
+        // (status → Cancelled, append the "update received" reason, drop IsLastVersion). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, (int)ECertificateOfOriginStatus.Cancelled)
+                .SetProperty(c => c.RejectCancelReason, c => (c.RejectCancelReason ?? string.Empty) + rejectCancelReasonSuffix)
+                .SetProperty(c => c.IsLastVersion, false)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
     public async Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId)
     {
         // GetAuthenticationRequestByID SP result-set #1 (main row), local table only — the legacy CRP.DealFile

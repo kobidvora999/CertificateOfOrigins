@@ -24,4 +24,11 @@ public class TasksMockProxy(IProxyMockUtil mockUtil) : ITasksProxy, IMockProxy
         }).ToList();
         return Task.FromResult<List<TaskExistResultDto>?>(result);
     }
+
+    // Default = an assessor (user 5) handles the lead document, so the mismatch task is assigned; feature
+    // "Tasks.NoAssessor" returns none so the HasWarnings event is raised without an assignment.
+    public Task<int?> GetLatestUserHandlingEntityTasksWithTaskUnification(LatestUserHandlingEntityTasksFilterDto filter)
+    {
+        return Task.FromResult<int?>(mockUtil.HasMockFeature("Tasks.NoAssessor") ? null : 5); // TODO: dummy data
+    }
 }

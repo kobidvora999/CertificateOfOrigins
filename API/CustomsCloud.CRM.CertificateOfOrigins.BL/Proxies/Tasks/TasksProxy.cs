@@ -20,4 +20,16 @@ public class TasksProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<TaskExistResultDto>>();
     }
+
+    public async Task<int?> GetLatestUserHandlingEntityTasksWithTaskUnification(LatestUserHandlingEntityTasksFilterDto filter)
+    {
+        // TODO(blocking): confirm endpoint name/route with the Tasks microservice. The real endpoint returns a
+        // LatestUserHandlingEntityTasksResult whose UserID is the assessor (legacy adapter returned result.UserID).
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("Task/LatestUserHandlingEntityTasksWithTaskUnification")
+            .AddBody(filter);
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<int?>();
+    }
 }

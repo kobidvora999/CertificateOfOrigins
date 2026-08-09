@@ -8,6 +8,9 @@ public interface ICertificateOfOriginsDal : IBaseDal
 {
     Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber);
 
+    Task<T?> GetTemplateData<T>(int templateId, int entityId)
+        where T : class;
+
     Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters);
 
     Task<List<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters);
@@ -67,4 +70,26 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId);
 
     Task UnlinkAllRequestsFromFile(int fileId, int userId);
+
+    Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
+
+    Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
+
+    Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
+
+    Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId);
+
+    Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId);
+
+    Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids);
+
+    Task<List<CertificateOfOriginDetails>> GetCertificateDetailsByCertificateIds(List<int> certificateIds);
+
+    Task<List<CertificateReconcileInvoiceDto>> GetCertificateInvoiceDetailsByCertificateIds(List<int> certificateIds);
+
+    Task<bool?> GetCertificateTypeIsCustomsItemMandatory(int certificateTypeId);
+
+    Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId);
+
+    Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts);
 }

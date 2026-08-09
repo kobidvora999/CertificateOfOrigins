@@ -106,4 +106,47 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.SaveCertificateOfOriginAttachments(request);
         return Ok(result);
     }
+
+    // Internal WCF: SaveCertificateOfOrigin(certificate) — inserts (Id == 0) or updates a certificate of origin + its
+    // detail rows: supersedes the previous version, validates/enriches the details, generates the QR + template
+    // attachments on publish, links the DealFile lead document, and raises the status-change events + feedback message.
+    // A state-changing write with a body → POST. Returns the fully re-read certificate graph (GetCertificateOfOriginById).
+    [HttpPost("SaveCertificateOfOrigin")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
+    public async Task<ActionResult<CertificateOfOriginDto>> SaveCertificateOfOrigin([FromBody] SaveCertificateOfOriginRequestDto request)
+    {
+        var result = await BusinessLayer.SaveCertificateOfOrigin(request);
+        return Ok(result);
+    }
+
+    // External WCF: UpdateCetrificateOfOrigins(dto) — the export-declaration → certificate reconciliation (a one-way
+    // DealFile event). Reconciles each certificate against the declaration: sets DeclarationMatch / Rejected, raises
+    // the matching event, and re-prints the draft. A state-changing write with a body → POST. The legacy contract is
+    // one-way/void; here the reconciliation errors are surfaced (developer decision) — empty list when all matched.
+    [HttpPost("UpdateCertificateOfOrigins")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<CertificateOfOriginExceptionDto>))]
+    public async Task<ActionResult<List<CertificateOfOriginExceptionDto>>> UpdateCertificateOfOrigins([FromBody] UpdateCertificateOfOriginsRequestDto request)
+    {
+        var result = await BusinessLayer.UpdateCertificateOfOrigins(request);
+        return Ok(result);
+    }
+
+    // Generic template-data endpoint (one per microservice): the merged PrintTemplateDto (structure + values) for a
+    // template id + certificate id. Route-style single resource → missing entity is a 404 (BL throws RestNotFoundException).
+    [HttpGet("TemplateData/{templateId}/{entityId}")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(PrintTemplateDto))]
+    public async Task<ActionResult<PrintTemplateDto>> TemplateData([FromRoute] int templateId, [FromRoute] int entityId)
+    {
+        var result = await BusinessLayer.GetTemplateData(templateId, entityId);
+        return Ok(result);
+    }
+
+    // Generic render endpoint (one per microservice): the rendered PDF for a template id + certificate id.
+    [HttpGet("GenerateTemplate/{templateId}/{entityId}")]
+    [BadRequestResponse][NotFoundResponse]
+    public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId)
+    {
+        var stream = await BusinessLayer.GenerateTemplate(templateId, entityId);
+        return File(stream, "application/pdf", $"{templateId}_{entityId}.pdf");
+    }
 }

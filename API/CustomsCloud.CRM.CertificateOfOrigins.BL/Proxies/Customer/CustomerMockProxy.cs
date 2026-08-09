@@ -65,4 +65,16 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
         };
         return Task.FromResult<List<CustomerDto>?>(result);
     }
+
+    // Default = a dummy internal id derived from the external id; feature "Customers.NotFound" returns none
+    // (the ExporterId validation then records CustomerNotInCustomers).
+    public Task<int?> GetCustomerIdByExternalId(string externalId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<int?>(null);
+        }
+
+        return Task.FromResult<int?>(int.TryParse(externalId, out var id) ? id : 777); // TODO: dummy data
+    }
 }

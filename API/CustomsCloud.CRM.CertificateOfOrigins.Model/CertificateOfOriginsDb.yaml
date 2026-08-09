@@ -56,3 +56,11 @@ stored procedures:
     method: query
     result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginWebQueryDto
+  # Generic template-data SP for the whole microservice (one per repo; @EntityID + @TemplateTypeID). DAL.GetTemplateData<T>
+  # is hand-written generic (QueryMultipleAsync + single-row merge) — the generated single-QueryAsync path does not apply.
+  # result type points to the first template's real Result DTO (T is chosen at runtime by the BL registry).
+  - name: dbo.usp_Template_INNER_CROSS_CertificateOfOrigin
+    function: GetTemplateData
+    method: query
+    result type namespace: CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs
+    result type: CertificateOfOriginEUR1Result

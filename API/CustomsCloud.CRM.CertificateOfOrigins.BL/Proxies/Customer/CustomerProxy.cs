@@ -38,4 +38,13 @@ public class CustomerProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
     }
+
+    public async Task<int?> GetCustomerIdByExternalId(string externalId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"Customer/IdByExternalId/{externalId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<int?>();
+    }
 }
