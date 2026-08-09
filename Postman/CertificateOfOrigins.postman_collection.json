@@ -339,6 +339,70 @@
               ]
             }
           }
+        },
+        {
+          "name": "SaveCertificateOfOrigin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 0,\n  \"typeId\": 2,\n  \"title\": \"בקשת תעודת מקור\",\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"customerId\": 777,\n  \"createCustomerId\": 777,\n  \"certificateNumber\": \"POSTMAN-COO-1\",\n  \"certificateOfOriginStatusId\": 2,\n  \"originalCertificateOfOriginStatusId\": 0,\n  \"requestReasonCode\": 1,\n  \"isLastVersion\": true,\n  \"versionNumber\": 1,\n  \"certificateOfOriginDetails\": [\n    {\n      \"certificateDetailsTypeCodeId\": 2,\n      \"value\": \"יצואן לדוגמה\"\n    },\n    {\n      \"certificateDetailsTypeCodeId\": 13,\n      \"value\": \"32\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/SaveCertificateOfOrigin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "SaveCertificateOfOrigin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UpdateCertificateOfOrigins",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": 240,\n  \"leadDocumentId\": 111,\n  \"exportDeclarationNum\": \"26014696745456\",\n  \"certificateOfOriginsIds\": [\n    1\n  ],\n  \"organizationUnitId\": 1,\n  \"exportInvoiceInfoList\": [\n    {\n      \"externalIdNum\": \"INV1\",\n      \"exportGoodsItemInfoList\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/UpdateCertificateOfOrigins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "UpdateCertificateOfOrigins"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -928,7 +992,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": 0,\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"statusId\": 2,\n  \"originalStatusId\": 0,\n  \"title\": \"בקשת אימות מסמך יצוא\",\n  \"customerId\": 777,\n  \"typeId\": 1,\n  \"countryId\": 32,\n  \"authenticationRequestNotes\": \"\",\n  \"listOfAdditionalDocumentsIds\": [],\n  \"customsItems\": [],\n  \"leadDocuments\": [],\n  \"manufacturingAreas\": []\n}",
+              "raw": "{\n  \"id\": 0,\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"statusId\": 2,\n  \"originalStatusId\": 0,\n  \"title\": \"בקשת אימות מסמך יצוא\",\n  \"customerId\": 777,\n  \"typeId\": 1,\n  \"countryId\": 32,\n  \"authenticationRequestNotes\": \"\",\n  \"listOfAdditionalDocumentsIds\": [],\n  \"customsItems\": [],\n  \"leadDocuments\": [],\n  \"manufacturingAreas\": [],\n  \"authenticationDocumentTypeId\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
