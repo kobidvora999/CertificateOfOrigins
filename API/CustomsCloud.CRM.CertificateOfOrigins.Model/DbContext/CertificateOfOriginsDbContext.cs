@@ -24,6 +24,8 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginTypeCode> CertificateOfOriginTypeCodes { get; set; }
 
+    public virtual DbSet<DetailsPerCertificate> DetailsPerCertificates { get; set; }
+
     public virtual DbSet<VerificationProhibitedImporters> VerificationProhibitedImporters { get; set; }
 
     public virtual DbSet<ExportDocumentAuthenticationRequest> ExportDocumentAuthenticationRequests { get; set; }

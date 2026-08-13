@@ -45,6 +45,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId)
+    {
+        // GetPC_MSG2280_2281 field-validation engine: the field catalogue for a certificate type — which detail fields
+        // are relevant and each field's constraint (Mandatory/Optional/Condition). Legacy
+        // CertificateOfOriginsUtil.GetDetailsPerCertificate.
+        var result = await ReadOnlyContext.DetailsPerCertificates
+            .Where(d => d.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId)
+            .ToListAsync();
+        return result;
+    }
+
     public async Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId)
     {
         // GetPC_MSG2280_2281 CertificateCancellation: set the certificate to Cancelled with the cancel-from-message

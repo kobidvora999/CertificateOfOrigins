@@ -74,6 +74,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId);
 
+    Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId);
+
     Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
 
     Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
