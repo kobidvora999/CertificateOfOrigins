@@ -41,6 +41,21 @@ public partial class CertificateOfOriginsBl
         CustomsHouseNotInTable,                 // EMessages.CustomsHouseNotInTable
         CertificateDoesntExist,                 // EMessages.CertificateDoesntExist
         MustSendCertificateID,                  // EMessages.MustSendCertificateID
+
+        // Cross-field (CheckFields) codes.
+        ImportDatetIllegal,                     // EMessages.ImportDatetIllegal
+        ImporterCountryRequired,                // EMessages.ImporterCountryRequired
+        CumulationCountryRequired,              // EMessages.CumulationCountryRequired
+        CountryAndCountryGroup,                 // EMessages.CountryAndCountryGroup
+        PlaceOfManufactureAndZipcodeRequired,   // EMessages.PlaceOfManufactureAndZipcodeRequired
+        TheNumOfCharactersInTheZipcodeIsLessThan7, // EMessages.TheNumOfCharactersInTheZipcodeIsLessThan7
+        FieldMandatoryWhenTheAnotherField,      // EMessages.FieldMandatoryWhenTheAnotherField
+        SecondCountryRequired,                  // EMessages.SecondCountryRequired
+        OriginCountryRequired,                  // EMessages.OriginCountryRequired
+        DestinationCountryRequired,             // EMessages.DestinationCountryRequired
+        DestinationCountryNotInAgreement,       // EMessages.DestinationCountryNotInAgreement
+        ManifestIdMissing,                      // EMessages.ManifestIdMissing
+        ExportDeclarationMissing,               // EMessages.ExportDeclarationMissing
     }
 
     // code → Hebrew text (legacy UIMessage). {0} is the field value / id where the legacy message carried a parameter.
@@ -73,6 +88,19 @@ public partial class CertificateOfOriginsBl
         [EMessageCode.CustomsHouseNotInTable] = "בית המכס אינו קיים בטבלה",
         [EMessageCode.CertificateDoesntExist] = "התעודה {0} אינה קיימת",
         [EMessageCode.MustSendCertificateID] = "יש לשלוח מזהה תעודה",
+        [EMessageCode.ImportDatetIllegal] = "תאריך היבוא אינו חוקי",
+        [EMessageCode.ImporterCountryRequired] = "ארץ הנשגר הינה שדה חובה",
+        [EMessageCode.CumulationCountryRequired] = "ארץ המצטבר הינה שדה חובה",
+        [EMessageCode.CountryAndCountryGroup] = "לא ניתן להזין גם ארץ וגם קבוצת ארצות",
+        [EMessageCode.PlaceOfManufactureAndZipcodeRequired] = "מקום הייצור והמיקוד הינם שדות חובה",
+        [EMessageCode.TheNumOfCharactersInTheZipcodeIsLessThan7] = "מספר התווים במיקוד קטן מ-7",
+        [EMessageCode.FieldMandatoryWhenTheAnotherField] = "השדה {0} הינו שדה חובה כאשר השדה {1} הוא {2}",
+        [EMessageCode.SecondCountryRequired] = "הארץ השנייה הינה שדה חובה",
+        [EMessageCode.OriginCountryRequired] = "ארץ המקור הינה שדה חובה",
+        [EMessageCode.DestinationCountryRequired] = "ארץ היעד הינה שדה חובה",
+        [EMessageCode.DestinationCountryNotInAgreement] = "ארץ היעד אינה בהסכם",
+        [EMessageCode.ManifestIdMissing] = "מספר מניפסט חסר",
+        [EMessageCode.ExportDeclarationMissing] = "מספר רשימון יצוא חסר",
     };
 
     // Build the exception DTO for a message code, carrying the code (ExceptionType) — the .NET 10 equivalent of
