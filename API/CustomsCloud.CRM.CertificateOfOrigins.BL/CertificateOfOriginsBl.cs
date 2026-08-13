@@ -123,20 +123,27 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
         // validates the message AND resolves the exporter / destination-country / org-unit / cert-to-update values the
         // save consumes. Deferred by developer decision — see the region header.
 
-        // Legacy CheckRequestReasonAndGetSavedCertificate: the existing certificate the reason refers to.
-        var savedCertificate = await GetSavedCertificateForMessage(agentRequest);
+        // Legacy CheckRequestReasonAndGetSavedCertificate: the existing certificate the reason refers to. Not-found /
+        // missing-id are accumulated as in-band request exceptions (legacy _requestExceptions), NOT thrown — the legacy
+        // returns them on the feedback response, it does not 404 (mirrors GetCertificateRequestByGuid's in-band contract).
+        var requestExceptions = new List<CertificateOfOriginExceptionDto>();
+        var savedCertificate = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
 
         List<CertificateOfOriginExceptionDto>? exceptions = null;
-        CertificateOfOrigin certificateToResponse;
+        CertificateOfOrigin? certificateToResponse;
         switch (reasonCode)
         {
             case (int)ERequestReason.GetRequestStatus:
-                certificateToResponse = savedCertificate ?? throw new RestNotFoundException();
+                certificateToResponse = savedCertificate;
                 break;
 
             case (int)ERequestReason.CertificateCancellation:
-                certificateToResponse = savedCertificate ?? throw new RestNotFoundException();
-                await CancelCertificateOfOriginFromMessage(certificateToResponse);
+                certificateToResponse = savedCertificate;
+                if (certificateToResponse != null)
+                {
+                    await CancelCertificateOfOriginFromMessage(certificateToResponse);
+                }
+
                 break;
 
             default:
@@ -147,19 +154,39 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
                 throw new RestValidationException(nameof(agentRequest.RequestReasonCode), "The create/update certificate flow is not yet migrated (pending the message-validation unit).");
         }
 
-        var response = await BuildRequestFeedbackResponse(certificateToResponse, exceptions);
+        // Legacy: an unresolved certificate leaves the feedback body empty (the response header still carries the
+        // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404.
+        var response = await BuildRequestFeedbackResponse(certificateToResponse, exceptions, requestExceptions);
         return response;
     }
 
     // Legacy CheckCertificateNumber → GetCertificateOfOriginByExternalId: the latest certificate with this number.
-    private async Task<CertificateOfOrigin?> GetSavedCertificateForMessage(CertificateOfOriginAgentRequestDto agentRequest)
+    // Missing id → MustSendCertificateID; not found → CertificateDoesntExist. Both are accumulated as in-band request
+    // exceptions (not thrown), matching the legacy _requestExceptions contract.
+    private async Task<CertificateOfOrigin?> GetSavedCertificateForMessage(CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
         if (string.IsNullOrEmpty(agentRequest.CertificateId))
         {
+            // Legacy EMessages.MustSendCertificateID.
+            requestExceptions.Add(new CertificateOfOriginExceptionDto
+            {
+                ExceptionLevel = (int)EExceptionLevel.Error,
+                ExceptionDescription = "יש לשלוח מזהה תעודה",
+            });
             return null;
         }
 
         var result = await DataLayer.GetLatestCertificateByNumberForFeedback(agentRequest.CertificateId);
+        if (result == null)
+        {
+            // Legacy EMessages.CertificateDoesntExist.
+            requestExceptions.Add(new CertificateOfOriginExceptionDto
+            {
+                ExceptionLevel = (int)EExceptionLevel.Error,
+                ExceptionDescription = $"התעודה {agentRequest.CertificateId} אינה קיימת",
+            });
+        }
+
         return result;
     }
 
@@ -169,24 +196,35 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
     {
         certificate.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Cancelled;
 
-        // TODO(migration): the cancel reason text (legacy EMessages.CertificateOfOriginCancelFromMessage) is a
-        // placeholder until ValidationMessages/resx lands (blocked on BaseValidationMessages, repo-wide — see Program.cs).
-        certificate.RejectCancelReason = "Certificate cancelled by message.";
+        // Legacy EMessages.CertificateOfOriginCancelFromMessage (from the UIMessage table). The generic resx/
+        // ValidationMessages pipeline is still blocked repo-wide (BaseValidationMessages — see Program.cs), but this
+        // specific message text is known, so it is set literally rather than deferred.
+        certificate.RejectCancelReason = "התקבלה בקשה לביטול תעודה במסר";
         await DataLayer.CancelCertificateFromMessage(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
 
         var eventUtil = Resolve<IEventUtil>();
         await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate.Id, certificate.OrganizationUnitId, certificate.RejectCancelReason);
     }
 
-    // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments.
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin certificate, List<CertificateOfOriginExceptionDto>? exceptions)
+    // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
+    // reconciliation exceptions (from the post-save declaration check) and the in-band request exceptions (not-found /
+    // missing-id, accumulated above) are merged onto the response — the legacy returns them here, it does not throw.
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto>? exceptions, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        var feedback = await BuildRequestFeedback(certificate);
+        var allExceptions = new List<CertificateOfOriginExceptionDto>(requestExceptions);
+        if (exceptions is { Count: > 0 })
+        {
+            allExceptions.AddRange(exceptions);
+        }
+
+        // A resolved certificate carries the full feedback; an unresolved one (not-found) leaves the feedback empty and
+        // relies on the exceptions to convey the failure — the certificate id is then unknown (0).
+        var feedback = certificate != null ? await BuildRequestFeedback(certificate) : new CertificateOfOriginRequestFeedbackDto();
         var response = new CertificateOfOriginRequestFeedbackResponseDto
         {
-            ApplicationId = certificate.Id,
+            ApplicationId = certificate?.Id ?? 0,
             Feedback = feedback,
-            Exceptions = exceptions is { Count: > 0 } ? exceptions : null,
+            Exceptions = allExceptions.Count > 0 ? allExceptions : null,
 
             // Legacy: attachments are built (CreateAttachments → PrintCertificateOfOriginAndSaveAttachments) only for a
             // freshly-published certificate. The read/cancel reason codes handled here never carry attachments; the

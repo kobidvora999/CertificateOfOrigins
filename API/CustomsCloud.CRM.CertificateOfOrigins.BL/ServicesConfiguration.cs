@@ -52,10 +52,16 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
         // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — Country
-        // by alpha-2 code, and the CustomsHouse site external number → org-unit id (ILookupUtil<Country> is by-id only).
-        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, Site/SitesByExternalNumbers) before ROLLOUT.
+        // by alpha-2 code, the CustomsHouse site external number → org-unit id (ILookupUtil<Country> is by-id only), the
+        // port/shipment international sites by locode, and the invoice item packing type / measurement unit by code.
+        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, Site/SitesByExternalNumbers,
+        // InternationalSite/InternationalSitesByLocodes, PackingType/PackingTypesByCodes, MeasurementUnit/MeasurementUnitsByCodes,
+        // CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
         services.AddProxy<ICountryProxy, CountryProxy, CountryMockProxy>();
         services.AddProxy<ISiteProxy, SiteProxy, SiteMockProxy>();
+        services.AddProxy<IInternationalSiteProxy, InternationalSiteProxy, InternationalSiteMockProxy>();
+        services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
+        services.AddProxy<IMeasurementUnitProxy, MeasurementUnitProxy, MeasurementUnitMockProxy>();
 
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
