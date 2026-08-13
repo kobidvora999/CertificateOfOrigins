@@ -20,6 +20,45 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber)
+    {
+        // GetPC_MSG2280_2281 (GetRequestStatus / CertificateCancellation): the latest certificate with this number,
+        // projected to the fields the feedback response + the cancel write need.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.CertificateNumber == certificateNumber)
+            .OrderByDescending(c => c.Id)
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                TypeId = c.TypeId,
+                CertificateNumber = c.CertificateNumber,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                RequestReasonCode = c.RequestReasonCode,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
+                RejectCancelReason = c.RejectCancelReason,
+                IssuingDate = c.IssuingDate,
+                OrganizationUnitId = c.OrganizationUnitId,
+                Guid = c.Guid,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId)
+    {
+        // GetPC_MSG2280_2281 CertificateCancellation: set the certificate to Cancelled with the cancel-from-message
+        // reason. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, (int)ECertificateOfOriginStatus.Cancelled)
+                .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
     {
         // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance

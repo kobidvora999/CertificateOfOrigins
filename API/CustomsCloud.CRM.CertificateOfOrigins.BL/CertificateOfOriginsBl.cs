@@ -4,6 +4,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
+using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Queue;
@@ -18,7 +19,7 @@ using System.Text;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
+public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILockUtil lockUtil, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
     public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
@@ -59,6 +60,168 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
             }
         }
     }
+
+    #region GetPC_MSG2280_2281 (Incoming / EAI certificate-of-origin request)
+
+    // Incoming/EAI WCF: GetPC_MSG2280_2281_CertificateOfOriginRequest (PC_NG_2280 → feedback PC_NG_2281). Processes an
+    // agent's certificate-of-origin request and returns the feedback synchronously — the legacy one-way callback/MSMQ
+    // response is exposed here as a direct REST return (developer decision: mirrors the legacy *Sync contract and the
+    // migrated sibling GetCertificateRequestByGuid).
+    //
+    // SKELETON (developer decision): only the read/cancel branches (GetRequestStatus, CertificateCancellation) are
+    // migrated here. The create/update branch (map message → SaveCertificateOfOrigin → post-save declaration-submitted
+    // check) is deferred and delivered together with the FluentValidation unit — because the legacy field validation
+    // ALSO resolves the exporter / destination-country / org-unit / cert-to-update values the save consumes (the same
+    // proxy checks produce them), so it cannot be wired faithfully without that unit. See the default-branch TODO.
+    public async Task<CertificateOfOriginRequestFeedbackResponseDto> GetPC22802281CertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
+    {
+        if (request.AgentRequest is null)
+        {
+            throw new RestValidationException(nameof(request.AgentRequest), "AgentRequest is required.");
+        }
+
+        // Legacy InternalGetPC...: an optional distributed lock (config IsNeedToLockCertificateOfOrigin), keyed by the
+        // certificate id, serializes concurrent requests for the same certificate; released in a finally.
+        var lockKey = request.AgentRequest.CertificateId;
+        var needLock = !string.IsNullOrEmpty(lockKey) && await parametersUtil.Get<bool>("IsNeedToLockCertificateOfOrigin");
+        if (!needLock)
+        {
+            var unlockedResult = await ProcessCertificateOfOriginRequest(request);
+            return unlockedResult;
+        }
+
+        var lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(GetPC22802281CertificateOfOriginRequest));
+        if (!lockState.IsAcquired)
+        {
+            // Legacy: EMessages.ConcurrencyErrorTryAgain.
+            throw new RestValidationException(nameof(request.AgentRequest.CertificateId), "The certificate is locked by another request; please try again.");
+        }
+
+        try
+        {
+            var result = await ProcessCertificateOfOriginRequest(request);
+            return result;
+        }
+        finally
+        {
+            await lockUtil.SafeReleaseAsync(lockKey!, lockState);
+        }
+    }
+
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
+    {
+        var agentRequest = request.AgentRequest;
+        var reasonCode = agentRequest.RequestReasonCode;
+
+        // TODO(blocking): the export-declaration fetch (exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion,
+        // already on the .NET 10 proxy) + the amendment-linkage guard (CheckIfCertificateIsLinkedToDeclarationInAmendment,
+        // run for every reason except GetRequestStatus) — deferred with the create branch, since only that branch and the
+        // amendment check consume the declaration details. The amendment guard can reject a request; ported with the unit.
+
+        // TODO(blocking, FluentValidation unit): the reflective field validation
+        // (GetCertificateDetailsFromMessageAndCheckFields + CheckAndConvertInvoiceDetails + CheckFields) that both
+        // validates the message AND resolves the exporter / destination-country / org-unit / cert-to-update values the
+        // save consumes. Deferred by developer decision — see the region header.
+
+        // Legacy CheckRequestReasonAndGetSavedCertificate: the existing certificate the reason refers to.
+        var savedCertificate = await GetSavedCertificateForMessage(agentRequest);
+
+        List<CertificateOfOriginExceptionDto>? exceptions = null;
+        CertificateOfOrigin certificateToResponse;
+        switch (reasonCode)
+        {
+            case (int)ERequestReason.GetRequestStatus:
+                certificateToResponse = savedCertificate ?? throw new RestNotFoundException();
+                break;
+
+            case (int)ERequestReason.CertificateCancellation:
+                certificateToResponse = savedCertificate ?? throw new RestNotFoundException();
+                await CancelCertificateOfOriginFromMessage(certificateToResponse);
+                break;
+
+            default:
+                // TODO(blocking): the create/update branch — map the message to the certificate
+                // (ConvertMessageToCertificateOfOrigin), SaveCertificateOfOrigin, then the post-save
+                // CheckCertificateOfOriginOnDeclarationSubmited reconciliation. Depends on the validation unit's resolved
+                // values (exporter / destination-country / org-unit / cert-to-update). Delivered with the FluentValidation unit.
+                throw new RestValidationException(nameof(agentRequest.RequestReasonCode), "The create/update certificate flow is not yet migrated (pending the message-validation unit).");
+        }
+
+        var response = await BuildRequestFeedbackResponse(certificateToResponse, exceptions);
+        return response;
+    }
+
+    // Legacy CheckCertificateNumber → GetCertificateOfOriginByExternalId: the latest certificate with this number.
+    private async Task<CertificateOfOrigin?> GetSavedCertificateForMessage(CertificateOfOriginAgentRequestDto agentRequest)
+    {
+        if (string.IsNullOrEmpty(agentRequest.CertificateId))
+        {
+            return null;
+        }
+
+        var result = await DataLayer.GetLatestCertificateByNumberForFeedback(agentRequest.CertificateId);
+        return result;
+    }
+
+    // Legacy CancelCertificateOfOriginFromMessage: set the certificate to Cancelled with the cancel-from-message reason,
+    // persist, and raise the user-cancelled event.
+    private async Task CancelCertificateOfOriginFromMessage(CertificateOfOrigin certificate)
+    {
+        certificate.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Cancelled;
+
+        // TODO(migration): the cancel reason text (legacy EMessages.CertificateOfOriginCancelFromMessage) is a
+        // placeholder until ValidationMessages/resx lands (blocked on BaseValidationMessages, repo-wide — see Program.cs).
+        certificate.RejectCancelReason = "Certificate cancelled by message.";
+        await DataLayer.CancelCertificateFromMessage(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
+
+        var eventUtil = Resolve<IEventUtil>();
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate.Id, certificate.OrganizationUnitId, certificate.RejectCancelReason);
+    }
+
+    // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments.
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin certificate, List<CertificateOfOriginExceptionDto>? exceptions)
+    {
+        var feedback = await BuildRequestFeedback(certificate);
+        var response = new CertificateOfOriginRequestFeedbackResponseDto
+        {
+            ApplicationId = certificate.Id,
+            Feedback = feedback,
+            Exceptions = exceptions is { Count: > 0 } ? exceptions : null,
+
+            // Legacy: attachments are built (CreateAttachments → PrintCertificateOfOriginAndSaveAttachments) only for a
+            // freshly-published certificate. The read/cancel reason codes handled here never carry attachments; the
+            // attachment build belongs to the deferred create/save branch.
+            Attachments = null,
+        };
+        return response;
+    }
+
+    // Legacy CreateCertificateOfOriginRequestFeedback: echo the certificate identity/status + the public query URL.
+    private async Task<CertificateOfOriginRequestFeedbackDto> BuildRequestFeedback(CertificateOfOrigin certificate)
+    {
+        var urlTemplate = await parametersUtil.Get<string>("CertificateOfOriginQueryURL");
+        var queryUrl = certificate.Guid.HasValue
+            ? string.Format(CultureInfo.InvariantCulture, urlTemplate ?? string.Empty, certificate.Guid)
+            : null;
+
+        return new CertificateOfOriginRequestFeedbackDto
+        {
+            InternalApplication = certificate.InternalApplication,
+            CertificateId = certificate.CertificateNumber,
+            CertificateOfOriginTypeCode = certificate.TypeId,
+            CertificateOfOriginStatusCode = certificate.CertificateOfOriginStatusId,
+            FeedbackRemark = certificate.FeedbackRemark,
+            RejectCancelReason = certificate.RejectCancelReason,
+            QueryUrl = queryUrl,
+            RequestReasonCode = certificate.RequestReasonCode,
+
+            // IssueDateIfReleased / IssueDateIfNotReleased: the legacy split is driven by IsDeclarationReleased, which is
+            // computed only in the create/save + declaration-check flow (deferred). For the read/cancel branches it is
+            // not computed, so both stay null — faithful (the legacy sets them only when IsDeclarationReleased.HasValue).
+        };
+    }
+
+    #endregion
 
     #region GetCertificateRequestByGuid (Incoming / public-portal web query)
 

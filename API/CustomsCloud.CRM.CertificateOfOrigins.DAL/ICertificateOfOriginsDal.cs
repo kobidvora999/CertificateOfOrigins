@@ -70,6 +70,10 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
 
+    Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber);
+
+    Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId);
+
     Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
 
     Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);

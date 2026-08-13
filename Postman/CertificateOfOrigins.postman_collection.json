@@ -403,6 +403,70 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CertificateOfOriginRequest (GetRequestStatus)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 13,\n    \"certificateId\": \"IL0000116889\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginRequest"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CertificateOfOriginRequest (Cancellation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 14,\n    \"certificateId\": \"IL0000116751\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginRequest"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

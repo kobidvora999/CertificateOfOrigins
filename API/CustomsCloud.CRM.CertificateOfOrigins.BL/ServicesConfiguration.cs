@@ -2,6 +2,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
+using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Lookup.Infrastructure;
 using CustomsCloud.InfrastructureCore.Parameters;
@@ -50,6 +51,12 @@ public class ServicesConfiguration : IServicesConfiguration
         // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
+        // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — Country
+        // by alpha-2 code, and the CustomsHouse site external number → org-unit id (ILookupUtil<Country> is by-id only).
+        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, Site/SitesByExternalNumbers) before ROLLOUT.
+        services.AddProxy<ICountryProxy, CountryProxy, CountryMockProxy>();
+        services.AddProxy<ISiteProxy, SiteProxy, SiteMockProxy>();
+
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
         services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
@@ -91,6 +98,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // Issue-by-worker publishing for SaveCertificateOfOrigin (was QueueUtilFactory → the IssueCertificateOfOrigin
         // RabbitMQ exchange) — resolved lazily via IQueueUtil.
         services.AddQueueUtil();
+
+        // Optional per-certificate distributed lock for GetPC_MSG2280_2281 (was LockFactory.GetLock) — gated at runtime
+        // by the IsNeedToLockCertificateOfOrigin parameter; ILockUtil.
+        services.AddLockServices();
 
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();

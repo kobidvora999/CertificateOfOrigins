@@ -130,4 +130,15 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.UpdateCertificateOfOrigins(request);
         return Ok(result);
     }
+
+    // Incoming/EAI WCF: GetPC_MSG2280_2281_CertificateOfOriginRequest — an agent's certificate-of-origin request message.
+    // Exposed as a synchronous POST that returns the feedback directly (the legacy one-way callback/MSMQ response is
+    // replaced by a direct return — mirrors the legacy *Sync contract). A message body with side effects → POST + body.
+    [HttpPost("CertificateOfOriginRequest")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginRequestFeedbackResponseDto))]
+    public async Task<ActionResult<CertificateOfOriginRequestFeedbackResponseDto>> CertificateOfOriginRequest([FromBody] CertificateOfOriginRequestMessageDto request)
+    {
+        var result = await BusinessLayer.GetPC22802281CertificateOfOriginRequest(request);
+        return Ok(result);
+    }
 }
