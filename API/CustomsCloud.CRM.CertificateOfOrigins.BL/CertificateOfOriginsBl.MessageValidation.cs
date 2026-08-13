@@ -82,8 +82,7 @@ public partial class CertificateOfOriginsBl
             }
             else if (constraintTypeEnumId == (int)EConstraintType.Mandatory)
             {
-                // Legacy EMessages.MandatoryValue.
-                context.Exceptions.Add(BuildFieldException($"שדה חובה חסר: {detailType}"));
+                context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, detailType));
             }
 
             context.Details.Add(new CertificateOfOriginDetails
@@ -151,29 +150,396 @@ public partial class CertificateOfOriginsBl
         return value == default ? null : value.ToString("o", CultureInfo.InvariantCulture);
     }
 
-    // Legacy: new InfException(EMessages.X, parameters, null). The EMessages code + localized/English text pipeline
-    // (SystemTablesUtil.GetUIMessageWithEnglishAndLevel → ValidationMessages/resx) is still blocked repo-wide
-    // (BaseValidationMessages — see Program.cs). TODO(migration): source ExceptionType (the EMessages code) + the
-    // English text from ValidationMessages when it lands; the Hebrew text here comes from the UIMessage table.
-    private static CertificateOfOriginExceptionDto BuildFieldException(string description)
+    // Stage 3: the per-field-type validation + code→id resolution (legacy CheckSpecificField's switch on
+    // ECertificateDetailsType). A non-blank field is dispatched to its validator, which both validates AND rewrites
+    // field.Value/DisplayedValue (external code → internal id / display name) and, for the exporter / customs-house
+    // fields, records the resolved side-value on the context. Faithful to the legacy switch (cases + validators).
+    private async Task CheckSpecificField(MessageField field, int certificateTypeId, int? destinationCountryId, MessageValidationContext context)
     {
-        return new CertificateOfOriginExceptionDto
+        switch (field.DetailType)
         {
-            ExceptionLevel = (int)EExceptionLevel.Error,
-            ExceptionDescription = description,
-            ExceptionType = 0,
-        };
+            case ECertificateDetailsType.ExporterId:
+                await CheckIfExporterExist(field, context);
+                if (context.ExporterId is not null and not 0)
+                {
+                    field.Value = context.ExporterId.Value.ToString(CultureInfo.InvariantCulture);
+                }
+
+                break;
+
+            case ECertificateDetailsType.ExporterCountry:
+            case ECertificateDetailsType.CountryOfDeclaration:
+            case ECertificateDetailsType.IssuingCountry:
+            case ECertificateDetailsType.TransirCountry:
+                await CheckIfCountryInSystemAndIsrael(field, context);
+                break;
+
+            case ECertificateDetailsType.TradeAgreementCountry1:
+                await CheckAgreementFirstCountry(field, certificateTypeId, context);
+                break;
+
+            case ECertificateDetailsType.TradeAgreementCountry2:
+            case ECertificateDetailsType.ConsigneeCountry:
+            case ECertificateDetailsType.OriginCountry:
+            case ECertificateDetailsType.CumulationCountry:
+                await CheckIfCountryIsInTradeAgreement(field, certificateTypeId, context);
+                break;
+
+            case ECertificateDetailsType.TradeAgreementGroupOfCountries:
+            case ECertificateDetailsType.OriginGroupOfCountries:
+            case ECertificateDetailsType.DestinationGroupOfCountries:
+            case ECertificateDetailsType.CumulationGroupOfCountries:
+                await CheckIfCountryGroupIsInTradeAgreement(field, certificateTypeId, context);
+                break;
+
+            case ECertificateDetailsType.DateOfDeclaration:
+                CheckDeclarationDate(field, context);
+                break;
+
+            case ECertificateDetailsType.IsDeclaredByExporter:
+                CheckIfDeclaredByExporter(field, context);
+                ConvertBoolFieldToYesNo(field);
+                break;
+
+            case ECertificateDetailsType.ExportDate:
+                CheckExportDate(field, context);
+                break;
+
+            case ECertificateDetailsType.CityOfDeclaration:
+                await CheckCityOfDeclaration(field, context);
+                break;
+
+            case ECertificateDetailsType.PlaceOfManufacture:
+                await CheckCityOfDeclaration(field, context);
+                await CheckIfExemptPlaceOfManufacture(field, certificateTypeId, destinationCountryId);
+                break;
+
+            case ECertificateDetailsType.ExpectedExitDate:
+                CheckExpectedExitDate(field, context);
+                break;
+
+            case ECertificateDetailsType.ImportDate:
+                // Legacy CheckImportDate on the field only parses/formats; the real constraint is cross-field (stage 4).
+                break;
+
+            case ECertificateDetailsType.IsConsigneeForPrint:
+            case ECertificateDetailsType.IsCumulation:
+            case ECertificateDetailsType.IsExportDecForPrint:
+            case ECertificateDetailsType.IsDeclaredByManufacturer:
+                ConvertBoolFieldToYesNo(field);
+                break;
+
+            case ECertificateDetailsType.ExportCountry:
+                await CheckExportCountry(field, certificateTypeId, context);
+                break;
+
+            case ECertificateDetailsType.PortOfEntrance:
+            case ECertificateDetailsType.ExitPort:
+            case ECertificateDetailsType.ExportPort:
+            case ECertificateDetailsType.PortOfShipment:
+                await CheckIfInternationalSiteExist(field);
+                break;
+
+            default:
+                // Pass-through fields (name/address/remarks/text) — no validation, kept as-is (legacy commented-out cases).
+                break;
+        }
     }
 
-    // Stage 3 (next unit): the per-field-type validators + code→id resolvers (CheckSpecificField's ~30-case switch —
-    // country / trade-agreement / group / site / date / bool fields, resolving _exporterID / org-unit / etc.). Stubbed
-    // here so the stage-2 loop compiles; a non-blank field currently passes through unvalidated until stage 3 lands.
-    // TODO(blocking): implement the per-detail-type validation + resolution (see CertificateOfOriginsBl.MessageValidation
-    // stage 3). Marked static only because the stub has no body yet; stage 3 makes it an instance method (uses proxies).
-#pragma warning disable CA1822
-    private Task CheckSpecificField(MessageField field, int certificateTypeId, int? destinationCountryId, MessageValidationContext context)
+    // ── Per-field validators (faithful ports of the legacy Check* helpers) ──
+
+    // Legacy CheckIfExporterExist: resolve the exporter external id to a customer id; missing → CustomerNotInCustomers.
+    private async Task CheckIfExporterExist(MessageField field, MessageValidationContext context)
     {
-        return Task.CompletedTask;
+        var exporterId = await customerProxy.GetCustomerIdByExternalId(field.Value ?? string.Empty);
+        if (exporterId is null)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.CustomerNotInCustomers, field.Value));
+        }
+        else
+        {
+            context.ExporterId = exporterId.Value;
+        }
     }
-#pragma warning restore CA1822
+
+    // Legacy CheckIfCountryInSystemAndIsrael: country alpha-2 resolves + must be Israel (per-detail-type message);
+    // rewrites the value to the country id and the display to its English name.
+    private async Task CheckIfCountryInSystemAndIsrael(MessageField field, MessageValidationContext context)
+    {
+        var country = await ResolveCountry(field.Value, context);
+        if (country is null)
+        {
+            return;
+        }
+
+        if (!await IsCountryIsrael(country.Id))
+        {
+            var code = field.DetailType switch
+            {
+                ECertificateDetailsType.ExporterCountry => EMessageCode.IllegalExporterCountry,
+                ECertificateDetailsType.IssuingCountry => EMessageCode.IssuingCountryIllegal,
+                ECertificateDetailsType.CountryOfDeclaration => EMessageCode.ExporterDecCountryIllegal,
+                ECertificateDetailsType.TransirCountry => EMessageCode.TransirCountryIllegal,
+                _ => EMessageCode.IllegalExporterCountry,
+            };
+            context.Exceptions.Add(BuildMessageException(code));
+        }
+
+        ApplyCountryResolution(field, country);
+    }
+
+    // Legacy CheckExportCountry: for NonManipulation the export country must be non-Israel; for others it must be Israel.
+    private async Task CheckExportCountry(MessageField field, int certificateTypeId, MessageValidationContext context)
+    {
+        var country = await ResolveCountry(field.Value, context);
+        if (country is null)
+        {
+            return;
+        }
+
+        var isIsrael = await IsCountryIsrael(country.Id);
+        if (!isIsrael && certificateTypeId != (int)ECertificateOfOriginType.NonManipulation)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.IllegalExporterCountry));
+        }
+        else if (isIsrael && certificateTypeId == (int)ECertificateOfOriginType.NonManipulation)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ExportCounrtyIllegal));
+        }
+
+        ApplyCountryResolution(field, country);
+    }
+
+    // Legacy CheckAgreementFirstCountry: for EUR1/EURMED the first agreement country must be Israel, then the standard
+    // trade-agreement check runs.
+    private async Task CheckAgreementFirstCountry(MessageField field, int certificateTypeId, MessageValidationContext context)
+    {
+        if (certificateTypeId is (int)ECertificateOfOriginType.EUR1 or (int)ECertificateOfOriginType.EURMED)
+        {
+            var country = await ResolveCountry(field.Value, context);
+            if (country is null)
+            {
+                return;
+            }
+
+            if (!await IsCountryIsrael(country.Id))
+            {
+                context.Exceptions.Add(BuildMessageException(EMessageCode.IllegalFirstCountryInAgreement));
+            }
+        }
+
+        await CheckIfCountryIsInTradeAgreement(field, certificateTypeId, context);
+    }
+
+    // Legacy CheckIfCountryIsInTradeAgreement: country resolves + is part of the trade agreement for this certificate type.
+    private async Task CheckIfCountryIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
+    {
+        var country = await ResolveCountry(field.Value, context);
+        if (country is null)
+        {
+            return;
+        }
+
+        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
+        if (!isInTrade)
+        {
+            var code = field.DetailType switch
+            {
+                ECertificateDetailsType.TradeAgreementCountry2 => EMessageCode.SecondCountryNotInAgreement,
+                ECertificateDetailsType.ConsigneeCountry => EMessageCode.ImporterCountryNotInAgreement,
+                ECertificateDetailsType.OriginCountry => EMessageCode.OriginCountryNotInAgreement,
+                ECertificateDetailsType.CumulationCountry => EMessageCode.CumulationCountryNotInAgreement,
+                _ => EMessageCode.OriginCountryNotInAgreement,
+            };
+            context.Exceptions.Add(BuildMessageException(code));
+        }
+
+        ApplyCountryResolution(field, country);
+    }
+
+    // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
+    private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
+    {
+        if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
+            return;
+        }
+
+        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, countryGroupId, true);
+        if (!isInTrade)
+        {
+            var code = field.DetailType switch
+            {
+                ECertificateDetailsType.TradeAgreementGroupOfCountries => EMessageCode.GroupOfCountriesNotInAgreement,
+                ECertificateDetailsType.OriginGroupOfCountries => EMessageCode.OriginGroupOfCountriesNotInAgreement,
+                ECertificateDetailsType.DestinationGroupOfCountries => EMessageCode.DestinationGroupOfCountriesNotInAgreement,
+                ECertificateDetailsType.CumulationGroupOfCountries => EMessageCode.CumulationGroupOfCountriesNotInAgreement,
+                _ => EMessageCode.GroupOfCountriesNotInAgreement,
+            };
+            context.Exceptions.Add(BuildMessageException(code));
+        }
+
+        // Legacy rewrote Value to the resolved group id (already numeric here) and the display to its English name.
+        // Country-group id→name has no ILookupUtil type (SystemTables); display left as the id (rollout TODO).
+        field.Value = countryGroupId.ToString(CultureInfo.InvariantCulture);
+    }
+
+    // Legacy CheckDeclarationDate: within [-5 days, today].
+    private static void CheckDeclarationDate(MessageField field, MessageValidationContext context)
+    {
+        if (!DateTime.TryParse(field.Value, out var date))
+        {
+            return;
+        }
+
+        if (date > DateTime.Today || date < DateTime.Today.AddDays(-5))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ExporterDecDateIllegal));
+        }
+        else
+        {
+            field.DisplayedValue = date.ToShortDateString();
+        }
+    }
+
+    // Legacy CheckExportDate: not more than 3 months in the future.
+    private static void CheckExportDate(MessageField field, MessageValidationContext context)
+    {
+        if (!DateTime.TryParse(field.Value, out var date))
+        {
+            return;
+        }
+
+        if (date > DateTime.Today.AddMonths(3))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ExportDateIllegal));
+        }
+        else
+        {
+            field.DisplayedValue = date.ToShortDateString();
+        }
+    }
+
+    // Legacy CheckExpectedExitDate: within [today, +3 months].
+    private static void CheckExpectedExitDate(MessageField field, MessageValidationContext context)
+    {
+        if (!DateTime.TryParse(field.Value, out var date))
+        {
+            return;
+        }
+
+        if (date < DateTime.Today || date > DateTime.Today.AddMonths(3))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ExitDateIllegal));
+        }
+        else
+        {
+            field.DisplayedValue = date.ToShortDateString();
+        }
+    }
+
+    // Legacy CheckIfDeclaredByExporter: the flag must be true.
+    private static void CheckIfDeclaredByExporter(MessageField field, MessageValidationContext context)
+    {
+        bool.TryParse(field.Value, out var isDeclaredByExporter);
+        if (!isDeclaredByExporter)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.DeclaringExporter));
+        }
+    }
+
+    // Legacy ConvertBoolFieldToYesNo: bool value → "Yes"/"No" display.
+    private static void ConvertBoolFieldToYesNo(MessageField field)
+    {
+        bool.TryParse(field.Value, out var boolField);
+        field.DisplayedValue = boolField ? "Yes" : "No";
+    }
+
+    // Legacy CheckCityOfDeclaration: the value is a city id that must resolve in the City lookup.
+    private async Task CheckCityOfDeclaration(MessageField field, MessageValidationContext context)
+    {
+        if (string.IsNullOrWhiteSpace(field.Value))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryNullValue, field.DetailType));
+            return;
+        }
+
+        if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cityId))
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable, field.Value));
+            return;
+        }
+
+        var city = await lookupUtil.Get<Lookup.City>(cityId);
+        if (city is null)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable, cityId));
+        }
+        else
+        {
+            field.DisplayedValue = city.EnglishName;
+            field.Value = city.Id.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    // Legacy CheckIfExemptPlaceOfManufacture: for EUR1, if the destination country is in the config-driven exempt list,
+    // clear the place-of-manufacture value.
+    private async Task CheckIfExemptPlaceOfManufacture(MessageField field, int certificateTypeId, int? destinationCountryId)
+    {
+        if (certificateTypeId != (int)ECertificateOfOriginType.EUR1)
+        {
+            return;
+        }
+
+        var exemptCsv = await parametersUtil.Get<string>("CountriesExemptedFromSendingThePlaceOfManufacture") ?? string.Empty;
+        var exemptCountries = exemptCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (destinationCountryId.HasValue && exemptCountries.Contains(destinationCountryId.Value.ToString(CultureInfo.InvariantCulture)))
+        {
+            field.Value = string.Empty;
+            field.DisplayedValue = string.Empty;
+        }
+    }
+
+    // Legacy CheckIfInternationalSiteExist: the port/shipment value is a locode that resolves to an international site;
+    // rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
+    private async Task CheckIfInternationalSiteExist(MessageField field)
+    {
+        var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([field.Value ?? string.Empty]);
+        var site = sites?.FirstOrDefault();
+        if (site is not null)
+        {
+            field.Value = site.Locode;
+            field.DisplayedValue = site.EnglishName;
+        }
+    }
+
+    // ── Shared resolution helpers ──
+
+    // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country; missing → country-not-in-table.
+    private async Task<CountryByCodeDto?> ResolveCountry(string? alphaCode, MessageValidationContext context)
+    {
+        var countries = await countryProxy.GetCountriesByAlphaCodes([alphaCode ?? string.Empty]);
+        var country = countries?.FirstOrDefault();
+        if (country is null)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ExportCountryDoesNotExistInTheCountryTable, alphaCode));
+        }
+
+        return country;
+    }
+
+    // Legacy tail of the country validators: rewrite the value to the country id and the display to its English name.
+    private static void ApplyCountryResolution(MessageField field, CountryByCodeDto country)
+    {
+        field.Value = country.Id.ToString(CultureInfo.InvariantCulture);
+        field.DisplayedValue = country.EnglishName;
+    }
+
+    // Legacy IsCountryIsrael: compare against the CountryIsrael config parameter.
+    private async Task<bool> IsCountryIsrael(int countryId)
+    {
+        var israelId = await parametersUtil.Get<int>("CountryIsrael");
+        return countryId == israelId;
+    }
 }

@@ -167,24 +167,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     {
         if (string.IsNullOrEmpty(agentRequest.CertificateId))
         {
-            // Legacy EMessages.MustSendCertificateID.
-            requestExceptions.Add(new CertificateOfOriginExceptionDto
-            {
-                ExceptionLevel = (int)EExceptionLevel.Error,
-                ExceptionDescription = "יש לשלוח מזהה תעודה",
-            });
+            requestExceptions.Add(BuildMessageException(EMessageCode.MustSendCertificateID));
             return null;
         }
 
         var result = await DataLayer.GetLatestCertificateByNumberForFeedback(agentRequest.CertificateId);
         if (result == null)
         {
-            // Legacy EMessages.CertificateDoesntExist.
-            requestExceptions.Add(new CertificateOfOriginExceptionDto
-            {
-                ExceptionLevel = (int)EExceptionLevel.Error,
-                ExceptionDescription = $"התעודה {agentRequest.CertificateId} אינה קיימת",
-            });
+            requestExceptions.Add(BuildMessageException(EMessageCode.CertificateDoesntExist, agentRequest.CertificateId));
         }
 
         return result;
