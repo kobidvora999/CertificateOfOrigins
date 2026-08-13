@@ -19,7 +19,7 @@ using System.Text;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILockUtil lockUtil, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
+public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILockUtil lockUtil, ILookupUtil lookupUtil, IParametersUtil parametersUtil, ICountryProxy countryProxy, ISiteProxy siteProxy, IInternationalSiteProxy internationalSiteProxy, IPackingTypeProxy packingTypeProxy, IMeasurementUnitProxy measurementUnitProxy)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
     public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
