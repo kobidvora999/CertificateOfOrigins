@@ -113,32 +113,25 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         var agentRequest = request.AgentRequest;
         var reasonCode = agentRequest.RequestReasonCode;
 
-        // TODO(blocking): the export-declaration fetch (exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion,
-        // already on the .NET 10 proxy) + the amendment-linkage guard (CheckIfCertificateIsLinkedToDeclarationInAmendment,
-        // run for every reason except GetRequestStatus) — deferred with the create branch, since only that branch and the
-        // amendment check consume the declaration details. The amendment guard can reject a request; ported with the unit.
-
-        // TODO(blocking, FluentValidation unit): the reflective field validation
-        // (GetCertificateDetailsFromMessageAndCheckFields + CheckAndConvertInvoiceDetails + CheckFields) that both
-        // validates the message AND resolves the exporter / destination-country / org-unit / cert-to-update values the
-        // save consumes. Deferred by developer decision — see the region header.
+        // TODO(blocking): the amendment-linkage guard (CheckIfCertificateIsLinkedToDeclarationInAmendment, run for every
+        // reason except GetRequestStatus) — depends on the export-declaration amendment state (ExportDealFile). Ported
+        // with the invoice/item unit (stage 4b); it can reject a request.
 
         // Legacy CheckRequestReasonAndGetSavedCertificate: the existing certificate the reason refers to. Not-found /
         // missing-id are accumulated as in-band request exceptions (legacy _requestExceptions), NOT thrown — the legacy
         // returns them on the feedback response, it does not 404 (mirrors GetCertificateRequestByGuid's in-band contract).
         var requestExceptions = new List<CertificateOfOriginExceptionDto>();
-        var savedCertificate = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
 
         List<CertificateOfOriginExceptionDto>? exceptions = null;
         CertificateOfOrigin? certificateToResponse;
         switch (reasonCode)
         {
             case (int)ERequestReason.GetRequestStatus:
-                certificateToResponse = savedCertificate;
+                certificateToResponse = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
                 break;
 
             case (int)ERequestReason.CertificateCancellation:
-                certificateToResponse = savedCertificate;
+                certificateToResponse = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
                 if (certificateToResponse != null)
                 {
                     await CancelCertificateOfOriginFromMessage(certificateToResponse);
@@ -147,11 +140,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 break;
 
             default:
-                // TODO(blocking): the create/update branch — map the message to the certificate
-                // (ConvertMessageToCertificateOfOrigin), SaveCertificateOfOrigin, then the post-save
-                // CheckCertificateOfOriginOnDeclarationSubmited reconciliation. Depends on the validation unit's resolved
-                // values (exporter / destination-country / org-unit / cert-to-update). Delivered with the FluentValidation unit.
-                throw new RestValidationException(nameof(agentRequest.RequestReasonCode), "The create/update certificate flow is not yet migrated (pending the message-validation unit).");
+                (certificateToResponse, exceptions) = await ProcessCreateCertificateBranch(request, requestExceptions);
+                break;
         }
 
         // Legacy: an unresolved certificate leaves the feedback body empty (the response header still carries the

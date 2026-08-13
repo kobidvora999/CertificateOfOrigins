@@ -18,7 +18,9 @@ public class CountryMockProxy(IProxyMockUtil mockUtil) : ICountryProxy, IMockPro
 
         var result = alphaCodes.Select(code => new CountryByCodeDto
         {
-            Id = DummyId(code),           // TODO: dummy data
+            // "IL" resolves to the seeded Israel id (parameter CountryIsrael = 376) so the Israel-country checks pass;
+            // any other code gets a stable non-Israel dummy id.
+            Id = string.Equals(code, "IL", StringComparison.OrdinalIgnoreCase) ? 376 : DummyId(code), // TODO: dummy data
             AlphaCode2 = code,
             EnglishName = $"Country {code}", // TODO: dummy data
         }).ToList();

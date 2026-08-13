@@ -54,6 +54,100 @@ public partial class CertificateOfOriginsBl
         public int? OrganizationUnitId { get; set; }
     }
 
+    // Stage 5: the create/update branch. Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner default case —
+    // validate the message (per-field + cross-field, resolving the exporter / destination / org-unit side-values), and
+    // if it is valid map it onto SaveCertificateOfOriginRequestDto and save; then the post-save declaration-submitted
+    // reconciliation. Validation errors are returned in-band (accumulated on requestExceptions), not thrown — faithful.
+    private async Task<(CertificateOfOrigin? Certificate, List<CertificateOfOriginExceptionDto>? Exceptions)> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, List<CertificateOfOriginExceptionDto> requestExceptions)
+    {
+        var agentRequest = request.AgentRequest;
+        var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
+        var context = new MessageValidationContext();
+
+        // NonManipulation carries its certificate body on a different object; the field engine only maps the standard
+        // CertificateOfOrigin body. TODO(blocking): the NonManipulation field mapping + the invoice/item validation
+        // (stage 4b) — needs the invoice/item entities + save chain extended and two more SystemTables lookups.
+        var certificate = request.CertificateOfOrigin;
+        if (certificate is null)
+        {
+            requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(request.CertificateOfOrigin)));
+            return (null, null);
+        }
+
+        // The certificate type's field catalogue (which fields are relevant + their constraint).
+        var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
+
+        // Pre-resolve the destination country id (drives the EUR1 place-of-manufacture exemption), mirroring the legacy
+        // early GetIdByCode<Country> in GetCertificateDetailsFromMessageAndCheckFields.
+        int? destinationCountryId = null;
+        if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
+        {
+            var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
+            destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
+        }
+
+        // Per-field validation + detail construction (stages 2+3), then the cross-field pass (stage 4a).
+        await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
+        if (context.Details.Count > 0)
+        {
+            await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, false, context);
+        }
+
+        // Legacy: if any validation exception accumulated, the request is rejected — return the exceptions in-band, no save.
+        if (context.Exceptions.Count > 0)
+        {
+            requestExceptions.AddRange(context.Exceptions);
+            return (null, null);
+        }
+
+        // Map the validated message + resolved side-values onto the save request and persist.
+        var saveRequest = BuildSaveRequestFromMessage(request, context);
+        var saved = await SaveCertificateOfOrigin(saveRequest);
+
+        // TODO(blocking): the post-save CheckCertificateOfOriginOnDeclarationSubmited reconciliation (via
+        // UpdateCertificateOfOrigins) — deferred with the invoice/item unit (it reconciles the declaration goods items).
+        var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
+        return (certificateEntity, null);
+    }
+
+    // Map the validated incoming message + resolved side-values onto SaveCertificateOfOriginRequestDto (legacy
+    // ConvertMessageToCertificateOfOrigin). TODO(blocking): the certificate-number generator (GetCertificateNumber — a
+    // SP-backed sequence not yet stood up locally) is not wired, so a create WITHOUT a supplied certificateId is not yet
+    // supported; the invoice/item collection (stage 4b) is not mapped. The resolved detail rows are carried across.
+    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context)
+    {
+        var agentRequest = request.AgentRequest;
+        var certificateNumber = agentRequest.CertificateId ?? string.Empty;
+
+        return new SaveCertificateOfOriginRequestDto
+        {
+            TypeId = agentRequest.CertificateOfOriginTypeCode,
+            Title = certificateNumber,
+            CertificateNumber = certificateNumber,
+            CustomerId = context.ExporterId ?? request.CustomerId,
+            CreateCustomerId = request.CustomerId,
+            UpdateCustomerId = request.CustomerId,
+            OrganizationUnitId = context.OrganizationUnitId ?? 0,
+            DestinationCountry = context.DestinationCountryId,
+            CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Received,
+            RequestReasonCode = agentRequest.RequestReasonCode,
+            ReplacementReason = agentRequest.ReplacementReason,
+            InternalApplication = agentRequest.InternalApplication,
+            ExportDeclarationNumber = agentRequest.ExportDeclarationNum,
+            IsAttachedList = request.CertificateOfOrigin?.IsAttachedList ?? false,
+            InSufficentworkingInd = request.CertificateOfOrigin?.InSufficentworkingInd ?? false,
+            InsufficentWorkingText = request.CertificateOfOrigin?.InsufficentWorkingText,
+            CertificateOfOriginDetails = context.Details
+                .Select(d => new CertificateOfOriginDetailDto
+                {
+                    CertificateDetailsTypeCodeId = d.CertificateDetailsTypeCodeId,
+                    Value = d.Value,
+                    DisplayedValue = d.DisplayedValue,
+                })
+                .ToList(),
+        };
+    }
+
     // Stage-2 reflective loop equivalent: for each certificate-body field that (a) is a tracked detail type and (b) is
     // declared in DetailsPerCertificate for this certificate type, build a MessageField, run its per-field validation
     // (CheckSpecificField — stage 3), and add the resulting detail row. A blank value errors only when Mandatory.
