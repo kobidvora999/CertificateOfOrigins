@@ -92,10 +92,6 @@ public class ServicesConfiguration : IServicesConfiguration
         // RabbitMQ exchange) — resolved lazily via IQueueUtil.
         services.AddQueueUtil();
 
-        // Certificate template rendering (EUR1 pilot) — the Templates module renders {Name}.docx + {Name}.yml from the
-        // JSON produced by GetTemplateData. Rendered via ITemplateUtil (not a REST proxy).
-        services.AddTemplateUtil();
-
         // Name enrichment for AuthenticationRequest search (Country + OrganizationUnit via ILookupUtil).
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();

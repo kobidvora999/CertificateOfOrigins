@@ -104,12 +104,15 @@
 
 הומר במלואו: `POST CertificateOfOrigin/UpdateCetrificateOfOrigins` — dispatcher על 5 אירועים (240/1423/1790/334/554)
 → 4 מתודות BL + כל ה-helpers. החסמים ההיסטוריים נפתרו עם תשתיות חדשות שנלמדו בסקילים: IOutgoingMessageUtil
-(פידבק PC_NG_2281), IQueueUtil (הנפקה ע"י worker), IDocumentUtil (QR/צרופות), ITemplateUtil (זרימת תבניות אחידה
-ללא switch), ValidationMessages+resx (טקסטי מערכת). Build ✅.
+(פידבק PC_NG_2281), IQueueUtil (הנפקה ע"י worker), IDocumentUtil (QR/צרופות), רינדור התעודה דרך SSRS
+(Common.GenerateTemplate), ValidationMessages+resx (טקסטי מערכת). Build ✅.
+**הכרעת קובי (2026-08): רינדור רק דרך SSRS** — אין צורך בתבניות מקומיות. הפיילוט הגנרי של התבניות
+(ITemplateUtil + dbo.usp_Template_INNER_CROSS_CertificateOfOrigin + DTOs + 2 endpoints) נמחק; הזרימה תמיד פונה
+ל-`commonServicesProxy.GenerateTemplate` (SSRS).
 **חסמים שנותרו (TODO(blocking) בקוד):** טקסטי resx מטבלת UIMessage הפנימית; חבילת BaseValidationMessages
 טרם ב-feed החיצוני; CountryCountryGroup חסר בתשתית lookup (2 בדיקות מדולגות); ערכי SendService/DestinationExternalId
-של הודעת הפידבק; endpoints לא מאומתים (Common, CustomsBook, Tasks, ExportDealFile); שמות תבניות במודול התבניות
-+ השלמת dataset ב-dbo.GetTemplateData; אימות עמודות IsCreateAttachments/IsMessageSent מול המונוליט.
+של הודעת הפידבק; endpoints לא מאומתים (Common, CustomsBook, Tasks, ExportDealFile);
+אימות עמודות IsCreateAttachments/IsMessageSent מול המונוליט.
 
 ## External: TempSync — ⏭️ לא נדרש
 

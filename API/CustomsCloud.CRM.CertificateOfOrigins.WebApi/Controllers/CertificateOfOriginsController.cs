@@ -130,23 +130,4 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.UpdateCertificateOfOrigins(request);
         return Ok(result);
     }
-
-    // Generic template-data endpoint (one per microservice): the merged PrintTemplateDto (structure + values) for a
-    // template id + certificate id. Route-style single resource → missing entity is a 404 (BL throws RestNotFoundException).
-    [HttpGet("TemplateData/{templateId}/{entityId}")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(PrintTemplateDto))]
-    public async Task<ActionResult<PrintTemplateDto>> TemplateData([FromRoute] int templateId, [FromRoute] int entityId)
-    {
-        var result = await BusinessLayer.GetTemplateData(templateId, entityId);
-        return Ok(result);
-    }
-
-    // Generic render endpoint (one per microservice): the rendered PDF for a template id + certificate id.
-    [HttpGet("GenerateTemplate/{templateId}/{entityId}")]
-    [BadRequestResponse][NotFoundResponse]
-    public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId)
-    {
-        var stream = await BusinessLayer.GenerateTemplate(templateId, entityId);
-        return File(stream, "application/pdf", $"{templateId}_{entityId}.pdf");
-    }
 }

@@ -20,57 +20,6 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    // Generic template-data reader for the whole microservice (one per repo). Calls the generic template SP with
-    // @EntityID + @TemplateTypeID and folds any extra single-row result-sets into the primary row (a null target slot
-    // is filled from a later set, so set-1 values are never clobbered).
-    // TODO(SP contract, db-proc): a multi-row set (e.g. the EUR1 goods-item lines → GoodsItems) is NOT populated by
-    // this single-row merge — it needs its own read/handling once the SP's result-sets are defined.
-    public async Task<T?> GetTemplateData<T>(int templateId, int entityId)
-        where T : class
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@EntityID", entityId, DbType.Int32);
-        parameters.Add("@TemplateTypeID", templateId, DbType.Int32);
-
-        var connection = ReadOnlyContext.Database.GetDbConnection();
-        var command = new CommandDefinition(
-            "dbo.usp_Template_INNER_CROSS_CertificateOfOrigin",
-            parameters,
-            commandType: CommandType.StoredProcedure);
-
-        using var grid = await connection.QueryMultipleAsync(command);
-        var primary = (await grid.ReadAsync<T>()).FirstOrDefault();
-        while (primary != null && !grid.IsConsumed)
-        {
-            var extra = (await grid.ReadAsync<T>()).FirstOrDefault();
-            if (extra != null)
-            {
-                MergeNonNull(primary, extra);
-            }
-        }
-
-        return primary;
-    }
-
-    // Copy a source property into target only when the target slot is still null, so real values from result-set 1
-    // are never overwritten by the default (null) slots of a later single-row set.
-    private static void MergeNonNull<T>(T target, T source)
-    {
-        foreach (var property in typeof(T).GetProperties())
-        {
-            if (!property.CanRead || !property.CanWrite)
-            {
-                continue;
-            }
-
-            var incoming = property.GetValue(source);
-            if (incoming != null && property.GetValue(target) == null)
-            {
-                property.SetValue(target, incoming);
-            }
-        }
-    }
-
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
     {
         // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance

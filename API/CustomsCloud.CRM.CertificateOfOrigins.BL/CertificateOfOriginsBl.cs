@@ -9,19 +9,16 @@ using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Queue;
 using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
-using CustomsCloud.InfrastructureCore.Utils.Templates;
 using Dapper;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ITemplateUtil templateUtil, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
+public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
     public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
@@ -1031,10 +1028,10 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
         await PrintCertificateOfOriginAndSaveAttachments(entity, string.Empty);
     }
 
-    // Legacy PrintCertificateOfOriginAndSaveAttachments: generate the certificate template document and save it as an
-    // attachment on the certificate (GenerateTemplate → SaveCertificateOfOriginAttachments). Shared by the publish flow
-    // (#33) and the reconciliation re-print (#34). TODO(migration): the per-type template-id switch (EUR page-2 / view
-    // format) is reduced to a single GenerateTemplate until the template pilot is resolved.
+    // Legacy PrintCertificateOfOriginAndSaveAttachments: render the certificate document via SSRS (the Common service's
+    // GenerateTemplate) and save it as an attachment on the certificate (GenerateTemplate → SaveCertificateOfOriginAttachments).
+    // Shared by the publish flow (#33) and the reconciliation re-print (#34). Rendering is always delegated to SSRS
+    // (developer decision — no per-type template switch / no local template files).
     private async Task PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
     {
         var template = await commonServicesProxy.GenerateTemplate(certificate.TypeId, certificate.Id, additionalInfo);
@@ -1678,89 +1675,6 @@ public class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerP
             })
             .ToList();
         return new ReconciliationResult(exceptions, isLinkedToImportDeclaration);
-    }
-
-    // ── Templates (generic per-microservice; one registry + one data/render path for all certificate templates) ──
-
-    // Null fields are omitted so the Templates module's typed merge (DateTime/int) sees a missing token and renders
-    // empty, instead of throwing on a JSON null; camelCase matches the .yml field paths.
-    private static readonly JsonSerializerOptions TemplateJsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
-
-    // Registry: one case per template — maps a template id to its data-contract type, the template Name (the
-    // {Name}.docx / {Name}.yml the Templates module loads) and the output format.
-    private static (Type DataType, string Name, Format Format) GetTemplateMeta(int templateId)
-    {
-        return templateId switch
-        {
-            CertificateOfOriginsConsts.CertificateOfOriginEUR1TemplateTypeId => (typeof(CertificateOfOriginEUR1Result), "CertificateOfOriginEUR1", Format.Pdf),
-            _ => throw new RestValidationException(nameof(templateId), $"Unsupported templateId {templateId}"),
-        };
-    }
-
-    // Generic, one per microservice. DataLayer.GetTemplateData<T> is generic and T is only known at runtime, so it is
-    // invoked via reflection; the result is enriched, serialized camelCase, and wrapped in a ready-to-render dto.
-    public async Task<PrintTemplateDto> GetTemplateData(int templateId, int entityId)
-    {
-        var (dataType, name, format) = GetTemplateMeta(templateId);
-
-        var method = typeof(ICertificateOfOriginsDal).GetMethod(nameof(ICertificateOfOriginsDal.GetTemplateData))!
-            .MakeGenericMethod(dataType);
-        var task = (Task)method.Invoke(DataLayer, [templateId, entityId])!;
-        await task.ConfigureAwait(false);
-        var data = (object?)((dynamic)task).Result
-            ?? throw new RestNotFoundException(); // route-style endpoint → 404 when the entity has no data
-
-        // Fill the fields the SP cannot supply (QR / stamp / signature images, org-unit name, goods-item lines).
-        await EnrichTemplateData(templateId, entityId, data);
-
-        var json = JsonSerializer.Serialize(data, dataType, TemplateJsonOptions);
-        return new PrintTemplateDto { Name = name, Data = json, Format = format };
-    }
-
-    // Generic render: data + ITemplateUtil → the document stream (one call returns the rendered template).
-    public async Task<Stream> GenerateTemplate(int templateId, int entityId)
-    {
-        var dto = await GetTemplateData(templateId, entityId);
-        var templateRequest = templateUtil.CreateRequestBuilder()
-            .WithName(dto.Name)
-            .WithJsonData(dto.Data)
-            .WithFormat(dto.Format)
-            .Build();
-        var template = await templateUtil.GenerateTemplate(templateRequest);
-        var memoryStream = new MemoryStream();
-        await template.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
-        return memoryStream;
-    }
-
-    // Per-template enrichment — explicit switch (not reflection); one case per template that needs fields the SP omits.
-    // TODO(migration): becomes an instance method once enrichment resolves real sources (documents / lookup / proxies).
-    private static async Task EnrichTemplateData(int templateId, int entityId, object data)
-    {
-        switch (templateId)
-        {
-            case CertificateOfOriginsConsts.CertificateOfOriginEUR1TemplateTypeId when data is CertificateOfOriginEUR1Result eur1Data:
-                await EnrichCertificateOfOriginEUR1(entityId, eur1Data);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private static async Task EnrichCertificateOfOriginEUR1(int entityId, CertificateOfOriginEUR1Result data)
-    {
-        // TODO(blocking): fill the fields the template SP cannot supply, from their real sources (developer decision —
-        // do not guess); use ??= so an SP-provided value is not overwritten:
-        //   • QRCode        — the QR image (base64) built from the certificate's QrCodePath (documents proxy / IDocumentUtil).
-        //   • SiteStamp     — the issuing site stamp image.
-        //   • UserSignature — the signing user's signature image.
-        //   • CustomsHouse  — the org-unit name via ILookupUtil<OrganizationUnit> if the SP returns only the id.
-        //   • GoodsItems    — the repeating goods-item lines (dedicated multi-row read; the single-row SP merge does not fill a list).
-        await Task.CompletedTask;
     }
 
     // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member

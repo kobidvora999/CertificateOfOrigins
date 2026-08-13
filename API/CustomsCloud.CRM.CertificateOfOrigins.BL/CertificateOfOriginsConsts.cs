@@ -63,9 +63,4 @@ internal static class CertificateOfOriginsConsts
     // + the Export organization-unit type (MalamTeam.Infrastructure EEntityType.ExportLeadDocument / EOrganizationUnitType.Export).
     public const int ExportLeadDocumentEntityType = 11188;
     public const int ExportOrganizationUnitType = 18;
-
-    // --- Templates (template type ids from the legacy ETemplate / CertificateOfOriginsConstants) ---
-
-    // EUR1 certificate-of-origin template — legacy 1-page template id 136 (report id 7000).
-    public const int CertificateOfOriginEUR1TemplateTypeId = 136;
 }
