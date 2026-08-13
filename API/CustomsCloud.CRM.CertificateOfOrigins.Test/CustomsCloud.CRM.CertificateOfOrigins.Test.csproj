@@ -29,6 +29,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.Model\CustomsCloud.CRM.CertificateOfOrigins.Model.csproj" />
 		<ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.BL\CustomsCloud.CRM.CertificateOfOrigins.BL.csproj" />
+		<ProjectReference Include="..\CustomsCloud.CRM.CertificateOfOrigins.DAL\CustomsCloud.CRM.CertificateOfOrigins.DAL.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
