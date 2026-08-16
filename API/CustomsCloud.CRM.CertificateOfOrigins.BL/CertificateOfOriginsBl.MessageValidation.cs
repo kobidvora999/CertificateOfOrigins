@@ -100,8 +100,12 @@ public partial class CertificateOfOriginsBl
             return (null, null);
         }
 
+        // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
+        // → GetCertificateNumber when certificateId is empty).
+        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
+
         // Map the validated message + resolved side-values onto the save request and persist.
-        var saveRequest = BuildSaveRequestFromMessage(request, context);
+        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber);
         var saved = await SaveCertificateOfOrigin(saveRequest);
 
         // TODO(blocking): the post-save CheckCertificateOfOriginOnDeclarationSubmited reconciliation (via
@@ -110,14 +114,25 @@ public partial class CertificateOfOriginsBl
         return (certificateEntity, null);
     }
 
+    // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or a freshly
+    // generated one ("IL" + the 10-digit sequence numerator) when none was supplied.
+    private async Task<string> ResolveCertificateNumber(string? certificateId)
+    {
+        if (!string.IsNullOrEmpty(certificateId))
+        {
+            return certificateId;
+        }
+
+        var numerator = await DataLayer.GetNextCertificateOfOriginNumber();
+        return CertificateOfOriginsConsts.CertificateNumberPrefixIl + numerator.ToString(CertificateOfOriginsConsts.CertificateNumberFormat10Digit, CultureInfo.InvariantCulture);
+    }
+
     // Map the validated incoming message + resolved side-values onto SaveCertificateOfOriginRequestDto (legacy
-    // ConvertMessageToCertificateOfOrigin). TODO(blocking): the certificate-number generator (GetCertificateNumber — a
-    // SP-backed sequence not yet stood up locally) is not wired, so a create WITHOUT a supplied certificateId is not yet
-    // supported; the invoice/item collection (stage 4b) is not mapped. The resolved detail rows are carried across.
-    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context)
+    // ConvertMessageToCertificateOfOrigin). TODO(blocking): the invoice/item collection (stage 4b) is not mapped.
+    // The resolved detail rows and certificate number are carried across.
+    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber)
     {
         var agentRequest = request.AgentRequest;
-        var certificateNumber = agentRequest.CertificateId ?? string.Empty;
 
         return new SaveCertificateOfOriginRequestDto
         {

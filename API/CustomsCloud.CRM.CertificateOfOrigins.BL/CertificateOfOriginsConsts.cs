@@ -4,6 +4,12 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 // (source of truth — not invented). Kept in one place instead of scattering literals across the BL and proxies.
 internal static class CertificateOfOriginsConsts
 {
+    // --- GetPC_MSG2280_2281 certificate-number generation (legacy CertificateOfOriginsConsts) ---
+
+    // A generated certificate number is "IL" + the sequence numerator formatted to 10 digits.
+    public const string CertificateNumberPrefixIl = "IL";
+    public const string CertificateNumberFormat10Digit = "0000000000";
+
     // --- SaveCertificateOfOriginAttachments ---
 
     // Draft/Final title label + the "isDraft" sentinel checked on AdditionalInfo (CertificateOfOriginsConsts).

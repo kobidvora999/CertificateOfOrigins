@@ -45,6 +45,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<int> GetNextCertificateOfOriginNumber()
+    {
+        // GetPC_MSG2280_2281 create branch: the next certificate-number numerator (legacy
+        // GetCertificateNumber → dbo.GetCertificateOfOriginNumber → NEXT VALUE FOR the CRM sequence). Scalar SP.
+        var connection = ReadOnlyContext.Database.GetDbConnection();
+        var command = new CommandDefinition("dbo.GetCertificateOfOriginNumber", commandType: CommandType.StoredProcedure);
+        var numerator = await connection.ExecuteScalarAsync<int>(command);
+        return numerator;
+    }
+
     public async Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId)
     {
         // GetPC_MSG2280_2281 field-validation engine: the field catalogue for a certificate type — which detail fields
