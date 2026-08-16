@@ -85,6 +85,7 @@ public partial class CertificateOfOriginsBl
             IsToPrint = messageInvoice.IsInvoicesForPrint,
             CurrencyTypeId = await ResolveCurrencyTypeId(messageInvoice.CurrencyType, context),
             InvoiceGoodsDescription = CheckDescriptionLength(messageInvoice.DescriptionOfInvoice, context) ?? string.Empty,
+            CertificateOfOriginItemDetail = items,
         };
     }
 

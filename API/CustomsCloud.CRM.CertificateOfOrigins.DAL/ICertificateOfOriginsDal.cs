@@ -82,6 +82,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
 
+    Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices, int userId);
+
     Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
 
     Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId);

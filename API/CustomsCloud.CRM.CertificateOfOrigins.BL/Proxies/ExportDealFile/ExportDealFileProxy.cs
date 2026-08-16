@@ -50,6 +50,15 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
         return await response.GetResult<LeadDocumentByCertificateOfOriginDto>();
     }
 
+    public async Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByCertificateOfOriginId(int certificateOfOriginId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"ExportDealFile/LeadDocumentByCertificateOfOriginId/{certificateOfOriginId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<LeadDocumentByCertificateOfOriginDto>();
+    }
+
     public async Task ChangeCertificateOfOriginIdForLeadDocument(int leadDocumentId, int oldCertificateOfOriginId, int newCertificateOfOriginId)
     {
         var req = CreateRequestBuilder()

@@ -15,6 +15,11 @@ public interface IExportDealFileProxy
     // returns the (now-linked) lead document.
     Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(int oldCertificateOfOriginId, int newCertificateOfOriginId);
 
+    // Legacy: IExportDealFileExternalServiceAdapter.GetLeadDocumentByCertificateOfOriginId (GetPC_MSG2280_2281
+    // CertificateCancellation — the linked declaration must be cancelled before the certificate can be cancelled). A
+    // non-null result means a declaration is still associated with the certificate.
+    Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByCertificateOfOriginId(int certificateOfOriginId);
+
     // Legacy: ChangeCertificateOfOriginIDForLeadDocument — repoints a lead document's certificate id (replacement flow).
     Task ChangeCertificateOfOriginIdForLeadDocument(int leadDocumentId, int oldCertificateOfOriginId, int newCertificateOfOriginId);
 

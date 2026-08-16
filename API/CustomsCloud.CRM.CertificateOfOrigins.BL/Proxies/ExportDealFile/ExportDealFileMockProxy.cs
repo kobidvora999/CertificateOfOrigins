@@ -54,6 +54,22 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
         });
     }
 
+    // Default = NO associated declaration (null) so a cancellation is allowed; feature "DealFile.HasAssociatedDeclaration"
+    // returns a lead document so the "linked declaration must be cancelled first" path is exercised.
+    public Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByCertificateOfOriginId(int certificateOfOriginId)
+    {
+        if (!mockUtil.HasMockFeature("DealFile.HasAssociatedDeclaration"))
+        {
+            return Task.FromResult<LeadDocumentByCertificateOfOriginDto?>(null);
+        }
+
+        return Task.FromResult<LeadDocumentByCertificateOfOriginDto?>(new LeadDocumentByCertificateOfOriginDto
+        {
+            LeadDocumentId = (certificateOfOriginId * 10) + 3, // TODO: dummy data
+            LeadDocumentTitle = $"DECL-{certificateOfOriginId}", // TODO: dummy data
+        });
+    }
+
     // No-op repoint for local/testing.
     public Task ChangeCertificateOfOriginIdForLeadDocument(int leadDocumentId, int oldCertificateOfOriginId, int newCertificateOfOriginId)
     {

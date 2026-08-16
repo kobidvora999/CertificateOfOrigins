@@ -1,3 +1,5 @@
+using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
+
 namespace CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
 // Request for SaveCertificateOfOrigin — the certificate as edited by the SPA (the legacy passed the full
@@ -79,4 +81,8 @@ public class SaveCertificateOfOriginRequestDto
 
     // The certificate's editable detail rows (country / trade-agreement / date / site fields). Persisted diff-merge by Id.
     public List<CertificateOfOriginDetailDto> CertificateOfOriginDetails { get; set; } = [];
+
+    // The certificate's invoice rows (each with its nested item rows), for the incoming-message create branch. The SPA
+    // save path leaves this empty; when populated the DAL diff-merges the invoice + item graph by surrogate id.
+    public List<CertificateOfOriginInvoiceDetail> CertificateOfOriginInvoiceDetails { get; set; } = [];
 }

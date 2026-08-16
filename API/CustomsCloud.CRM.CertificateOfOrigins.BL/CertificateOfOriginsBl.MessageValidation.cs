@@ -52,6 +52,13 @@ public partial class CertificateOfOriginsBl
         public int? DestinationCountryId { get; set; }
 
         public int? OrganizationUnitId { get; set; }
+
+        // Legacy _certificateToUpdateId — the id of the existing certificate a CertificateUpdate targets; becomes both
+        // the update target and (in the map) CertificateIDToCancel.
+        public int? CertificateToUpdateId { get; set; }
+
+        // The id of the certificate a CertificateReplacement cancels (resolved from certificateIdToCancel) → CertificateIDToCancel.
+        public int? CertificateIdToCancel { get; set; }
     }
 
     // Stage 5: the create/update branch. Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner default case —
@@ -68,10 +75,12 @@ public partial class CertificateOfOriginsBl
         // requestExceptions channel at the gate below.
         var context = new MessageValidationContext();
 
-        // NonManipulation carries its certificate body on a different object; the field engine only maps the standard
-        // CertificateOfOrigin body. TODO(blocking): the NonManipulation field mapping.
+        // Legacy: a null CertificateOfOrigin body is a MandatoryValue error EXCEPT for EmptyCertificate (which by
+        // definition carries no body and creates an empty certificate). GetRequestStatus/CertificateCancellation are the
+        // legacy's other exemptions but they never reach this create branch.
         var certificate = request.CertificateOfOrigin;
-        if (certificate is null)
+        var isEmptyCertificate = agentRequest.RequestReasonCode == (int)ERequestReason.EmptyCertificate;
+        if (certificate is null && !isEmptyCertificate)
         {
             requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(request.CertificateOfOrigin)));
             return null;
@@ -83,30 +92,41 @@ public partial class CertificateOfOriginsBl
         agentRequest.IsCustomsItemMandatory = typeCode?.IsCustomsItemMandatory;
         agentRequest.IsZipcodeMandatory = typeCode?.IsZipcodeMandatory ?? false;
 
-        // The certificate type's field catalogue (which fields are relevant + their constraint).
-        var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
+        var invoices = new List<CertificateOfOriginInvoiceDetail>();
 
-        // Pre-resolve the destination country id (drives the EUR1 place-of-manufacture exemption), mirroring the legacy
-        // early GetIdByCode<Country> in GetCertificateDetailsFromMessageAndCheckFields.
-        int? destinationCountryId = null;
-        if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
+        // The field/invoice validation runs only when a certificate body is present (EmptyCertificate has none — it
+        // skips straight to the per-reason resolution + save of an empty certificate).
+        if (certificate is not null)
         {
-            var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
-            destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
+            // The certificate type's field catalogue (which fields are relevant + their constraint).
+            var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
+
+            // Pre-resolve the destination country id (drives the EUR1 place-of-manufacture exemption), mirroring the
+            // legacy early GetIdByCode<Country> in GetCertificateDetailsFromMessageAndCheckFields.
+            int? destinationCountryId = null;
+            if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
+            {
+                var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
+                destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
+            }
+
+            // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
+            // ValidateCertificateOfOriginRequestInvoiceDetail + CheckAndConvertInvoiceDetails.
+            ValidateInvoiceShape(certificate, context);
+            invoices = await ConvertInvoiceDetails(request, context);
+
+            // Per-field validation + detail construction (stages 2+3), then the cross-field pass (stage 4a).
+            await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
+            if (context.Details.Count > 0)
+            {
+                await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
+            }
         }
 
-        // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
-        // ValidateCertificateOfOriginRequestInvoiceDetail + CheckAndConvertInvoiceDetails (runs before the field loop in
-        // the legacy). The converted invoices are validated here; persisting them is a follow-up (see below).
-        ValidateInvoiceShape(certificate, context);
-        var invoices = await ConvertInvoiceDetails(request, context);
-
-        // Per-field validation + detail construction (stages 2+3), then the cross-field pass (stage 4a).
-        await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
-        if (context.Details.Count > 0)
-        {
-            await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
-        }
+        // Per-reason resolution (legacy CheckRequestReasonAndGetSavedCertificate): resolve the existing certificate the
+        // reason targets + its reason-specific validations, and record the update/cancel side-values. Runs as part of the
+        // accumulation, before the exception gate — faithful to the legacy ordering.
+        await ResolveCertificateForReason(agentRequest, context);
 
         // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
         if (context.Exceptions.Count > 0)
@@ -115,26 +135,12 @@ public partial class CertificateOfOriginsBl
             return null;
         }
 
-        // TODO(blocking): the per-reason resolution the legacy runs in CheckRequestReasonAndGetSavedCertificate before
-        // the save — fetch the existing certificate the reason targets and run its reason-specific validations
-        // (CertificateUpdate: agent/type/status match + set _certificateToUpdateId; CertificateReplacement: cancel-id
-        // present + status + set CertificateIDToCancel from the cancelled cert; ImportCertificateReplacement: cancel-id
-        // present + CertificateToReplaceInImport; NewCertificate/Draft/Retrospective: not-published/cancelled guard; and
-        // the DeclarationMatch/DeclarationMismatch guard). BuildSaveRequestFromMessage therefore cannot yet set
-        // CertificateIdToCancel / CertificateToReplaceInImport, so supersession/replacement linking does not occur for
-        // messages — delivered with this unit.
-
-        // The validated invoices are built and ready; persisting them requires SaveCertificateOfOrigin's DAL to accept
-        // the invoice/item graph (its signature currently takes only the certificate + detail rows).
-        // TODO(blocking): extend SaveCertificateOfOrigin (BL + DAL) to persist the invoice/item collection.
-        _ = invoices;
-
         // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
         // → GetCertificateNumber when certificateId is empty).
         var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
 
-        // Map the validated message + resolved side-values onto the save request and persist.
-        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber);
+        // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
+        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices);
         var saved = await SaveCertificateOfOrigin(saveRequest);
 
         // TODO(blocking): the post-save CheckCertificateOfOriginOnDeclarationSubmited reconciliation (via
@@ -158,9 +164,8 @@ public partial class CertificateOfOriginsBl
     }
 
     // Map the validated incoming message + resolved side-values onto SaveCertificateOfOriginRequestDto (legacy
-    // ConvertMessageToCertificateOfOrigin). TODO(blocking): the invoice/item collection (stage 4b) is not mapped.
-    // The resolved detail rows and certificate number are carried across.
-    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber)
+    // ConvertMessageToCertificateOfOrigin) — including the per-reason cancel/replace ids and the invoice/item graph.
+    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber, List<CertificateOfOriginInvoiceDetail> invoices)
     {
         var agentRequest = request.AgentRequest;
 
@@ -170,6 +175,21 @@ public partial class CertificateOfOriginsBl
         var isNonManipulationOrNoBody = agentRequest.CertificateOfOriginTypeCode == (int)ECertificateOfOriginType.NonManipulation
             || request.CertificateOfOrigin is null;
         var customerId = isNonManipulationOrNoBody ? request.CustomerId : context.ExporterId ?? 0;
+
+        // Legacy ConvertMessageToCertificateOfOrigin per-reason assignments:
+        //   CertificateUpdate           → CertificateIDToCancel = _certificateToUpdateId (the resolved existing cert)
+        //   CertificateReplacement      → CertificateIDToCancel = the cancelled cert's id
+        //   ImportCertificateReplacement→ CertificateToReplaceInImport = certificateIdToCancel (the raw external number)
+        var reason = agentRequest.RequestReasonCode;
+        int? certificateIdToCancel = reason switch
+        {
+            (int)ERequestReason.CertificateUpdate => context.CertificateToUpdateId,
+            (int)ERequestReason.CertificateReplacement => context.CertificateIdToCancel,
+            _ => null,
+        };
+        var certificateToReplaceInImport = reason == (int)ERequestReason.ImportCertificateReplacement
+            ? agentRequest.CertificateIdToCancel
+            : null;
 
         return new SaveCertificateOfOriginRequestDto
         {
@@ -182,10 +202,12 @@ public partial class CertificateOfOriginsBl
             OrganizationUnitId = context.OrganizationUnitId ?? 0,
             DestinationCountry = context.DestinationCountryId,
             CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Received,
-            RequestReasonCode = agentRequest.RequestReasonCode,
+            RequestReasonCode = reason,
             ReplacementReason = agentRequest.ReplacementReason,
             InternalApplication = agentRequest.InternalApplication,
             ExportDeclarationNumber = agentRequest.ExportDeclarationNum,
+            CertificateIdToCancel = certificateIdToCancel,
+            CertificateToReplaceInImport = certificateToReplaceInImport,
             IsAttachedList = request.CertificateOfOrigin?.IsAttachedList ?? false,
             InSufficentworkingInd = request.CertificateOfOrigin?.InSufficentworkingInd ?? false,
             InsufficentWorkingText = request.CertificateOfOrigin?.InsufficentWorkingText,
@@ -197,6 +219,7 @@ public partial class CertificateOfOriginsBl
                     DisplayedValue = d.DisplayedValue,
                 })
                 .ToList(),
+            CertificateOfOriginInvoiceDetails = invoices,
         };
     }
 

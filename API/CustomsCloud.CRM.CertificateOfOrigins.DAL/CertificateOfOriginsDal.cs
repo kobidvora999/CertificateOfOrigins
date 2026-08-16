@@ -31,6 +31,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 RequestReasonCode = c.RequestReasonCode,
@@ -109,8 +110,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId)
     {
+        return await SaveCertificateOfOrigin(entity, details, [], userId);
+    }
+
+    public async Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices, int userId)
+    {
         // Upsert the certificate (Id == 0 → insert with fresh audit, else update via the round-tripped TimeStamp for
-        // concurrency, preserving the immutable audit columns), then DIFF-MERGE its detail rows by surrogate id.
+        // concurrency, preserving the immutable audit columns), then DIFF-MERGE its detail rows by surrogate id, then
+        // (incoming-message create branch) DIFF-MERGE its invoice rows + each invoice's item rows.
         var now = DateTime.Now;
         if (entity.Id == 0)
         {
@@ -145,7 +152,49 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             detail => detail.Id);
         await Context.SaveChangesAsync();
 
+        await SaveInvoiceDetails(entity.Id, invoices);
+
         return entity.Id;
+    }
+
+    // Diff-merge the certificate's invoice rows, then each invoice's item rows. Invoices are keyed to the certificate;
+    // items are keyed to their invoice's surrogate id (assigned after the invoice save for freshly-inserted invoices).
+    // An EMPTY list means "the caller did not manage invoices" (the SPA save path) — do NOT touch the existing rows;
+    // only the incoming-message create branch supplies invoices, and it always supplies the full set. (Diff-merging an
+    // empty list would delete every existing invoice/item — a data-loss bug for the SPA update path.)
+    private async Task SaveInvoiceDetails(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices)
+    {
+        if (invoices.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var invoice in invoices)
+        {
+            invoice.CertificateOfOriginId = certificateId;
+        }
+
+        await MergeChildrenAsync(
+            invoices,
+            Context.Set<CertificateOfOriginInvoiceDetail>().Where(i => i.CertificateOfOriginId == certificateId),
+            invoice => invoice.Id);
+        await Context.SaveChangesAsync();
+
+        foreach (var invoice in invoices)
+        {
+            var items = invoice.CertificateOfOriginItemDetail;
+            foreach (var item in items)
+            {
+                item.CertificateOfOriginInvoiceDetailId = invoice.Id;
+            }
+
+            await MergeChildrenAsync(
+                items,
+                Context.Set<CertificateOfOriginItemDetail>().Where(it => it.CertificateOfOriginInvoiceDetailId == invoice.Id),
+                item => item.Id);
+        }
+
+        await Context.SaveChangesAsync();
     }
 
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)

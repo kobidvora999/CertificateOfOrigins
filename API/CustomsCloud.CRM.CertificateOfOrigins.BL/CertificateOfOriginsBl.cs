@@ -133,7 +133,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 certificateToResponse = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
                 if (certificateToResponse != null)
                 {
-                    await CancelCertificateOfOriginFromMessage(certificateToResponse);
+                    // Legacy ChecksIfThereIsDeclarationAssociatedWithTheCertificate: a certificate with a still-linked
+                    // declaration cannot be cancelled — the declaration must be cancelled first. Block the cancel if so.
+                    var associatedDeclaration = await exportDealFileProxy.GetLeadDocumentByCertificateOfOriginId(certificateToResponse.Id);
+                    if (associatedDeclaration != null)
+                    {
+                        requestExceptions.Add(BuildMessageException(EMessageCode.TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate, associatedDeclaration.LeadDocumentTitle));
+                    }
+                    else
+                    {
+                        await CancelCertificateOfOriginFromMessage(certificateToResponse);
+                    }
                 }
 
                 break;
@@ -848,8 +858,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             entity.ApproveUserId = userId;
         }
 
-        // Persist (upsert + diff-merge details).
-        entity.Id = await DataLayer.SaveCertificateOfOrigin(entity, details, userId);
+        // Persist (upsert + diff-merge details + diff-merge the invoice/item graph when supplied by the incoming-message
+        // create branch; the SPA save path sends no invoices).
+        entity.Id = await DataLayer.SaveCertificateOfOrigin(entity, details, request.CertificateOfOriginInvoiceDetails, userId);
 
         // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
         // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is

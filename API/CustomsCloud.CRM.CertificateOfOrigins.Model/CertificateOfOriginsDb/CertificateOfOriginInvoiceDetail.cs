@@ -33,4 +33,9 @@ public class CertificateOfOriginInvoiceDetail
 
     [Column("IsToPrint")]
     public bool IsToPrint { get; set; }
+
+    // The invoice's item rows — carried through the create-branch save; NOT an EF navigation (the DAL wires the
+    // CertificateOfOriginInvoiceDetailID FK and diff-merges items explicitly after the invoice is saved).
+    [NotMapped]
+    public List<CertificateOfOriginItemDetail> CertificateOfOriginItemDetail { get; set; } = [];
 }

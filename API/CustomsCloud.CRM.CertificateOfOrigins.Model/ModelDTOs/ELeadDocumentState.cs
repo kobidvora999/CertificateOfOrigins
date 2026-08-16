@@ -1,15 +1,40 @@
 namespace CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
-// Export lead-document state (owned by the ExportDealFile microservice). SaveCertificateOfOrigin treats
-// Released / Paroled / Closed as "declaration released" → triggers the auto-publish reconciliation.
-// TODO(blocking): these numeric values are NOT confirmed — the enum is owned by the DealFile module (not this
-// service). Verify against the DealFile source/DB before ROLLOUT. Locally the ExportDealFile mock uses this same
-// enum, so the release check is internally consistent.
+// Export lead-document state (owned by the ExportDealFile microservice). Values are the authoritative
+// CertificateOfOrigins_enum_LeadDocumentState / DealFile lead-document-state C-table ids (confirmed 2026-08).
+// SaveCertificateOfOrigin treats Submited / Released / Paroled / Closed as "declaration released" → triggers the
+// auto-publish reconciliation; GetPC_MSG2280_2281 CheckExportDeclarationNumber rejects Draft / CanceledDraft / Canceled.
 public enum ELeadDocumentState
 {
-    Released = 1,
+    Draft = 1,
 
-    Paroled = 2,
+    Submited = 2,
 
-    Closed = 3,
+    Released = 3,
+
+    Paroled = 4,
+
+    CanceledDraft = 5,
+
+    Canceled = 6,
+
+    Splitted = 7,
+
+    WaitingToEnter = 8,
+
+    WaitingToExit = 9,
+
+    TrsnsitProhibted = 12,
+
+    Closed = 13,
+
+    Confiscated = 14,
+
+    PermittedToEnter = 15,
+
+    PermittedToExit = 16,
+
+    ReleasedToEnter = 17,
+
+    ReleasedToExit = 18,
 }

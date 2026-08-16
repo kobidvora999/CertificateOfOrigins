@@ -4,123 +4,141 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
 // Central message catalogue for the GetPC_MSG2280_2281 field-validation engine — the .NET 10 stand-in for the legacy
 // indirection SystemTablesUtil.GetUIMessageWithEnglishAndLevel(EMessages.X) (one code → one text, resolved centrally),
-// mirroring the existing EReconciliationMessage pattern (#34). Each enum member maps 1:1 to a legacy EMessages code
-// (noted inline), so the exception carries the code (ExceptionType) instead of a scattered string literal.
+// mirroring the existing EReconciliationMessage pattern (#34).
 //
-// TODO(migration): the Hebrew texts here come from the legacy UIMessage table; the English text + the generic resx
-// pipeline (ValidationMessages / BaseValidationMessages — see Program.cs) are still blocked repo-wide. When that lands,
-// source the text from ValidationMessages keyed by ExceptionType and drop this local catalogue.
+// Each enum member's NUMERIC VALUE is the real UIMessage id, so the exception carries the true EMessages code on
+// ExceptionType. The Hebrew texts are the authoritative UIMessage.UserFriendlyMessage values (confirmed against the
+// module's UIMessage export, 2026-08).
+// TODO(migration): when the resx / BaseValidationMessages pipeline lands (see Program.cs), source the text from
+// ValidationMessages keyed by ExceptionType and drop this local catalogue.
 public partial class CertificateOfOriginsBl
 {
     private enum EMessageCode
     {
-        MandatoryValue,                         // EMessages.MandatoryValue
-        MandatoryNullValue,                     // EMessages.MandatoryNullValue
-        CustomerNotInCustomers,                 // EMessages.CustomerNotInCustomers
-        ExportCountryDoesNotExistInTheCountryTable, // EMessages.ExportCountryDoesNotExistInTheCountryTable
-        IllegalExporterCountry,                 // EMessages.IllegalExporterCountry
-        IssuingCountryIllegal,                  // EMessages.IssuingCountryIllegal
-        ExporterDecCountryIllegal,              // EMessages.ExporterDecCountryIllegal
-        TransirCountryIllegal,                  // EMessages.TransirCountryIllegal
-        ExportCounrtyIllegal,                   // EMessages.ExportCounrtyIllegal
-        IllegalFirstCountryInAgreement,         // EMessages.IllegalFirstCountryInAgreement
-        SecondCountryNotInAgreement,            // EMessages.SecondCountryNotInAgreement
-        ImporterCountryNotInAgreement,          // EMessages.ImporterCountryNotInAgreement
-        OriginCountryNotInAgreement,            // EMessages.OriginCountryNotInAgreement
-        CumulationCountryNotInAgreement,        // EMessages.CumulationCountryNotInAgreement
-        GroupOfCountriesNotInAgreement,         // EMessages.GroupOfCountriesNotInAgreement
-        OriginGroupOfCountriesNotInAgreement,   // EMessages.OriginGroupOfCountriesNotInAgreement
-        DestinationGroupOfCountriesNotInAgreement, // EMessages.DestinationGroupOfCountriesNotInAgreement
-        CumulationGroupOfCountriesNotInAgreement, // EMessages.CumulationGroupOfCountriesNotInAgreement
-        TheValueInFieldNotExistsInSystem,       // EMessages.TheValueInFieldNotExistsInSystem
-        ExporterDecDateIllegal,                 // EMessages.ExporterDecDateIllegal
-        ExportDateIllegal,                      // EMessages.ExportDateIllegal
-        ExitDateIllegal,                        // EMessages.ExitDateIllegal
-        DeclaringExporter,                      // EMessages.DeclaringExporter
-        CityOfDeclarationDoesNotExistInTheCitiesTable, // EMessages.CityOfDeclarationDoesNotExistInTheCitiesTable
-        CustomsHouseNotInTable,                 // EMessages.CustomsHouseNotInTable
-        CertificateDoesntExist,                 // EMessages.CertificateDoesntExist
-        MustSendCertificateID,                  // EMessages.MustSendCertificateID
-
-        // Cross-field (CheckFields) codes.
-        ImportDatetIllegal,                     // EMessages.ImportDatetIllegal
-        ImporterCountryRequired,                // EMessages.ImporterCountryRequired
-        CumulationCountryRequired,              // EMessages.CumulationCountryRequired
-        CountryAndCountryGroup,                 // EMessages.CountryAndCountryGroup
-        PlaceOfManufactureAndZipcodeRequired,   // EMessages.PlaceOfManufactureAndZipcodeRequired
-        TheNumOfCharactersInTheZipcodeIsLessThan7, // EMessages.TheNumOfCharactersInTheZipcodeIsLessThan7
-        FieldMandatoryWhenTheAnotherField,      // EMessages.FieldMandatoryWhenTheAnotherField
-        SecondCountryRequired,                  // EMessages.SecondCountryRequired
-        OriginCountryRequired,                  // EMessages.OriginCountryRequired
-        DestinationCountryRequired,             // EMessages.DestinationCountryRequired
-        DestinationCountryNotInAgreement,       // EMessages.DestinationCountryNotInAgreement
-        ManifestIdMissing,                      // EMessages.ManifestIdMissing
-        ExportDeclarationMissing,               // EMessages.ExportDeclarationMissing
-
-        // Invoice / item (CheckAndConvertInvoiceDetails) codes.
-        RequiredContainerIsoCodeFieldIfItIsAContainer, // EMessages.RequiredContainerISOCodeFieldIfItIsAContainer
-        TheDescriptionLengthCannotExceed255Characters, // EMessages.TheDescriptionLengthCannotExceed255Characters
-        ItemNumberNotFound,                     // EMessages.ItemNumberNotFound
-        ACustomsItemMustContainAtLeast6Digits,  // EMessages.ACustomsItemMustContainAtLeast6Digits
-        CustomsItemRequired,                    // EMessages.CustomsItemRequired
-        OriginCriteriaMissing,                  // EMessages.OriginCriteriaMissing
-        OriginCriteriaIllegal,                  // EMessages.OriginCriteriaIllegal
+        CustomerNotInCustomers = 4978,
+        CertificateToCancelIncorrectStatus = 4984,
+        ReplacementReasonMissing = 4986,
+        ExportDeclarationMissing = 4987,
+        SecondCountryNotInAgreement = 4990,
+        IllegalExporterCountry = 4991,
+        IllegalFirstCountryInAgreement = 4992,
+        SecondCountryRequired = 4993,
+        GroupOfCountriesNotInAgreement = 4994,
+        ImporterCountryNotInAgreement = 4995,
+        ImporterCountryRequired = 4996,
+        OriginCountryNotInAgreement = 4997,
+        OriginCountryRequired = 4998,
+        OriginGroupOfCountriesNotInAgreement = 4999,
+        DestinationCountryNotInAgreement = 5000,
+        DestinationCountryRequired = 5001,
+        DestinationGroupOfCountriesNotInAgreement = 5002,
+        CumulationCountryRequired = 5003,
+        CumulationCountryNotInAgreement = 5004,
+        CumulationGroupOfCountriesNotInAgreement = 5005,
+        PlaceOfManufactureAndZipcodeRequired = 5006,
+        CustomsHouseNotInTable = 5007,
+        IssuingCountryIllegal = 5008,
+        ExporterDecCountryIllegal = 5009,
+        ExporterDecDateIllegal = 5010,
+        DeclaringExporter = 5011,
+        ItemNumberNotFound = 5012,
+        OriginCriteriaMissing = 5013,
+        OriginCriteriaIllegal = 5014,
+        ExportDateIllegal = 5015,
+        ExportCounrtyIllegal = 5016,
+        ImportDatetIllegal = 5017,
+        TransirCountryIllegal = 5018,
+        ManifestIdMissing = 5019,
+        RequestReasonNotExist = 5020,
+        CountryAndCountryGroup = 5040,
+        ExitDateIllegal = 5095,
+        AgentInUpdateDifferent = 11908,
+        IllegalCertificateTypeUpdate = 11909,
+        CertificateDoesntExist = 13680,
+        MustSendCertificateID = 14026318,
+        ItIsNotPossibleToTransmitACorrectionWhenThereIsATaskForACustomsEmployee = 14027036,
+        ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked = 14027037,
+        TheNumOfCharactersInTheZipcodeIsLessThan7 = 14027168,
+        ACustomsItemMustContainAtLeast6Digits = 14027169,
+        CustomsItemRequired = 14027172,
+        ItIsntPossibleToTransmitDeclarationNumberThatHasntBeenSubmittedOrCanceledDeclaration = 14027173,
+        TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate = 14027174,
+        TheDescriptionLengthCannotExceed255Characters = 14027343,
+        ExportCountryDoesNotExistInTheCountryTable = 14027393,
+        CityOfDeclarationDoesNotExistInTheCitiesTable = 14027394,
+        ValueNull = 6,
+        TheValueInFieldNotExistsInSystem = 650,
+        MandatoryValue = 2387,
+        MandatoryNullValue = 2942,
+        FieldMandatoryWhenTheAnotherField = 4832,
+        RequiredContainerIsoCodeFieldIfItIsAContainer = 14026376,
     }
 
-    // code → Hebrew text (legacy UIMessage). {0} is the field value / id where the legacy message carried a parameter.
+    // code → authoritative Hebrew text (UIMessage.UserFriendlyMessage). {0}/{1}/{2} fill the legacy message parameters.
     private static readonly IReadOnlyDictionary<EMessageCode, string> MessageTexts = new Dictionary<EMessageCode, string>
     {
-        [EMessageCode.MandatoryValue] = "שדה חובה חסר: {0}",
-        [EMessageCode.MandatoryNullValue] = "ערך חובה חסר: {0}",
-        [EMessageCode.CustomerNotInCustomers] = "היצואן {0} אינו קיים במרשם הלקוחות",
-        [EMessageCode.ExportCountryDoesNotExistInTheCountryTable] = "הארץ {0} אינה קיימת בטבלת הארצות",
-        [EMessageCode.IllegalExporterCountry] = "ארץ יצואן אינה חוקית",
-        [EMessageCode.IssuingCountryIllegal] = "ארץ הנפקה אינה חוקית",
-        [EMessageCode.ExporterDecCountryIllegal] = "ארץ הצהרת יצואן אינה חוקית",
-        [EMessageCode.TransirCountryIllegal] = "ארץ מעבר אינה חוקית",
-        [EMessageCode.ExportCounrtyIllegal] = "ארץ ייצוא אינה חוקית",
-        [EMessageCode.IllegalFirstCountryInAgreement] = "הארץ הראשונה בהסכם אינה חוקית",
-        [EMessageCode.SecondCountryNotInAgreement] = "הארץ השנייה אינה בהסכם",
-        [EMessageCode.ImporterCountryNotInAgreement] = "ארץ הנשגר אינה בהסכם",
-        [EMessageCode.OriginCountryNotInAgreement] = "ארץ המקור אינה בהסכם",
-        [EMessageCode.CumulationCountryNotInAgreement] = "ארץ המצטבר אינה בהסכם",
-        [EMessageCode.GroupOfCountriesNotInAgreement] = "קבוצת הארצות אינה בהסכם",
-        [EMessageCode.OriginGroupOfCountriesNotInAgreement] = "קבוצת ארצות המקור אינה בהסכם",
-        [EMessageCode.DestinationGroupOfCountriesNotInAgreement] = "קבוצת ארצות היעד אינה בהסכם",
-        [EMessageCode.CumulationGroupOfCountriesNotInAgreement] = "קבוצת ארצות המצטבר אינה בהסכם",
-        [EMessageCode.TheValueInFieldNotExistsInSystem] = "הערך בשדה {0} אינו קיים במערכת",
-        [EMessageCode.ExporterDecDateIllegal] = "תאריך הצהרת יצואן אינו חוקי",
-        [EMessageCode.ExportDateIllegal] = "תאריך ייצוא אינו חוקי",
-        [EMessageCode.ExitDateIllegal] = "תאריך יציאה צפוי אינו חוקי",
-        [EMessageCode.DeclaringExporter] = "ההצהרה חייבת להיות על ידי היצואן",
-        [EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable] = "עיר ההצהרה {0} אינה קיימת בטבלת הערים",
-        [EMessageCode.CustomsHouseNotInTable] = "בית המכס אינו קיים בטבלה",
-        [EMessageCode.CertificateDoesntExist] = "התעודה {0} אינה קיימת",
-        [EMessageCode.MustSendCertificateID] = "יש לשלוח מזהה תעודה",
-        [EMessageCode.ImportDatetIllegal] = "תאריך היבוא אינו חוקי",
-        [EMessageCode.ImporterCountryRequired] = "ארץ הנשגר הינה שדה חובה",
-        [EMessageCode.CumulationCountryRequired] = "ארץ המצטבר הינה שדה חובה",
-        [EMessageCode.CountryAndCountryGroup] = "לא ניתן להזין גם ארץ וגם קבוצת ארצות",
-        [EMessageCode.PlaceOfManufactureAndZipcodeRequired] = "מקום הייצור והמיקוד הינם שדות חובה",
-        [EMessageCode.TheNumOfCharactersInTheZipcodeIsLessThan7] = "מספר התווים במיקוד קטן מ-7",
-        [EMessageCode.FieldMandatoryWhenTheAnotherField] = "השדה {0} הינו שדה חובה כאשר השדה {1} הוא {2}",
-        [EMessageCode.SecondCountryRequired] = "הארץ השנייה הינה שדה חובה",
-        [EMessageCode.OriginCountryRequired] = "ארץ המקור הינה שדה חובה",
-        [EMessageCode.DestinationCountryRequired] = "ארץ היעד הינה שדה חובה",
-        [EMessageCode.DestinationCountryNotInAgreement] = "ארץ היעד אינה בהסכם",
-        [EMessageCode.ManifestIdMissing] = "מספר מניפסט חסר",
-        [EMessageCode.ExportDeclarationMissing] = "מספר רשימון יצוא חסר",
-        [EMessageCode.RequiredContainerIsoCodeFieldIfItIsAContainer] = "יש להזין קוד ISO של מכולה כאשר סוג האריזה הוא מכולה",
-        [EMessageCode.TheDescriptionLengthCannotExceed255Characters] = "אורך התיאור אינו יכול לעלות על 255 תווים",
-        [EMessageCode.ItemNumberNotFound] = "מספר הפריט לא נמצא",
-        [EMessageCode.ACustomsItemMustContainAtLeast6Digits] = "פריט מכס חייב להכיל לפחות 6 ספרות",
-        [EMessageCode.CustomsItemRequired] = "פריט מכס הינו שדה חובה",
-        [EMessageCode.OriginCriteriaMissing] = "קריטריון מקור חסר",
-        [EMessageCode.OriginCriteriaIllegal] = "קריטריון מקור אינו חוקי",
+        [EMessageCode.CustomerNotInCustomers] = "לקוח {0} לא קיים במאגר לקוחות",
+        [EMessageCode.CertificateToCancelIncorrectStatus] = "בהחלפת תעודה סטטוס התעודה לביטול חייב להיות מאושרת לפרסום באינטרנט",
+        [EMessageCode.ReplacementReasonMissing] = "סיבת בקשה להחלפת תעודה חסרה",
+        [EMessageCode.ExportDeclarationMissing] = "מספר הצהרת יצוא חסר",
+        [EMessageCode.SecondCountryNotInAgreement] = "מדינה שניה אינה שייכת להסכם הסחר",
+        [EMessageCode.IllegalExporterCountry] = "מדינת היצואן חייבת להיות ישראל",
+        [EMessageCode.IllegalFirstCountryInAgreement] = "מדינה ראשונה בהסכם חייבת להיות ישראל",
+        [EMessageCode.SecondCountryRequired] = "חסרה מדינה שניה או קבוצת מדינות בהסכם",
+        [EMessageCode.GroupOfCountriesNotInAgreement] = "קבוצת מדינות אינה שייכת להסכם הסחר",
+        [EMessageCode.ImporterCountryNotInAgreement] = "מדינת יבואן/נשגר אינה שייכת להסכם הסחר",
+        [EMessageCode.ImporterCountryRequired] = "חסרה מדינת יבואן/נשגר",
+        [EMessageCode.OriginCountryNotInAgreement] = "מדינת המקור אינה שייכת להסכם הסחר",
+        [EMessageCode.OriginCountryRequired] = "חסרה מדינת המקור או קבוצת מדינות המקור",
+        [EMessageCode.OriginGroupOfCountriesNotInAgreement] = "קבוצת מדינות מקור אינה שייכת להסכם הסחר",
+        [EMessageCode.DestinationCountryNotInAgreement] = "מדינת היעד אינה שייכת להסכם הסחר",
+        [EMessageCode.DestinationCountryRequired] = "חסרה מדינת היעד או קבוצת מדינות היעד",
+        [EMessageCode.DestinationGroupOfCountriesNotInAgreement] = "קבוצת מדינות היעד אינה שייכת להסכם הסחר",
+        [EMessageCode.CumulationCountryRequired] = "חסרה מדינת הצבירה או קבוצת מדינות הצבירה",
+        [EMessageCode.CumulationCountryNotInAgreement] = "מדינת הצבירה אינה שייכת להסכם הסחר",
+        [EMessageCode.CumulationGroupOfCountriesNotInAgreement] = "קבוצת מדינות הצבירה אינה שייכת להסכם הסחר",
+        [EMessageCode.PlaceOfManufactureAndZipcodeRequired] = "יש לציין מקום ייצור הטובין ומיקוד",
+        [EMessageCode.CustomsHouseNotInTable] = "ערך בשדה בית מכס אינו קיים בטבלת בתי מכס",
+        [EMessageCode.IssuingCountryIllegal] = "מדינה מנפיקה אינה יכולה להיות שונה מישראל",
+        [EMessageCode.ExporterDecCountryIllegal] = "מדינת הצהרת יצואן אינה יכולה להיות שונה מישראל",
+        [EMessageCode.ExporterDecDateIllegal] = "תאריך הצהרת יצואן צריך להיות שווה להיום או מוקדם ממנו, עד 5 ימים אחורה",
+        [EMessageCode.DeclaringExporter] = "השדה IsDeclaredByExporter - `המצהיר הוא היצואן` חייב להיות TRUE",
+        [EMessageCode.ItemNumberNotFound] = "פרט מכס לא קיים בספר המכס",
+        [EMessageCode.OriginCriteriaMissing] = "קריטריון העדפה חסר",
+        [EMessageCode.OriginCriteriaIllegal] = "ערך לא חוקי לקריטריון העדפה",
+        [EMessageCode.ExportDateIllegal] = "תאריך היצוא יכול להיות היסטורי ועד שלושה חודשים קדימה",
+        [EMessageCode.ExportCounrtyIllegal] = "מדינת יצוא אינה יכולה להיות ישראל",
+        [EMessageCode.ImportDatetIllegal] = "תאריך היבוא לישראל צריך להיות שווה או מוקדם מתאריך היצוא, עד שנה אחורה",
+        [EMessageCode.TransirCountryIllegal] = "מדינת הביניים אינה יכולה להיות שונה מישראל",
+        [EMessageCode.ManifestIdMissing] = "לא הוזן מספר מצהר או מספר הצהרה עבור תעודה מסוג non manipulation",
+        [EMessageCode.RequestReasonNotExist] = "סיבת בקשה לא קיימת במערכת",
+        [EMessageCode.CountryAndCountryGroup] = "אין לספק מדינה וקבוצת מדינות לאותו עניין",
+        [EMessageCode.ExitDateIllegal] = "תאריך היציאה המשוער מישראל צריך להיות שווה או גדול מן התאריך הנוכחי, עד שלושה חודשים קדימה",
+        [EMessageCode.AgentInUpdateDifferent] = "סוכן מכס במסר שונה מן הסוכן בבקשה {0} להנפקת תעודת מקור",
+        [EMessageCode.IllegalCertificateTypeUpdate] = "אין לתקן סוג תעודה {0} לסוג תעודה {1}",
+        [EMessageCode.CertificateDoesntExist] = "תעודה מספר {0} אינה קיימת במערכת",
+        [EMessageCode.MustSendCertificateID] = "חובה לספק מספר תעודה לפעולה המבוקשת",
+        [EMessageCode.ItIsNotPossibleToTransmitACorrectionWhenThereIsATaskForACustomsEmployee] = "לא ניתן לשדר תיקון לתעודה {0} כאשר יש משימה לעובד מכס",
+        [EMessageCode.ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked] = "לא ניתן לשדר סוג בקשה {0} לתעודה בסטטוס {1}",
+        [EMessageCode.TheNumOfCharactersInTheZipcodeIsLessThan7] = "מספר התוים במיקוד קטן מ-7",
+        [EMessageCode.ACustomsItemMustContainAtLeast6Digits] = "פרט מכס חייב להכיל לפחות 6 ספרות",
+        [EMessageCode.CustomsItemRequired] = "חסר שדה פרט מכס",
+        [EMessageCode.ItIsntPossibleToTransmitDeclarationNumberThatHasntBeenSubmittedOrCanceledDeclaration] = "לא ניתן לשדר מספר הצהרה שלא הוגשה או הצהרה מבוטלת",
+        [EMessageCode.TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate] = "יש לבטל את ההצהרה המקושרת {0} קודם ביטול התעודה",
+        [EMessageCode.TheDescriptionLengthCannotExceed255Characters] = "אורך התיאור לא יכול להיות גדול מ255 תווים",
+        [EMessageCode.ExportCountryDoesNotExistInTheCountryTable] = "מדינת היצוא אינה קיימת בטבלת המדינות",
+        [EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable] = "הערך בשדה יישוב הצהרת יצואן אינו קיים בטבלת היישובים.",
+
+        [EMessageCode.MandatoryValue] = "אין ערך בשדה חובה {0}",
+        [EMessageCode.MandatoryNullValue] = "הערך בשדה {0} חובה שיהיה ריק",
+        [EMessageCode.TheValueInFieldNotExistsInSystem] = "הערך בשדה {0} לא קיים במערכת",
+        [EMessageCode.FieldMandatoryWhenTheAnotherField] = "השדה {0} הינו שדה חובה כאשר הערך בשדה  {1} הינו {2}",
+        [EMessageCode.ValueNull] = "יש להזין ערך בשדה {0}",
+        [EMessageCode.RequiredContainerIsoCodeFieldIfItIsAContainer] = "שדה סוג מכולה חובה אם מדובר במכולה",
     };
 
-    // Build the exception DTO for a message code, carrying the code (ExceptionType) — the .NET 10 equivalent of
-    // new InfException(EMessages.X, parameters). Optional args fill the {0} placeholder of the text.
+    // Build the exception DTO for a message code, carrying the real EMessages code (ExceptionType) — the .NET 10
+    // equivalent of new InfException(EMessages.X, parameters). Optional args fill the {0}/{1}/{2} placeholders.
     private static CertificateOfOriginExceptionDto BuildMessageException(EMessageCode code, params object?[] args)
     {
         var template = MessageTexts.TryGetValue(code, out var text) ? text : code.ToString();
@@ -131,9 +149,6 @@ public partial class CertificateOfOriginsBl
         {
             ExceptionLevel = (int)EExceptionLevel.Error,
             ExceptionDescription = description,
-
-            // TODO(migration): the real numeric EMessages code (legacy GetUIMessageWithEnglishAndLevel). Kept as the
-            // local catalogue ordinal until the SystemTables message table / ValidationMessages mapping lands.
             ExceptionType = (int)code,
         };
     }
