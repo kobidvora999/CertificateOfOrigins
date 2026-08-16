@@ -15,8 +15,11 @@
 > | 1 | `f3fe10d` | GetCertificateOfOriginID | External | CertificateOfOrigins |
 > | 2 | `ff5b089` | IsCertificateOfOriginByExternalIdExist | Internal | CertificateOfOrigins |
 > | 3 | `db8b09e` | CheckImporterOfImportAuthentication | Internal | AuthenticationRequest |
+> | … | (ראה git log) | רוב מתודות ה-Get/Save/Handle | External/Internal | CertificateOfOrigins / AuthenticationRequest / ExportDocumentAuthenticationRequest |
+> | ~28 | `a750038` | GetPC_MSG2280_2281_CertificateOfOriginRequest | Incoming | CertificateOfOrigins (🟡 חלקי — ראה למטה) |
 >
-> **בפועל: 2 controllers (`CertificateOfOriginsController`, `AuthenticationRequestController`), 3 endpoints מומרים.**
+> **הטבלה הזו אינה ממצה** — מאז נוספו עוד מתודות רבות (ראה `git log`); שורת ה-GetPC נוספה כי היא ה-work הנוכחי.
+> **בפועל: 3 controllers, עשרות endpoints מומרים.**
 > תשתית משותפת שכבר קיימת אך **טרם חשופה כ-endpoint**: מתודת ה-BL `GetCertificateOfOriginsByFilter`
 > (+ SP `dbo.GetCertificateOfOriginsByFilter` + DAL + `CertificateOfOriginResultDto` + Customer proxy) —
 > נוצרה כתשתית ל-#2; ההמרה המלאה שלה (עם endpoint) היא #7 בתוכנית.
@@ -79,14 +82,15 @@
 
 | מתודה | סטטוס | הערה |
 |---|---|---|
-| GetPC_MSG2280_2281_CertificateOfOriginRequest | 🔴 חסומה | תלויה ב-SaveCertificateOfOrigin + תשתית EAI + מנוע ולידציה |
+| GetPC_MSG2280_2281_CertificateOfOriginRequest | 🟡 חלקי | ליבה בנויה+נבדקה חי (endpoint סינכרוני, נעילה, read/cancel, מנוע ולידציה מלא, generator, lookups). 4 חסמים עסקיים נותרו: per-reason resolution+supersession · שמירת invoices · declaration-check+amendment · NonManipulation. פירוט: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) |
 | GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים דרך proxy ל-SystemTables (+mock) — אין להם lookup type בפלטפורמה. נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. חוסם שנותר: DocumentID (NULL — Docs חוצה-סכמה, TODO(blocking)). Rollout: אימות נתיבי endpoint של SystemTables (CurrencyTypesByIds, DataDictionaryFieldsByIds). |
 
 *(אין עדיין Incoming controller ברפו — מתודות Incoming שהומרו נחשפות דרך ה-controller של ה-BL הרלוונטי.)*
 
 ## מסלולי פתיחה (לפי סדר מומלץ)
 1. ~~**GetCertificateRequestByGuid**~~ — ✅ הומרה (2026-07-28).
-2. **GetPathsForNavigationToVendor** — בירור מוצר בלבד (רלוונטי ל-SPA?).
-3. **גל ההודעות** — התקנת `CustomsCloud.Infrastructure.Notifications` + אימות SendMessage פותחת את שלוש מתודות ה-Save יחד.
-4. **SaveCertificateOfOrigin** → פותחת אחריה את ה-Incoming הראשי.
-5. **UpdateCetrificateOfOrigins** — אחרונה (תלויה בכל השאר).
+2. ~~**SaveCertificateOfOrigin**~~ — ✅ הומרה.
+3. ~~**UpdateCetrificateOfOrigins**~~ — ✅ הומרה.
+4. **GetPC_MSG2280_2281** — 🟡 ליבה בנויה+נבדקה; נותרו 4 חסמים עסקיים (ראה MIGRATION-NOT-DONE). המשך מומלץ:
+   per-reason resolution + שמירת invoices יחד (חולקים פתרון-תעודה-קיימת + save), ואז declaration-check + NonManipulation.
+5. **GetPathsForNavigationToVendor** — 🔴 בירור מוצר בלבד (רלוונטי ל-SPA? טבלת NavigationPath חוצת-DB) — המתודה היחידה שלא נגעו בה.

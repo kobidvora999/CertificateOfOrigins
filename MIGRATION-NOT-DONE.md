@@ -70,19 +70,37 @@
 פתור לתחום זה; כל הישויות והילדים הומרו; ערכי EExportAuthenticationRequestStatus חולצו (1-9);
 מיפוי האירועים מלא (ExportAuthenticationRequestFileStatusUpdate=1282 + 3 אירועי ענף).
 
-## Incoming: GetPC_MSG2280_2281_CertificateOfOriginRequest — ❌ לא בוצע
+## Incoming: GetPC_MSG2280_2281_CertificateOfOriginRequest — 🟡 חלקי (ליבה בנויה + נבדקה חי; 4 חסמים עסקיים נותרו)
 
-**סיבות:**
-1. **תלוי ב-SaveCertificateOfOrigin** (שנדחה) — זהו הצרכן המרכזי של זרימת השמירה המלאה
-   (`bl.SaveCertificateOfOrigin(certificateToResponse, null, _certificateToUpdateId, ...)`).
-2. **תשתית תשובת EAI חד-כיוונית** — התשובה (PC_NG_2281_MSG02) נמסרת דרך callback/MSMQ
-   (`GetServiceCallback(...).OnGetPC_MSG2280_2281_CertificateOfOriginRequestComplete(response)`) —
-   נדרשת הכרעת עיצוב על צורת ה-endpoint הסינכרוני + מי מלקוחות ה-EAI צורך אותו.
-3. תלות ב-ExportDealFile adapter (אין שירות DealFile), נעילה מבוזרת (LockFactory), יצירת צרופות.
-4. מנוע ולידציה רפלקטיבי של ~900 שורות (30+ שדות תעודה) — יחידת עבודה גדולה בפני עצמה.
+**מה הומר ונבדק חי (2026-08, endpoint `POST CertificateOfOrigins/CertificateOfOriginRequest`):**
+- **חוזה סינכרוני** — הכרעת מפתח: ה-callback/MSMQ החד-כיווני הוחלף ב-endpoint סינכרוני שמחזיר את הפידבק
+  ישירות (כמו האחות GetCertificateRequestByGuid). שגיאות מוחזרות **in-band** (HTTP 200 + exceptions), לא נזרקות.
+- **נעילה מבוזרת** — `ILockUtil` (חבילת `CustomsCloud.InfrastructureCore.Lock` 1.10.11), מגודר בפרמטר
+  `IsNeedToLockCertificateOfOrigin` — נאמן ל-LockFactory הלגסי.
+- **ענפי read/cancel** — GetRequestStatus + CertificateCancellation (‏DAL set-based write + IEventUtil).
+- **מנוע הוולידציה המלא** (הכרעת מפתח: מתודת BL processing, לא FluentValidation — כי כל שדה גם *פותר* ערך async
+  וגם *בונה* detail): לולאה מונעת-DB (`DetailsPerCertificate`), ~30 field-validators (country/Israel/agreement/
+  group/date/site/city/bool), cross-field (‏EUR1/EURMED · cumulation · consignee · place-of-manufacture+zip ·
+  manifest · CustomsHouse→org-unit), invoice/item (shape · customs-item 6-digit · origin-criterion · container-ISO ·
+  currency/packing/measure). קטלוג הודעות מרכזי (`EMessageCode`, טקסטים מ-UIMessage) — ExceptionType נושא את הקוד.
+- **מספר תעודה** — `dbo.GetCertificateOfOriginNumber` + sequence (סקריפט; sequence היה חסר מקומית).
+- **lookups חדשים** ל-SystemTables: Country(alpha-2)/Site/InternationalSite/PackingType/MeasurementUnit/CurrencyType-by-code
+  (proxies +mocks), CountryGroup-existence. `OriginCriterion` — entity + DAL מקומי (הטבלה בבעלות המודול).
+- אומת מול הלגסי אדוורסרית (2 agents); פערי C/D/MED תוקנו. Postman 35/35, Build ✅.
 
-**המלצה:** להמיר אחרי פתיחת חסמי SaveCertificateOfOrigin; מנוע הולידציה ראוי להמרה כ-FluentValidation
-בשלב נפרד עם המפתח.
+**חסמים עסקיים שנותרו (‏TODO(blocking) מתועדים בקוד) — לכן עדיין 🟡 ולא ✅:**
+1. **per-reason resolution** (‏`CheckRequestReasonAndGetSavedCertificate`) — ולידציות פר-reason (Update: התאמת
+   agent/type/status · Replacement: cancel-id+status · published/cancelled guards) + קביעת `CertificateIdToCancel`/
+   `CertificateToReplaceInImport` → **supersession והחלפת תעודה דרך מסר לא מתרחשות עדיין**.
+2. **שמירת invoices/items** — מומרים ומאומתים, אך `SaveCertificateOfOrigin` (BL+DAL) עדיין לא כותב את graph
+   ה-invoice/item (חתימתו מקבלת רק certificate + details).
+3. **CheckCertificateOfOriginOnDeclarationSubmited** (reconciliation post-save, דרך UpdateCertificateOfOrigins) +
+   **amendment-linkage guard** — לא מחווטים.
+4. **NonManipulation** — מיפוי השדות של גוף ה-NonManipulation אינו קיים (רק גוף CertificateOfOrigin הרגיל).
+
+**עוד לא-חוסם:** seed של `City` ל-Redis (‏ILookupUtil<City>) נדרש לבדיקת save מלאה מקומית — מגבלת סביבה, לא קוד.
+
+**המלצה:** להשלים את 4 החסמים כיחידות המשך (הכי טבעי: #1+#2 יחד — הם חולקים את פתרון-התעודה-הקיימת ואת ה-save).
 
 ## Internal: GetPathsForNavigationToVendor — ❌ לא בוצע (טבלת תשתית חוצת-DB)
 
