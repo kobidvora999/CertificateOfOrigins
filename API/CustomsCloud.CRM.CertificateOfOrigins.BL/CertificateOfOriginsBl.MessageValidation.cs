@@ -143,9 +143,16 @@ public partial class CertificateOfOriginsBl
         var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices);
         var saved = await SaveCertificateOfOrigin(saveRequest);
 
-        // TODO(blocking): the post-save CheckCertificateOfOriginOnDeclarationSubmited reconciliation (via
-        // UpdateCertificateOfOrigins) — its declaration-mismatch exceptions will be added to requestExceptions here once
-        // wired (it reconciles the declaration goods items).
+        // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
+        // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
+        // not NonManipulation. The reconciliation's declaration-mismatch exceptions are returned in-band.
+        if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
+            && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
+        {
+            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved);
+            requestExceptions.AddRange(reconciliationExceptions);
+        }
+
         var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
         return certificateEntity;
     }

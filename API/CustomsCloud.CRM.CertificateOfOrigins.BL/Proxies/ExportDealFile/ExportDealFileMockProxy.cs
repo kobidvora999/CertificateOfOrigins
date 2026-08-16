@@ -76,9 +76,25 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
         return Task.CompletedTask;
     }
 
-    // Default = a released declaration; feature "DealFile.NotReleased" flips the state so auto-publish does not trigger.
+    // Default = a released declaration with one invoice/goods-item (feature "DealFile.NotReleased" flips the state so the
+    // reconciliation gate does not fire; "DealFile.NoDeclarationInvoices" returns an empty invoice list so the
+    // no-export-invoices mismatch path is exercised).
     public Task<ExportDeclarationInfoDto?> GetExportDeclarationInfoForPc(int leadDocumentId)
     {
+        var invoices = mockUtil.HasMockFeature("DealFile.NoDeclarationInvoices")
+            ? new List<ExportInvoiceInfoDto>()
+            :
+            [
+                new ExportInvoiceInfoDto
+                {
+                    ExternalIdNum = "INV1", // TODO: dummy data — matches the mock certificate invoice number
+                    ExportGoodsItemInfoList =
+                    [
+                        new ExportGoodsItemInfoDto { CustomsItemId = 123456, OriginCountryId = 32 }, // TODO: dummy data
+                    ],
+                },
+            ];
+
         return Task.FromResult<ExportDeclarationInfoDto?>(new ExportDeclarationInfoDto
         {
             LeadDocumentId = leadDocumentId,
@@ -86,6 +102,7 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
             DestinationCountryId = 32,   // TODO: dummy data
             ExporterCustomerId = 888,    // TODO: dummy data
             OrganizationUnitId = 1,      // TODO: dummy data
+            ExportInvoiceInfoList = invoices,
         });
     }
 
