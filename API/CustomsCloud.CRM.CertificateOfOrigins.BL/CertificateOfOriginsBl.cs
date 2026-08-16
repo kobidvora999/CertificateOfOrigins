@@ -122,7 +122,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         // returns them on the feedback response, it does not 404 (mirrors GetCertificateRequestByGuid's in-band contract).
         var requestExceptions = new List<CertificateOfOriginExceptionDto>();
 
-        List<CertificateOfOriginExceptionDto>? exceptions = null;
         CertificateOfOrigin? certificateToResponse;
         switch (reasonCode)
         {
@@ -140,13 +139,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 break;
 
             default:
-                (certificateToResponse, exceptions) = await ProcessCreateCertificateBranch(request, requestExceptions);
+                certificateToResponse = await ProcessCreateCertificateBranch(request, requestExceptions);
                 break;
         }
 
         // Legacy: an unresolved certificate leaves the feedback body empty (the response header still carries the
-        // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404.
-        var response = await BuildRequestFeedbackResponse(certificateToResponse, exceptions, requestExceptions);
+        // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404. All
+        // exceptions — validation, not-found, and (once wired) declaration reconciliation — flow through the single
+        // requestExceptions channel.
+        var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions);
         return response;
     }
 
@@ -189,14 +190,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
     // reconciliation exceptions (from the post-save declaration check) and the in-band request exceptions (not-found /
     // missing-id, accumulated above) are merged onto the response — the legacy returns them here, it does not throw.
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto>? exceptions, List<CertificateOfOriginExceptionDto> requestExceptions)
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        var allExceptions = new List<CertificateOfOriginExceptionDto>(requestExceptions);
-        if (exceptions is { Count: > 0 })
-        {
-            allExceptions.AddRange(exceptions);
-        }
-
         // A resolved certificate carries the full feedback; an unresolved one (not-found) leaves the feedback empty and
         // relies on the exceptions to convey the failure — the certificate id is then unknown (0).
         var feedback = certificate != null ? await BuildRequestFeedback(certificate) : new CertificateOfOriginRequestFeedbackDto();
@@ -204,7 +199,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         {
             ApplicationId = certificate?.Id ?? 0,
             Feedback = feedback,
-            Exceptions = allExceptions.Count > 0 ? allExceptions : null,
+            Exceptions = requestExceptions.Count > 0 ? requestExceptions : null,
 
             // Legacy: attachments are built (CreateAttachments → PrintCertificateOfOriginAndSaveAttachments) only for a
             // freshly-published certificate. The read/cancel reason codes handled here never carry attachments; the

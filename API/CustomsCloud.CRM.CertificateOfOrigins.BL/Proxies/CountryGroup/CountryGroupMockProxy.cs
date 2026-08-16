@@ -12,4 +12,11 @@ public class CountryGroupMockProxy(IProxyMockUtil mockUtil) : ICountryGroupProxy
     {
         return Task.FromResult(!mockUtil.HasMockFeature("CountryGroup.NotInGroup"));
     }
+
+    // Default = the country group exists (validation passes); feature "CountryGroup.NotExists" flips it so the
+    // "value not in system" path is exercised.
+    public Task<bool> CountryGroupExists(int countryGroupId)
+    {
+        return Task.FromResult(!mockUtil.HasMockFeature("CountryGroup.NotExists"));
+    }
 }

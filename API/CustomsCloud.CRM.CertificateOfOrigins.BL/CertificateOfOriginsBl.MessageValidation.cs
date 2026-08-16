@@ -57,22 +57,31 @@ public partial class CertificateOfOriginsBl
     // Stage 5: the create/update branch. Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner default case —
     // validate the message (per-field + cross-field, resolving the exporter / destination / org-unit side-values), and
     // if it is valid map it onto SaveCertificateOfOriginRequestDto and save; then the post-save declaration-submitted
-    // reconciliation. Validation errors are returned in-band (accumulated on requestExceptions), not thrown — faithful.
-    private async Task<(CertificateOfOrigin? Certificate, List<CertificateOfOriginExceptionDto>? Exceptions)> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, List<CertificateOfOriginExceptionDto> requestExceptions)
+    // reconciliation. Validation errors are accumulated onto the single requestExceptions channel (in-band, not thrown —
+    // faithful) and the method returns the saved certificate (null when validation failed, so no save happened).
+    private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
         var agentRequest = request.AgentRequest;
         var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
+
+        // The validation engine accumulates into context.Exceptions during the pass; they are merged into the single
+        // requestExceptions channel at the gate below.
         var context = new MessageValidationContext();
 
         // NonManipulation carries its certificate body on a different object; the field engine only maps the standard
-        // CertificateOfOrigin body. TODO(blocking): the NonManipulation field mapping + the invoice/item validation
-        // (stage 4b) — needs the invoice/item entities + save chain extended and two more SystemTables lookups.
+        // CertificateOfOrigin body. TODO(blocking): the NonManipulation field mapping.
         var certificate = request.CertificateOfOrigin;
         if (certificate is null)
         {
             requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(request.CertificateOfOrigin)));
-            return (null, null);
+            return null;
         }
+
+        // The certificate type's mandatory flags (legacy GetCertificateTypeCode): criterion / customs-item / zipcode.
+        var typeCode = await DataLayer.GetCertificateTypeCode(certificateTypeId);
+        agentRequest.IsCertificateTypeCodeMandatory = typeCode?.IsCriterionMandatory ?? false;
+        agentRequest.IsCustomsItemMandatory = typeCode?.IsCustomsItemMandatory;
+        agentRequest.IsZipcodeMandatory = typeCode?.IsZipcodeMandatory ?? false;
 
         // The certificate type's field catalogue (which fields are relevant + their constraint).
         var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
@@ -86,19 +95,39 @@ public partial class CertificateOfOriginsBl
             destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
         }
 
+        // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
+        // ValidateCertificateOfOriginRequestInvoiceDetail + CheckAndConvertInvoiceDetails (runs before the field loop in
+        // the legacy). The converted invoices are validated here; persisting them is a follow-up (see below).
+        ValidateInvoiceShape(certificate, context);
+        var invoices = await ConvertInvoiceDetails(request, context);
+
         // Per-field validation + detail construction (stages 2+3), then the cross-field pass (stage 4a).
         await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
         if (context.Details.Count > 0)
         {
-            await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, false, context);
+            await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
         }
 
-        // Legacy: if any validation exception accumulated, the request is rejected — return the exceptions in-band, no save.
+        // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
         if (context.Exceptions.Count > 0)
         {
             requestExceptions.AddRange(context.Exceptions);
-            return (null, null);
+            return null;
         }
+
+        // TODO(blocking): the per-reason resolution the legacy runs in CheckRequestReasonAndGetSavedCertificate before
+        // the save — fetch the existing certificate the reason targets and run its reason-specific validations
+        // (CertificateUpdate: agent/type/status match + set _certificateToUpdateId; CertificateReplacement: cancel-id
+        // present + status + set CertificateIDToCancel from the cancelled cert; ImportCertificateReplacement: cancel-id
+        // present + CertificateToReplaceInImport; NewCertificate/Draft/Retrospective: not-published/cancelled guard; and
+        // the DeclarationMatch/DeclarationMismatch guard). BuildSaveRequestFromMessage therefore cannot yet set
+        // CertificateIdToCancel / CertificateToReplaceInImport, so supersession/replacement linking does not occur for
+        // messages — delivered with this unit.
+
+        // The validated invoices are built and ready; persisting them requires SaveCertificateOfOrigin's DAL to accept
+        // the invoice/item graph (its signature currently takes only the certificate + detail rows).
+        // TODO(blocking): extend SaveCertificateOfOrigin (BL + DAL) to persist the invoice/item collection.
+        _ = invoices;
 
         // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
         // → GetCertificateNumber when certificateId is empty).
@@ -109,9 +138,10 @@ public partial class CertificateOfOriginsBl
         var saved = await SaveCertificateOfOrigin(saveRequest);
 
         // TODO(blocking): the post-save CheckCertificateOfOriginOnDeclarationSubmited reconciliation (via
-        // UpdateCertificateOfOrigins) — deferred with the invoice/item unit (it reconciles the declaration goods items).
+        // UpdateCertificateOfOrigins) — its declaration-mismatch exceptions will be added to requestExceptions here once
+        // wired (it reconciles the declaration goods items).
         var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
-        return (certificateEntity, null);
+        return certificateEntity;
     }
 
     // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or a freshly
@@ -134,12 +164,19 @@ public partial class CertificateOfOriginsBl
     {
         var agentRequest = request.AgentRequest;
 
+        // Legacy: CustomerID = (NonManipulation || no certificate body) ? agentId : _exporterID — driven by certificate
+        // TYPE, not by whether the exporter resolved. For a non-NonManipulation certificate the exporter id is used
+        // unconditionally (its default 0 if never resolved), never the agent id.
+        var isNonManipulationOrNoBody = agentRequest.CertificateOfOriginTypeCode == (int)ECertificateOfOriginType.NonManipulation
+            || request.CertificateOfOrigin is null;
+        var customerId = isNonManipulationOrNoBody ? request.CustomerId : context.ExporterId ?? 0;
+
         return new SaveCertificateOfOriginRequestDto
         {
             TypeId = agentRequest.CertificateOfOriginTypeCode,
             Title = certificateNumber,
             CertificateNumber = certificateNumber,
-            CustomerId = context.ExporterId ?? request.CustomerId,
+            CustomerId = customerId,
             CreateCustomerId = request.CustomerId,
             UpdateCustomerId = request.CustomerId,
             OrganizationUnitId = context.OrganizationUnitId ?? 0,
@@ -254,9 +291,13 @@ public partial class CertificateOfOriginsBl
         return value?.ToString();
     }
 
-    private static string? ToStringValue(DateTime value)
+    // The legacy message-DTO date fields are NON-nullable DateTime, so reflection always rendered a value — even when
+    // the client omitted the date (default 0001-01-01) — which therefore always flowed into the per-field date validator
+    // (CheckDeclarationDate/CheckExportDate/…), never the "mandatory blank" branch. Render unconditionally to preserve
+    // that: a missing/default date is rejected by the date-range check, not silently allowed as an optional blank.
+    private static string ToStringValue(DateTime value)
     {
-        return value == default ? null : value.ToString("o", CultureInfo.InvariantCulture);
+        return value.ToString("o", CultureInfo.InvariantCulture);
     }
 
     // Stage 3: the per-field-type validation + code→id resolution (legacy CheckSpecificField's switch on
@@ -469,7 +510,11 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
     private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId))
+        // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
+        // (GetIdByCode<CountryGroup>(PropID, id) → TheValueInFieldNotExistsInSystem on a miss); on failure the legacy
+        // returns 0 and skips the trade-agreement check.
+        if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId)
+            || !await countryGroupProxy.CountryGroupExists(countryGroupId))
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
             return;

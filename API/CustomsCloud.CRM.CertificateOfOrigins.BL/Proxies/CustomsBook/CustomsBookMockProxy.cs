@@ -32,4 +32,22 @@ public class CustomsBookMockProxy(IProxyMockUtil mockUtil) : ICustomsBookProxy, 
             .ToList();
         return Task.FromResult<List<CustomsItemDto>?>(items);
     }
+
+    // Default = the classification resolves to a stable dummy customs-item id; feature "CustomsBook.CustomsItemNotFound"
+    // flips to null so the item-not-found path is exercised.
+    public Task<int?> GetCustomsItemIdByFullClassification(string fullClassification)
+    {
+        if (mockUtil.HasMockFeature("CustomsBook.CustomsItemNotFound"))
+        {
+            return Task.FromResult<int?>(null);
+        }
+
+        var sum = 0;
+        foreach (var ch in fullClassification ?? string.Empty)
+        {
+            sum += ch;
+        }
+
+        return Task.FromResult<int?>((sum % 100000) + 1); // TODO: dummy data
+    }
 }

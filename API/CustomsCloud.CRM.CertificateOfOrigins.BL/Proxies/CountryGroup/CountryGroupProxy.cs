@@ -18,4 +18,15 @@ public class CountryGroupProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }
+
+    public async Task<bool> CountryGroupExists(int countryGroupId)
+    {
+        // TODO(blocking): confirm the SystemTables CountryGroup endpoint route (until then the mock is enabled via
+        // x-mock-mode).
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"SystemTables/CountryGroupExists/{countryGroupId}");
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<bool>();
+    }
 }

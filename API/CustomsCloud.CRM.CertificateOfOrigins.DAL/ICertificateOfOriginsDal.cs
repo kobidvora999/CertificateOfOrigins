@@ -76,6 +76,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<int> GetNextCertificateOfOriginNumber();
 
+    Task<OriginCriterion?> GetOriginCriterion(string originCriterionCode, int certificateOfOriginTypeCodeId);
+
     Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId);
 
     Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
@@ -93,6 +95,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<List<CertificateReconcileInvoiceDto>> GetCertificateInvoiceDetailsByCertificateIds(List<int> certificateIds);
 
     Task<bool?> GetCertificateTypeIsCustomsItemMandatory(int certificateTypeId);
+
+    Task<CertificateOfOriginTypeCode?> GetCertificateTypeCode(int certificateTypeId);
 
     Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId);
 

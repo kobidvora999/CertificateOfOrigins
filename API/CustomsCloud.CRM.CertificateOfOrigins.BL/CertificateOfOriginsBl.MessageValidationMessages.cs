@@ -56,6 +56,15 @@ public partial class CertificateOfOriginsBl
         DestinationCountryNotInAgreement,       // EMessages.DestinationCountryNotInAgreement
         ManifestIdMissing,                      // EMessages.ManifestIdMissing
         ExportDeclarationMissing,               // EMessages.ExportDeclarationMissing
+
+        // Invoice / item (CheckAndConvertInvoiceDetails) codes.
+        RequiredContainerIsoCodeFieldIfItIsAContainer, // EMessages.RequiredContainerISOCodeFieldIfItIsAContainer
+        TheDescriptionLengthCannotExceed255Characters, // EMessages.TheDescriptionLengthCannotExceed255Characters
+        ItemNumberNotFound,                     // EMessages.ItemNumberNotFound
+        ACustomsItemMustContainAtLeast6Digits,  // EMessages.ACustomsItemMustContainAtLeast6Digits
+        CustomsItemRequired,                    // EMessages.CustomsItemRequired
+        OriginCriteriaMissing,                  // EMessages.OriginCriteriaMissing
+        OriginCriteriaIllegal,                  // EMessages.OriginCriteriaIllegal
     }
 
     // code → Hebrew text (legacy UIMessage). {0} is the field value / id where the legacy message carried a parameter.
@@ -101,6 +110,13 @@ public partial class CertificateOfOriginsBl
         [EMessageCode.DestinationCountryNotInAgreement] = "ארץ היעד אינה בהסכם",
         [EMessageCode.ManifestIdMissing] = "מספר מניפסט חסר",
         [EMessageCode.ExportDeclarationMissing] = "מספר רשימון יצוא חסר",
+        [EMessageCode.RequiredContainerIsoCodeFieldIfItIsAContainer] = "יש להזין קוד ISO של מכולה כאשר סוג האריזה הוא מכולה",
+        [EMessageCode.TheDescriptionLengthCannotExceed255Characters] = "אורך התיאור אינו יכול לעלות על 255 תווים",
+        [EMessageCode.ItemNumberNotFound] = "מספר הפריט לא נמצא",
+        [EMessageCode.ACustomsItemMustContainAtLeast6Digits] = "פריט מכס חייב להכיל לפחות 6 ספרות",
+        [EMessageCode.CustomsItemRequired] = "פריט מכס הינו שדה חובה",
+        [EMessageCode.OriginCriteriaMissing] = "קריטריון מקור חסר",
+        [EMessageCode.OriginCriteriaIllegal] = "קריטריון מקור אינו חוקי",
     };
 
     // Build the exception DTO for a message code, carrying the code (ExceptionType) — the .NET 10 equivalent of

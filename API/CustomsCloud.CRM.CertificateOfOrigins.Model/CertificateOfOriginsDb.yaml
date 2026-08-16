@@ -13,6 +13,7 @@ tables:
   - CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
   - CRM.CertificateOfOrigins_ItemDetails
   - CRM.CertificateOfOrigins_cl_DetailsPerCertificate
+  - CRM.CertificateOfOrigins_c_OriginCriterion
   - CRM.CertificateOfOrigins_enum_Decision
   - CRM.CertificateOfOrigins_cf_SupplierDeliveryCountryConfig
   - CRM.CertificateOfOrigins_enum_AuthenticationFileStatus

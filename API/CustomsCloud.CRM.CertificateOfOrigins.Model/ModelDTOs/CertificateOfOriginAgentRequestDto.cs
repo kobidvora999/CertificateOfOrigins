@@ -18,4 +18,12 @@ public class CertificateOfOriginAgentRequestDto
     public string? ReplacementReason { get; set; }
 
     public string? ExportDeclarationNum { get; set; }
+
+    // Runtime-only certificate-type flags (legacy AgentRequest partial [XmlIgnore] props), populated server-side from the
+    // certificate type's C-table row during validation — drive the origin-criterion / customs-item / zipcode rules.
+    public bool IsCertificateTypeCodeMandatory { get; set; }
+
+    public bool? IsCustomsItemMandatory { get; set; }
+
+    public bool IsZipcodeMandatory { get; set; }
 }

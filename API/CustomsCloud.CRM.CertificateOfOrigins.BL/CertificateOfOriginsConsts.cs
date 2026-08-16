@@ -10,6 +10,12 @@ internal static class CertificateOfOriginsConsts
     public const string CertificateNumberPrefixIl = "IL";
     public const string CertificateNumberFormat10Digit = "0000000000";
 
+    // The packing type that denotes a container — when an item's packing type is this, a container ISO code is required.
+    public const int PackingTypeContainer = 379;
+
+    // An invoice goods-description is capped at 255 characters (legacy CheckValidityField).
+    public const int InvoiceDescriptionMaxLength = 255;
+
     // --- SaveCertificateOfOriginAttachments ---
 
     // Draft/Final title label + the "isDraft" sentinel checked on AdditionalInfo (CertificateOfOriginsConsts).

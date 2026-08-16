@@ -31,4 +31,16 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomsItemDto>>();
     }
+
+    public async Task<int?> GetCustomsItemIdByFullClassification(string fullClassification)
+    {
+        // TODO(blocking): the CustomsBook customs-item service is not yet stood up — confirm the owning microservice +
+        // endpoint route (until then the mock is enabled via x-mock-mode). "Export" is the fixed book type the legacy
+        // create-branch passes (ECustomsBookType.Export).
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource($"CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}");
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<int?>();
+    }
 }

@@ -55,6 +55,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return numerator;
     }
 
+    public async Task<OriginCriterion?> GetOriginCriterion(string originCriterionCode, int certificateOfOriginTypeCodeId)
+    {
+        // GetPC_MSG2280_2281 create branch: resolve an origin-criterion code scoped to a certificate type to its row
+        // (legacy SystemTablesUtil.GetTablesSync<OriginCriterion> with a code + certificate-type predicate). Local C-table.
+        var result = await ReadOnlyContext.OriginCriterions
+            .Where(o => o.OriginCriterionCode == originCriterionCode && o.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
     public async Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId)
     {
         // GetPC_MSG2280_2281 field-validation engine: the field catalogue for a certificate type — which detail fields
@@ -188,6 +198,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
             .Where(type => type.Id == certificateTypeId)
             .Select(type => type.IsCustomsItemMandatory)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOriginTypeCode?> GetCertificateTypeCode(int certificateTypeId)
+    {
+        // GetPC_MSG2280_2281 create branch: the certificate type's mandatory flags (IsCriterionMandatory /
+        // IsCustomsItemMandatory / IsZipcodeMandatory) that drive the invoice/item + zipcode validation (legacy
+        // CertificateOfOriginsUtil.GetCertificateTypeCode).
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .Where(type => type.Id == certificateTypeId)
             .FirstOrDefaultAsync();
         return result;
     }
