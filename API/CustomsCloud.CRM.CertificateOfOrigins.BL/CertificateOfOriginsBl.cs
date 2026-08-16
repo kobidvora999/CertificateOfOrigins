@@ -815,8 +815,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // + diff-merge its details, link the DealFile lead document, raise the status-change events, send the request-
     // feedback message, and on publish generate the template attachments + handle replacement. Returns the full
     // re-read graph (GetCertificateOfOriginById) — the established save-return convention.
-    // TODO(migration): country-group + international-site id→name (no ILookupUtil type — need a SystemTables proxy), the
-    // QR document-upload path, and the exact EAI feedback-message mapping are deferred (inline TODOs).
+    // TODO(migration): country-group + international-site id→name (no ILookupUtil type — need a SystemTables proxy) and
+    // the exact EAI feedback-message mapping are deferred (inline TODOs).
     public async Task<CertificateOfOriginDto> SaveCertificateOfOrigin(SaveCertificateOfOriginRequestDto request)
     {
         var userId = RequestMetadata.UserId ?? 0;
@@ -834,9 +834,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             (replacementOldId, previousCertificateId) = await SupersedePreviousVersion(entity);
         }
 
+        byte[]? qrCodeToUpload = null;
         if (entity.RequestReasonCode != (int)ERequestReason.CertificateCancellation)
         {
-            await CreateQrCodeIfNeeded(entity);
+            // Generate the QR (stamps QrImage + Guid onto the entity) BEFORE the save so they persist with the upsert;
+            // the returned bytes are uploaded as a document AFTER the save, once the certificate id is assigned.
+            qrCodeToUpload = await CreateQrCodeIfNeeded(entity);
             await EnrichAndValidateDetails(entity, details);
         }
 
@@ -847,6 +850,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
         // Persist (upsert + diff-merge details).
         entity.Id = await DataLayer.SaveCertificateOfOrigin(entity, details, userId);
+
+        // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
+        // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is
+        // persisted. Legacy uploaded before its single UoW commit; the migration's per-mutation writes move it after the
+        // upsert so the id-linked upload sees the assigned id.
+        if (qrCodeToUpload is not null)
+        {
+            await UploadQrCodeDocument(entity, qrCodeToUpload, userId);
+        }
 
         // Supersede events — raised here (not in SupersedePreviousVersion) because ApplicationCorrected references the
         // new certificate's id, which is only assigned by the save above. Legacy raised both when a previous existed.
@@ -971,13 +983,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         return (replacementOldId, previous.Id);
     }
 
-    // Legacy CreateQRCodeIfNeededAndUpload — on publish (and only when no QR path yet), generate the QR from the
-    // certificate's query URL, then upload it as a document and store the resulting path on QrCodePath.
-    private async Task CreateQrCodeIfNeeded(CertificateOfOrigin entity)
+    // Legacy CreateQRCodeIfNeededAndUpload (generation half) — on publish (and only when no QR path yet), generate the
+    // QR from the certificate's query URL and stamp QrImage + Guid so they persist with the main upsert. The document
+    // upload is split out into UploadQrCodeDocument, which runs AFTER the save: the QR document is linked to the
+    // certificate id, and that id is only assigned by the save (a brand-new certificate published in one save still has
+    // Id == 0 here — linking now would attach the QR to certificate id 0). Returns the freshly-generated QR bytes to
+    // upload post-save, or null when nothing was created (path already set / not Published / empty CreateQrCode result).
+    private async Task<byte[]?> CreateQrCodeIfNeeded(CertificateOfOrigin entity)
     {
         if (!string.IsNullOrWhiteSpace(entity.QrCodePath) || entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
-            return;
+            return null;
         }
 
         var urlTemplate = await parametersUtil.Get<string>("CertificateOfOriginQueryURL");
@@ -986,13 +1002,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         var qrBytes = await commonServicesProxy.CreateQrCode(url);
         entity.QrImage = qrBytes;
 
-        if (qrBytes is null || qrBytes.Length == 0)
-        {
-            return;
-        }
+        return qrBytes is { Length: > 0 } ? qrBytes : null;
+    }
 
-        // Upload the QR image as a document (legacy DocumentRepositoryUtil.UploadFile → GetDocumentFile) and keep the
-        // returned resource path on QrCodePath.
+    // Legacy CreateQRCodeIfNeededAndUpload (upload half) — upload the generated QR image as a document (legacy
+    // DocumentRepositoryUtil.UploadFile → GetDocumentFile) linked to the SAVED certificate, keep the returned resource
+    // path on QrCodePath, and persist it. Runs AFTER the main upsert so the document is linked to the real certificate
+    // id (not 0); QrImage + Guid were persisted by the upsert, but QrCodePath — unknown until this upload — needs its
+    // own write.
+    private async Task UploadQrCodeDocument(CertificateOfOrigin entity, byte[] qrBytes, int userId)
+    {
         var documentUtil = Resolve<IDocumentUtil>();
         var organizationUnitId = await GetCurrentUserOrganizationUnitId();
         var fileName = SanitizeFileName(documentUtil, entity.CertificateNumber + ".jpg");
@@ -1007,6 +1026,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             .Build();
         var response = await documentUtil.UploadDocument(document);
         entity.QrCodePath = response.ExternalId;
+        await DataLayer.UpdateCertificateQrCodePath(entity.Id, entity.QrCodePath, userId);
     }
 
     // Country detail types whose id → English name is resolved for display (legacy CheckSpecificField country cases).

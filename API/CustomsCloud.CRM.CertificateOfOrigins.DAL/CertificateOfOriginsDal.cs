@@ -295,6 +295,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.UpdateUserId, userId));
     }
 
+    public async Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId)
+    {
+        // SaveCertificateOfOrigin (UploadQrCodeDocument): persist the QR document path resolved AFTER the main upsert.
+        // The QR document is uploaded linked to the assigned certificate id, so its resource path is unknown at upsert
+        // time and needs its own write here. QrImage + Guid are stamped by the main upsert; only QrCodePath lands here.
+        // Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.QrCodePath, qrCodePath)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
     public async Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId)
     {
         // SaveCertificateOfOrigin: when a new instance supersedes an existing certificate, cancel the old one
