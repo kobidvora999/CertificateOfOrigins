@@ -1,6 +1,20 @@
 # שירותים שלא הומרו — תיעוד (מתעדכן תוך כדי עבודה)
 
-## Internal: SaveCertificateOfOrigin — ❌ לא בוצע (נדרשות הכרעות מפתח)
+> ## ✅ עדכון סטטוס — ההמרה הושלמה (2026-08-17)
+>
+> מצאי אדוורסרי מלא הצליב את **3 חוזי ה-WCF** (36 אופרציות) מול ה-controllers + ה-BL על master:
+> **34/36 הומרו** (endpoint חי + BL לא-stub; אין `NotImplementedException`/`#error` בקוד). 2 האופרציות
+> שלא הומרו — **שתיהן בכוונה**: `TempSync` (stub מת בלגסי) ו-`GetPathsForNavigationToVendor`
+> (הוכרע 2026-08-17: לא רלוונטי ל-SPA).
+>
+> **⚠️ הסעיפים הבאים במסמך זה מיושנים (STALE) — המתודות כבר הומרו על master** (endpoint חי + BL אמיתי;
+> החסמים שהם מציינים — תשתית Notifications, `ICollateralProxy`, `AttachDocumentsToEntity`, template — נפתרו
+> מאז דרך `MessageManagementProxy.SendMessage`, `CollateralProxy`, `DocumentsProxy.AttachDocumentsToEntity`,
+> `CommonServicesProxy.GenerateTemplate/SSRS`). ייתכנו TODO(blocking) שיוריים של אימות נתיבי-endpoint ל-rollout:
+> **SaveCertificateOfOrigin · SaveImportAuthenticationRequest · SaveAuthenticationRequestFile ·
+> SaveExportDocumentAuthenticationRequest · UpdateCetrificateOfOrigins**. הסעיפים נשמרים כהיסטוריית-הכרעות בלבד.
+
+## Internal: SaveCertificateOfOrigin — ✅ הומר על master (הסעיף למטה מיושן — נשמר כהיסטוריה)
 
 **סיבות:**
 1. **זיהוי שינוי סטטוס/הערות מבוסס `ChangeTracker.OriginalValues`** — הלוגיקה המקורית קוראת את הערכים
@@ -26,7 +40,7 @@
 **המלצה:** לפרק לשלב נפרד עם מפתח: (א) הכרעת מנגנון original-values, (ב) אימות endpoints,
 (ג) מיגרציה של 4 מתודות ההמשך כיחידות עצמאיות לפני ה-Save עצמו.
 
-## Internal: SaveImportAuthenticationRequest — ❌ לא בוצע (תשתית הודעות חסרה)
+## Internal: SaveImportAuthenticationRequest — ✅ הומר על master (הסעיף למטה מיושן — נשמר כהיסטוריה)
 
 **סיבות:**
 1. **SendDecisionMessage** — בענף ה-default של ה-switch על DecisionID נשלחת הודעת החלטה למשתמשים דרך
@@ -44,7 +58,7 @@
 **המלצה:** להתקין את חבילת Notifications, לאמת את endpoint ה-SendMessage, ואז המתודה ניתנת להמרה מלאה
 (שאר הלוגיקה — save יחיד + אירועים — סטנדרטית).
 
-## Internal: SaveAuthenticationRequestFile — ❌ לא בוצע (אותם חסמים כמו SaveImportAuthenticationRequest)
+## Internal: SaveAuthenticationRequestFile — ✅ הומר על master (הסעיף למטה מיושן — נשמר כהיסטוריה)
 
 **סיבות:**
 1. **שתי שליחות הודעות** — `SendDecisionMessage` (הודעת החלטה לכל בקשה ששונתה) ו-`RaiseStatusMessage`
@@ -58,7 +72,7 @@
 **מה כן מוכן:** כל הישויות וה-DTOs; ‏GetAuthenticationRequestFileByID (שה-save מחזיר בסופו) כבר הומר;
 כל 9 האירועים ממופים במלואם בניתוח (types+args) — מוכנים ליישום ברגע שהחסמים ייפתרו.
 
-## Internal: SaveExportDocumentAuthenticationRequest — ❌ לא בוצע (תשתית הודעות)
+## Internal: SaveExportDocumentAuthenticationRequest — ✅ הומר על master (הסעיף למטה מיושן — נשמר כהיסטוריה)
 
 **סיבות:**
 1. **RaiseStatusMessage** — נקרא ב-2 מ-4 ענפי הסטטוס (ReadyForProfessionalTreatment + default שתופס את רוב
@@ -109,12 +123,12 @@
 **עוד לא-חוסם (מגבלת סביבה, לא קוד):** seed ל-Redis של `City`/`OrganizationUnit` (‏ILookupUtil) נדרש לבדיקת save מלאה
 מקומית (שם ה-org-unit ב-DisplayedValue נופל ל-id בסביבה לא-seeded).
 
-## Internal: GetPathsForNavigationToVendor — ❌ לא בוצע (טבלת תשתית חוצת-DB)
+## Internal: GetPathsForNavigationToVendor — ⏭️ לא נדרש (הכרעת מוצר 2026-08-17: לא רלוונטי ל-SPA)
 
 קורא את טבלת `NavigationPath` (T_1696) מ-DB התשתית (`InfrastructureConsts.InfrastructureORMMapping` —
-חיבור שונה מזה של המודול), PathID=359. אין util/proxy ל-NavigationPath ביעד, והטבלה אינה בבעלות המודול.
-ייתכן שהמנגנון (ניווט תפריטים של הקליינט הישן) כלל אינו רלוונטי ב-SPA החדש — **לברר עם הצוות לפני שבונים
-גישה חדשה**.
+חיבור שונה מזה של המודול), PathID=359 — מנגנון ניווט התפריטים של הקליינט ה-WPF הישן.
+**הוכרע (2026-08-17): המנגנון אינו רלוונטי ב-SPA החדש → המתודה מושמטת בכוונה** (כמו TempSync). אין צורך
+בגישה חוצת-DB ל-NavigationPath ביעד. אם ייווצר צורך עתידי — יידרש proxy לשירות התשתית שחושף את הטבלה.
 
 ## Internal: LoadDataFromExportDeclaration — ✅ הומר (2026-07-05, branch `feature/migrate-load-data-from-export-declaration`)
 

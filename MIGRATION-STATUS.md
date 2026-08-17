@@ -1,5 +1,12 @@
 # מצאי המרה — CertificateOfOrigins
 
+> ## ✅ ההמרה הושלמה (2026-08-17)
+>
+> מצאי אדוורסרי מלא (הצלבת 3 חוזי ה-WCF — 36 אופרציות — מול ה-controllers + ה-BL על master):
+> **34/36 הומרו** עם endpoint חי + BL אמיתי (ללא stubs). 2 האופרציות שנותרו מושמטות **בכוונה**:
+> `TempSync` (stub מת בלגסי) ו-`GetPathsForNavigationToVendor` (הוכרע 2026-08-17: מנגנון ניווט WPF ישן,
+> לא רלוונטי ל-SPA). **אין מתודות 🟢 READY שנותרו.** הצעד הבא המומלץ: `repo-complete-check` לפני merge/קידום.
+
 > ## ⚠️ קרא קודם — עדכון סטטוס (2026-07-22)
 >
 > **הרפו אופס ל-scratch slate** (commit `5fce824` "Reset service to a clean scratch slate for from-scratch migration").
@@ -76,7 +83,7 @@
 | SaveImportAuthenticationRequest | 🔴 חסומה | תשתית הודעות (Notifications) |
 | SaveAuthenticationRequestFile | 🔴 חסומה | תשתית הודעות + מנגנון delta + פערי ICollateralProxy |
 | SaveExportDocumentAuthenticationRequest | 🔴 חסומה | תשתית הודעות + AttachDocumentsToEntity + DisplayName |
-| GetPathsForNavigationToVendor | 🔴 חסומה | cross-DB (טבלת תשתית) — לברר רלוונטיות ל-SPA |
+| GetPathsForNavigationToVendor | ⏭️ לא נדרש | הוכרע 2026-08-17: מנגנון ניווט WPF ישן, לא רלוונטי ל-SPA — מושמט בכוונה (כמו TempSync) |
 
 ## Incoming — ICertificateOfOriginsIncomingMessageContract (2)
 
@@ -92,4 +99,4 @@
 2. ~~**SaveCertificateOfOrigin**~~ — ✅ הומרה.
 3. ~~**UpdateCetrificateOfOrigins**~~ — ✅ הומרה.
 4. ~~**GetPC_MSG2280_2281**~~ — ✅ הומרה במלואה (2026-08-17). כל 4 החסמים העסקיים נסגרו (per-reason+invoices · declaration-check+amendment · NonManipulation).
-5. **GetPathsForNavigationToVendor** — 🔴 בירור מוצר בלבד (רלוונטי ל-SPA? טבלת NavigationPath חוצת-DB) — המתודה היחידה שלא נגעו בה.
+5. ~~**GetPathsForNavigationToVendor**~~ — ⏭️ הוכרע 2026-08-17: לא רלוונטי ל-SPA → מושמט בכוונה. **בכך הושלמה המרת השירות.**
