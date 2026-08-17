@@ -64,6 +64,7 @@ public partial class CertificateOfOriginsBl
         ItIsntPossibleToTransmitDeclarationNumberThatHasntBeenSubmittedOrCanceledDeclaration = 14027173,
         TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate = 14027174,
         TheDescriptionLengthCannotExceed255Characters = 14027343,
+        CertificateCannotBeTransmittedWhenThereIsAmendmentProcessOnTheDeclaration = 14027175,
         ExportCountryDoesNotExistInTheCountryTable = 14027393,
         CityOfDeclarationDoesNotExistInTheCitiesTable = 14027394,
         ValueNull = 6,
@@ -126,6 +127,7 @@ public partial class CertificateOfOriginsBl
         [EMessageCode.ItIsntPossibleToTransmitDeclarationNumberThatHasntBeenSubmittedOrCanceledDeclaration] = "לא ניתן לשדר מספר הצהרה שלא הוגשה או הצהרה מבוטלת",
         [EMessageCode.TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate] = "יש לבטל את ההצהרה המקושרת {0} קודם ביטול התעודה",
         [EMessageCode.TheDescriptionLengthCannotExceed255Characters] = "אורך התיאור לא יכול להיות גדול מ255 תווים",
+        [EMessageCode.CertificateCannotBeTransmittedWhenThereIsAmendmentProcessOnTheDeclaration] = "לא ניתן לשדר תעודה כאשר קיים תהליך תיקון על ההצהרה {0} המקושרת לתעודה",
         [EMessageCode.ExportCountryDoesNotExistInTheCountryTable] = "מדינת היצוא אינה קיימת בטבלת המדינות",
         [EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable] = "הערך בשדה יישוב הצהרת יצואן אינו קיים בטבלת היישובים.",
 

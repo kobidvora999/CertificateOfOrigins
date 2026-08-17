@@ -113,14 +113,22 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         var agentRequest = request.AgentRequest;
         var reasonCode = agentRequest.RequestReasonCode;
 
-        // TODO(blocking): the amendment-linkage guard (CheckIfCertificateIsLinkedToDeclarationInAmendment, run for every
-        // reason except GetRequestStatus) — depends on the export-declaration amendment state (ExportDealFile). Ported
-        // with the invoice/item unit (stage 4b); it can reject a request.
-
         // Legacy CheckRequestReasonAndGetSavedCertificate: the existing certificate the reason refers to. Not-found /
         // missing-id are accumulated as in-band request exceptions (legacy _requestExceptions), NOT thrown — the legacy
         // returns them on the feedback response, it does not 404 (mirrors GetCertificateRequestByGuid's in-band contract).
         var requestExceptions = new List<CertificateOfOriginExceptionDto>();
+
+        // One per-request context spanning the whole message flow — carries the export-declaration-details cache so the
+        // amendment guard, the per-reason declaration check and the post-save reconciliation share a single fetch.
+        var context = new MessageValidationContext();
+
+        // Legacy (Inner method, before the branch): for every reason except GetRequestStatus, block the request when the
+        // linked export declaration is in an amendment process. Accumulated in-band (not thrown); for the create branch
+        // the accumulated error blocks the save at the exception gate.
+        if (reasonCode != (int)ERequestReason.GetRequestStatus)
+        {
+            await CheckDeclarationNotInAmendment(agentRequest.ExportDeclarationNum, context, requestExceptions);
+        }
 
         CertificateOfOrigin? certificateToResponse;
         switch (reasonCode)
@@ -134,22 +142,26 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 if (certificateToResponse != null)
                 {
                     // Legacy ChecksIfThereIsDeclarationAssociatedWithTheCertificate: a certificate with a still-linked
-                    // declaration cannot be cancelled — the declaration must be cancelled first. Block the cancel if so.
+                    // declaration cannot be cancelled — the declaration must be cancelled first.
                     var associatedDeclaration = await exportDealFileProxy.GetLeadDocumentByCertificateOfOriginId(certificateToResponse.Id);
                     if (associatedDeclaration != null)
                     {
                         requestExceptions.Add(BuildMessageException(EMessageCode.TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate, associatedDeclaration.LeadDocumentTitle));
                     }
-                    else
-                    {
-                        await CancelCertificateOfOriginFromMessage(certificateToResponse);
-                    }
+                }
+
+                // Legacy: the exception gate (throw _requestExceptions) runs BEFORE the reason switch, so the cancel is
+                // performed only when NOTHING accumulated — an amendment-linkage error, a not-found, or an associated
+                // declaration all block it. Only cancel when the request is clean.
+                if (certificateToResponse != null && requestExceptions.Count == 0)
+                {
+                    await CancelCertificateOfOriginFromMessage(certificateToResponse);
                 }
 
                 break;
 
             default:
-                certificateToResponse = await ProcessCreateCertificateBranch(request, requestExceptions);
+                certificateToResponse = await ProcessCreateCertificateBranch(request, context, requestExceptions);
                 break;
         }
 

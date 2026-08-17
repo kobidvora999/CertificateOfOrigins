@@ -187,7 +187,7 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var declaration = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(null, declarationNumber);
+        var declaration = await GetExportDeclarationDetailsCached(null, declarationNumber, context);
         if (declaration != null
             && declaration.LeadDocumentStateId is (int)ELeadDocumentState.Canceled or (int)ELeadDocumentState.CanceledDraft or (int)ELeadDocumentState.Draft)
         {

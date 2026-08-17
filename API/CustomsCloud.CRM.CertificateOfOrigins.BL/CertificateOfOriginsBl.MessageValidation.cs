@@ -59,6 +59,12 @@ public partial class CertificateOfOriginsBl
 
         // The id of the certificate a CertificateReplacement cancels (resolved from certificateIdToCancel) → CertificateIDToCancel.
         public int? CertificateIdToCancel { get; set; }
+
+        // Per-request memoization of the export-declaration details, keyed by "{leadDocumentId}|{exportDeclarationNumber}".
+        // A single message hits GetExportDeclarationDetailsForCertificateOfOrigion up to 3× on the same declaration (the
+        // amendment guard + the per-reason CheckExportDeclarationNumber use the identical (null, number) key); the cache
+        // collapses those to one call. The declaration does not change within a request.
+        public Dictionary<string, ExportDeclarationDetailsDto?> DeclarationDetailsCache { get; } = [];
     }
 
     // Stage 5: the create/update branch. Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner default case —
@@ -66,14 +72,14 @@ public partial class CertificateOfOriginsBl
     // if it is valid map it onto SaveCertificateOfOriginRequestDto and save; then the post-save declaration-submitted
     // reconciliation. Validation errors are accumulated onto the single requestExceptions channel (in-band, not thrown —
     // faithful) and the method returns the saved certificate (null when validation failed, so no save happened).
-    private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, List<CertificateOfOriginExceptionDto> requestExceptions)
+    private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
         var agentRequest = request.AgentRequest;
         var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
         // The validation engine accumulates into context.Exceptions during the pass; they are merged into the single
-        // requestExceptions channel at the gate below.
-        var context = new MessageValidationContext();
+        // requestExceptions channel at the gate below. The context (with its declaration-details cache) is created once
+        // per request by the dispatcher and shared with the amendment guard + reconciliation.
 
         // Legacy: a null CertificateOfOrigin body is a MandatoryValue error EXCEPT for EmptyCertificate (which by
         // definition carries no body and creates an empty certificate). GetRequestStatus/CertificateCancellation are the
@@ -129,9 +135,10 @@ public partial class CertificateOfOriginsBl
         await ResolveCertificateForReason(agentRequest, context);
 
         // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
-        if (context.Exceptions.Count > 0)
+        // requestExceptions may already carry a pre-branch error (the amendment-linkage guard), which also blocks the save.
+        requestExceptions.AddRange(context.Exceptions);
+        if (requestExceptions.Count > 0)
         {
-            requestExceptions.AddRange(context.Exceptions);
             return null;
         }
 
@@ -149,7 +156,7 @@ public partial class CertificateOfOriginsBl
         if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
             && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
         {
-            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved);
+            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved, context);
             requestExceptions.AddRange(reconciliationExceptions);
         }
 

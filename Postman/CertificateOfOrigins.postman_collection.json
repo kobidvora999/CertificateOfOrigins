@@ -467,6 +467,38 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CertificateOfOriginRequest (Create MERCOSUR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 1,\n    \"certificateOfOriginTypeCode\": 3,\n    \"exportDeclarationNum\": \"260146\"\n  },\n  \"certificateOfOrigin\": {\n    \"exporterId\": \"EXP1\",\n    \"exporterName\": \"Acme\",\n    \"exporterAddress\": \"1 Main St\",\n    \"exporterCountry\": \"IL\",\n    \"consigneeName\": \"Buyer\",\n    \"consigneeAddress\": \"2 St\",\n    \"consigneeCountry\": \"DE\",\n    \"originCountry\": \"IL\",\n    \"destinationCountry\": \"DE\",\n    \"customsHouse\": \"SITE01\",\n    \"dateOfDeclaration\": \"2026-08-12T00:00:00\",\n    \"isDeclaredByManufacturer\": true,\n    \"isDeclaredByExporter\": true,\n    \"invoiceDetails\": [\n      {\n        \"invoiceNum\": \"INV1\",\n        \"invoiceDate\": \"2026-08-01T00:00:00\",\n        \"descriptionOfInvoice\": \"goods\",\n        \"itemDetails\": [\n          {\n            \"itemId\": \"123456\",\n            \"marksAndNumbers\": \"M1\",\n            \"itemDescription\": \"widget\",\n            \"originCriterion\": \"A\",\n            \"measureType\": \"KG\",\n            \"packageType\": \"BX\"\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginRequest"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

@@ -22,7 +22,10 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
             LeadDocumentId = leadDocumentId ?? 0,          // TODO: dummy data
             IsDeclarationReleased = true,                  // TODO: dummy data
             IsCargoExitedOfCustomsRegulation = true,       // TODO: dummy data
-            IsDeclarationInAmendmentProcess = false,
+
+            // Default = not in amendment (the guard passes); feature "ExportDealFile.InAmendment" flips it so the
+            // amendment-linkage rejection path is exercised.
+            IsDeclarationInAmendmentProcess = mockUtil.HasMockFeature("ExportDealFile.InAmendment"),
             LeadDocumentStateId = 0,                       // TODO: dummy data
         };
         return Task.FromResult<ExportDeclarationDetailsDto?>(result);
