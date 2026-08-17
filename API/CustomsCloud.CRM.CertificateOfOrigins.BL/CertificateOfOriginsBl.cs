@@ -1077,6 +1077,22 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         (int)ECertificateDetailsType.CityOfDeclaration, (int)ECertificateDetailsType.PlaceOfManufacture,
     ];
 
+    // Date detail types whose display is a short date (legacy CheckSpecificField: CheckDeclarationDate / CheckExportDate /
+    // CheckImportDate / CheckExpectedExitDate all set DisplayedValue = date.ToShortDateString()).
+    private static readonly HashSet<int> DateDetailTypes =
+    [
+        (int)ECertificateDetailsType.DateOfDeclaration, (int)ECertificateDetailsType.ExportDate,
+        (int)ECertificateDetailsType.ImportDate, (int)ECertificateDetailsType.ExpectedExitDate,
+    ];
+
+    // Bool detail types whose display is Yes/No (legacy CheckSpecificField → ConvertBoolFieldToYesNo).
+    private static readonly HashSet<int> BoolDetailTypes =
+    [
+        (int)ECertificateDetailsType.IsConsigneeForPrint, (int)ECertificateDetailsType.IsCumulation,
+        (int)ECertificateDetailsType.IsExportDecForPrint, (int)ECertificateDetailsType.IsDeclaredByManufacturer,
+        (int)ECertificateDetailsType.IsDeclaredByExporter,
+    ];
+
     // Legacy CheckSpecificField (reduced core): the proxy-backed field validations (exporter existence via Customers,
     // trade-agreement membership via CustomsBook, customs-house via OrgUnit) + the SystemTables id→name display
     // enrichment for country + city detail types (via ILookupUtil). Text fields pass through.
@@ -1103,12 +1119,28 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             }
             else if (typeId == (int)ECertificateDetailsType.CustomsHouse)
             {
+                // Legacy CheckIfSiteExistAndCustomsHouse → CheckIfCustomsHouse: DisplayedValue = org-unit English name.
+                // By this point Value is the resolved org-unit id (the message path rewrote it; the direct endpoint sends
+                // it), so resolve the name from the id — falling back to the raw value when the lookup is unavailable.
                 if (int.TryParse(value, out var orgUnitId))
                 {
-                    await organizationUnitProxy.IsOrganizationUnitCustomsHouse(orgUnitId);
+                    var organizationUnit = await lookupUtil.Get<Lookup.OrganizationUnit>(orgUnitId);
+                    detail.DisplayedValue = organizationUnit?.EnglishName ?? value;
                 }
-
-                detail.DisplayedValue = value;
+                else
+                {
+                    detail.DisplayedValue = value;
+                }
+            }
+            else if (DateDetailTypes.Contains(typeId))
+            {
+                // Legacy Check*Date: the display is a short date (an unparseable value yields default(DateTime), as legacy).
+                detail.DisplayedValue = (DateTime.TryParse(value, out var date) ? date : default).ToShortDateString();
+            }
+            else if (BoolDetailTypes.Contains(typeId))
+            {
+                // Legacy ConvertBoolFieldToYesNo.
+                detail.DisplayedValue = bool.TryParse(value, out var boolValue) && boolValue ? "Yes" : "No";
             }
             else if (CountryDetailTypes.Contains(typeId) && int.TryParse(value, out var countryId))
             {
@@ -1321,8 +1353,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             .WithEventType(eventTypeId)
             .WithEntityId(certificateId)
             .WithEntityType((int)EEntityType.CertificateOfOrigin)
-            .WithTitle(certificateId.ToString())
-            .WithOrganizationUnitId(organizationUnitId);
+            .WithTitle(certificateId.ToString());
+
+        // Legacy EventUtil.RaiseEvent tolerated a 0/absent org unit — a NonManipulation certificate with no customs
+        // house is saved with OrganizationUnitID 0 (legacy _organizationUnit default). The .NET 10 builder rejects 0,
+        // so apply it only when present, preserving the legacy behaviour (the event is still raised).
+        if (organizationUnitId > 0)
+        {
+            builder = builder.WithOrganizationUnitId(organizationUnitId);
+        }
+
         if (!string.IsNullOrEmpty(additionalInfo))
         {
             builder = builder.WithAdditionalInfo(additionalInfo);
@@ -1477,8 +1517,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             .WithEventType(eventTypeId)
             .WithEntityId(certificate.Id)
             .WithEntityType((int)EEntityType.CertificateOfOrigin)
-            .WithTitle(certificate.Id.ToString())
-            .WithOrganizationUnitId(certificate.OrganizationUnitId);
+            .WithTitle(certificate.Id.ToString());
+
+        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
+        if (certificate.OrganizationUnitId > 0)
+        {
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
+        }
+
         if (assessorUserId.HasValue)
         {
             builder = builder.WithTaskArguments(task => task.WithPreferredUserId(assessorUserId.Value));
@@ -1497,8 +1543,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             .WithEventType((int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings)
             .WithEntityId(certificate.Id)
             .WithEntityType((int)EEntityType.CertificateOfOrigin)
-            .WithTitle(certificate.Id.ToString())
-            .WithOrganizationUnitId(certificate.OrganizationUnitId);
+            .WithTitle(certificate.Id.ToString());
+
+        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
+        if (certificate.OrganizationUnitId > 0)
+        {
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
+        }
+
         if (!string.IsNullOrEmpty(additionalInfo))
         {
             builder = builder.WithAdditionalInfo(additionalInfo);

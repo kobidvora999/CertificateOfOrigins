@@ -70,7 +70,7 @@
 פתור לתחום זה; כל הישויות והילדים הומרו; ערכי EExportAuthenticationRequestStatus חולצו (1-9);
 מיפוי האירועים מלא (ExportAuthenticationRequestFileStatusUpdate=1282 + 3 אירועי ענף).
 
-## Incoming: GetPC_MSG2280_2281_CertificateOfOriginRequest — 🟡 חלקי (ליבה בנויה + נבדקה חי; 4 חסמים עסקיים נותרו)
+## Incoming: GetPC_MSG2280_2281_CertificateOfOriginRequest — ✅ הומרה (2026-08-17; 4 החסמים העסקיים נסגרו)
 
 **מה הומר ונבדק חי (2026-08, endpoint `POST CertificateOfOrigins/CertificateOfOriginRequest`):**
 - **חוזה סינכרוני** — הכרעת מפתח: ה-callback/MSMQ החד-כיווני הוחלף ב-endpoint סינכרוני שמחזיר את הפידבק
@@ -86,21 +86,28 @@
 - **מספר תעודה** — `dbo.GetCertificateOfOriginNumber` + sequence (סקריפט; sequence היה חסר מקומית).
 - **lookups חדשים** ל-SystemTables: Country(alpha-2)/Site/InternationalSite/PackingType/MeasurementUnit/CurrencyType-by-code
   (proxies +mocks), CountryGroup-existence. `OriginCriterion` — entity + DAL מקומי (הטבלה בבעלות המודול).
-- אומת מול הלגסי אדוורסרית (2 agents); פערי C/D/MED תוקנו. Postman 35/35, Build ✅.
 
-**חסמים עסקיים שנותרו (‏TODO(blocking) מתועדים בקוד) — לכן עדיין 🟡 ולא ✅:**
-1. **per-reason resolution** (‏`CheckRequestReasonAndGetSavedCertificate`) — ולידציות פר-reason (Update: התאמת
+**4 החסמים העסקיים — נסגרו:**
+1. **per-reason resolution** (‏`ResolveCertificateForReason`) — ✅ מתודת switch 9-reason + helpers (Update: התאמת
    agent/type/status · Replacement: cancel-id+status · published/cancelled guards) + קביעת `CertificateIdToCancel`/
-   `CertificateToReplaceInImport` → **supersession והחלפת תעודה דרך מסר לא מתרחשות עדיין**.
-2. **שמירת invoices/items** — מומרים ומאומתים, אך `SaveCertificateOfOrigin` (BL+DAL) עדיין לא כותב את graph
-   ה-invoice/item (חתימתו מקבלת רק certificate + details).
-3. **CheckCertificateOfOriginOnDeclarationSubmited** (reconciliation post-save, דרך UpdateCertificateOfOrigins) +
-   **amendment-linkage guard** — לא מחווטים.
-4. **NonManipulation** — מיפוי השדות של גוף ה-NonManipulation אינו קיים (רק גוף CertificateOfOrigin הרגיל).
+   `CertificateToReplaceInImport`; supersession דרך `SaveCertificateOfOrigin`. (commit `1f43cff`)
+2. **שמירת invoices/items** — ✅ `SaveCertificateOfOrigin` overload + `SaveInvoiceDetails` (diff-merge, empty-list guard). (commit `1f43cff`)
+3. **CheckCertificateOfOriginOnDeclarationSubmited** (reconciliation post-save דרך UpdateCertificateOfOrigins) +
+   **amendment-linkage guard** — ✅ מחווטים + memoization ל-`GetExportDeclarationDetailsForCertificateOfOrigion`. (commits `07345b0`, `aa3b410`)
+4. **NonManipulation** — ✅ פיצול השער (גוף `NonManipulationCertificate` במקום `CertificateOfOrigin`), מיפוי 15 השדות
+   (ids 34-48, כולל המיפוי ל-enum ה"משובש" `ExportBillOFLadingNum`/`TransirCountry`), `AddCustomsHouseDetail`
+   (הוספת CustomsHouse ללא-תנאי כשגוף CertificateOfOrigin נלווה), cross-field (‏ManifestNumber/ImportDate), דילוג על
+   invoices+reconciliation. אומת אדוורסרית מול הלגסי + מול ה-DB.
 
-**עוד לא-חוסם:** seed של `City` ל-Redis (‏ILookupUtil<City>) נדרש לבדיקת save מלאה מקומית — מגבלת סביבה, לא קוד.
+**פערי-נאמנות שהתגלו באודיט הפאריטי של NonManipulation ותוקנו (מאומתים חי/DB):**
+- **org-unit 0 באירועים** — הלגסי `EventUtil.RaiseEvent` סבל org-unit 0 (NonManipulation ללא CustomsHouse);
+  ה-builder ב-.NET10 דרש `>0`. 3 מתודות אירוע מחילות `WithOrganizationUnitId` רק כאשר `>0`.
+- **`EnrichAndValidateDetails`** (מיחידה #33, פורט מצומצם) — הושלם נאמנה ל-`CheckSpecificField` הלגסי בזמן-save:
+  CustomsHouse → Value=org-unit id + DisplayedValue=שם org-unit · תאריכים → `ToShortDateString` · בוליאני → Yes/No.
+  משפר נאמנות גם ל-endpoint הישיר `SaveCertificateOfOrigin`.
 
-**המלצה:** להשלים את 4 החסמים כיחידות המשך (הכי טבעי: #1+#2 יחד — הם חולקים את פתרון-התעודה-הקיימת ואת ה-save).
+**עוד לא-חוסם (מגבלת סביבה, לא קוד):** seed ל-Redis של `City`/`OrganizationUnit` (‏ILookupUtil) נדרש לבדיקת save מלאה
+מקומית (שם ה-org-unit ב-DisplayedValue נופל ל-id בסביבה לא-seeded).
 
 ## Internal: GetPathsForNavigationToVendor — ❌ לא בוצע (טבלת תשתית חוצת-DB)
 

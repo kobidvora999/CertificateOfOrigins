@@ -16,7 +16,7 @@
 > | 2 | `ff5b089` | IsCertificateOfOriginByExternalIdExist | Internal | CertificateOfOrigins |
 > | 3 | `db8b09e` | CheckImporterOfImportAuthentication | Internal | AuthenticationRequest |
 > | … | (ראה git log) | רוב מתודות ה-Get/Save/Handle | External/Internal | CertificateOfOrigins / AuthenticationRequest / ExportDocumentAuthenticationRequest |
-> | ~28 | `a750038` | GetPC_MSG2280_2281_CertificateOfOriginRequest | Incoming | CertificateOfOrigins (🟡 חלקי — ראה למטה) |
+> | ~28 | `a750038`+ | GetPC_MSG2280_2281_CertificateOfOriginRequest | Incoming | CertificateOfOrigins (✅ הומרה במלואה — ראה למטה) |
 >
 > **הטבלה הזו אינה ממצה** — מאז נוספו עוד מתודות רבות (ראה `git log`); שורת ה-GetPC נוספה כי היא ה-work הנוכחי.
 > **בפועל: 3 controllers, עשרות endpoints מומרים.**
@@ -82,7 +82,7 @@
 
 | מתודה | סטטוס | הערה |
 |---|---|---|
-| GetPC_MSG2280_2281_CertificateOfOriginRequest | 🟡 חלקי | ליבה בנויה+נבדקה חי (endpoint סינכרוני, נעילה, read/cancel, מנוע ולידציה מלא, generator, lookups). 4 חסמים עסקיים נותרו: per-reason resolution+supersession · שמירת invoices · declaration-check+amendment · NonManipulation. פירוט: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) |
+| GetPC_MSG2280_2281_CertificateOfOriginRequest | ✅ הומרה | 2026-08-17. כל 4 החסמים העסקיים נסגרו: per-reason resolution+supersession · שמירת invoices/items · declaration-check+amendment · NonManipulation (מיפוי 15 שדות + CustomsHouse). אודיט פאריטי אדוורסרי מול הלגסי + אימות DB; תוקנו org-unit-0 באירועים ו-`EnrichAndValidateDetails` (תאריכים→short date · בוליאני→Yes/No · CustomsHouse→org-unit id+שם). פירוט: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) |
 | GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים דרך proxy ל-SystemTables (+mock) — אין להם lookup type בפלטפורמה. נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. חוסם שנותר: DocumentID (NULL — Docs חוצה-סכמה, TODO(blocking)). Rollout: אימות נתיבי endpoint של SystemTables (CurrencyTypesByIds, DataDictionaryFieldsByIds). |
 
 *(אין עדיין Incoming controller ברפו — מתודות Incoming שהומרו נחשפות דרך ה-controller של ה-BL הרלוונטי.)*
@@ -91,6 +91,5 @@
 1. ~~**GetCertificateRequestByGuid**~~ — ✅ הומרה (2026-07-28).
 2. ~~**SaveCertificateOfOrigin**~~ — ✅ הומרה.
 3. ~~**UpdateCetrificateOfOrigins**~~ — ✅ הומרה.
-4. **GetPC_MSG2280_2281** — 🟡 ליבה בנויה+נבדקה; נותרו 4 חסמים עסקיים (ראה MIGRATION-NOT-DONE). המשך מומלץ:
-   per-reason resolution + שמירת invoices יחד (חולקים פתרון-תעודה-קיימת + save), ואז declaration-check + NonManipulation.
+4. ~~**GetPC_MSG2280_2281**~~ — ✅ הומרה במלואה (2026-08-17). כל 4 החסמים העסקיים נסגרו (per-reason+invoices · declaration-check+amendment · NonManipulation).
 5. **GetPathsForNavigationToVendor** — 🔴 בירור מוצר בלבד (רלוונטי ל-SPA? טבלת NavigationPath חוצת-DB) — המתודה היחידה שלא נגעו בה.

@@ -499,6 +499,38 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CertificateOfOriginRequest (Create NonManipulation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 1,\n    \"certificateOfOriginTypeCode\": 5,\n    \"exportDeclarationNum\": \"260146\"\n  },\n  \"certificateOfOrigin\": {\n    \"customsHouse\": \"SITE01\"\n  },\n  \"nonManipulationCertificate\": {\n    \"exportDate\": \"2026-08-10T00:00:00\",\n    \"exportCountry\": \"DE\",\n    \"importBillOfLadingNum\": \"IBL1\",\n    \"exportPort\": \"DEHAM\",\n    \"importDate\": \"2026-08-05T00:00:00\",\n    \"exportBillOfLadingNum\": \"EBL1\",\n    \"transitCountry\": \"IL\",\n    \"portOfEntrance\": \"ILHFA\",\n    \"expectedExitDate\": \"2026-09-01T00:00:00\",\n    \"exitPort\": \"ILASH\",\n    \"goodsDescription\": \"widgets\",\n    \"declaringCompany\": \"Acme\",\n    \"declaringPerson\": \"John\",\n    \"declaringPosition\": \"Manager\",\n    \"manifestNum\": \"MAN1\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "CertificateOfOriginRequest"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

@@ -13,14 +13,17 @@ public partial class CertificateOfOriginsBl
 {
     // Legacy CheckFields: the two cross-field passes. Runs only for the create/update reasons (the caller gates it on a
     // non-empty details list, i.e. not GetRequestStatus/CertificateCancellation).
-    private async Task CheckMessageCrossFields(CertificateOfOriginMessageDto certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, bool isZipcodeMandatory, MessageValidationContext context)
+    private async Task CheckMessageCrossFields(CertificateOfOriginMessageDto? certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, bool isZipcodeMandatory, MessageValidationContext context)
     {
         await CheckConditionalFields(certificate, nonManipulation, agentRequest, details, isZipcodeMandatory, context);
         await CheckFieldForSpecificCertificate(certificate, nonManipulation, agentRequest, details, context);
     }
 
-    // Legacy CheckConditionalFields: rules that fire only when a given field was present in this certificate type.
-    private async Task CheckConditionalFields(CertificateOfOriginMessageDto certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, bool isZipcodeMandatory, MessageValidationContext context)
+    // Legacy CheckConditionalFields: rules that fire only when a given field was present in this certificate type. The
+    // standard CertificateOfOrigin body may be absent for a NonManipulation request, so every rule that reads it is
+    // reachable only when its detail exists (which implies a standard body) — mirrored by the certificate-not-null guards
+    // (legacy dereferenced request.Content.CertificateOfOrigin only inside those same conditions / the != null guard).
+    private async Task CheckConditionalFields(CertificateOfOriginMessageDto? certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, bool isZipcodeMandatory, MessageValidationContext context)
     {
         var hasImportDate = HasDetail(details, ECertificateDetailsType.ImportDate);
         var hasIsCumulation = HasDetail(details, ECertificateDetailsType.IsCumulation);
@@ -33,28 +36,34 @@ public partial class CertificateOfOriginsBl
             CheckImportDate(agentRequest, nonManipulation, context);
         }
 
-        if (hasIsCumulation)
+        if (hasIsCumulation && certificate is not null)
         {
             CheckCumulationCountry(certificate, context);
         }
 
-        if (hasConsigneeCountry)
+        if (hasConsigneeCountry && certificate is not null)
         {
             CheckConsigneeCountry(certificate, context);
         }
 
-        if (hasOriginCountry)
+        if (hasOriginCountry && certificate is not null)
         {
             await CheckPlaceOfManufactureAndZipcode(certificate, agentRequest, isZipcodeMandatory, context);
         }
 
         if (hasCustomsHouse)
         {
-            await CheckIfSiteExistAndCustomsHouse(certificate.CustomsHouse, context);
+            // Legacy passed the CustomsHouse detail object (it rewrites the row's Value/DisplayedValue in place). The
+            // detail already carries the raw external site number as its Value at this point.
+            var customsHouseDetail = details.Find(d => d.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.CustomsHouse);
+            if (customsHouseDetail is not null)
+            {
+                await CheckIfSiteExistAndCustomsHouse(customsHouseDetail, context);
+            }
         }
 
-        // Legacy: InSufficentworkingInd=true requires InsufficentWorkingText.
-        if (certificate.InSufficentworkingInd == true && string.IsNullOrEmpty(certificate.InsufficentWorkingText))
+        // Legacy (request.Content.CertificateOfOrigin != null && …): InSufficentworkingInd=true requires InsufficentWorkingText.
+        if (certificate is not null && certificate.InSufficentworkingInd == true && string.IsNullOrEmpty(certificate.InsufficentWorkingText))
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.FieldMandatoryWhenTheAnotherField, "InsufficentWorkingText", "InSufficentworkingInd", "true"));
         }
@@ -143,10 +152,13 @@ public partial class CertificateOfOriginsBl
         }
     }
 
-    // Legacy CheckIfSiteExistAndCustomsHouse: the CustomsHouse external site number resolves to a site → org unit that
-    // must be a customs house; resolving it also records the org-unit side-value the save consumes.
-    private async Task CheckIfSiteExistAndCustomsHouse(string? customsHouseExternalNumber, MessageValidationContext context)
+    // Legacy CheckIfSiteExistAndCustomsHouse + CheckIfCustomsHouse: the CustomsHouse external site number resolves to a
+    // site → org unit that must be a customs house. On success the detail row is REWRITTEN to the internal org-unit id
+    // (Value) + English name (DisplayedValue) — the read path re-parses the CustomsHouse Value as the org-unit id — and
+    // the org-unit side-value the save consumes is recorded.
+    private async Task CheckIfSiteExistAndCustomsHouse(CertificateOfOriginDetails customsHouseDetail, MessageValidationContext context)
     {
+        var customsHouseExternalNumber = customsHouseDetail.Value;
         if (string.IsNullOrWhiteSpace(customsHouseExternalNumber))
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryNullValue, "CustomsHouse"));
@@ -167,18 +179,27 @@ public partial class CertificateOfOriginsBl
         }
         else
         {
+            // Legacy CheckIfCustomsHouse: detail.Value = orgUnit id, detail.DisplayedValue = orgUnit English name.
+            var organizationUnit = await lookupUtil.Get<Lookup.OrganizationUnit>(organizationUnitId.Value);
+            customsHouseDetail.Value = organizationUnitId.Value.ToString(CultureInfo.InvariantCulture);
+            customsHouseDetail.DisplayedValue = organizationUnit?.EnglishName;
             context.OrganizationUnitId = organizationUnitId.Value;
         }
     }
 
     // Legacy CheckFieldForSpecificCertificate: per-certificate-type cross-field rules.
-    private async Task CheckFieldForSpecificCertificate(CertificateOfOriginMessageDto certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, MessageValidationContext context)
+    private async Task CheckFieldForSpecificCertificate(CertificateOfOriginMessageDto? certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, MessageValidationContext context)
     {
         switch (agentRequest.CertificateOfOriginTypeCode)
         {
             case (int)ECertificateOfOriginType.EURMED:
             case (int)ECertificateOfOriginType.EUR1:
-                await CheckCountriesForEurCertificates(certificate, agentRequest, details, context);
+                // Only reached for EUR types, whose gate guarantees a standard body.
+                if (certificate is not null)
+                {
+                    await CheckCountriesForEurCertificates(certificate, agentRequest, details, context);
+                }
+
                 break;
 
             case (int)ECertificateOfOriginType.NonManipulation:
@@ -186,7 +207,11 @@ public partial class CertificateOfOriginsBl
                 break;
 
             default:
-                await CheckDestinationCountry(certificate, agentRequest, details, context);
+                if (certificate is not null)
+                {
+                    await CheckDestinationCountry(certificate, agentRequest, details, context);
+                }
+
                 break;
         }
     }

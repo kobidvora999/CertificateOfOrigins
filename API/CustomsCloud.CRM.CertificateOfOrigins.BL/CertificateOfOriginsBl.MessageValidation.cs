@@ -81,14 +81,20 @@ public partial class CertificateOfOriginsBl
         // requestExceptions channel at the gate below. The context (with its declaration-details cache) is created once
         // per request by the dispatcher and shared with the amendment guard + reconciliation.
 
-        // Legacy: a null CertificateOfOrigin body is a MandatoryValue error EXCEPT for EmptyCertificate (which by
-        // definition carries no body and creates an empty certificate). GetRequestStatus/CertificateCancellation are the
-        // legacy's other exemptions but they never reach this create branch.
-        var certificate = request.CertificateOfOrigin;
+        // Legacy GetCertificateDetailsFromMessageAndCheckFields: NonManipulation validates a DIFFERENT body
+        // (request.NonManipulationCertificate) than the standard CertificateOfOrigin body. A null body is a
+        // MandatoryValue error EXCEPT for EmptyCertificate (which carries no body). GetRequestStatus/CertificateCancellation
+        // are the legacy's other exemptions but never reach this create branch.
+        var isNonManipulation = certificateTypeId == (int)ECertificateOfOriginType.NonManipulation;
         var isEmptyCertificate = agentRequest.RequestReasonCode == (int)ERequestReason.EmptyCertificate;
-        if (certificate is null && !isEmptyCertificate)
+        var certificate = request.CertificateOfOrigin;
+        var nonManipulation = request.NonManipulationCertificate;
+
+        var bodyMissing = isNonManipulation ? nonManipulation is null : certificate is null;
+        if (bodyMissing && !isEmptyCertificate)
         {
-            requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(request.CertificateOfOrigin)));
+            var missingBodyName = isNonManipulation ? nameof(request.NonManipulationCertificate) : nameof(request.CertificateOfOrigin);
+            requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, missingBodyName));
             return null;
         }
 
@@ -98,15 +104,28 @@ public partial class CertificateOfOriginsBl
         agentRequest.IsCustomsItemMandatory = typeCode?.IsCustomsItemMandatory;
         agentRequest.IsZipcodeMandatory = typeCode?.IsZipcodeMandatory ?? false;
 
+        // The certificate type's field catalogue (which fields are relevant + their constraint).
+        var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
+
         var invoices = new List<CertificateOfOriginInvoiceDetail>();
 
-        // The field/invoice validation runs only when a certificate body is present (EmptyCertificate has none — it
-        // skips straight to the per-reason resolution + save of an empty certificate).
-        if (certificate is not null)
+        if (isNonManipulation)
         {
-            // The certificate type's field catalogue (which fields are relevant + their constraint).
-            var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);
-
+            // Legacy HandleNonManipulationCertificateType: validate + build the 15 NonManipulation-body fields via the
+            // same field loop (reflecting a different body), plus the optional CustomsHouse detail when a CertificateOfOrigin
+            // object rides along. NonManipulation has no invoices (legacy CheckAndConvertInvoiceDetails returns early).
+            if (nonManipulation is not null)
+            {
+                await ValidateAndBuildNonManipulationDetails(certificateTypeId, nonManipulation, perCertificate, context);
+                AddCustomsHouseDetail(certificate, context);
+                if (context.Details.Count > 0)
+                {
+                    await CheckMessageCrossFields(certificate, nonManipulation, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
+                }
+            }
+        }
+        else if (certificate is not null)
+        {
             // Pre-resolve the destination country id (drives the EUR1 place-of-manufacture exemption), mirroring the
             // legacy early GetIdByCode<Country> in GetCertificateDetailsFromMessageAndCheckFields.
             int? destinationCountryId = null;
@@ -125,7 +144,7 @@ public partial class CertificateOfOriginsBl
             await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
             if (context.Details.Count > 0)
             {
-                await CheckMessageCrossFields(certificate, request.NonManipulationCertificate, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
+                await CheckMessageCrossFields(certificate, nonManipulation, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
             }
         }
 
@@ -242,10 +261,45 @@ public partial class CertificateOfOriginsBl
     // (CheckSpecificField — stage 3), and add the resulting detail row. A blank value errors only when Mandatory.
     private async Task ValidateAndBuildCertificateDetails(int certificateTypeId, CertificateOfOriginMessageDto certificate, List<DetailsPerCertificate> perCertificate, int? destinationCountryId, MessageValidationContext context)
     {
+        await BuildDetailsFromFields(certificateTypeId, EnumerateCertificateFields(certificate), perCertificate, destinationCountryId, context);
+    }
+
+    // NonManipulation variant (legacy HandleNonManipulationCertificateType → ValidateAndCreateCertificateOfOriginDetails
+    // over the NonManipulation body). Same field loop, different body; there is no place-of-manufacture field on a
+    // NonManipulation certificate, so the destination-country exemption argument is null.
+    private async Task ValidateAndBuildNonManipulationDetails(int certificateTypeId, NonManipulationCertificateMessageDto nonManipulation, List<DetailsPerCertificate> perCertificate, MessageValidationContext context)
+    {
+        await BuildDetailsFromFields(certificateTypeId, EnumerateNonManipulationFields(nonManipulation), perCertificate, null, context);
+    }
+
+    // Legacy GetCustomsHouseDetails: when a standard CertificateOfOrigin body accompanies the NonManipulation body, its
+    // CustomsHouse value is carried across as one additional detail. Added UNCONDITIONALLY — no mandatory/format check
+    // (CustomsHouse lives only on the standard body, so the NonManipulation field loop never produces it).
+    private static void AddCustomsHouseDetail(CertificateOfOriginMessageDto? certificate, MessageValidationContext context)
+    {
+        if (certificate is null)
+        {
+            return;
+        }
+
+        var value = certificate.CustomsHouse ?? string.Empty;
+        context.Details.Add(new CertificateOfOriginDetails
+        {
+            CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.CustomsHouse,
+            Value = value,
+            DisplayedValue = value.Length > 0 ? value : null,
+        });
+    }
+
+    // The shared per-field validation + detail-construction loop (legacy ValidateAndCreateCertificateOfOriginDetails),
+    // driven by whichever body's (detail type, raw value) sequence is supplied. A field not declared in
+    // DetailsPerCertificate for this type is skipped; a blank value errors only when Mandatory.
+    private async Task BuildDetailsFromFields(int certificateTypeId, IEnumerable<(ECertificateDetailsType DetailType, string? Value)> fields, List<DetailsPerCertificate> perCertificate, int? destinationCountryId, MessageValidationContext context)
+    {
         // Which detail types this certificate type declares → its constraint (legacy: details.FirstOrDefault by type).
         var constraintByType = perCertificate.ToDictionary(d => d.CertificateDetailsTypeCodeId, d => d.ConstraintTypeEnumId);
 
-        foreach (var (detailType, rawValue) in EnumerateCertificateFields(certificate))
+        foreach (var (detailType, rawValue) in fields)
         {
             if (!constraintByType.TryGetValue((int)detailType, out var constraintTypeEnumId))
             {
@@ -315,6 +369,29 @@ public partial class CertificateOfOriginsBl
         yield return (ECertificateDetailsType.DateOfDeclaration, ToStringValue(c.DateOfDeclaration));
         yield return (ECertificateDetailsType.IsDeclaredByManufacturer, ToStringValue(c.IsDeclaredByManufacturer));
         yield return (ECertificateDetailsType.IsDeclaredByExporter, ToStringValue(c.IsDeclaredByExporter));
+    }
+
+    // The NonManipulation body → (detail type, raw value) pairs, in the legacy field-declaration order (EAI schema
+    // order 0-14 → detail type ids 34-48). The .NET 10 DTO corrected two legacy field spellings — ExportBillOfLadingNum
+    // and TransitCountry — so those map explicitly to their (misspelled) detail types ExportBillOFLadingNum(39) and
+    // TransirCountry(40). The three dates are non-nullable, so they always render → always flow to the date validators.
+    private static IEnumerable<(ECertificateDetailsType DetailType, string? Value)> EnumerateNonManipulationFields(NonManipulationCertificateMessageDto c)
+    {
+        yield return (ECertificateDetailsType.ExportDate, ToStringValue(c.ExportDate));
+        yield return (ECertificateDetailsType.ExportCountry, c.ExportCountry);
+        yield return (ECertificateDetailsType.ImportBillOfLadingNum, c.ImportBillOfLadingNum);
+        yield return (ECertificateDetailsType.ExportPort, c.ExportPort);
+        yield return (ECertificateDetailsType.ImportDate, ToStringValue(c.ImportDate));
+        yield return (ECertificateDetailsType.ExportBillOFLadingNum, c.ExportBillOfLadingNum);
+        yield return (ECertificateDetailsType.TransirCountry, c.TransitCountry);
+        yield return (ECertificateDetailsType.PortOfEntrance, c.PortOfEntrance);
+        yield return (ECertificateDetailsType.ExpectedExitDate, ToStringValue(c.ExpectedExitDate));
+        yield return (ECertificateDetailsType.ExitPort, c.ExitPort);
+        yield return (ECertificateDetailsType.GoodsDescription, c.GoodsDescription);
+        yield return (ECertificateDetailsType.DeclaringCompany, c.DeclaringCompany);
+        yield return (ECertificateDetailsType.DeclaringPerson, c.DeclaringPerson);
+        yield return (ECertificateDetailsType.DeclaringPosition, c.DeclaringPosition);
+        yield return (ECertificateDetailsType.ManifestNum, c.ManifestNum);
     }
 
     private static string? ToStringValue(int? value)
@@ -406,7 +483,9 @@ public partial class CertificateOfOriginsBl
                 break;
 
             case ECertificateDetailsType.ImportDate:
-                // Legacy CheckImportDate on the field only parses/formats; the real constraint is cross-field (stage 4).
+                // Legacy CheckImportDate(detail): reformat the display to a short date (parsing an unparseable value
+                // yields default(DateTime), exactly as the legacy). The range constraint itself is cross-field (stage 4).
+                field.DisplayedValue = (DateTime.TryParse(field.Value, out var importDate) ? importDate : default).ToShortDateString();
                 break;
 
             case ECertificateDetailsType.IsConsigneeForPrint:
