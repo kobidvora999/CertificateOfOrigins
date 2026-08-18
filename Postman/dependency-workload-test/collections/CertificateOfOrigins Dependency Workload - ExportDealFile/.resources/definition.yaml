@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - ExportDealFile
+description: Dependency probe — proves the ExportDealFile microservice is alive (ExportDeclarationDetailsForCertificateOfOrigin, ExportDeclarationInfoForPc, GetLeadDocumentByCertificateOfOriginId, GetLeadDocumentSubmissionDate). GET LoadDataFromExportDeclaration calls ExportDealFile directly. Runs PRE-PROD with REAL proxies.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

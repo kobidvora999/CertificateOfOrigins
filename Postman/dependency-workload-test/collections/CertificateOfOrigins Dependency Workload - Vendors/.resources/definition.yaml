@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - Vendors
+description: Dependency probe — proves the Vendors microservice is alive (Vendor/VendorsByIds). GET AuthenticationRequestByID enriches the request's vendor name via Vendors. Runs PRE-PROD with REAL proxies.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

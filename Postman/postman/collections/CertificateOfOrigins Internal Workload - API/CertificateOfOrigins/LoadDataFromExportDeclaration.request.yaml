@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/LoadDataFromExportDeclaration?leadDocumentId=12345&requestReasonCode=1"
+method: GET
+queryParams:
+  - key: leadDocumentId
+    value: "12345"
+  - key: exportDeclarationNumber
+    value: IL-EXP-001
+    disabled: true
+  - key: requestReasonCode
+    value: "1"
+order: 8000

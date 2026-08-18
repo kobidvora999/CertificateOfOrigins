@@ -1,0 +1,8 @@
+$kind: environment
+name: CertificateOfOrigins preprod
+# Static config ONLY. NEVER add captured/chained vars here (env scope overrides collection scope → breaks chaining).
+# base_URL is set by infra to the pre-prod host; the runner also overrides it via -BaseUrl.
+values:
+  - key: base_URL
+    value: https://REPLACE-with-preprod-host
+    enabled: true

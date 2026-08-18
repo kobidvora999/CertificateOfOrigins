@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/CreateNewAuthenticationFile"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": 900001,
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 123,
+        "responseNameEmail": "test@example.com"
+      }
+    ]
+order: 12000

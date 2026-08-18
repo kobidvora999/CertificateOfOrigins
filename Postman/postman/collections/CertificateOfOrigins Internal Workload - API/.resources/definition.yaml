@@ -1,0 +1,17 @@
+$kind: collection
+id: certificateoforigins-collection-v1
+name: CertificateOfOrigins API
+description: CustomsCloud CRM CertificateOfOrigins microservice. Requests are added ONE PER METHOD as each WCF method is migrated (see MIGRATION-ORDER.md) — the collection never lists a method before it exists in the service.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

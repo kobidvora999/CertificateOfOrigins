@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/HandleAuthenticationRequestDeliverySent"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "relatedEntities": [
+        {
+          "id": 1,
+          "entityType": 12385
+        }
+      ]
+    }
+order: 15000

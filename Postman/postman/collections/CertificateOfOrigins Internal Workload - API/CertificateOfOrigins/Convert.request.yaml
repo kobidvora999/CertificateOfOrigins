@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Convert"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "entityIdKey1": "IL0000116895"
+    }
+order: 7000

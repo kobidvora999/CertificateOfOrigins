@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/SaveCertificateOfOrigin"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": 0,
+      "typeId": 2,
+      "title": "בקשת תעודת מקור",
+      "state": 1,
+      "organizationUnitId": 1,
+      "customerId": 777,
+      "createCustomerId": 777,
+      "certificateNumber": "POSTMAN-COO-1",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "isLastVersion": true,
+      "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        {
+          "certificateDetailsTypeCodeId": 2,
+          "value": "יצואן לדוגמה"
+        },
+        {
+          "certificateDetailsTypeCodeId": 13,
+          "value": "32"
+        }
+      ]
+    }
+order: 10000

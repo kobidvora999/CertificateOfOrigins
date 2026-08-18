@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/CheckIfExistsAdditionalRequestsForImporter?importerId=777&customerId=888&countryId=1"
+method: GET
+queryParams:
+  importerId: "777"
+  customerId: "888"
+  countryId: "1"
+order: 4000

@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_URL}}/CertificateOfOrigins/CertificateOfOriginById/{{certificateId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      // Liveness: Customers answered — GetCertificateOfOriginById enriches the customer name via Customer/CustomersByIds.
+      pm.test("Customers alive — HTTP 200", () => pm.expect(pm.response.code).to.equal(200));
+    language: text/javascript
+order: 1000

@@ -1,0 +1,35 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImportAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 900001,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "2024-01-01T00:00:00+02:00",
+      "collateralId": null,
+      "decisionId": 3,
+      "leadDocumentId": 1,
+      "documentIssuingDate": "2024-01-01T00:00:00+02:00",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 555,
+      "vendorName": null,
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 16000

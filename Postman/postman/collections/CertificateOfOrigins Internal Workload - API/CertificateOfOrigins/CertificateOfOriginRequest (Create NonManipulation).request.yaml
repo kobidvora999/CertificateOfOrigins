@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginRequest"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": {
+        "requestReasonCode": 1,
+        "certificateOfOriginTypeCode": 5,
+        "exportDeclarationNum": "260146"
+      },
+      "certificateOfOrigin": {
+        "customsHouse": "SITE01"
+      },
+      "nonManipulationCertificate": {
+        "exportDate": "2026-08-10T00:00:00",
+        "exportCountry": "DE",
+        "importBillOfLadingNum": "IBL1",
+        "exportPort": "DEHAM",
+        "importDate": "2026-08-05T00:00:00",
+        "exportBillOfLadingNum": "EBL1",
+        "transitCountry": "IL",
+        "portOfEntrance": "ILHFA",
+        "expectedExitDate": "2026-09-01T00:00:00",
+        "exitPort": "ILASH",
+        "goodsDescription": "widgets",
+        "declaringCompany": "Acme",
+        "declaringPerson": "John",
+        "declaringPosition": "Manager",
+        "manifestNum": "MAN1"
+      }
+    }
+order: 15000

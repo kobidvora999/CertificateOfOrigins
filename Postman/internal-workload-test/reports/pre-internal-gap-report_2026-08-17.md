@@ -8,9 +8,10 @@
 | 2. פאריטי התנהגותי | ⚠️ | לא-רץ-מלא (fan-out 34-מתודות לא בוצע בריצה זו) |
 | 3. Code Review | ⚠️ | build ✅ 0 errors · ~40 warnings לא-S1135 (מהם 2 חדשים) · 62 TODO(blocking) |
 | 4. שלמות סקריפטי DB | ✅ | כל 9 ה-SPs שהקוד מפעיל מסוקרפטים; 6 SPs `dbo` ב-localhost הם orphans (לא בשימוש) |
-| 5. Postman workload collections | ❌ | Group 1 + Group 2 (v3) + runners חסרים |
+| 5. Postman workload collections | ✅ | Group 1 (9 אוספי dependency) + Group 2 (internal v3 + baseline coverage) + runners — נוצרו (2026-08-18) |
 
-**מוכן להכנסה לסביבה פנימית? לא** — נותר חוסם ב-CHECK 5 (אוספי workload חסרים); הקוד אינו warnings-clean. **CHECK 4 תקין.**
+**מוכן להכנסה לסביבה פנימית? כמעט** — **אין חוסם 🔴** (CHECK 4 + CHECK 5 תקינים). נותרו 2 Majors בלבד:
+CHECK 3 (הקוד אינו warnings-clean) ו-CHECK 2 (fan-out פאריטי מלא לא רץ). **CHECK 4 + CHECK 5 תקינים.**
 
 ## פירוט חוסרים (לפי חומרה)
 
@@ -27,12 +28,15 @@
    `LinkRequestsToAuthenticationFile` — הכרעת מפתח 2026-07-30 להחליף את ה-SP+TVP), ופרויקט Planar ריק. **0 הפעלות
    ב-DbContextExtension/DAL/Planar** → אינם נדרשים כסקריפט (שאריות ניסוי ב-localhost). הבדיקה המוסמכת: `/db-scripts-check`.
 
-### 🔴 חוסמים (Blockers)
-2. **CHECK 5 — אוספי ה-workload חסרים** תחת `Postman/`:
-   - Group 2 (`internal-workload-test`, coverage+life-cycle) — אין אוספי v3 `CertificateOfOrigins Internal Workload - *`.
-   - Group 1 (`dependency-workload-test`, liveness חיצוני) — אין אוספי `CertificateOfOrigins Dependency Workload - *`.
-   - חסרים runners לשתי הקבוצות. קיים רק אוסף העבודה `Postman/CertificateOfOrigins.postman_collection.json` (JSON — לא v3).
-   **תיקון:** הרץ `/internal-workload-test CertificateOfOrigins` ו-`/dependency-workload-test CertificateOfOrigins`.
+### ✅ CHECK 5 — תוקן (2026-08-18): שתי קבוצות ה-workload קיימות
+2. **Group 2 (`internal-workload-test`)** — אוסף v3 `CertificateOfOrigins Internal Workload - API` ב-`Postman/postman/collections/`,
+   רץ תחת `dotnet-coverage` (‏runner ב-`Postman/internal-workload-test/run.ps1`). **verdict ירוק** (passed:1, 37 בקשות, 0 כשלים).
+   כיסוי per-class: Controllers 91–100% · DAL 80% · Auth/Export BL 77–78% · **CertificateOfOriginsBl 35.5%** (צינור ה-message —
+   דורש scenario-variants + lifecycle כדי להעלות; ה-follow-up העמוק דרך `postman-coverage`). כלים הותקנו: Postman CLI 1.47, dotnet-coverage, reportgenerator.
+   - **Group 1 (`dependency-workload-test`)** — 9 אוספי v3 `CertificateOfOrigins Dependency Workload - {SystemTables,Customers,Users,
+   Vendors,ExportDealFile,Documents,Collaterals,Common,Tasks}` ב-`Postman/dependency-workload-test/collections/` (lint נקי 9/9),
+   מפה + placeholders ב-`collections/gap.md`, runner ב-`Postman/dependency-workload-test/run.ps1`. **הרצה = pre-prod עם proxies אמיתיים (תשתית)** —
+   לא רצה מקומית לפי תכנון ה-skill; repo-complete-check דורש רק קיום.
 
 ### 🟠 לטיפול לפני merge (Major)
 3. **CHECK 3 — הקוד אינו warnings-clean** (מדיניות: נקי פרט ל-S1135). ~40 warnings לא-S1135, בעיקר:

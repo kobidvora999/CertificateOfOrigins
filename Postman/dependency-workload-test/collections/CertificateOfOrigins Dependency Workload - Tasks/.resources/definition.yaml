@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - Tasks
+description: Dependency probe — proves the Tasks microservice is alive (Task/IsTaskExist, Task/LatestUserHandlingEntityTasksWithTaskUnification). GET AuthenticationRequestByID checks open tasks via Task/IsTaskExist. Runs PRE-PROD with REAL proxies.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

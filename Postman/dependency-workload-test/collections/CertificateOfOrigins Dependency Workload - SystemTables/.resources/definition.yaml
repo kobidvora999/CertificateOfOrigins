@@ -1,0 +1,11 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - SystemTables
+description: Dependency probe — proves the SystemTables microservice is alive. The certificate-request message fans out to SystemTables for Country (CountriesByAlphaCodes), Site (SitesByExternalNumbers), InternationalSite (InternationalSitesByLocodes), PackingType, MeasurementUnit, CurrencyType, CustomsBook (CustomsItemsByIds), CountryGroup and OrganizationUnit. Runs PRE-PROD with REAL proxies (infra flips them; this collection only points the CLI at the live service).
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Real proxies in pre-prod — NO x-mock-mode header. Only the acting-user context.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

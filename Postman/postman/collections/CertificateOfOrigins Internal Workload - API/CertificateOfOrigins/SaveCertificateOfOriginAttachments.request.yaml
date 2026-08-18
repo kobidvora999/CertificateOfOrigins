@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/SaveCertificateOfOriginAttachments"
+method: POST
+headers:
+  Content-Type: application/json
+  CC-USER-ID: "5"
+body:
+  type: json
+  content: |-
+    {
+      "certificatesTemplates": [
+        {
+          "id": 1,
+          "name": "certificate",
+          "content": "dGVzdA==",
+          "documentTypeId": 329,
+          "isPdfFormat": true
+        }
+      ],
+      "certificateNumber": "CN-9",
+      "certificateId": 10,
+      "certificateRequestReasonCode": 1,
+      "certificateTypeId": 2,
+      "additionalInfo": null
+    }
+order: 9000

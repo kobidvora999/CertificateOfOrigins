@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - Documents
+description: Dependency probe — proves the Documents microservice is alive (Document/DocumentsByEntity, AttachDocumentsToEntity, DeleteDocuments, GetDocumentById). GET EntityDocuments calls Document/DocumentsByEntity. Runs PRE-PROD with REAL proxies.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

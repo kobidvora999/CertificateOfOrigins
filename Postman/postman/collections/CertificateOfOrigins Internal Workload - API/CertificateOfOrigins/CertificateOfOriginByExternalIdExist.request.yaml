@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=IL0000116895"
+method: GET
+queryParams:
+  certificateOfOriginExternalId: IL0000116895
+order: 4000

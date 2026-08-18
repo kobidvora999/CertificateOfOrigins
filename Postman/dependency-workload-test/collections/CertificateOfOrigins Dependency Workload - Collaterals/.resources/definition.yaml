@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - Collaterals
+description: Dependency probe — proves the Collaterals microservice is alive (GetCollateralRequest, ChangeTempCollateralRequest, GetCollateralRequestIdsByRelatedEntity, GrantAllCollateralRequests). GET AuthenticationRequestByID enriches the request's collateral via Collaterals. Runs PRE-PROD with REAL proxies.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
+method: GET
+order: 4000

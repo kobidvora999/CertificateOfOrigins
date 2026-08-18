@@ -1,0 +1,10 @@
+$kind: collection
+name: CertificateOfOrigins Dependency Workload - Common
+description: Dependency probe — proves the Common microservice is alive. CertificateOfOrigins reaches Common for Message/SendMessage (request feedback), CommonServices/CreateQrCode and GenerateTemplate (SSRS, on publish). The certificate-request message fires SendMessage. Runs PRE-PROD with REAL proxies. NOTE — CreateQrCode + GenerateTemplate are only fired on the publish path (SaveCertificateOfOrigin, published status); see gap.md.
+variables:
+  base_URL: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+    language: text/javascript

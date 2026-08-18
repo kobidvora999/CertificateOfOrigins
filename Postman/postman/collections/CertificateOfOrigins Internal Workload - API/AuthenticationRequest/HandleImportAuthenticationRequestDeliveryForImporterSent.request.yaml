@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryForImporterSent"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 900500,
+      "organizationUnitId": 1,
+      "authenticationFileId": 1,
+      "authenticationFileStatusId": 1,
+      "deliveryMethodId": 1
+    }
+order: 10000

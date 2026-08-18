@@ -1,0 +1,38 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveAuthenticationRequestFile"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": 1,
+      "authenticationFileStatusId": 5,
+      "originalAuthenticationFileStatusId": 2,
+      "notes": null,
+      "postalAdress": "gg",
+      "deliveryMethodId": 1,
+      "emailAdress": null,
+      "reminderMethodId": 1,
+      "requestCountryId": 32,
+      "userId": 5,
+      "userNameIssuingLetter": "ss",
+      "lastDelivery": null,
+      "importerContactingReasonId": null,
+      "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        {
+          "documentId": 900500,
+          "authenticationFileId": 1,
+          "decisionId": 3,
+          "originalRequestDecisionId": 1,
+          "documentIssuingDate": "2024-01-01T00:00:00+02:00",
+          "organizationUnitId": 1,
+          "userId": 5,
+          "userResponseId": 5
+        }
+      ]
+    }
+order: 17000

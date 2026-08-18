@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/AuthenticationRequestByFilter?fromRequestDate=2000-01-01&toRequestDate=2100-01-01"
+method: GET
+queryParams:
+  - key: fromRequestDate
+    value: 2000-01-01
+  - key: toRequestDate
+    value: 2100-01-01
+  - key: vendorId
+    value: "555"
+    disabled: true
+order: 5000

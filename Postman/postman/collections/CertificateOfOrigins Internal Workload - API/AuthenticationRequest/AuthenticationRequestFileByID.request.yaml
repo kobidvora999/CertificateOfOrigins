@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/AuthenticationRequestFileByID/1"
+method: GET
+headers:
+  CC-USER-ID: "5"
+order: 14000
