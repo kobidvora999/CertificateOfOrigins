@@ -48,7 +48,7 @@ public partial class CertificateOfOriginsBl
 
         if (hasOriginCountry && certificate is not null)
         {
-            await CheckPlaceOfManufactureAndZipcode(certificate, agentRequest, isZipcodeMandatory, context);
+            await CheckPlaceOfManufactureAndZipcode(certificate, isZipcodeMandatory, context);
         }
 
         if (hasCustomsHouse)
@@ -118,7 +118,7 @@ public partial class CertificateOfOriginsBl
 
     // Legacy CheckPlaceOfManufactureAndZipcode: for an Israel origin country, place-of-manufacture + zip are mandatory
     // (unless the destination is in the exempt list) and the zip must be at least 7 characters.
-    private async Task CheckPlaceOfManufactureAndZipcode(CertificateOfOriginMessageDto certificate, CertificateOfOriginAgentRequestDto agentRequest, bool isZipcodeMandatory, MessageValidationContext context)
+    private async Task CheckPlaceOfManufactureAndZipcode(CertificateOfOriginMessageDto certificate, bool isZipcodeMandatory, MessageValidationContext context)
     {
         if (string.IsNullOrWhiteSpace(certificate.OriginCountry))
         {

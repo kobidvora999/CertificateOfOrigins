@@ -859,8 +859,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         byte[]? qrCodeToUpload = null;
         if (entity.RequestReasonCode != (int)ERequestReason.CertificateCancellation)
         {
-            // Generate the QR (stamps QrImage + Guid onto the entity) BEFORE the save so they persist with the upsert;
-            // the returned bytes are uploaded as a document AFTER the save, once the certificate id is assigned.
+            // Generate the QR — it stamps QrImage and Guid onto the entity BEFORE the save so they persist with the
+            // upsert. The returned bytes are uploaded as a document AFTER the save, once the certificate id is assigned.
             qrCodeToUpload = await CreateQrCodeIfNeeded(entity);
             await EnrichAndValidateDetails(entity, details);
         }
@@ -1109,9 +1109,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 if (!string.IsNullOrEmpty(value))
                 {
                     var exporterId = await customerProxy.GetCustomerIdByExternalId(value);
-                    if (exporterId.GetValueOrDefault() != 0)
+                    if (exporterId is int resolvedExporterId && resolvedExporterId != 0)
                     {
-                        detail.Value = exporterId.Value.ToString(CultureInfo.InvariantCulture);
+                        detail.Value = resolvedExporterId.ToString(CultureInfo.InvariantCulture);
                     }
                 }
 
@@ -1135,7 +1135,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             else if (DateDetailTypes.Contains(typeId))
             {
                 // Legacy Check*Date: the display is a short date (an unparseable value yields default(DateTime), as legacy).
-                detail.DisplayedValue = (DateTime.TryParse(value, out var date) ? date : default).ToShortDateString();
+                detail.DisplayedValue = (DateTime.TryParse(value, CultureInfo.InvariantCulture, out var date) ? date : default).ToShortDateString();
             }
             else if (BoolDetailTypes.Contains(typeId))
             {
@@ -1570,17 +1570,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // not overflowed (MaximumNumberOfCharactersOfTheField, reserving LengthOfTaskStart).
     private static string BuildReconciliationAdditionalInfo(IEnumerable<CertificateOfOriginExceptionDto> exceptions)
     {
-        var additionalInfo = string.Empty;
+        var additionalInfo = new StringBuilder();
         foreach (var exception in exceptions)
         {
             var text = exception.ExceptionDescription ?? string.Empty;
             if (additionalInfo.Length + text.Length + CertificateOfOriginsConsts.LengthOfTaskStart < CertificateOfOriginsConsts.MaximumNumberOfCharactersOfTheField)
             {
-                additionalInfo += text + " , ";
+                additionalInfo.Append(text).Append(" , ");
             }
         }
 
-        return additionalInfo;
+        return additionalInfo.ToString();
     }
 
     // Legacy ValidateExportDeclarationInfoForPCIsMatch: compares the certificate against the export declaration and
@@ -1594,12 +1594,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         CertificateOfOrigin certificate,
         List<CertificateOfOriginDetails> details)
     {
-        var builder = new List<ReconciliationException>();
+        var builder = new List<ReconciliationFinding>();
 
         // No invoices in the declaration → the certificate cannot be reconciled (legacy: hasErrors = true).
         if (request.ExportInvoiceInfoList.Count == 0)
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.NoExportInvoices,
                 (int)EExceptionLevel.Error,
                 "אין חשבוניות בהצהרת היצוא",
@@ -1628,7 +1628,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         UpdateCertificateOfOriginsRequestDto request,
         CertificateOfOrigin certificate,
         List<CertificateOfOriginDetails> details,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         var destinationCountry = GetDetailValue(details, ECertificateDetailsType.DestinationCountry);
         var destinationGroup = GetDetailValue(details, ECertificateDetailsType.DestinationGroupOfCountries);
@@ -1639,7 +1639,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             && int.TryParse(destinationCountry, out var destinationCountryId)
             && destinationCountryId != request.DestinationCountryId.Value)
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.DestinationCountryMismatch,
                 (int)EExceptionLevel.Error,
                 "ארץ היעד בתעודה אינה תואמת לארץ היעד בהצהרת היצוא",
@@ -1655,7 +1655,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 && await countryGroupProxy.IsCountryInCountryGroup(request.DestinationCountryId.Value, destinationGroupId);
             if (!destinationInGroup)
             {
-                builder.Add(new ReconciliationException(
+                builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.DestinationGroupDiscrepancy,
                     (int)EExceptionLevel.Error,
                     "אי התאמה בין הארצות בהסכם לבין ארץ הקונה",
@@ -1668,7 +1668,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         if (!string.IsNullOrEmpty(certificate.ExportDeclarationNumber)
             && certificate.ExportDeclarationNumber != request.ExportDeclarationNum)
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.ExportDeclarationNotInSystem,
                 (int)EExceptionLevel.Error,
                 $"מספר הצהרת היצוא {request.ExportDeclarationNum} אינו קיים במערכת",
@@ -1679,7 +1679,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         // nullable int, so a null declaration exporter also flags a mismatch — preserved).
         if (int.TryParse(exporterId, out var exporter) && exporter != request.ExporterCustomerId)
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.ExporterMismatch,
                 (int)EExceptionLevel.Error,
                 "מספר היצואן בתעודה אינו תואם למספר היצואן בהצהרת היצוא",
@@ -1693,7 +1693,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     private async Task<bool> ValidateImportReplacement(
         UpdateCertificateOfOriginsRequestDto request,
         CertificateOfOrigin certificate,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         if (certificate.RequestReasonCode != (int)ERequestReason.ImportCertificateReplacement)
         {
@@ -1716,7 +1716,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             return false;
         }
 
-        builder.Add(new ReconciliationException(
+        builder.Add(new ReconciliationFinding(
             EReconciliationMessage.ImportReplacementNoTradeAgreement,
             (int)EExceptionLevel.Warning,
             "אין בהצהרה טובין המקושרים להצהרת היבוא שארץ המקור שלהם נמצאת בהסכם הסחר",
@@ -1734,7 +1734,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         List<CertificateReconcileInvoiceDto> invoices,
         string? originCountry,
         string? originGroup,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         var isCustomsItemMandatory = await DataLayer.GetCertificateTypeIsCustomsItemMandatory(certificate.TypeId) ?? false;
 
@@ -1775,14 +1775,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         string? originGroup,
         Dictionary<int, string?> sixDigitByCustomsItemId,
         bool isCustomsItemMandatory,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         foreach (var invoice in invoices)
         {
             var declarationInvoice = request.ExportInvoiceInfoList.FirstOrDefault(declaration => declaration.ExternalIdNum == invoice.InvoiceNumber);
             if (declarationInvoice == null)
             {
-                builder.Add(new ReconciliationException(
+                builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.ExportInvoiceNotMatch,
                     (int)EExceptionLevel.Warning,
                     $"חשבונית היצוא {invoice.InvoiceNumber} אינה תואמת לחשבונית בהצהרת היצוא",
@@ -1824,13 +1824,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         string? originGroup,
         Dictionary<int, string?> sixDigitByCustomsItemId,
         bool isCustomsItemMandatory,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         // Origin country present among the declaration's goods items (Error).
         if (int.TryParse(originCountry, out var originCountryId)
             && !declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.OriginCountryMismatch,
                 (int)EExceptionLevel.Error,
                 "ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא",
@@ -1852,7 +1852,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
             if (!anyOriginInGroup)
             {
-                builder.Add(new ReconciliationException(
+                builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.OriginCountryMismatch,
                     (int)EExceptionLevel.Error,
                     "ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא",
@@ -1863,7 +1863,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         // The certificate must be linked to at least one declaration goods item (Error).
         if (!declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.CertificateNumberNotInDealFile,
                 (int)EExceptionLevel.Error,
                 "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא",
@@ -1879,7 +1879,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                 && !string.IsNullOrEmpty(declarationSixDigits)
                 && declarationSixDigits == certificateSixDigits))
         {
-            builder.Add(new ReconciliationException(
+            builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.CustomsItemMismatch,
                 (int)EExceptionLevel.Error,
                 $"פריט המכס {certificateSixDigits} בחשבונית {invoiceNumber} אינו תואם לפריט מכס בהצהרת היצוא",
@@ -1894,7 +1894,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         Dictionary<int, string?> sixDigitByCustomsItemId,
-        List<ReconciliationException> builder)
+        List<ReconciliationFinding> builder)
     {
         foreach (var declarationInvoice in request.ExportInvoiceInfoList)
         {
@@ -1909,7 +1909,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
                         && !string.IsNullOrEmpty(certificateSixDigits)
                         && certificateSixDigits == declarationSixDigits))
                 {
-                    builder.Add(new ReconciliationException(
+                    builder.Add(new ReconciliationFinding(
                         EReconciliationMessage.CustomsItemInDeclarationNotInCertificate,
                         (int)EExceptionLevel.Error,
                         $"פריט המכס {declarationSixDigits} בחשבונית {declarationInvoice.ExternalIdNum} אינו תואם לפריטי המכס בתעודה",
@@ -1932,7 +1932,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     }
 
     // Legacy PassGroupdExceptionListToEntity: dedup by message (GroupBy UserMessage, first wins), then project to DTOs.
-    private static ReconciliationResult BuildReconciliationResult(List<ReconciliationException> builder, bool isLinkedToImportDeclaration)
+    private static ReconciliationResult BuildReconciliationResult(List<ReconciliationFinding> builder, bool isLinkedToImportDeclaration)
     {
         var exceptions = builder
             .GroupBy(exception => exception.Key)
@@ -1968,7 +1968,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         CustomsItemInDeclarationNotInCertificate,   // EMessages.CustomsItemInDeclarationIsNotMAtchToCustomsItemsInCertificate
     }
 
-    private sealed class ReconciliationException(EReconciliationMessage key, int level, string description, string englishDescription)
+    private sealed class ReconciliationFinding(EReconciliationMessage key, int level, string description, string englishDescription)
     {
         public EReconciliationMessage Key { get; } = key;
 

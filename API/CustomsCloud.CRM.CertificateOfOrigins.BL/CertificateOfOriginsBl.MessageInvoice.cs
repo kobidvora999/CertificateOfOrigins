@@ -21,6 +21,10 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
+        // Per-invoice, side-effecting validation (legacy ValidateCertificateOfOriginRequestInvoiceDetail): each invoice
+        // that fails adds its own exception — collapsing to a single LINQ Any() would drop the per-invoice errors, so the
+        // foreach is intentional here.
+#pragma warning disable S3267
         foreach (var invoice in certificate.InvoiceDetails)
         {
             if (invoice.ItemDetails.Count == 0)
@@ -32,6 +36,7 @@ public partial class CertificateOfOriginsBl
                 context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, "MarksAndNumbers"));
             }
         }
+#pragma warning restore S3267
     }
 
     // Legacy CheckAndConvertInvoiceDetails: NonManipulation has no invoices; otherwise convert every message invoice to

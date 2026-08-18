@@ -415,9 +415,9 @@ public partial class CertificateOfOriginsBl
     }
 
     // Stage 3: the per-field-type validation + code→id resolution (legacy CheckSpecificField's switch on
-    // ECertificateDetailsType). A non-blank field is dispatched to its validator, which both validates AND rewrites
-    // field.Value/DisplayedValue (external code → internal id / display name) and, for the exporter / customs-house
-    // fields, records the resolved side-value on the context. Faithful to the legacy switch (cases + validators).
+    // ECertificateDetailsType). A non-blank field is dispatched to its validator, which both validates and rewrites
+    // the field value and display value (external code becomes internal id or display name) and, for the exporter and
+    // customs-house fields, records the resolved side-value on the context. Faithful to the legacy switch.
     private async Task CheckSpecificField(MessageField field, int certificateTypeId, int? destinationCountryId, MessageValidationContext context)
     {
         switch (field.DetailType)
@@ -485,7 +485,7 @@ public partial class CertificateOfOriginsBl
             case ECertificateDetailsType.ImportDate:
                 // Legacy CheckImportDate(detail): reformat the display to a short date (parsing an unparseable value
                 // yields default(DateTime), exactly as the legacy). The range constraint itself is cross-field (stage 4).
-                field.DisplayedValue = (DateTime.TryParse(field.Value, out var importDate) ? importDate : default).ToShortDateString();
+                field.DisplayedValue = (DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var importDate) ? importDate : default).ToShortDateString();
                 break;
 
             case ECertificateDetailsType.IsConsigneeForPrint:
@@ -528,8 +528,8 @@ public partial class CertificateOfOriginsBl
         }
     }
 
-    // Legacy CheckIfCountryInSystemAndIsrael: country alpha-2 resolves + must be Israel (per-detail-type message);
-    // rewrites the value to the country id and the display to its English name.
+    // Legacy CheckIfCountryInSystemAndIsrael: the country alpha-2 code resolves and must be Israel (per-detail-type
+    // message). Rewrites the value to the country id and the display to its English name.
     private async Task CheckIfCountryInSystemAndIsrael(MessageField field, MessageValidationContext context)
     {
         var country = await ResolveCountry(field.Value, context);
@@ -658,7 +658,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckDeclarationDate: within [-5 days, today].
     private static void CheckDeclarationDate(MessageField field, MessageValidationContext context)
     {
-        if (!DateTime.TryParse(field.Value, out var date))
+        if (!DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var date))
         {
             return;
         }
@@ -676,7 +676,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckExportDate: not more than 3 months in the future.
     private static void CheckExportDate(MessageField field, MessageValidationContext context)
     {
-        if (!DateTime.TryParse(field.Value, out var date))
+        if (!DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var date))
         {
             return;
         }
@@ -694,7 +694,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckExpectedExitDate: within [today, +3 months].
     private static void CheckExpectedExitDate(MessageField field, MessageValidationContext context)
     {
-        if (!DateTime.TryParse(field.Value, out var date))
+        if (!DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var date))
         {
             return;
         }
@@ -771,8 +771,8 @@ public partial class CertificateOfOriginsBl
         }
     }
 
-    // Legacy CheckIfInternationalSiteExist: the port/shipment value is a locode that resolves to an international site;
-    // rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
+    // Legacy CheckIfInternationalSiteExist: the port or shipment value is a locode that resolves to an international
+    // site. Rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
     private async Task CheckIfInternationalSiteExist(MessageField field)
     {
         var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([field.Value ?? string.Empty]);

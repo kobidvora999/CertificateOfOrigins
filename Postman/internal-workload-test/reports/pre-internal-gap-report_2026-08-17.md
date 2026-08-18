@@ -6,12 +6,12 @@
 |---|---|---|
 | 1. כיסוי חוזים | ✅ | 0 (34/36 הומרו; 2 מושמטים בכוונה) |
 | 2. פאריטי התנהגותי | ⚠️ | לא-רץ-מלא (fan-out 34-מתודות לא בוצע בריצה זו) |
-| 3. Code Review | ⚠️ | build ✅ 0 errors · ~40 warnings לא-S1135 (מהם 2 חדשים) · 62 TODO(blocking) |
+| 3. Code Review | ✅ | build ✅ 0 errors · **warnings-clean פרט ל-S1135** (תוקן 2026-08-18: 30 warnings — S125/S6580/CS8629/S1172/S1643/S2166/S3267) · NU1900 סביבתי בלבד (feed לא נגיש) · 62 TODO(blocking) נשארים כמצאי מכוון (S1135) |
 | 4. שלמות סקריפטי DB | ✅ | כל 9 ה-SPs שהקוד מפעיל מסוקרפטים; 6 SPs `dbo` ב-localhost הם orphans (לא בשימוש) |
 | 5. Postman workload collections | ✅ | Group 1 (9 אוספי dependency) + Group 2 (internal v3 + baseline coverage) + runners — נוצרו (2026-08-18) |
 
-**מוכן להכנסה לסביבה פנימית? כמעט** — **אין חוסם 🔴** (CHECK 4 + CHECK 5 תקינים). נותרו 2 Majors בלבד:
-CHECK 3 (הקוד אינו warnings-clean) ו-CHECK 2 (fan-out פאריטי מלא לא רץ). **CHECK 4 + CHECK 5 תקינים.**
+**מוכן להכנסה לסביבה פנימית? כמעט** — **אין חוסם 🔴** (CHECK 3+4+5 תקינים). נותר Major אחד בלבד:
+CHECK 2 (fan-out פאריטי מלא לא רץ; אומת אינקרמנטלית + אודיט GetPC עמוק). CHECK 3 (warnings-clean) תוקן 2026-08-18.
 
 ## פירוט חוסרים (לפי חומרה)
 
@@ -38,12 +38,12 @@ CHECK 3 (הקוד אינו warnings-clean) ו-CHECK 2 (fan-out פאריטי מל
    מפה + placeholders ב-`collections/gap.md`, runner ב-`Postman/dependency-workload-test/run.ps1`. **הרצה = pre-prod עם proxies אמיתיים (תשתית)** —
    לא רצה מקומית לפי תכנון ה-skill; repo-complete-check דורש רק קיום.
 
-### 🟠 לטיפול לפני merge (Major)
-3. **CHECK 3 — הקוד אינו warnings-clean** (מדיניות: נקי פרט ל-S1135). ~40 warnings לא-S1135, בעיקר:
-   S125 (קוד מוער) · S6580 (date parse ללא format provider) · S1172 (`agentRequest` לא בשימוש) · S1643 · S2166 · S3267.
-   **2 חדשים מריצה זו:** S6580 ב-[MessageValidation.cs:488](API/CustomsCloud.CRM.CertificateOfOrigins.BL/CertificateOfOriginsBl.MessageValidation.cs:488)
-   ו-[CertificateOfOriginsBl.cs:1138](API/CustomsCloud.CRM.CertificateOfOrigins.BL/CertificateOfOriginsBl.cs:1138) (הוסף `CultureInfo.InvariantCulture` ל-`DateTime.TryParse`).
-   **תיקון:** `/net10-code-review CertificateOfOrigins`.
+### ✅ CHECK 3 — תוקן (2026-08-18): warnings-clean פרט ל-S1135
+3. כל 30 ה-warnings הלא-S1135 טופלו (‏`/net10-code-review`): **S6580** (5× date-parse → `CultureInfo.InvariantCulture`) ·
+   **S125** (5× הערות שנראו כקוד → נוסחו מחדש) · **CS8629** (null-safe pattern ב-EnrichAndValidateDetails) ·
+   **S1643** (StringBuilder ב-BuildReconciliationAdditionalInfo) · **S2166** (‏`ReconciliationException`→`ReconciliationFinding`) ·
+   **S1172** (הוסר פרמטר `agentRequest` לא-בשימוש) · **S3267** (דוכא נקודתית — לולאת ולידציה per-invoice עם side-effects).
+   Build `--no-incremental` → **S1135 בלבד** (‏NU1900 הוא feed-availability סביבתי, לא warning קוד). אומת חי מול internal-workload.
 4. **CHECK 2 — פאריטי סטייטמנט-לרמה לא רץ כ-fan-out מלא** על 34 המתודות בריצה זו. פאריטי אומת אינקרמנטלית
    בכל commit של המרה + אודיט אדוורסרי עמוק ל-GetPC_MSG2280_2281 (סשן זה) + תיקון EnrichAndValidateDetails.
    **המלצה:** fan-out ייעודי (סוכן אדוורסרי למתודה) לכיסוי מלא, או לפחות למתודות בסיכון גבוה (Save*/Update*).
