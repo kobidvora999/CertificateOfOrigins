@@ -10,7 +10,7 @@ public class Program
     {
     }
 
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = CloudWebApp.CreateCloudWebAppBuilder()
             .UseBaseType<Program>()
@@ -19,8 +19,8 @@ public class Program
 
         // TODO(blocking): .AddValidationMessages<ValidationMessages>() — re-enable when the
         // InfrastructureCore package containing BaseValidationMessages reaches the external feed (see ValidationMessages.cs)
-        var app = CloudWebApp.Build(builder);
-        DatabaseMigrationUtil.Handle(typeof(Program).Assembly, "CertificateOfOrigins");
-        app.Run();
+        var app = await CloudWebApp.Build(builder);
+        new DatabaseMigrationUtil(app).Handle(typeof(Program).Assembly);
+        await app.RunAsync();
     }
 }

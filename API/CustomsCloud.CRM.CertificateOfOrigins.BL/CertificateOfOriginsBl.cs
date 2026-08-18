@@ -1205,8 +1205,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         };
         if (specificEvent is not null)
         {
-            // Legacy (RaiseEventUtil): the reject / cancel events carry the RejectCancelReason as their AdditionalInfo;
-            // the other status events carry none.
+            // Legacy RaiseEventUtil attached the RejectCancelReason as the AdditionalInfo on the reject and cancel
+            // events, and attached nothing on the other status events.
             var additionalInfo = entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.Rejected or (int)ECertificateOfOriginStatus.Cancelled
                 ? entity.RejectCancelReason
                 : null;
@@ -1407,10 +1407,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
         foreach (var certificate in certificates)
         {
-            // Backfill the declaration link from the DTO, faithfully to legacy (CertificateOfOriginsBL.cs:492-500):
-            //   (1) no declaration number on the certificate → take BOTH number and lead-document from the request;
-            //   (2) the certificate already has a number → take the request's lead-document ONLY when that number
-            //       matches the request's (never link a certificate to a different declaration's lead document).
+            // Backfill the declaration link from the DTO, faithfully to legacy (CertificateOfOriginsBL.cs lines 492-500).
+            // When the certificate has no declaration number, take both the number and the lead-document from the
+            // request. When it already has a number, take the request's lead-document only when that number equals the
+            // request's number, so a certificate is never linked to a different declaration's lead document.
             var exportDeclarationNumber = certificate.ExportDeclarationNumber;
             var leadDocumentId = certificate.LeadDocumentId;
             if (string.IsNullOrEmpty(exportDeclarationNumber))

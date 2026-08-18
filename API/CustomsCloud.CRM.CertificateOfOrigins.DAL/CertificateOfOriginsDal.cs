@@ -728,6 +728,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // columns. Until a CertificateOfOrigins entry is added to InfrastructureCore's InterceptorList (then use
         // .Include(...) + .ExcludeInterceptor("<hash>") with the full column set), we project to 29 columns and
         // drop 6 fields: State, CreateDate, CreateUserId, UpdateDate, UpdateUserId, OrganizationUnitId.
+        // Verified 2026-08-18 still enforced on InfrastructureCore.DAL 1.10.53 (a 35-column probe threw
+        // DbInterceptionException "Result fields count (35) exceeded max eror level of 30"). Keep the workaround
+        // until the package exempts this module; re-test after any InfrastructureCore.DAL bump.
         var result = await ReadOnlyContext.ExportDocumentAuthenticationRequests
             .Where(r => r.Id == id)
             .Select(r => new ExportDocumentAuthenticationRequest
