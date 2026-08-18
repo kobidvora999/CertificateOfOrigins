@@ -1205,7 +1205,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         };
         if (specificEvent is not null)
         {
-            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, null);
+            // Legacy (RaiseEventUtil): the reject / cancel events carry the RejectCancelReason as their AdditionalInfo;
+            // the other status events carry none.
+            var additionalInfo = entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.Rejected or (int)ECertificateOfOriginStatus.Cancelled
+                ? entity.RejectCancelReason
+                : null;
+            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo);
         }
 
         await RaiseNewCertificateOfOriginCreatedEvent(entity, eventUtil);
@@ -1402,9 +1407,22 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
         foreach (var certificate in certificates)
         {
-            // Backfill the declaration link from the DTO when the certificate has none (legacy 492-500).
-            var exportDeclarationNumber = string.IsNullOrEmpty(certificate.ExportDeclarationNumber) ? request.ExportDeclarationNum : certificate.ExportDeclarationNumber;
-            var leadDocumentId = certificate.LeadDocumentId ?? request.LeadDocumentId;
+            // Backfill the declaration link from the DTO, faithfully to legacy (CertificateOfOriginsBL.cs:492-500):
+            //   (1) no declaration number on the certificate → take BOTH number and lead-document from the request;
+            //   (2) the certificate already has a number → take the request's lead-document ONLY when that number
+            //       matches the request's (never link a certificate to a different declaration's lead document).
+            var exportDeclarationNumber = certificate.ExportDeclarationNumber;
+            var leadDocumentId = certificate.LeadDocumentId;
+            if (string.IsNullOrEmpty(exportDeclarationNumber))
+            {
+                exportDeclarationNumber = request.ExportDeclarationNum;
+                leadDocumentId = request.LeadDocumentId;
+            }
+
+            if (!leadDocumentId.HasValue && exportDeclarationNumber == request.ExportDeclarationNum)
+            {
+                leadDocumentId = request.LeadDocumentId;
+            }
 
             // Legacy gate: reconcile only a still-Received certificate that is not an empty / status-query / cancellation
             // request and not a non-manipulation type. Others are only backfilled.

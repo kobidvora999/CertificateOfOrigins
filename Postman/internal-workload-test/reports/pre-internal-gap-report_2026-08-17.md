@@ -5,13 +5,13 @@
 | בדיקה | סטטוס | חוסרים |
 |---|---|---|
 | 1. כיסוי חוזים | ✅ | 0 (34/36 הומרו; 2 מושמטים בכוונה) |
-| 2. פאריטי התנהגותי | ⚠️ | לא-רץ-מלא (fan-out 34-מתודות לא בוצע בריצה זו) |
+| 2. פאריטי התנהגותי | ✅/⚠️ | fan-out מלא רץ (7 סוכנים, 34 מתודות, 2026-08-18). 3 רגרסיות קונקרטיות תוקנו; 2 מחלקות רוחביות + דחיות מתועדות → הכרעת קובי. פירוט: PatternGaps/check2-migration-parity-lessons.md |
 | 3. Code Review | ✅ | build ✅ 0 errors · **warnings-clean פרט ל-S1135** (תוקן 2026-08-18: 30 warnings — S125/S6580/CS8629/S1172/S1643/S2166/S3267) · NU1900 סביבתי בלבד (feed לא נגיש) · 62 TODO(blocking) נשארים כמצאי מכוון (S1135) |
 | 4. שלמות סקריפטי DB | ✅ | כל 9 ה-SPs שהקוד מפעיל מסוקרפטים; 6 SPs `dbo` ב-localhost הם orphans (לא בשימוש) |
 | 5. Postman workload collections | ✅ | Group 1 (9 אוספי dependency) + Group 2 (internal v3 + baseline coverage) + runners — נוצרו (2026-08-18) |
 
-**מוכן להכנסה לסביבה פנימית? כמעט** — **אין חוסם 🔴** (CHECK 3+4+5 תקינים). נותר Major אחד בלבד:
-CHECK 2 (fan-out פאריטי מלא לא רץ; אומת אינקרמנטלית + אודיט GetPC עמוק). CHECK 3 (warnings-clean) תוקן 2026-08-18.
+**מוכן להכנסה לסביבה פנימית? כמעט** — **אין חוסם 🔴**. CHECK 2 (fan-out פאריטי) רץ 2026-08-18: 3 רגרסיות
+קונקרטיות תוקנו; נותרו 2 הכרעות רוחביות לקובי (fail-fast→silent · אטומיות טרנזקציה) + דחיות מתועדות. CHECK 3/4/5 תקינים.
 
 ## פירוט חוסרים (לפי חומרה)
 
@@ -44,9 +44,14 @@ CHECK 2 (fan-out פאריטי מלא לא רץ; אומת אינקרמנטלית 
    **S1643** (StringBuilder ב-BuildReconciliationAdditionalInfo) · **S2166** (‏`ReconciliationException`→`ReconciliationFinding`) ·
    **S1172** (הוסר פרמטר `agentRequest` לא-בשימוש) · **S3267** (דוכא נקודתית — לולאת ולידציה per-invoice עם side-effects).
    Build `--no-incremental` → **S1135 בלבד** (‏NU1900 הוא feed-availability סביבתי, לא warning קוד). אומת חי מול internal-workload.
-4. **CHECK 2 — פאריטי סטייטמנט-לרמה לא רץ כ-fan-out מלא** על 34 המתודות בריצה זו. פאריטי אומת אינקרמנטלית
-   בכל commit של המרה + אודיט אדוורסרי עמוק ל-GetPC_MSG2280_2281 (סשן זה) + תיקון EnrichAndValidateDetails.
-   **המלצה:** fan-out ייעודי (סוכן אדוורסרי למתודה) לכיסוי מלא, או לפחות למתודות בסיכון גבוה (Save*/Update*).
+4. **CHECK 2 — fan-out פאריטי מלא רץ (2026-08-18, 7 סוכנים אדוורסריים, 34 מתודות).**
+   **3 רגרסיות קונקרטיות תוקנו:** ‏(HIGH) SaveExportDoc — State/OrganizationUnitId נדרסו ל-0 בעדכון (guard ב-DAL) ·
+   ‏(MEDIUM) UpdateCertificateOfOrigins — backfill של LeadDocumentId בלי בדיקת התאמת-מספר (הוחזר) ·
+   ‏(MAJOR) SaveCertificateOfOrigin — אירועי Rejected/Cancelled איבדו RejectCancelReason (הוחזר).
+   **2 מחלקות רוחביות → הכרעת קובי:** ‏(א) fail-fast→silent (‏`?? default` על נתון עסקי במקום throw) ·
+   ‏(ב) אובדן אטומיות טרנזקציה (set-based writes בלי BeginTransaction עוטף).
+   **דחיות מתועדות (‏TODO(blocking)):** ‏DeclarationReleased sync · SendRequestFeedback/הודעות/תבניות · DocumentId · repoint שני של DealFile.
+   **‏3 quirks של GetCertificateRequestByGuid — אומתו שנשמרו bug-for-bug.** לקחים מלאים: `PatternGaps/check2-migration-parity-lessons.md`.
 5. **CHECK 0b.5 — conventions drift אפשרי.** `.claude/conventions-state.md`: aligned-through **C5** (2026-07-22).
    אם ה-changelog התקדם מאז → הרץ `/repo-align`.
 

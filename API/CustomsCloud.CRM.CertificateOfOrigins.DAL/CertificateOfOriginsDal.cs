@@ -610,6 +610,12 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             // defaults (CreateDate = 0001-01-01 → SqlDateTime overflow). Keep the existing DB values.
             Context.Entry(entity).Property(e => e.CreateDate).IsModified = false;
             Context.Entry(entity).Property(e => e.CreateUserId).IsModified = false;
+
+            // The read projection (GetById) omits State + OrganizationUnitId (29-column interceptor limit), so the
+            // round-tripped DTO carries them as 0 — without this guard, Update would zero both columns on every save
+            // of an existing record. Preserve the DB values (parity with the legacy full-entity round-trip).
+            Context.Entry(entity).Property(e => e.State).IsModified = false;
+            Context.Entry(entity).Property(e => e.OrganizationUnitId).IsModified = false;
         }
 
         await Context.SaveChangesAsync();
