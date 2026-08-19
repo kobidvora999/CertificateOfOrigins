@@ -36,6 +36,10 @@ dotnet_diagnostic.CA1056.severity = suggestion
 # CA1307: Specify StringComparison for clarity
 dotnet_diagnostic.CA1307.severity = none
 
+# S6965: [HttpQuery] (the platform's QUERY verb from InfrastructureCore.WebApi) is a valid HTTP verb attribute,
+# but SonarAnalyzer's known-verb list predates QUERY and flags it. False positive on the C9 filter endpoints.
+dotnet_diagnostic.S6965.severity = none
+
 # CA1008: Enums should have zero value
 dotnet_diagnostic.CA1008.severity = suggestion
 

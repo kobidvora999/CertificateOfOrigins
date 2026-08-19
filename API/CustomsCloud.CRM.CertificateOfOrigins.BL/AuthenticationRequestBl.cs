@@ -15,13 +15,6 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
 public class AuthenticationRequestBl(
     IServiceProvider serviceProvider,
-    ICustomerProxy customerProxy,
-    IVendorProxy vendorProxy,
-    IDocumentsProxy documentsProxy,
-    IExportDealFileProxy exportDealFileProxy,
-    ICollateralProxy collateralProxy,
-    ITasksProxy tasksProxy,
-    IMessageManagementProxy messageManagementProxy,
     IParametersUtil parametersUtil,
     ILookupUtil lookupUtil)
     : BaseBL<AuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
@@ -33,33 +26,14 @@ public class AuthenticationRequestBl(
     // LeadDocumentSubmissionDate (DealFile service, dropped cross-service JOIN) are deferred — left null.
     public async Task<GetAuthenticationRequestByIdResultDto> GetAuthenticationRequestByID(int documentId)
     {
+        var collateralProxy = Resolve<ICollateralProxy>();
+        var tasksProxy = Resolve<ITasksProxy>();
+        var documentsProxy = Resolve<IDocumentsProxy>();
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var request = await DataLayer.GetImportAuthenticationRequestById(documentId)
             ?? throw new RestNotFoundException();
 
-        var result = new GetAuthenticationRequestByIdResultDto
-        {
-            DocumentId = request.DocumentId,
-            CreateDate = request.CreateDate,
-            AuthenticationFileId = request.AuthenticationFileId,
-            AuthenticationRequestDate = request.AuthenticationRequestDate,
-            CollateralId = request.CollateralId,
-            DecisionId = request.DecisionId,
-            LeadDocumentId = request.LeadDocumentId,
-            DocumentIssuingDate = request.DocumentIssuingDate,
-            ImportCountryId = request.ImportCountryId,
-            IssuingCountryId = request.IssuingCountryId,
-            Number = request.Number,
-            OriginCountryId = request.OriginCountryId,
-            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
-            ResponseNameEmail = request.ResponseNameEmail,
-            OrganizationUnitId = request.OrganizationUnitId,
-            VendorId = request.VendorId,
-            VendorName = request.VendorName,
-            CustomerId = request.CustomerId,
-            ImporterId = request.ImporterId,
-            LastDeliveryForImporter = request.LastDeliveryForImporter,
-            InvoiceNumber = request.InvoiceNumber,
-        };
+        var result = MapToResultDto(request);
 
         // SP result-set #2: item lines.
         var itemDetails = await DataLayer.GetItemDetailsByRequestId(documentId);
@@ -136,6 +110,34 @@ public class AuthenticationRequestBl(
         return result;
     }
 
+    private static GetAuthenticationRequestByIdResultDto MapToResultDto(CertificateOfOriginsImportAuthenticationRequest request)
+    {
+        return new GetAuthenticationRequestByIdResultDto
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = request.CreateDate,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            OrganizationUnitId = request.OrganizationUnitId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+        };
+    }
+
     // Internal WCF: GetAuthenticationRequestFileByID(fileId) — a single authentication file with its child requests
     // (each enriched with document, item lines, decisions, collaterals, submission date, and the SendReminderForImporter
     // task flag), the file-status lookup, and the current-user handling flag. Missing id → 404. The legacy SP embedded
@@ -143,6 +145,8 @@ public class AuthenticationRequestBl(
     // proxies (consistent with #27). CustomerId has no SP column — always -1 (legacy 0 -> -1 fix-up).
     public async Task<GetAuthenticationRequestFileByIdResultDto> GetAuthenticationRequestFileByID(int fileId)
     {
+        var tasksProxy = Resolve<ITasksProxy>();
+
         var file = await DataLayer.GetAuthenticationFileById(fileId)
             ?? throw new RestNotFoundException();
 
@@ -235,6 +239,11 @@ public class AuthenticationRequestBl(
         List<CertificateOfOriginsDecisionDto> decisions,
         List<CertificateOfOriginsItemDetails> allItemDetails)
     {
+        var documentsProxy = Resolve<IDocumentsProxy>();
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
+        var tasksProxy = Resolve<ITasksProxy>();
+        var collateralProxy = Resolve<ICollateralProxy>();
+
         var requestDto = new AuthenticationFileRequestDto
         {
             DocumentId = request.DocumentId,
@@ -574,6 +583,8 @@ public class AuthenticationRequestBl(
     // filtered to the allowed document types and to documents not already requested / claimed by another lead doc.
     public async Task<List<DocumentDto>> GetEntityDocuments(int leadDocumentId)
     {
+        var documentsProxy = Resolve<IDocumentsProxy>();
+
         // DocumentIDs already registered under this lead document.
         var requestedDocumentIds = await DataLayer.GetImportAuthenticationRequestDocumentIdsByLeadDocumentId(leadDocumentId);
 
@@ -661,6 +672,9 @@ public class AuthenticationRequestBl(
 
     private async Task FillAuthenticationRequestNames(List<GetImportAuthenticationRequestResultDto> requests)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
+        var vendorProxy = Resolve<IVendorProxy>();
+
         if (requests.Count == 0)
         {
             return;
@@ -797,6 +811,8 @@ public class AuthenticationRequestBl(
     // SaveAuthenticationRequestFile (both saves return the same shape as their GetById read).
     public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
     {
+        var tasksProxy = Resolve<ITasksProxy>();
+
         // The first collateral supplies CollateralId; all collaterals are converted from temporary to permanent.
         if (request.Collaterals.Count > 0)
         {
@@ -916,6 +932,8 @@ public class AuthenticationRequestBl(
     // SaveImportAuthenticationRequest (#31) and SaveAuthenticationRequestFile (#32, per changed child request).
     private async Task SendDecisionMessage(int documentId, int? decisionId, int? authenticationFileId, int userId, int userResponseId)
     {
+        var messageManagementProxy = Resolve<IMessageManagementProxy>();
+
         // On creation UserID == UserResponseID; a later change makes them differ, so message both.
         var userIds = new List<int> { userResponseId };
         if (userId != userResponseId)
@@ -981,6 +999,8 @@ public class AuthenticationRequestBl(
     // the request (Collateral service).
     private async Task ChangeTempCollateralRequest(List<CollateralRequestDto> collaterals)
     {
+        var collateralProxy = Resolve<ICollateralProxy>();
+
         var payload = collaterals
             .Select(collateral => new ChangeTempCollateralRequestDto
             {
@@ -1033,6 +1053,7 @@ public class AuthenticationRequestBl(
     // and log the decision change.
     private async Task ManageRequestStatus(SaveAuthenticationRequestFileRequestDto request)
     {
+        var collateralProxy = Resolve<ICollateralProxy>();
         var eventUtil = Resolve<IEventUtil>();
         foreach (var child in request.Requests)
         {
@@ -1219,6 +1240,8 @@ public class AuthenticationRequestBl(
     // Legacy RaiseStatusMessage — notifies the file's issuing user of the new file status (Message-Management service).
     private async Task RaiseStatusMessage(SaveAuthenticationRequestFileRequestDto request)
     {
+        var messageManagementProxy = Resolve<IMessageManagementProxy>();
+
         var statusName = await GetFileStatusName(request.AuthenticationFileStatusId);
         var message = new SendMessageDto
         {

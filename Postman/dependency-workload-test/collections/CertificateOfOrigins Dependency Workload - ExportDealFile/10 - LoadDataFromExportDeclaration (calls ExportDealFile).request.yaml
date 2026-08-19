@@ -1,6 +1,15 @@
 $kind: http-request
-url: "{{base_URL}}/CertificateOfOrigins/LoadDataFromExportDeclaration?leadDocumentId={{leadDocumentId}}&requestReasonCode=1"
-method: GET
+url: "{{base_URL}}/CertificateOfOrigins/LoadDataFromExportDeclaration"
+method: QUERY
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "leadDocumentId": {{leadDocumentId}},
+      "requestReasonCode": 1
+    }
 scripts:
   - type: afterResponse
     code: |-

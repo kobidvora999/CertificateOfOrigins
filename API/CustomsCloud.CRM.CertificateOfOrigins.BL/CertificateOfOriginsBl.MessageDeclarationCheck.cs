@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
@@ -62,6 +63,7 @@ public partial class CertificateOfOriginsBl
     // here — SaveCertificateOfOrigin's SupersedePreviousVersion already repointed the lead document during the save.
     private async Task<ExportDeclarationInfoDto?> GetDeclarationInfoForReconciliation(CertificateOfOriginDto certificate, MessageValidationContext context)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         if (!certificate.LeadDocumentId.HasValue && string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
         {
             return null;
@@ -88,6 +90,7 @@ public partial class CertificateOfOriginsBl
             return cached;
         }
 
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var declarationDetails = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(leadDocumentId, exportDeclarationNumber);
         context.DeclarationDetailsCache[key] = declarationDetails;
         return declarationDetails;

@@ -39,7 +39,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetExportDocumentAuthenticationRequestByID(id) — a single export-document authentication
     // request by id, with its child collections (customs items, lead documents, manufacturing areas). Missing
     // id → 404 (BL throws RestNotFoundException). OriginalStatusId + ExportDeclarationIds are computed in the BL.
-    [HttpGet("ExportDocumentAuthenticationRequestByID/{id}")]
+    [HttpGet("{id}")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> ExportDocumentAuthenticationRequestByID([FromRoute] int id)
     {
@@ -47,9 +47,9 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
         return Ok(result);
     }
 
-    [HttpGet("ExportDocumentAuthenticationRequestSearch")]
+    [HttpQuery("Search")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
-    public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromQuery] ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromBody] ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
         var result = await BusinessLayer.GetExportDocumentAuthenticationRequestSearch(filter);
         return Ok(result);
@@ -59,7 +59,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // authentication request + its child collections (replace-all); on a status transition raises the status events
     // and sends the status message; and attaches any additional documents. A write with a body → POST. Returns the
     // saved graph.
-    [HttpPost("SaveExportDocumentAuthenticationRequest")]
+    [HttpPost]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> SaveExportDocumentAuthenticationRequest([FromBody] SaveExportDocumentAuthenticationRequestRequestDto request)
     {

@@ -1,11 +1,11 @@
 $kind: http-request
-url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/ExportDocumentAuthenticationRequestSearch"
-method: GET
-queryParams:
-  - key: countryId
-    value: "32"
-    disabled: true
-  - key: exporterCustomerId
-    value: "888"
-    disabled: true
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/Search"
+method: QUERY
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+    }
 order: 2000

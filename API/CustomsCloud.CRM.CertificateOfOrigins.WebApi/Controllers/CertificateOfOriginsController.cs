@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 
@@ -12,9 +13,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
 {
     // Internal WCF: IsCertificateOfOriginByExternalIdExist(externalId) — existence query by certificate number
     // (LIKE substring, newest match). Returns the matching result, or null when none — existence check, no 404.
-    [HttpGet("CertificateOfOriginByExternalIdExist")]
+    [HttpGet("ByExternalIdExist")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginResultDto))]
-    public async Task<ActionResult<CertificateOfOriginResultDto?>> CertificateOfOriginByExternalIdExist([FromQuery] string certificateOfOriginExternalId)
+    public async Task<ActionResult<CertificateOfOriginResultDto?>> CertificateOfOriginByExternalIdExist([FromQuery][BindRequired] string certificateOfOriginExternalId)
     {
         var result = await BusinessLayer.IsCertificateOfOriginByExternalIdExist(certificateOfOriginExternalId);
         return Ok(result);
@@ -22,7 +23,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
 
     // External WCF: GetCertificateOfOriginID(certificateNumber) — route-style alternate key; returns the latest
     // certificate id for the given number. Missing number → 404 (BL throws RestNotFoundException).
-    [HttpGet("CertificateOfOriginID/{certificateNumber}")]
+    [HttpGet("ID/{certificateNumber}")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(int))]
     public async Task<ActionResult<int>> CertificateOfOriginID([FromRoute] string certificateNumber)
     {
@@ -42,9 +43,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
 
     // Internal WCF: GetCertificateOfOriginsByFilter(filter) — the main certificate search. Returns the matching
     // certificates (empty list when none — a search, never 404). The BL/DAL/SP/enrichment were built for #2.
-    [HttpGet("CertificateOfOriginsByFilter")]
+    [HttpQuery("ByFilter")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<CertificateOfOriginResultDto>))]
-    public async Task<ActionResult<List<CertificateOfOriginResultDto>>> CertificateOfOriginsByFilter([FromQuery] CertificateOfOriginFilterDto filter)
+    public async Task<ActionResult<List<CertificateOfOriginResultDto>>> CertificateOfOriginsByFilter([FromBody] CertificateOfOriginFilterDto filter)
     {
         var result = await BusinessLayer.GetCertificateOfOriginsByFilter(filter);
         return Ok(result);
@@ -64,7 +65,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Internal WCF: GetCertificateOfOriginById(id) — a single certificate with its full graph (header + declaration
     // errors + details + invoices + item lines + milestones), from the 7-result-set dbo.GetCertificateOfOriginByID.
     // Missing id → 404 (BL throws RestNotFoundException). Milestone user names are enriched in the BL via IUserProxy.
-    [HttpGet("CertificateOfOriginById/{certificateOfOriginId}")]
+    [HttpGet("{certificateOfOriginId}")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
     public async Task<ActionResult<CertificateOfOriginDto>> CertificateOfOriginById([FromRoute] int certificateOfOriginId)
     {
@@ -76,7 +77,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // verification for the public portal, located by guid or by CertificateOfOriginNumber + IssuingDate. Returns
     // the web-query response. The legacy in-band error contract is preserved: an invalid guid or no matching
     // certificate returns an HTTP 200 with ExceptionDescription set (not a 404), so the external portal is unaffected.
-    [HttpGet("CertificateRequestByGuid")]
+    [HttpGet("RequestByGuid")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
     public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
     {
@@ -88,9 +89,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity
     // by-reference (IsDeclarationReleased/IsCargoExitedOfCustomsRegulation); over REST only the flag is returned.
-    [HttpGet("LoadDataFromExportDeclaration")]
+    [HttpQuery("LoadDataFromExportDeclaration")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
-    public async Task<ActionResult<bool>> LoadDataFromExportDeclaration([FromQuery] LoadDataFromExportDeclarationRequestDto request)
+    public async Task<ActionResult<bool>> LoadDataFromExportDeclaration([FromBody] LoadDataFromExportDeclarationRequestDto request)
     {
         var result = await BusinessLayer.LoadDataFromExportDeclaration(request);
         return Ok(result);
@@ -99,7 +100,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // External WCF: SaveCertificateOfOriginAttachments(args) — saves the generated certificate template(s) as
     // attachments on the certificate, replacing whatever documents are currently attached. A state-changing write
     // with a body → POST. Returns true.
-    [HttpPost("SaveCertificateOfOriginAttachments")]
+    [HttpPost("SaveAttachments")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
     public async Task<ActionResult<bool>> SaveCertificateOfOriginAttachments([FromBody] SaveCertificateAttachmentsArgsDto request)
     {
@@ -111,7 +112,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // detail rows: supersedes the previous version, validates/enriches the details, generates the QR + template
     // attachments on publish, links the DealFile lead document, and raises the status-change events + feedback message.
     // A state-changing write with a body → POST. Returns the fully re-read certificate graph (GetCertificateOfOriginById).
-    [HttpPost("SaveCertificateOfOrigin")]
+    [HttpPost]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
     public async Task<ActionResult<CertificateOfOriginDto>> SaveCertificateOfOrigin([FromBody] SaveCertificateOfOriginRequestDto request)
     {
@@ -123,7 +124,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // DealFile event). Reconciles each certificate against the declaration: sets DeclarationMatch / Rejected, raises
     // the matching event, and re-prints the draft. A state-changing write with a body → POST. The legacy contract is
     // one-way/void; here the reconciliation errors are surfaced (developer decision) — empty list when all matched.
-    [HttpPost("UpdateCertificateOfOrigins")]
+    [HttpPost("Reconcile")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<CertificateOfOriginExceptionDto>))]
     public async Task<ActionResult<List<CertificateOfOriginExceptionDto>>> UpdateCertificateOfOrigins([FromBody] UpdateCertificateOfOriginsRequestDto request)
     {
@@ -134,7 +135,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Incoming/EAI WCF: GetPC_MSG2280_2281_CertificateOfOriginRequest — an agent's certificate-of-origin request message.
     // Exposed as a synchronous POST that returns the feedback directly (the legacy one-way callback/MSMQ response is
     // replaced by a direct return — mirrors the legacy *Sync contract). A message body with side effects → POST + body.
-    [HttpPost("CertificateOfOriginRequest")]
+    [HttpPost("Request")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginRequestFeedbackResponseDto))]
     public async Task<ActionResult<CertificateOfOriginRequestFeedbackResponseDto>> CertificateOfOriginRequest([FromBody] CertificateOfOriginRequestMessageDto request)
     {

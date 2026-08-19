@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginByExternalIdExist?certificateOfOriginExternalId=IL0000116895"
+url: "{{baseUrl}}/CertificateOfOrigins/ByExternalIdExist?certificateOfOriginExternalId=IL0000116895"
 method: GET
 queryParams:
   certificateOfOriginExternalId: IL0000116895

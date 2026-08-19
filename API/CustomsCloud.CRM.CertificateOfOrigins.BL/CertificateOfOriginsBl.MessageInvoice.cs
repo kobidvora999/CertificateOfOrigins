@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
@@ -136,6 +137,7 @@ public partial class CertificateOfOriginsBl
     // must exist and be at least 6 digits, an absent one is an error only when customs items are mandatory for the type.
     private async Task<int?> CheckAndGetCustomsItem(string? fullClassification, bool? isCustomsItemMandatory, MessageValidationContext context)
     {
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         if (string.IsNullOrEmpty(fullClassification))
         {
             if (isCustomsItemMandatory == true)
@@ -189,6 +191,7 @@ public partial class CertificateOfOriginsBl
     // (the legacy GetIdByCode throws → the caller adds it to _requestExceptions), not a silent null.
     private async Task<int?> ResolveCurrencyTypeId(string? currencyCode, MessageValidationContext context)
     {
+        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
         if (string.IsNullOrEmpty(currencyCode))
         {
             return null;
@@ -207,6 +210,7 @@ public partial class CertificateOfOriginsBl
     // Legacy GetIdByCode<PackingType>(PropCommonCode, code): unresolvable code → validation exception.
     private async Task<int?> ResolvePackingTypeId(string? code, MessageValidationContext context)
     {
+        var packingTypeProxy = Resolve<IPackingTypeProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;
@@ -225,6 +229,7 @@ public partial class CertificateOfOriginsBl
     // Legacy GetIdByCode<MeasurementUnit>(PropExternalIDNum, code): unresolvable code → validation exception.
     private async Task<int?> ResolveMeasurementUnitId(string? code, MessageValidationContext context)
     {
+        var measurementUnitProxy = Resolve<IMeasurementUnitProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;

@@ -1,6 +1,6 @@
 $kind: http-request
 name: HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent
-url: "{{baseUrl}}/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent"
+url: "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent"
 method: POST
 headers:
   Content-Type: application/json

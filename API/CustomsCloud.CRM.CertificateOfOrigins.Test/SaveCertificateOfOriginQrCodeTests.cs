@@ -184,30 +184,34 @@ public class SaveCertificateOfOriginQrCodeTests
         services.AddSingleton(requestMetadata);
         services.AddSingleton(documentUtil);
         services.AddSingleton(Fake<IEventUtil>()); // resolved at the top of the method; not exercised on this path
+
+        // C11: the BL obtains proxies/utils lazily via Resolve<T>() from the service provider, so they are registered
+        // here instead of being passed to the constructor. commonServices drives the QR generation on the publish path;
+        // the rest return defaults (null/false) so their branches no-op for the two save scenarios under test.
+        services.AddSingleton(commonServices);
+        services.AddSingleton(Fake<ICustomerProxy>());
+        services.AddSingleton(Fake<IExportDealFileProxy>()); // GetLeadDocument... → null (default) → LinkLeadDocument returns early
+        services.AddSingleton(Fake<IUserProxy>());           // GetUsersByIds → null (default) → org unit resolves to 0
+        services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
+        services.AddSingleton(Fake<ICurrencyTypeProxy>());
+        services.AddSingleton(Fake<IDocumentsProxy>());
+        services.AddSingleton(Fake<ICustomsBookProxy>());
+        services.AddSingleton(Fake<IOrganizationUnitProxy>());
+        services.AddSingleton(Fake<IMessageManagementProxy>());
+        services.AddSingleton(Fake<ICountryGroupProxy>());
+        services.AddSingleton(Fake<ITasksProxy>());
+        services.AddSingleton(Fake<ILockUtil>());
+        services.AddSingleton(Fake<ICountryProxy>());
+        services.AddSingleton(Fake<ISiteProxy>());
+        services.AddSingleton(Fake<IInternationalSiteProxy>());
+        services.AddSingleton(Fake<IPackingTypeProxy>());
+        services.AddSingleton(Fake<IMeasurementUnitProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(
             serviceProvider,
-            Fake<ICustomerProxy>(),
-            Fake<IExportDealFileProxy>(),   // GetLeadDocument... → null (default) → LinkLeadDocument returns early
-            Fake<IUserProxy>(),             // GetUsersByIds → null (default) → org unit resolves to 0
-            Fake<IDataDictionaryFieldProxy>(),
-            Fake<ICurrencyTypeProxy>(),
-            Fake<IDocumentsProxy>(),
-            Fake<ICustomsBookProxy>(),
-            commonServices,
-            Fake<IOrganizationUnitProxy>(),
-            Fake<IMessageManagementProxy>(),
-            Fake<ICountryGroupProxy>(),
-            Fake<ITasksProxy>(),
-            Fake<ILockUtil>(),
             Fake<ILookupUtil>(),
-            parametersUtil,
-            Fake<ICountryProxy>(),
-            Fake<ISiteProxy>(),
-            Fake<IInternationalSiteProxy>(),
-            Fake<IPackingTypeProxy>(),
-            Fake<IMeasurementUnitProxy>());
+            parametersUtil);
 
         captures.Returned = await bl.SaveCertificateOfOrigin(request);
         return captures;

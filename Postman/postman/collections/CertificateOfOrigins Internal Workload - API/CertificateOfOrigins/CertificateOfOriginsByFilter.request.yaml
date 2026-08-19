@@ -1,6 +1,12 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/CertificateOfOriginsByFilter?certificateNumber=IL0000116895"
-method: GET
-queryParams:
-  certificateNumber: IL0000116895
+url: "{{baseUrl}}/CertificateOfOrigins/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "certificateNumber": "IL0000116895"
+    }
 order: 6000

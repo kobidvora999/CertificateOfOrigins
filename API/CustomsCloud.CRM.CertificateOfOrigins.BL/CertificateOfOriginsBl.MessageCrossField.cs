@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using System.Globalization;
@@ -120,6 +121,7 @@ public partial class CertificateOfOriginsBl
     // (unless the destination is in the exempt list) and the zip must be at least 7 characters.
     private async Task CheckPlaceOfManufactureAndZipcode(CertificateOfOriginMessageDto certificate, bool isZipcodeMandatory, MessageValidationContext context)
     {
+        var countryProxy = Resolve<ICountryProxy>();
         if (string.IsNullOrWhiteSpace(certificate.OriginCountry))
         {
             return;
@@ -158,6 +160,8 @@ public partial class CertificateOfOriginsBl
     // the org-unit side-value the save consumes is recorded.
     private async Task CheckIfSiteExistAndCustomsHouse(CertificateOfOriginDetails customsHouseDetail, MessageValidationContext context)
     {
+        var siteProxy = Resolve<ISiteProxy>();
+        var organizationUnitProxy = Resolve<IOrganizationUnitProxy>();
         var customsHouseExternalNumber = customsHouseDetail.Value;
         if (string.IsNullOrWhiteSpace(customsHouseExternalNumber))
         {
@@ -261,6 +265,7 @@ public partial class CertificateOfOriginsBl
     // on the destination detail.
     private async Task CheckIfDestinationCountryInAgreement(string destinationCountry, int certificateTypeId, List<CertificateOfOriginDetails> details, MessageValidationContext context)
     {
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(destinationCountry, context);
         if (country is null)
         {

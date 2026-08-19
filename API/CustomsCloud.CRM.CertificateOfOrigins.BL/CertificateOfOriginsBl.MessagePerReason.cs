@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 
@@ -199,6 +200,7 @@ public partial class CertificateOfOriginsBl
     // cannot be cancelled until the declaration is cancelled first.
     private async Task CheckDeclarationAssociatedWithCertificate(int certificateId, MessageValidationContext context)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var leadDocument = await exportDealFileProxy.GetLeadDocumentByCertificateOfOriginId(certificateId);
         if (leadDocument != null)
         {

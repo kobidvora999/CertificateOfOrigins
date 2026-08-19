@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/CertificateOfOrigins/CertificateOfOriginById/{{certificateId}}"
+url: "{{base_URL}}/CertificateOfOrigins/{{certificateId}}"
 method: GET
 scripts:
   - type: afterResponse

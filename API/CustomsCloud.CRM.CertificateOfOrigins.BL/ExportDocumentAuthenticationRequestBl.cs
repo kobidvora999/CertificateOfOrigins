@@ -16,9 +16,6 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
 public class ExportDocumentAuthenticationRequestBl(
     IServiceProvider serviceProvider,
-    ICustomerProxy customerProxy,
-    IDocumentsProxy documentsProxy,
-    IMessageManagementProxy messageManagementProxy,
     ILookupUtil lookupUtil)
     : BaseBL<ExportDocumentAuthenticationRequestBl, ICertificateOfOriginsDal>(serviceProvider)
 {
@@ -28,6 +25,8 @@ public class ExportDocumentAuthenticationRequestBl(
 
     public async Task<CustomerDto> GetCustomerInformation(int customerId)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
+
         // Single-customer lookup against the Customers service by id; the legacy threw on a missing customer,
         // so a not-found id owns the 404 contract. Address selection was client-side (SPA), not in the BL.
         var customer = await customerProxy.GetCustomerInformation(customerId)
@@ -37,6 +36,8 @@ public class ExportDocumentAuthenticationRequestBl(
 
     public async Task<CustomerDto> GetCustomerInformationByCountry(int countryId)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
+
         // Foreign customs-houses in the given country (Customers service, activity-type filtered in the proxy).
         // The legacy threw when the country had none, so an empty result owns the 404 contract, and it returned
         // the first candidate (FirstOrDefault over the activity-type-filtered list).
@@ -127,6 +128,7 @@ public class ExportDocumentAuthenticationRequestBl(
     // EExportAuthenticationRequestStatus Display name (no ILookupUtil type exists, consistent with #26).
     public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> SaveExportDocumentAuthenticationRequest(SaveExportDocumentAuthenticationRequestRequestDto request)
     {
+        var documentsProxy = Resolve<IDocumentsProxy>();
         var entity = BuildEntity(request);
 
         var userId = RequestMetadata.UserId ?? 0;
@@ -281,6 +283,7 @@ public class ExportDocumentAuthenticationRequestBl(
     // Legacy RaiseStatusMessage: send the current user a message (file id + new status name) via Message-Management.
     private async Task SendStatusMessage(int id, int? statusId)
     {
+        var messageManagementProxy = Resolve<IMessageManagementProxy>();
         var message = new SendMessageDto
         {
             RelatedEntity = new VirtualEntityDto { Id = id, EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest },
@@ -339,6 +342,8 @@ public class ExportDocumentAuthenticationRequestBl(
         {
             return;
         }
+
+        var customerProxy = Resolve<ICustomerProxy>();
 
         // ForeignCustomsHouseName (from CustomerId) + RequestIssuerName (from ExporterCustomerId) — both Customers proxy.
         var customerIds = results.Where(r => r.CustomerId.HasValue).Select(r => r.CustomerId!.Value)

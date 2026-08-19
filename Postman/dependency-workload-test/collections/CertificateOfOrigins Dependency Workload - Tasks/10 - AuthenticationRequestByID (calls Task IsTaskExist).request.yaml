@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/AuthenticationRequest/AuthenticationRequestByID/{{authenticationRequestDocumentId}}"
+url: "{{base_URL}}/AuthenticationRequest/{{authenticationRequestDocumentId}}"
 method: GET
 scripts:
   - type: afterResponse

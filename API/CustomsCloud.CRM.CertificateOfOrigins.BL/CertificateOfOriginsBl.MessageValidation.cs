@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using System.Globalization;
@@ -74,6 +75,7 @@ public partial class CertificateOfOriginsBl
     // faithful) and the method returns the saved certificate (null when validation failed, so no save happened).
     private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
+        var countryProxy = Resolve<ICountryProxy>();
         var agentRequest = request.AgentRequest;
         var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
@@ -517,6 +519,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfExporterExist: resolve the exporter external id to a customer id; missing → CustomerNotInCustomers.
     private async Task CheckIfExporterExist(MessageField field, MessageValidationContext context)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
         var exporterId = await customerProxy.GetCustomerIdByExternalId(field.Value ?? string.Empty);
         if (exporterId is null)
         {
@@ -600,6 +603,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryIsInTradeAgreement: country resolves + is part of the trade agreement for this certificate type.
     private async Task CheckIfCountryIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(field.Value, context);
         if (country is null)
         {
@@ -626,6 +630,9 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
     private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
+        var countryGroupProxy = Resolve<ICountryGroupProxy>();
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
+
         // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
         // (GetIdByCode<CountryGroup>(PropID, id) → TheValueInFieldNotExistsInSystem on a miss); on failure the legacy
         // returns 0 and skips the trade-agreement check.
@@ -775,6 +782,7 @@ public partial class CertificateOfOriginsBl
     // site. Rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
     private async Task CheckIfInternationalSiteExist(MessageField field)
     {
+        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
         var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([field.Value ?? string.Empty]);
         var site = sites?.FirstOrDefault();
         if (site is not null)
@@ -789,6 +797,7 @@ public partial class CertificateOfOriginsBl
     // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country; missing → country-not-in-table.
     private async Task<CountryByCodeDto?> ResolveCountry(string? alphaCode, MessageValidationContext context)
     {
+        var countryProxy = Resolve<ICountryProxy>();
         var countries = await countryProxy.GetCountriesByAlphaCodes([alphaCode ?? string.Empty]);
         var country = countries?.FirstOrDefault();
         if (country is null)

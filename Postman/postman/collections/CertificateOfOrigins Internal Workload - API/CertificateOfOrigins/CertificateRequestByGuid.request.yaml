@@ -1,4 +1,4 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/CertificateRequestByGuid?certificateOfOriginGuid=3fa85f64-5717-4562-b3fc-2c963f66afa6"
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid=3fa85f64-5717-4562-b3fc-2c963f66afa6"
 method: GET
 order: 1000

@@ -19,7 +19,7 @@ using System.Text;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.BL;
 
-public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, ICustomerProxy customerProxy, IExportDealFileProxy exportDealFileProxy, IUserProxy userProxy, IDataDictionaryFieldProxy dataDictionaryFieldProxy, ICurrencyTypeProxy currencyTypeProxy, IDocumentsProxy documentsProxy, ICustomsBookProxy customsBookProxy, ICommonServicesProxy commonServicesProxy, IOrganizationUnitProxy organizationUnitProxy, IMessageManagementProxy messageManagementProxy, ICountryGroupProxy countryGroupProxy, ITasksProxy tasksProxy, ILockUtil lockUtil, ILookupUtil lookupUtil, IParametersUtil parametersUtil, ICountryProxy countryProxy, ISiteProxy siteProxy, IInternationalSiteProxy internationalSiteProxy, IPackingTypeProxy packingTypeProxy, IMeasurementUnitProxy measurementUnitProxy)
+public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, ILookupUtil lookupUtil, IParametersUtil parametersUtil)
     : BaseBL<CertificateOfOriginsBl, ICertificateOfOriginsDal>(serviceProvider)
 {
     public async Task<CertificateOfOriginDto> GetCertificateOfOriginById(int certificateOfOriginId)
@@ -35,6 +35,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     private async Task FillMilestoneUserNames(CertificateOfOriginDto certificate)
     {
+        var userProxy = Resolve<IUserProxy>();
         var userIds = certificate.Milestones
             .Where(m => m.UserId.HasValue)
             .Select(m => m.UserId!.Value)
@@ -90,6 +91,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
             return unlockedResult;
         }
 
+        var lockUtil = Resolve<ILockUtil>();
         var lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(GetPC22802281CertificateOfOriginRequest));
         if (!lockState.IsAcquired)
         {
@@ -110,6 +112,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var agentRequest = request.AgentRequest;
         var reasonCode = agentRequest.RequestReasonCode;
 
@@ -308,6 +311,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // service (IDocumentsProxy.GetDocumentsByEntity; route is a rollout TODO(blocking)); 0 when there is no such document.
     private async Task<int> ResolveWebQueryDocumentId(int certificateId)
     {
+        var documentsProxy = Resolve<IDocumentsProxy>();
         var documents = await documentsProxy.GetDocumentsByEntity(certificateId, (int)EEntityType.CertificateOfOrigin);
         var documentId = documents?
             .Where(document => CertificateOfOriginsConsts.WebQueryDocumentTypeIds.Contains(document.TypeId))
@@ -370,6 +374,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     private async Task<Dictionary<int, string?>> GetCurrencyCodes(List<int> currencyTypeIds)
     {
+        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
         if (currencyTypeIds.Count == 0)
         {
             return [];
@@ -543,6 +548,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     private async Task<Dictionary<int, string?>> GetFieldLabels(List<int> fieldIds)
     {
+        var dataDictionaryFieldProxy = Resolve<IDataDictionaryFieldProxy>();
         if (fieldIds.Count == 0)
         {
             return [];
@@ -594,6 +600,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     public async Task<bool> LoadDataFromExportDeclaration(LoadDataFromExportDeclarationRequestDto request)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
+
         // Guard: without a lead-document id or an export-declaration number there is nothing to look up.
         if (request.LeadDocumentId is null && string.IsNullOrEmpty(request.ExportDeclarationNumber))
         {
@@ -689,6 +697,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
 
     private async Task FillCustomersInformation(List<CertificateOfOriginResultDto> certificates)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
         if (certificates.Count == 0)
         {
             return;
@@ -729,6 +738,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // existing documents sits INSIDE the loop, so each template replaces whatever is currently attached.
     public async Task<bool> SaveCertificateOfOriginAttachments(SaveCertificateAttachmentsArgsDto request)
     {
+        var documentsProxy = Resolve<IDocumentsProxy>();
+
         // Legacy: SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>(CertificateTypeID).Name. No ILookupUtil
         // type exists for this SystemTable, so the certificate-type display name is taken from the
         // ECertificateOfOriginType enum instead (developer decision 2026-08-02).
@@ -789,6 +800,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // populated, from the CC-USER-ID header). Falls back to 0 when there is no current user / the user is not found.
     private async Task<int> GetCurrentUserOrganizationUnitId()
     {
+        var userProxy = Resolve<IUserProxy>();
         if (RequestMetadata.UserId is not int userId)
         {
             return 0;
@@ -1014,6 +1026,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // upload post-save, or null when nothing was created (path already set / not Published / empty CreateQrCode result).
     private async Task<byte[]?> CreateQrCodeIfNeeded(CertificateOfOrigin entity)
     {
+        var commonServicesProxy = Resolve<ICommonServicesProxy>();
         if (!string.IsNullOrWhiteSpace(entity.QrCodePath) || entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
             return null;
@@ -1100,6 +1113,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // proxy (rollout); the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
     private async Task EnrichAndValidateDetails(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details)
     {
+        var customerProxy = Resolve<ICustomerProxy>();
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         foreach (var detail in details)
         {
             var value = detail.Value;
@@ -1170,6 +1185,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // when the certificate has none.
     private async Task LinkLeadDocument(CertificateOfOrigin entity, int replacementOldId, int userId)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var oldId = replacementOldId != 0 ? replacementOldId : entity.Id;
         var leadDocument = await exportDealFileProxy.GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(oldId, entity.Id);
         if (leadDocument is null)
@@ -1245,6 +1261,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // TODO(migration): the exact PC_NG_2281_MSG02 → SendMessageDto field mapping is deferred (message type + params).
     private async Task SendRequestFeedback(CertificateOfOrigin entity)
     {
+        var messageManagementProxy = Resolve<IMessageManagementProxy>();
         var message = new SendMessageDto
         {
             RelatedEntity = new VirtualEntityDto { Id = entity.Id, EntityType = (int)EEntityType.CertificateOfOrigin, CustomerId = entity.CreateCustomerId },
@@ -1290,6 +1307,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // (developer decision — no per-type template switch / no local template files).
     private async Task PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
     {
+        var commonServicesProxy = Resolve<ICommonServicesProxy>();
         var template = await commonServicesProxy.GenerateTemplate(certificate.TypeId, certificate.Id, additionalInfo);
         if (template is null)
         {
@@ -1508,6 +1526,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
     // document / no handling user.
     private async Task<int?> ResolveAssessorUserId(int? leadDocumentId, int organizationUnitId)
     {
+        var tasksProxy = Resolve<ITasksProxy>();
         if (!leadDocumentId.HasValue)
         {
             return null;
@@ -1648,6 +1667,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         List<CertificateOfOriginDetails> details,
         List<ReconciliationFinding> builder)
     {
+        var countryGroupProxy = Resolve<ICountryGroupProxy>();
         var destinationCountry = GetDetailValue(details, ECertificateDetailsType.DestinationCountry);
         var destinationGroup = GetDetailValue(details, ECertificateDetailsType.DestinationGroupOfCountries);
         var exporterId = GetDetailValue(details, ECertificateDetailsType.ExporterId);
@@ -1713,6 +1733,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         CertificateOfOrigin certificate,
         List<ReconciliationFinding> builder)
     {
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         if (certificate.RequestReasonCode != (int)ERequestReason.ImportCertificateReplacement)
         {
             return false;
@@ -1754,6 +1776,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         string? originGroup,
         List<ReconciliationFinding> builder)
     {
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var isCustomsItemMandatory = await DataLayer.GetCertificateTypeIsCustomsItemMandatory(certificate.TypeId) ?? false;
 
         // Resolve the 6-digit tariff classification of every customs item on both sides in one batch.
@@ -1844,6 +1867,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IC
         bool isCustomsItemMandatory,
         List<ReconciliationFinding> builder)
     {
+        var countryGroupProxy = Resolve<ICountryGroupProxy>();
+
         // Origin country present among the declaration's goods items (Error).
         if (int.TryParse(originCountry, out var originCountryId)
             && !declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))

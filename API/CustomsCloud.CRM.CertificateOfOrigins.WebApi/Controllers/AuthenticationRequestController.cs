@@ -3,6 +3,7 @@ using CustomsCloud.CRM.CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace CustomsCloud.CRM.CertificateOfOrigins.WebApi.Controllers;
 
@@ -14,9 +15,9 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // matching requests (empty list when none — a search, never 404). ImporterName/VendorName are enriched via
     // proxies and IssuingCountry/OrganizationUnit names via lookups; only LeadDocument title stays null (raw id
     // returned). Supply the request-date range — the SP always applies it.
-    [HttpGet("AuthenticationRequestByFilter")]
+    [HttpQuery("ByFilter")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetImportAuthenticationRequestResultDto>))]
-    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>>> AuthenticationRequestByFilter([FromQuery] ImportAuthenticationRequestFilterDto filter)
+    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>>> AuthenticationRequestByFilter([FromBody] ImportAuthenticationRequestFilterDto filter)
     {
         var result = await BusinessLayer.GetAuthenticationRequestByFilter(filter);
         return Ok(result);
@@ -26,7 +27,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // the given lead-document ids (bound as a Shared.IntArray TVP). The payload is a list of ids, hence POST.
     // Returns the matching requests (empty when none). ImportCountry + OrganizationUnit names are enriched in the
     // BL via lookups; LeadDocumentTitle stays null (no owning-service proxy).
-    [HttpPost("AuthenticationRequestByLeadDocumentIDs")]
+    [HttpPost("ByLeadDocumentIDs")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetAuthenticationRequestByLeadDocumentResultDto>))]
     public async Task<ActionResult<List<GetAuthenticationRequestByLeadDocumentResultDto>>> AuthenticationRequestByLeadDocumentIDs([FromBody] List<int> leadDocumentIds)
     {
@@ -38,7 +39,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // is NOT on the verification-prohibited list, or null when it is. A check (not a resource lookup) → no 404.
     [HttpGet("CheckImporterOfImportAuthentication")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(int?))]
-    public async Task<ActionResult<int?>> CheckImporterOfImportAuthentication([FromQuery] int importerId)
+    public async Task<ActionResult<int?>> CheckImporterOfImportAuthentication([FromQuery][BindRequired] int importerId)
     {
         var result = await BusinessLayer.CheckImporterOfImportAuthentication(importerId);
         return Ok(result);
@@ -48,7 +49,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // import-authentication request in the last 3 years. A check → returns bool (no 404).
     [HttpGet("CheckIfExistsAdditionalRequestsForVendor")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
-    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForVendor([FromQuery] int vendorId)
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForVendor([FromQuery][BindRequired] int vendorId)
     {
         var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForVendor(vendorId);
         return Ok(result);
@@ -71,7 +72,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // request exists for the importer within the config window. A check → returns bool (no 404).
     [HttpGet("CheckIfExistsAdditionalRequestsForImporter")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
-    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForImporter([FromQuery] int importerId, [FromQuery] int? vendorId, [FromQuery] int? customerId, [FromQuery] int countryId)
+    public async Task<ActionResult<bool>> CheckIfExistsAdditionalRequestsForImporter([FromQuery][BindRequired] int importerId, [FromQuery] int? vendorId, [FromQuery] int? customerId, [FromQuery][BindRequired] int countryId)
     {
         var result = await BusinessLayer.CheckIfExistsAdditionalRequestsForImporter(importerId, vendorId, customerId, countryId);
         return Ok(result);
@@ -103,7 +104,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(file, isDelivery) — the vendor/
     // customs-house delivery flow. Advances the file's status + delivery method and stamps the delivery dates on the
     // file and its child requests. A state-changing write with a body → POST. Returns the file's new status + method.
-    [HttpPost("HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent")]
+    [HttpPost("HandleImportDeliveryAndReminderForVendorSent")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryAndReminderForVendorSentResultDto))]
     public async Task<ActionResult<HandleDeliveryAndReminderForVendorSentResultDto>> HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent([FromBody] HandleDeliveryAndReminderForVendorSentRequestDto request)
     {
@@ -114,7 +115,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: HandleImportAuthenticationRequestDeliveryForImporterSent(request) — the importer delivery flow.
     // Stamps the request's decision + date, advances the parent file's status machine (touching the file + its child
     // requests), and raises the NewDeliveryForImporterSent event. A state-changing write with a body → POST.
-    [HttpPost("HandleImportAuthenticationRequestDeliveryForImporterSent")]
+    [HttpPost("HandleImportDeliveryForImporterSent")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryOrReminderForImporterSentResultDto))]
     public async Task<ActionResult<HandleDeliveryOrReminderForImporterSentResultDto>> HandleImportAuthenticationRequestDeliveryForImporterSent([FromBody] HandleDeliveryOrReminderForImporterSentRequestDto request)
     {
@@ -124,7 +125,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: HandleImportAuthenticationRequestDeliveryReminderForImporterSent(request) — the importer reminder
     // flow. Same behaviour as the importer delivery endpoint, with the reminder event + decision. A write → POST.
-    [HttpPost("HandleImportAuthenticationRequestDeliveryReminderForImporterSent")]
+    [HttpPost("HandleImportDeliveryReminderForImporterSent")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(HandleDeliveryOrReminderForImporterSentResultDto))]
     public async Task<ActionResult<HandleDeliveryOrReminderForImporterSentResultDto>> HandleImportAuthenticationRequestDeliveryReminderForImporterSent([FromBody] HandleDeliveryOrReminderForImporterSentRequestDto request)
     {
@@ -135,7 +136,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
     // set of requests and links them to it. Fails with 400 (RestValidationException) if any request already belongs
     // to a file. A state-changing write with a body → POST. Returns the created file.
-    [HttpPost("CreateNewAuthenticationFile")]
+    [HttpPost("CreateNewFile")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CreateNewAuthenticationFileResultDto))]
     public async Task<ActionResult<CreateNewAuthenticationFileResultDto>> CreateNewAuthenticationFile([FromBody] List<GetImportAuthenticationRequestResultDto> importAuthenticationRequests)
     {
@@ -147,7 +148,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // lines, decision lookup, collaterals (Collateral service), and current-user task flags (Tasks service). Missing
     // id → 404 (BL throws RestNotFoundException). The lead Document + LeadDocumentSubmissionDate are cross-service and
     // deferred (null).
-    [HttpGet("AuthenticationRequestByID/{documentId}")]
+    [HttpGet("{documentId}")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetAuthenticationRequestByIdResultDto>> AuthenticationRequestByID([FromRoute] int documentId)
     {
@@ -158,7 +159,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: GetAuthenticationRequestFileByID(fileId) — a single authentication file with its child requests
     // (each enriched), the file-status lookup, and the current-user handling flag. Missing id → 404 (BL throws
     // RestNotFoundException).
-    [HttpGet("AuthenticationRequestFileByID/{fileId}")]
+    [HttpGet("File/{fileId}")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]
     public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> AuthenticationRequestFileByID([FromRoute] int fileId)
     {
@@ -169,7 +170,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // External WCF: HandleAuthenticationRequestDeliverySent(raiseEventArgs) — an Events-subsystem callback fired on a
     // delivery-sent event for an authentication file. As shipped it is a pure existence check (the legacy status-write
     // is commented out): it verifies the file exists and returns true/false. A callback with a body → POST.
-    [HttpPost("HandleAuthenticationRequestDeliverySent")]
+    [HttpPost("HandleDeliverySent")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
     public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] RaiseEventArgsDto request)
     {
@@ -181,7 +182,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
     // updates the request row (set-based). Missing request row → 404. A state-changing write with a body → POST.
     // Returns the fully re-read request graph (same shape as GetAuthenticationRequestByID).
-    [HttpPost("SaveImportAuthenticationRequest")]
+    [HttpPost("SaveImport")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetAuthenticationRequestByIdResultDto>> SaveImportAuthenticationRequest([FromBody] SaveImportAuthenticationRequestRequestDto request)
     {
@@ -193,7 +194,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // persists each child request's decision, raises the per-request + per-file status events, sends the decision /
     // status messages, and grants collaterals on approval. A state-changing write with a body → POST. Missing file
     // row → 404. Returns the fully re-read file (same shape as GetAuthenticationRequestFileByID).
-    [HttpPost("SaveAuthenticationRequestFile")]
+    [HttpPost("SaveFile")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]
     public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> SaveAuthenticationRequestFile([FromBody] SaveAuthenticationRequestFileRequestDto request)
     {
