@@ -119,5 +119,11 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
         services.AddLookup<DocumentType>();
+
+        // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
+        // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a
+        // NavigationPath type AND a source service exposes GET /lookup/NavigationPath (both done internally, see
+        // INTERNAL_INTEGRATION.md), register it here via AddLookup and the BL will populate ViewPaths. Until then the
+        // BL returns an empty list.
     }
 }

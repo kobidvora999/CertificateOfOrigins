@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/PathsForNavigationToVendor"
+method: GET
+order: 9500

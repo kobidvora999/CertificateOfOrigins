@@ -1,57 +1,56 @@
 # INTERNAL_INTEGRATION — CertificateOfOrigins
-עדכון אחרון: 2026-08-17 · Branch/Commit: master @ b2d63fa
+עדכון אחרון: 2026-08-20 · Branch/Commit: `master` @ `fcaab2f`
 
-> נוצר ע"י `repo-complete-check`. הרשת הפנימית ללא Claude — כל מה שנדרש לאינטגרציה חייב להיות כאן.
-> **מצב המרה:** 34/36 אופרציות הומרו (2 מושמטות בכוונה: TempSync, GetPathsForNavigationToVendor).
-> **לפני קידום:** ראה `Postman/internal-workload-test/reports/pre-internal-gap-report_2026-08-17.md` — יש 2 חוסמים אדומים.
+ברשת הפנימית אין Claude — כל הידע לאינטגרציה חייב להיות ברפו. מסמך זה מרכז את מה שצריך לעשות בפנים.
 
-## 1. שירותים שהמיקרו-סרוויס צורך (outbound proxies)
-כל ה-proxies רשומים ב-`ServicesConfiguration.cs` עם `AddProxy<I, Real, Mock>` — **ברירת מחדל = Mock** (מגודר בכותרת
-`x-mock-mode`) עד שהשירות האמיתי מוקם/מאומת. כל שורה נושאת `TODO(blocking)` בקוד לאימות נתיב ה-endpoint.
+## 1. שירותים שהמיקרו-סרוויס צורך (outbound) — 19 proxies
+כל ה-proxies רשומים בתבנית `AddProxy<I, Real, Mock>` ורצים כרגע ב-**Mock**. בפנים יש לאשר endpoint ולעבור ל-real.
 
-| Proxy | שירות יעד | endpoint (לאימות) | פעולה בפנים |
-|---|---|---|---|
-| ICustomerProxy | Customers | `Customer/CustomersByIds` | הפנה ל-REST אמיתי + אמת route |
-| IVendorProxy | Vendors | `Vendor/VendorsByIds` | הפנה + אמת route |
-| IUserProxy | Users | `User/UsersByIds` | הפנה + אמת route |
-| IExportDealFileProxy | ExportDealFile | (כמה) | **השירות טרם קיים** — הקם או עטוף WCF קיים |
-| IDataDictionaryFieldProxy | SystemTables | `DataDictionaryField/...ByIds` | אמת route |
-| ICurrencyTypeProxy | SystemTables | `CurrencyType/CurrencyTypesByIds` | אמת route |
-| ICountryProxy | SystemTables | `Country/CountriesByAlphaCodes` | אמת route |
-| ISiteProxy | SystemTables | `Site/SitesByExternalNumbers` | אמת route |
-| IInternationalSiteProxy | SystemTables | `InternationalSite/InternationalSitesByLocodes` | אמת route |
-| IPackingTypeProxy | SystemTables | `PackingType/PackingTypesByCodes` | אמת route |
-| IMeasurementUnitProxy | SystemTables | `MeasurementUnit/MeasurementUnitsByCodes` | אמת route |
-| ICountryGroupProxy | SystemTables | `CountryCountryGroup/...` | אמת route |
-| IDocumentsProxy | Documents | `Document/DocumentsByEntity`, `AttachDocumentsToEntity` | הפנה + אמת route |
-| ICollateralProxy | Collateral | `Collateral/CollateralRequestByEntity` | הפנה + אמת route |
-| ITasksProxy | Tasks | `Task/IsTaskExist` | הפנה + אמת route |
-| IMessageManagementProxy | Message-Management | `Message/SendMessage` | הפנה + אמת route |
-| ICustomsBookProxy | CustomsBook | trade-agreement | הפנה + אמת route |
-| ICommonServicesProxy | Common | `GenerateTemplate` (SSRS) | הפנה + אמת route |
-| IOrganizationUnitProxy | OrgUnit | `IsOrganizationUnitCustomsHouse` | הפנה + אמת route |
+| Proxy | שירות יעד (CustomsMicroServices) | פעולה בפנים |
+|---|---|---|
+| CustomerProxy | Customers | לאשר endpoint → real |
+| VendorProxy | Vendors | לאשר endpoint → real |
+| UserProxy | Users | לאשר endpoint → real |
+| ExportDealFileProxy | ExportDealFile | לאשר endpoint → real (היה חסום; Mock עד שיוקם) |
+| DocumentsProxy | Documents | לאשר endpoint → real |
+| CollateralProxy | Collaterals | לאשר endpoint → real |
+| TasksProxy | Tasks | לאשר endpoint → real |
+| CommonServicesProxy, MessageManagementProxy | Common | לאשר endpoint → real |
+| DataDictionaryFieldProxy, CurrencyTypeProxy, CountryProxy, CountryGroupProxy, SiteProxy, InternationalSiteProxy, PackingTypeProxy, MeasurementUnitProxy, CustomsBookProxy, OrganizationUnitProxy | SystemTables | לאשר endpoints → real |
+
+> **הערה — lookups (ILookupUtil):** Country/City/DocumentType/OrganizationUnit נטענים ע"י ה-resolvers של הפלטפורמה
+> ישירות משירותי-המקור (GET `{svc}/lookup/{Type}`), **מחוץ** לשכבת ה-proxy הזו ולא מושפעים מ-`x-mock-mode`. בפנים
+> שירותי-המקור קיימים; מקומית משתמשים ב-`tools/local-lookup-stub.js`.
 
 ## 2. MockProxies להחלפה בפנים
-כל ה-proxies בטבלה 1 רשומים עם MockProxy. בפנים: לוודא ש-`x-mock-mode` **אינו** נשלח (כדי לפגוע בפרוקסי האמיתי),
-ולעבור על 62 ה-`TODO(blocking)` בקוד (grep `TODO(blocking`) — כל אחד מסמן route/ערך לאימות לפני מעבר ל-real.
+כל 19 ה-Mock (`*MockProxy` תואם לכל שורה ב-§1) — לכבות ולעבור ל-real לפי זמינות שירות היעד. מנגנון המעבר: header
+`x-mock-mode` (‏InfrastructureCore.Proxy 1.10.80+) — בהיעדרו ה-proxies הם real כברירת מחדל.
 
 ## 3. צרכנים של השירות (inbound — מי קרא ל-WCF הישן)
-לכל endpoint חדש יש להפנות את הצרכן הישן (שקרא ל-WCF) ל-REST החדש. **רשימת הצרכנים המלאה — לבירור בפנים**
-(תלוי בקוד המונוליט שאינו ברפו זה). ה-endpoints החדשים תחת 3 controllers: `CertificateOfOrigins`,
-`AuthenticationRequest`, `ExportDocumentAuthenticationRequest`.
+**לבירור בפנים.** רשימת הצרכנים המלאה לא ניתנת לגזירה מהרפו. ⚠️ **קריטי:** C9/C10 שינו את החוזה — כל צרכן חייב
+לעדכן את ה-proxy שלו (verbs QUERY + routes חדשים). המיפוי המלא ישן→חדש הועבר למפתחת (Tamar) בנפרד.
 
 ## 4. DB — סקריפטים ו-ROLLOUT
-- **סקריפטים ב-`API/CustomsCloud.CRM.CertificateOfOrigins.WebApi/Scripts/`** (30 קבצים, בסדר חותמת-זמן `API_<ts>`).
-- ✅ **כל 9 ה-SPs שהקוד מפעיל מסוקרפטים** (GetCertificateOfOriginsByFilter / ByID / Number / DataForWebQuery,
-  GetImportAuthenticationRequestByFilter, ExportDocumentAuthenticationRequestSearch,
-  GetAuthenticationRequestByLeadDocumentID, CheckIfExistsAdditionalRequestsFor{Vendor,Importer}).
-- ℹ️ 6 SPs `dbo` שהופיעו ב-localhost הם **orphans** (הקוד מימש inline; ראה gap-report) — **אינם נדרשים**.
-- **הבדיקה המוסמכת:** `/db-scripts-check CertificateOfOrigins` (from-zero replay על DB נקי) — מומלץ לפני קידום.
-- צ'ק-ליסט rollout: הרצת סקריפטים → תקופת קוד-חדש-על-DB-ישן → יום ROLLOUT (העתקת נתוני הטבלאות ל-DB החדש).
+**סדר הרצה** (מ-`API/CustomsCloud.CRM.CertificateOfOrigins.WebApi/Scripts/`, לפי חותמת זמן):
+1. `API_20260715 - create schema.sql`
+2. `API_20260715 - create tables.sql`
+3. `API_20260715 - seed data.sql`
+4. `API_20260716 - add params.sql`
+5. פרוצדורות `dbo.*` (9): GetCertificateOfOriginsByFilter, CheckIfExistsAdditionalRequestsFor{Vendor,Importer}, GetImportAuthenticationRequestByFilter, ExportDocumentAuthenticationRequestSearch, GetAuthenticationRequestByLeadDocumentID, GetCertificateOfOriginByID, GetCertificateOfOriginDataForWebQuery, GetCertificateOfOriginNumber (+sequence)
+6. `API_20260813 - seed CountryIsrael parameter.sql`
+
+> קבצי `CRM.usp_CertificateOfOrigins_*` הם הלגסי המקורי (רפרנס); הקוד קורא לעותקי `dbo.*`.
+
+**צ'ק-ליסט ROLLOUT:** הרצת סקריפטים בפנים → הרצת הקוד החדש על ה-DB הישן (תקופת הרצה מקבילה) → יום ROLLOUT
+(העתקת נתוני הטבלאות ל-DB החדש). ⚠️ **from-zero replay לא הורץ** — מומלץ `/db-scripts-check` לפני פריסה.
 
 ## 5. חוסרים פתוחים שחוסמים אינטגרציה (מדוח 6a)
-1. ✅ סקריפטי SP — **תקין** (סעיף 4): כל ה-SPs בשימוש מסוקרפטים; 6 ה-orphans אינם נדרשים.
-2. 🔴 אוספי Postman workload (Group 1 + Group 2) חסרים — `/internal-workload-test` + `/dependency-workload-test`.
-3. 🟠 קוד אינו warnings-clean — `/net10-code-review`.
-4. 🟠 פאריטי fan-out מלא (34 מתודות) לא רץ — מומלץ למתודות Save*/Update* בסיכון גבוה.
-5. 🟡 62 `TODO(blocking)` — אימות routes/ערכים במעבר mock→real.
+- **62 `TODO(blocking)`** — מעבר Mock→real (‏§1–2). חוסם אינטגרציה אמיתית, לא פריסה.
+- **שדות deferred (null):** DocumentId (web-query, Docs חוצה-סכמה), LeadDocumentSubmissionDate/Document ב-GetAuthenticationRequestByIdResultDto.
+- **`GetPathsForNavigationToVendor` — הומרה חלקית עם `TODO(blocking)`** (2026-08-20, הוכרע Lookup): endpoint חי
+  `GET AuthenticationRequest/PathsForNavigationToVendor` + BL + DTOs, אך מחזיר `ViewPaths` ריק עד שהפלטפורמה תוסיף
+  טיפוס Lookup בשם `NavigationPath` ל-`InfrastructureCore.Lookup` + שירות-מקור יחשוף `GET /lookup/NavigationPath`
+  (שניהם **בפנים**). חיווט סופי: לבטל את ההערה `services.AddLookup<NavigationPath>()` ב-ServicesConfiguration
+  ולהחליף את גוף ה-BL בשליפת `lookupUtil.Search<NavigationPath>(p => p.PathId == 359)` (המיפוי שמור כהערה ב-BL).
+- **אופרציה מושמטת נוספת:** `TempSync` — stub מת בלגסי (NotImplementedException), לא נדרשת.
+- **rollout endpoints לאישור:** SystemTables — CurrencyTypesByIds, DataDictionaryFieldsByIds.

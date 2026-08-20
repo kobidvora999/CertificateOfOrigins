@@ -1289,4 +1289,38 @@ public class AuthenticationRequestBl(
     // Returns the importer id when the importer is NOT on the prohibited list; null when it is.
 #pragma warning restore S125
     #endregion
+
+    // Internal WCF: GetPathsForNavigationToVendor() — the navigation-path tree for the fixed "navigate to vendor"
+    // PathID (legacy AuthenticationRequestBL.GetPathsForNavigationToVendor). The legacy read NavigationPath rows
+    // (shared Infrastructure/Common GeneralServices table) via the UoW repository, filtered by PathID, and mapped them
+    // to the view tree; only PathId + ViewPaths were populated (ViewName/ViewId/IsMandatory left default — bug-for-bug).
+#pragma warning disable CA1822, S125 // CA1822: instance method by design (uses ILookupUtil once wired); S125: the legacy-mapping reference in the TODO is intentional
+    public Task<NavigationToVendorViewDto> GetPathsForNavigationToVendor()
+    {
+        var pathId = CertificateOfOriginsConsts.NavigationToVendorPathId;
+
+        // TODO(blocking): NavigationPath is a shared GeneralServices reference table with no platform lookup type yet.
+        // Per the product decision (2026-08) it will be exposed as a platform Lookup — resolve it here via ILookupUtil
+        // once InfrastructureCore.Lookup adds a `NavigationPath` lookup type AND a source service exposes
+        // GET /lookup/NavigationPath (both done internally — see INTERNAL_INTEGRATION.md). Until then ViewPaths is empty.
+        // When wired, this method becomes `async` and awaits the lookup:
+        //   var paths = (await lookupUtil.Search<NavigationPath>(p => p.PathId == pathId)).ToList();
+        //   viewPaths = paths.Select(p => new NavigationToVendorPathDto
+        //   {
+        //       Id = p.PathRouteId,
+        //       PathId = p.PathId,
+        //       PageNameId = p.PageNameId,
+        //       ParentPathRouteId = p.ParentPathRouteId,
+        //       ViewId = p.ViewId,
+        //       Name = p.PageNameId.HasValue ? p.PageName : p.ViewName,
+        //   }).ToList();
+        var viewPaths = new List<NavigationToVendorPathDto>();
+
+        return Task.FromResult(new NavigationToVendorViewDto
+        {
+            PathId = pathId,
+            ViewPaths = viewPaths,
+        });
+    }
+#pragma warning restore CA1822, S125
 }

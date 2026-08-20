@@ -75,4 +75,9 @@ internal static class CertificateOfOriginsConsts
     // + the Export organization-unit type (MalamTeam.Infrastructure EEntityType.ExportLeadDocument / EOrganizationUnitType.Export).
     public const int ExportLeadDocumentEntityType = 11188;
     public const int ExportOrganizationUnitType = 18;
+
+    // --- GetPathsForNavigationToVendor ---
+
+    // Legacy CertificateOfOriginsConsts.NavigationToVendorPathID — the fixed PathID whose navigation paths are returned.
+    public const int NavigationToVendorPathId = 359;
 }

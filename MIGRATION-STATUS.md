@@ -3,9 +3,10 @@
 > ## ✅ ההמרה הושלמה (2026-08-17)
 >
 > מצאי אדוורסרי מלא (הצלבת 3 חוזי ה-WCF — 36 אופרציות — מול ה-controllers + ה-BL על master):
-> **34/36 הומרו** עם endpoint חי + BL אמיתי (ללא stubs). 2 האופרציות שנותרו מושמטות **בכוונה**:
-> `TempSync` (stub מת בלגסי) ו-`GetPathsForNavigationToVendor` (הוכרע 2026-08-17: מנגנון ניווט WPF ישן,
-> לא רלוונטי ל-SPA). **אין מתודות 🟢 READY שנותרו.** הצעד הבא המומלץ: `repo-complete-check` לפני merge/קידום.
+> **35/36 הומרו** עם endpoint חי + BL אמיתי. `GetPathsForNavigationToVendor` הומרה חלקית (2026-08-20, הוכרע Lookup):
+> endpoint + BL + DTOs קיימים, מחזיר ViewPaths ריק עם `TODO(blocking)` עד שהפלטפורמה תוסיף טיפוס Lookup בשם
+> `NavigationPath` + שירות-מקור שיחשוף `GET /lookup/NavigationPath` (בפנים — ראה INTERNAL_INTEGRATION.md).
+> מושמטת אחת בלבד: `TempSync` (stub מת בלגסי, NotImplementedException — לא נדרשת).
 
 > ## ⚠️ קרא קודם — עדכון סטטוס (2026-07-22)
 >
@@ -83,7 +84,7 @@
 | SaveImportAuthenticationRequest | 🔴 חסומה | תשתית הודעות (Notifications) |
 | SaveAuthenticationRequestFile | 🔴 חסומה | תשתית הודעות + מנגנון delta + פערי ICollateralProxy |
 | SaveExportDocumentAuthenticationRequest | 🔴 חסומה | תשתית הודעות + AttachDocumentsToEntity + DisplayName |
-| GetPathsForNavigationToVendor | ⏭️ לא נדרש | הוכרע 2026-08-17: מנגנון ניווט WPF ישן, לא רלוונטי ל-SPA — מושמט בכוונה (כמו TempSync) |
+| GetPathsForNavigationToVendor | ✅ הומרה חלקית | 2026-08-20 (הוכרע Lookup): endpoint `GET AuthenticationRequest/PathsForNavigationToVendor` + BL + DTOs; מחזיר ViewPaths ריק עם `TODO(blocking)` עד הוספת טיפוס Lookup `NavigationPath` בפלטפורמה + endpoint מקור (בפנים) |
 
 ## Incoming — ICertificateOfOriginsIncomingMessageContract (2)
 
@@ -99,4 +100,4 @@
 2. ~~**SaveCertificateOfOrigin**~~ — ✅ הומרה.
 3. ~~**UpdateCetrificateOfOrigins**~~ — ✅ הומרה.
 4. ~~**GetPC_MSG2280_2281**~~ — ✅ הומרה במלואה (2026-08-17). כל 4 החסמים העסקיים נסגרו (per-reason+invoices · declaration-check+amendment · NonManipulation).
-5. ~~**GetPathsForNavigationToVendor**~~ — ⏭️ הוכרע 2026-08-17: לא רלוונטי ל-SPA → מושמט בכוונה. **בכך הושלמה המרת השירות.**
+5. ~~**GetPathsForNavigationToVendor**~~ — ✅ הומרה חלקית 2026-08-20 (Lookup + `TODO(blocking)`; חיווט סופי בפנים — ראה INTERNAL_INTEGRATION.md).

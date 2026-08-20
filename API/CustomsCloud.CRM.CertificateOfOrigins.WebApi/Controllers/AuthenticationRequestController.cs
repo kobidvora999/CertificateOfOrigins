@@ -201,4 +201,15 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
         var result = await BusinessLayer.SaveAuthenticationRequestFile(request);
         return Ok(result);
     }
+
+    // Internal WCF: GetPathsForNavigationToVendor() — the navigation-path tree for the fixed "navigate to vendor"
+    // PathID. A read with no input → GET. Data source: the NavigationPath reference table — pending a platform Lookup
+    // type; the BL returns an empty ViewPaths list until it is wired (see the BL TODO + INTERNAL_INTEGRATION.md).
+    [HttpGet("PathsForNavigationToVendor")]
+    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(NavigationToVendorViewDto))]
+    public async Task<ActionResult<NavigationToVendorViewDto>> GetPathsForNavigationToVendor()
+    {
+        var result = await BusinessLayer.GetPathsForNavigationToVendor();
+        return Ok(result);
+    }
 }
