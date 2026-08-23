@@ -889,10 +889,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (entity.Id == 0)
         {
             AddEntity(entity);
+            AuditUserStamp.ForInsert(entity, RequestMetadata.UserId);
         }
         else
         {
             UpdateEntity(entity);
+            AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
         }
 
         await SaveChangesAsync();

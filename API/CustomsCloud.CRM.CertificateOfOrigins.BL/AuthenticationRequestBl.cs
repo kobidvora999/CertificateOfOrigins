@@ -192,7 +192,7 @@ public class AuthenticationRequestBl(
             // The entity maps CreateDate as DateTime (ICloudEntity); the DTO exposes DateTimeOffset. Build it with a
             // ZERO offset to match what the DbContext DateTimeOffset value converter produced before C12 — an implicit
             // DateTime→DateTimeOffset conversion would stamp the LOCAL offset and shift the instant on the wire.
-            CreateDate = new DateTimeOffset(file.CreateDate, TimeSpan.Zero),
+            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
             AuthenticationFileStatusId = file.AuthenticationFileStatusId,
             Notes = file.Notes,
             PostalAdress = file.PostalAdress,
@@ -399,6 +399,7 @@ public class AuthenticationRequestBl(
         // INSERT the file through BaseBL (ICloudEntity — CreateDate/CreateUserId/UpdateDate/UpdateUserId are stamped
         // server-side from RequestMetadata by SetEntityFields; see C12), then link the requests to it.
         AddEntity(file);
+        AuditUserStamp.ForInsert(file, RequestMetadata.UserId);
         await SaveChangesAsync();
         var fileId = file.Id;
         await DataLayer.LinkRequestsToAuthenticationFile(documentIds, fileId);
@@ -426,7 +427,7 @@ public class AuthenticationRequestBl(
             EmailAdress = file.EmailAdress,
 
             // Zero offset — see the note at CreateDate in MapToFileResultDto above (ICloudEntity DateTime → DTO DateTimeOffset).
-            CreateDate = new DateTimeOffset(file.CreateDate, TimeSpan.Zero),
+            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
         };
     }
 

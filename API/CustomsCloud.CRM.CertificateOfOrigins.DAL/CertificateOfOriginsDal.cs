@@ -791,7 +791,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
                 .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
                 .SetProperty(f => f.LastDelivery, today)
-                .SetProperty(f => f.UpdateDate, today));
+                .SetProperty(f => f.UpdateDate, today.DateTime));
 
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
@@ -849,7 +849,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.LastDelivery, file.LastDelivery)
                 .SetProperty(f => f.ImporterContactingReasonId, file.ImporterContactingReasonId)
                 .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
-                .SetProperty(f => f.UpdateDate, now)
+                .SetProperty(f => f.UpdateDate, now.DateTime)
                 .SetProperty(f => f.UpdateUserId, userId));
         return affected > 0;
     }

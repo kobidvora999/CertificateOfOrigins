@@ -146,6 +146,7 @@ public class ExportDocumentAuthenticationRequestBl(
         if (entity.Id == 0)
         {
             AddEntity(entity);
+            AuditUserStamp.ForInsert(entity, RequestMetadata.UserId);
         }
         else
         {
@@ -160,6 +161,7 @@ public class ExportDocumentAuthenticationRequestBl(
             }
 
             UpdateEntity(entity);
+            AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
         }
 
         await SaveChangesAsync();
