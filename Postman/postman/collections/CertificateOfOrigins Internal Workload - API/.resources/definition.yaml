@@ -14,6 +14,17 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
     language: text/javascript
   - type: http:afterResponse
     code: |-

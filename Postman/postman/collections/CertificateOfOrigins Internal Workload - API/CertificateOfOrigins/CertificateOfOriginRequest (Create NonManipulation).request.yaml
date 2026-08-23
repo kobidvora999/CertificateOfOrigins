@@ -17,15 +17,15 @@ body:
         "customsHouse": "SITE01"
       },
       "nonManipulationCertificate": {
-        "exportDate": "2026-08-10T00:00:00",
+        "exportDate": "{{twoDaysAgo}}",
         "exportCountry": "DE",
         "importBillOfLadingNum": "IBL1",
         "exportPort": "DEHAM",
-        "importDate": "2026-08-05T00:00:00",
+        "importDate": "{{tenDaysAgo}}",
         "exportBillOfLadingNum": "EBL1",
         "transitCountry": "IL",
         "portOfEntrance": "ILHFA",
-        "expectedExitDate": "2026-09-01T00:00:00",
+        "expectedExitDate": "{{inOneMonth}}",
         "exitPort": "ILASH",
         "goodsDescription": "widgets",
         "declaringCompany": "Acme",
