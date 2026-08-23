@@ -7,7 +7,7 @@ namespace CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 // writers (#22-24) which advance the file's status/delivery-method. Writes go through Context + ExecuteUpdateAsync
 // (targeted columns), so no row is loaded; the full column set is declared for completeness.
 [Table("CertificateOfOrigins_ImportAuthenticationFileDetails", Schema = "CRM")]
-public class CertificateOfOriginsImportAuthenticationFileDetails
+public partial class CertificateOfOriginsImportAuthenticationFileDetails
 {
     [Key]
     [Column("ID")]
@@ -23,13 +23,13 @@ public class CertificateOfOriginsImportAuthenticationFileDetails
     public byte[]? TimeStamp { get; set; }
 
     [Column("CreateDate")]
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     [Column("CreateUserID")]
     public int CreateUserId { get; set; }
 
     [Column("UpdateDate")]
-    public DateTimeOffset UpdateDate { get; set; }
+    public DateTime UpdateDate { get; set; }
 
     [Column("UpdateUserID")]
     public int UpdateUserId { get; set; }

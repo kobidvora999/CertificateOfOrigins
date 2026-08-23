@@ -1,8 +1,13 @@
 # Conventions State
 
 aligned-through: C12
-date: 2026-08-19
+date: 2026-08-23
 notes: >
+  ⚠️ C12 פריט 1 (ICloudEntity save) נרשם ב-2026-08-19 בטעות כ-N/A. ההנמקה הייתה "אין SaveEntitiesAsync/
+  ChangeTrackEntity להמיר" — אבל 0 hits ב-grep הזה מוכיח רק שה-repo לא על המסלול הישן, לא שהוא על החדש.
+  בפועל הוא היה על מסלול שלישי (שמירה ידנית ב-DAL) שהוא בדיוק מה ש-C12 מחליף. תוקן ב-2026-08-23.
+  היקף שנותר פתוח: לא הורץ internal-workload אחרי שינוי מסלול השמירה — חובה לפני merge, כי ה-audit נחתם
+  עכשיו שרת-צד (התנהגות שונה) ובדיקות היחידה לא מכסות זאת.
   כל C6–C12 יושרו/אומתו ב-2026-08-19 (build נקי + בדיקות 2/2). C9+C10 (שינויי-wire) יושמו לפי אישור המשתמש
   ובאחריותו לתאם את השירותים הקוראים (עדכון ה-proxies ל-.UseQueryMethod()/routes החדשים). Postman: אוסף
   ה-internal-workload v3 ואוסף ה-dependency-workload עודכנו מלא (routes + method QUERY + body ל-4 בקשות C9).
@@ -24,3 +29,5 @@ history:
 - C11 (2026-08-19): תוקן — 3 מחלקות BL עברו לבנאי Resolve<T>(): ExportDocumentAuthenticationRequestBl (3 תלויות), AuthenticationRequestBl (7), CertificateOfOriginsBl (18, פרוס על 7 partials, 42 שימושים). הבנאי מזריק רק IServiceProvider+IParametersUtil/ILookupUtil; שאר ה-proxies/utils דרך var x = Resolve<IX>() בראש המתודה (מעל לולאות). בדיקת QR (2/2) עוברת, build נקי.
 - C12 (2026-08-19): תאם/N-A — פריטים 2 (הסרת OutgoingMessage), 3 (Utils.Shared→Interfaces.Shared), 4 (bootstrap אסינכרוני: async Main + await CloudWebApp.Build + new DatabaseMigrationUtil(app) + app.RunAsync), 5 (Postman x-mock-mode גלובלי; x-mock-proxy נותר רק בהערות הסבר) — כולם תואמים לאחר עדכון הנוגטים ל-1.10.x (commit 50cadd9). פריט 1 (ICloudEntity save) N/A — ה-repo כותב set-based (ExecuteUpdateAsync) + Context/SaveChangesAsync עם IsModified guards; אין SaveEntitiesAsync/ChangeTrackEntity להמיר.
 - C12 re-verified (2026-08-23): אין drift — הקומיטים שאחרי היישור (fcaab2f, 49169fe) נבדקו מול מתכוני ה-Detection של C4/C6/C10/C11/C12, 0 ממצאים. אין delta חדש ב-changelog (C12 הוא ה-entry האחרון).
+- C12 פריט 1 (2026-08-23): **תוקן — ה-N/A הקודם היה שגוי.** 3 ישויות עברו ל-ICloudEntity ב-companion partials תחת CertificateOfOriginsDb/Partials/ (שורדים scaffold regen): CertificateOfOrigin, ExportDocumentAuthenticationRequest, CertificateOfOriginsImportAuthenticationFileDetails. השמירה עברה מה-DAL ל-BaseBL (AddEntity/UpdateEntity + SaveChangesAsync) ב-3 מסלולים; נמחקו חתימת ה-audit הידנית, פרמטר ה-userId מחתימות ה-DAL (עם ה-fallback השקט `?? 0`), ו-guards של Entry(...).IsModified על CreateDate/CreateUserId. ה-DAL נשאר עם קריאות + diff-merge של שורות-ילד (בלי audit) + ExecuteUpdateAsync. CertificateOfOriginsImportAuthenticationRequest אומת כ-N/A אמיתי — נכתבת אך ורק set-based (6 אתרי ExecuteUpdateAsync, אפס Add/Update tracked), וזו ההקרנה שהמסמך מוציא במפורש; לכן לא נדרש shim ל-DocumentID→Id. CreateDate/UpdateDate של FileDetails הומרו DateTimeOffset→DateTime (ICloudEntity מחייב DateTime; עמודות ה-SQL הן [datetime] ממילא) — שאר קונבנציית ה-DateTimeOffset + ה-value converter ב-DbContext לא נגעו. בשני אתרי מיפוי ל-DTO נקבע `new DateTimeOffset(file.CreateDate, TimeSpan.Zero)` כדי לשמר את ה-offset שה-converter נתן (המרה משתמעת הייתה מטביעה offset מקומי ומזיזה את הרגע על החוט).
+- בדיקות (2026-08-23): ה-QR tests שופצו — ה-seam שלהן היה SaveCertificateOfOrigin ב-DAL, ו-BaseBL מנתב שמירה דרך ((IBaseDal)DataLayer).DbContext/.SaveChangesAsync. ה-fake מנתב עכשיו Add/Update/get_DbContext/SaveChangesAsync ל-EF InMemory 10.0.10 (נוסף ל-Test.csproj) + SaveChangesInterceptor שמצלם את הישות ב-upsert; ה-id נוצר בשמירה אמיתית במקום להיות מוזרק. הוסרה ההנחה EntityIdAtMainSave==0 (תזמון identity תלוי-provider), ונוספה בדיקה שעדכון משמר CreateDate/CreateUserId — ה-guard שהחליף את הידניים. 2/2 עוברות, build 0 errors (4×S1135 קיימים).

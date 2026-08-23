@@ -131,18 +131,41 @@ public class ExportDocumentAuthenticationRequestBl(
         var documentsProxy = Resolve<IDocumentsProxy>();
         var entity = BuildEntity(request);
 
-        var userId = RequestMetadata.UserId ?? 0;
-        var now = DateTime.Now;
+        // Hold the three child collections aside so the parent Add/Update touches only the parent row; they are
+        // diff-merged by the DAL once the parent id is known.
+        var customsItems = entity.CustomsItems;
+        var leadDocuments = entity.LeadDocuments;
+        var manufacturingAreas = entity.ManufacturingAreas;
+        entity.CustomsItems = [];
+        entity.LeadDocuments = [];
+        entity.ManufacturingAreas = [];
+
+        // ICloudEntity: the audit columns are stamped server-side from RequestMetadata by SetEntityFields (called
+        // inside AddEntity/UpdateEntity), and UpdateEntity marks CreateDate/CreateUserId not-modified so a
+        // round-tripped DTO cannot overwrite them. See C12.
         if (entity.Id == 0)
         {
-            entity.CreateDate = now;
-            entity.CreateUserId = userId;
+            AddEntity(entity);
+        }
+        else
+        {
+            // The read projection (GetById) omits State + OrganizationUnitId (29-column interceptor limit), so the
+            // round-tripped DTO carries them as 0 — restore the stored values before the update, or it would zero
+            // both columns on every save of an existing record (parity with the legacy full-entity round-trip).
+            var preserved = await DataLayer.GetExportRequestProjectionColumns(entity.Id);
+            if (preserved is not null)
+            {
+                entity.State = preserved.Value.State;
+                entity.OrganizationUnitId = preserved.Value.OrganizationUnitId;
+            }
+
+            UpdateEntity(entity);
         }
 
-        entity.UpdateDate = now;
-        entity.UpdateUserId = userId;
+        await SaveChangesAsync();
+        var id = entity.Id;
 
-        var id = await DataLayer.SaveExportDocumentAuthenticationRequest(entity);
+        await DataLayer.MergeExportDocumentAuthenticationRequestChildren(id, customsItems, leadDocuments, manufacturingAreas);
 
         // Status transition → status-update event (+ a status-specific event) and, for some statuses, a message.
         if (request.StatusId != request.OriginalStatusId)

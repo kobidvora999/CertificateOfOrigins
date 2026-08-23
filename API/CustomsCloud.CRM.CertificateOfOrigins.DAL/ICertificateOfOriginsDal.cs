@@ -32,8 +32,6 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds);
 
-    Task<int> InsertAuthenticationFile(CertificateOfOriginsImportAuthenticationFileDetails file);
-
     Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId);
 
     Task<int?> CheckImporterOfImportAuthentication(int importerId);
@@ -58,7 +56,13 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds);
 
-    Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity);
+    Task<(int State, int OrganizationUnitId)?> GetExportRequestProjectionColumns(int requestId);
+
+    Task MergeExportDocumentAuthenticationRequestChildren(
+        int requestId,
+        List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
+        List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
+        List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas);
 
     Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
 
@@ -80,9 +84,9 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId);
 
-    Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId);
+    Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details);
 
-    Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices, int userId);
+    Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices);
 
     Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
 

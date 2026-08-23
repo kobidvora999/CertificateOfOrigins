@@ -108,53 +108,29 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, int userId)
+    public async Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details)
     {
-        return await SaveCertificateOfOrigin(entity, details, [], userId);
+        await MergeCertificateOfOriginChildren(certificateId, details, []);
     }
 
-    public async Task<int> SaveCertificateOfOrigin(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices, int userId)
+    // The PARENT certificate row is persisted by the BL through BaseBL.AddEntity/UpdateEntity (CertificateOfOrigin is
+    // an ICloudEntity — audit stamped server-side from RequestMetadata; see C12). This method owns only the child
+    // rows, which carry no audit columns: DIFF-MERGE the detail rows by surrogate id, then (incoming-message create
+    // branch) the invoice rows + each invoice's item rows.
+    public async Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices)
     {
-        // Upsert the certificate (Id == 0 → insert with fresh audit, else update via the round-tripped TimeStamp for
-        // concurrency, preserving the immutable audit columns), then DIFF-MERGE its detail rows by surrogate id, then
-        // (incoming-message create branch) DIFF-MERGE its invoice rows + each invoice's item rows.
-        var now = DateTime.Now;
-        if (entity.Id == 0)
-        {
-            entity.CreateDate = now;
-            entity.CreateUserId = userId;
-            entity.UpdateDate = now;
-            entity.UpdateUserId = userId;
-            Context.CertificateOfOrigins.Add(entity);
-        }
-        else
-        {
-            entity.UpdateDate = now;
-            entity.UpdateUserId = userId;
-            Context.CertificateOfOrigins.Update(entity);
-
-            // The round-tripped DTO does not carry the immutable audit columns, so Update would overwrite them with
-            // defaults (CreateDate = 0001-01-01 → SqlDateTime overflow). Keep the existing DB values.
-            Context.Entry(entity).Property(e => e.CreateDate).IsModified = false;
-            Context.Entry(entity).Property(e => e.CreateUserId).IsModified = false;
-        }
-
-        await Context.SaveChangesAsync();
-
         foreach (var detail in details)
         {
-            detail.CertificateOfOriginId = entity.Id;
+            detail.CertificateOfOriginId = certificateId;
         }
 
         await MergeChildrenAsync(
             details,
-            Context.Set<CertificateOfOriginDetails>().Where(d => d.CertificateOfOriginId == entity.Id),
+            Context.Set<CertificateOfOriginDetails>().Where(d => d.CertificateOfOriginId == certificateId),
             detail => detail.Id);
         await Context.SaveChangesAsync();
 
-        await SaveInvoiceDetails(entity.Id, invoices);
-
-        return entity.Id;
+        await SaveInvoiceDetails(certificateId, invoices);
     }
 
     // Diff-merge the certificate's invoice rows, then each invoice's item rows. Invoices are keyed to the certificate;
@@ -585,77 +561,64 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return affected > 0;
     }
 
-    public async Task<int> SaveExportDocumentAuthenticationRequest(ExportDocumentAuthenticationRequest entity)
+    // The GetById read projection omits State + OrganizationUnitId (29-column interceptor limit), so a round-tripped
+    // DTO carries them as 0. Re-read the stored values so the BL can put them back on the entity before the update —
+    // parity with the legacy full-entity round-trip. (Done as a read rather than an Entry().IsModified = false guard:
+    // the parent is now tracked by the BL's DbContext, which is not necessarily this DAL's Context instance.)
+    public async Task<(int State, int OrganizationUnitId)?> GetExportRequestProjectionColumns(int requestId)
     {
-        // Upsert the parent (Id == 0 → insert, else update via the round-tripped TimeStamp for concurrency), then
-        // DIFF-MERGE its three child collections by surrogate id (developer decision 2026-08-05, revised: reproduce
-        // the legacy Self-Tracking-Entity Save — update round-tripped children in place, insert new ones, delete the
-        // dropped ones). The children are held aside so the parent Add/Update touches only the parent row.
-        var customsItems = entity.CustomsItems;
-        var leadDocuments = entity.LeadDocuments;
-        var manufacturingAreas = entity.ManufacturingAreas;
-        entity.CustomsItems = [];
-        entity.LeadDocuments = [];
-        entity.ManufacturingAreas = [];
+        var row = await ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(r => r.Id == requestId)
+            .Select(r => new { r.State, r.OrganizationUnitId })
+            .FirstOrDefaultAsync();
+        return row is null ? null : (row.State, row.OrganizationUnitId);
+    }
 
-        if (entity.Id == 0)
-        {
-            Context.ExportDocumentAuthenticationRequests.Add(entity);
-        }
-        else
-        {
-            Context.ExportDocumentAuthenticationRequests.Update(entity);
-
-            // The round-tripped DTO does not carry the immutable audit columns, so Update would overwrite them with
-            // defaults (CreateDate = 0001-01-01 → SqlDateTime overflow). Keep the existing DB values.
-            Context.Entry(entity).Property(e => e.CreateDate).IsModified = false;
-            Context.Entry(entity).Property(e => e.CreateUserId).IsModified = false;
-
-            // The read projection (GetById) omits State + OrganizationUnitId (29-column interceptor limit), so the
-            // round-tripped DTO carries them as 0 — without this guard, Update would zero both columns on every save
-            // of an existing record. Preserve the DB values (parity with the legacy full-entity round-trip).
-            Context.Entry(entity).Property(e => e.State).IsModified = false;
-            Context.Entry(entity).Property(e => e.OrganizationUnitId).IsModified = false;
-        }
-
-        await Context.SaveChangesAsync();
-
-        // Bind the incoming children to the (now known) parent id and detach the nav so the merge touches only the
-        // child rows. Ids are preserved (NOT reset) so round-tripped children update in place.
+    // The PARENT row is persisted by the BL through BaseBL.AddEntity/UpdateEntity (ExportDocumentAuthenticationRequest
+    // is an ICloudEntity — audit stamped server-side from RequestMetadata; see C12). This method owns only the three
+    // CHILD collections, which carry no audit columns: bind them to the (now known) parent id and DIFF-MERGE by
+    // surrogate id — update round-tripped children in place, insert new ones, delete the dropped ones (reproducing
+    // the legacy Self-Tracking-Entity Save, developer decision 2026-08-05).
+    public async Task MergeExportDocumentAuthenticationRequestChildren(
+        int requestId,
+        List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
+        List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
+        List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas)
+    {
+        // Detach the parent nav so the merge touches only the child rows. Ids are preserved (NOT reset) so
+        // round-tripped children update in place.
         foreach (var item in customsItems)
         {
-            item.ExportDocumentAuthenticationRequestId = entity.Id;
+            item.ExportDocumentAuthenticationRequestId = requestId;
             item.Request = null;
         }
 
         foreach (var leadDocument in leadDocuments)
         {
-            leadDocument.ExportRequestId = entity.Id;
+            leadDocument.ExportRequestId = requestId;
             leadDocument.Request = null;
         }
 
         foreach (var area in manufacturingAreas)
         {
-            area.ExportAuthenticationRequestId = entity.Id;
+            area.ExportAuthenticationRequestId = requestId;
             area.Request = null;
         }
 
         await MergeChildrenAsync(
             customsItems,
-            Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().Where(c => c.ExportDocumentAuthenticationRequestId == entity.Id),
+            Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().Where(c => c.ExportDocumentAuthenticationRequestId == requestId),
             item => item.Id);
         await MergeChildrenAsync(
             leadDocuments,
-            Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().Where(l => l.ExportRequestId == entity.Id),
+            Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().Where(l => l.ExportRequestId == requestId),
             leadDocument => leadDocument.Id);
         await MergeChildrenAsync(
             manufacturingAreas,
-            Context.Set<ExportAuthenticationRequestManufacturingArea>().Where(m => m.ExportAuthenticationRequestId == entity.Id),
+            Context.Set<ExportAuthenticationRequestManufacturingArea>().Where(m => m.ExportAuthenticationRequestId == requestId),
             area => area.Id);
 
         await Context.SaveChangesAsync();
-
-        return entity.Id;
     }
 
     // Diff-merge a child collection against the DB by surrogate id (reproduces the legacy Self-Tracking-Entity Save):
@@ -912,13 +875,6 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             .Select(r => new { r.DocumentId, r.AuthenticationFileId })
             .FirstOrDefaultAsync();
         return row is null ? null : (row.DocumentId, row.AuthenticationFileId!.Value);
-    }
-
-    public async Task<int> InsertAuthenticationFile(CertificateOfOriginsImportAuthenticationFileDetails file)
-    {
-        Context.CertificateOfOriginsImportAuthenticationFileDetails.Add(file);
-        await Context.SaveChangesAsync();
-        return file.Id;
     }
 
     public async Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId)

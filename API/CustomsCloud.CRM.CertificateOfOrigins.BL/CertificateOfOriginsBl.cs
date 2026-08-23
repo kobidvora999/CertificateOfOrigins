@@ -882,9 +882,21 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             entity.ApproveUserId = userId;
         }
 
-        // Persist (upsert + diff-merge details + diff-merge the invoice/item graph when supplied by the incoming-message
-        // create branch; the SPA save path sends no invoices).
-        entity.Id = await DataLayer.SaveCertificateOfOrigin(entity, details, request.CertificateOfOriginInvoiceDetails, userId);
+        // Persist the certificate through BaseBL (ICloudEntity — the audit columns are stamped server-side from
+        // RequestMetadata by SetEntityFields, and UpdateEntity marks CreateDate/CreateUserId not-modified so a
+        // round-tripped DTO cannot overwrite them; see C12). Then diff-merge the detail rows and the invoice/item
+        // graph when supplied by the incoming-message create branch (the SPA save path sends no invoices).
+        if (entity.Id == 0)
+        {
+            AddEntity(entity);
+        }
+        else
+        {
+            UpdateEntity(entity);
+        }
+
+        await SaveChangesAsync();
+        await DataLayer.MergeCertificateOfOriginChildren(entity.Id, details, request.CertificateOfOriginInvoiceDetails);
 
         // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
         // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is
