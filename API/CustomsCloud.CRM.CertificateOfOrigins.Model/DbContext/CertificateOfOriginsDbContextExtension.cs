@@ -40,18 +40,6 @@ public partial class CertificateOfOriginsDbContext
     // dbo.ExportDocumentAuthenticationRequestSearch — dynamic-SQL search; country/customer names are NULL from the
     // SP (cross-service JOINs removed) and enriched in the BL. A search legitimately returns an empty set, so no
     // row-count assertion is applied.
-    public async Task<IEnumerable<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters = null, CancellationToken cancellationToken = default)
-    {
-        var conn = Database.GetDbConnection();
-        var cmd = new CommandDefinition(
-            commandText: "dbo.ExportDocumentAuthenticationRequestSearch",
-            commandType: CommandType.StoredProcedure,
-            cancellationToken: cancellationToken,
-            parameters: parameters);
-        var result = await conn.QueryAsync<GetExportDocumentAuthenticationRequestSearchResultDto>(cmd);
-        return result;
-    }
-
     // dbo.GetAuthenticationRequestByLeadDocumentID — import-authentication requests for a set of lead-document ids
     // passed as a Shared.IntArray TVP (@LeadDocumentIDs). Country/org-unit names are NULL from the SP (cross-service
     // JOINs removed) and enriched in the BL. A lookup by ids legitimately returns an empty set — no row assertion.

@@ -311,29 +311,9 @@ public class ExportDocumentAuthenticationRequestBl(
 
     public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
-        var parameters = BuildParameterForProcedure(filter);
-        var result = await DataLayer.GetExportDocumentAuthenticationRequestSearch(parameters);
+        var result = await DataLayer.GetExportDocumentAuthenticationRequestSearch(filter);
         await FillExportRequestNames(result);
         return result;
-    }
-
-    private static DynamicParameters BuildParameterForProcedure(ExportDocumentAuthenticationRequestSearchFilterDto filter)
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@CountryID", filter.CountryId, DbType.Int32);
-        parameters.Add("@DocumentTypeID", filter.DocumentTypeId, DbType.Int32);
-        parameters.Add("@RequestID", filter.RequestId, DbType.Int32);
-        parameters.Add("@ForeignCustomsHouseID", filter.ForeignCustomsHouseId, DbType.Int32);
-        parameters.Add("@ExportDeclarationID", filter.ExportDeclarationId, DbType.Int32);
-        parameters.Add("@RequestOpenDateFrom", filter.RequestOpenDateFrom, DbType.DateTime);
-        parameters.Add("@RequestOpenDateTo", filter.RequestOpenDateTo, DbType.DateTime);
-        parameters.Add("@ExportAuthenticationDocumentID", filter.ExportAuthenticationDocumentId, DbType.Int32);
-        parameters.Add("@InvoiceIDNum", filter.InvoiceIdNum, DbType.String);
-        parameters.Add("@MainDocumentTitle", filter.MainDocumentTitle, DbType.String);
-        parameters.Add("@ExporterCustomerID", filter.ExporterCustomerId, DbType.Int32);
-        parameters.Add("@ExportAuthenticationRequestStatusID", filter.ExportAuthenticationRequestStatusId, DbType.Int32);
-        parameters.Add("@CreateUserID", filter.CreateUserId, DbType.Int32);
-        return parameters;
     }
 
     private async Task FillExportRequestNames(List<GetExportDocumentAuthenticationRequestSearchResultDto> results)

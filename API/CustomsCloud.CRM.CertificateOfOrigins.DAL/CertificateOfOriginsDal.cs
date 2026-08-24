@@ -705,12 +705,112 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result.ToList();
     }
 
-    public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(object? parameters)
+    public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
-        // dbo.ExportDocumentAuthenticationRequestSearch — dynamic-SQL search; country/customer names return NULL
-        // from the SP (cross-service JOINs removed) and are enriched in the BL (Country lookup + Customers proxy).
-        var result = await ReadOnlyContext.GetExportDocumentAuthenticationRequestSearch(parameters);
-        return result.ToList();
+        // Faithful LINQ port of dbo.ExportDocumentAuthenticationRequestSearch (a dynamic-filter search — every dynamic
+        // clause was just a conditional AND, no procedural logic). The two INNER JOINs to the enum tables both resolve
+        // a Name AND exclude rows whose type/status is unmatched; the two IS-NOT-NULL guards preserve the row-membership
+        // of the removed cross-service INNER JOINs (CountryID / ExporterCustomerID). ExportDeclarationTitle is the
+        // legacy OUTER APPLY (first lead-document title by id). CountryName / ForeignCustomsHouseName / RequestIssuerName
+        // stay null here and are enriched in the BL (Country lookup + Customers proxy).
+        // The two IS-NOT-NULL guards + all conditional filters are on the request row itself (fluent .Where chain,
+        // matching the rest of the DAL). The two INNER JOINs (for the names) are applied after — they also exclude
+        // rows with an unmatched type/status, exactly like the legacy SP.
+        var requests = ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(ear => ear.CountryId != null && ear.ExporterCustomerId != null);
+
+        if (filter.CountryId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CountryId == filter.CountryId);
+        }
+
+        if (filter.DocumentTypeId.HasValue)
+        {
+            requests = requests.Where(ear => ear.AuthenticationDocumentTypeId == filter.DocumentTypeId);
+        }
+
+        if (filter.RequestId.HasValue)
+        {
+            requests = requests.Where(ear => ear.Id == filter.RequestId);
+        }
+
+        if (filter.ForeignCustomsHouseId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CustomerId == filter.ForeignCustomsHouseId);
+        }
+
+        if (filter.RequestOpenDateFrom.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateDate >= filter.RequestOpenDateFrom);
+        }
+
+        if (filter.RequestOpenDateTo.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateDate <= filter.RequestOpenDateTo);
+        }
+
+        if (filter.ExportAuthenticationDocumentId.HasValue)
+        {
+            requests = requests.Where(ear => ear.DocumentId == filter.ExportAuthenticationDocumentId);
+        }
+
+        var invoiceIdNum = filter.InvoiceIdNum;
+        if (invoiceIdNum != null)
+        {
+            requests = requests.Where(ear => ear.InvoiceNumbers != null && ear.InvoiceNumbers.Contains(invoiceIdNum));
+        }
+
+        var mainDocumentTitle = filter.MainDocumentTitle;
+        if (mainDocumentTitle != null)
+        {
+            requests = requests.Where(ear => ear.MainDocumentTitle != null && ear.MainDocumentTitle.Contains(mainDocumentTitle));
+        }
+
+        if (filter.ExporterCustomerId.HasValue)
+        {
+            requests = requests.Where(ear => ear.ExporterCustomerId == filter.ExporterCustomerId);
+        }
+
+        if (filter.ExportAuthenticationRequestStatusId.HasValue)
+        {
+            requests = requests.Where(ear => ear.StatusId == filter.ExportAuthenticationRequestStatusId);
+        }
+
+        if (filter.CreateUserId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateUserId == filter.CreateUserId);
+        }
+
+        // filter.ExportDeclarationId is a dead SP parameter (declared, never referenced) — intentionally not applied.
+        var result = await requests
+            .Join(
+                ReadOnlyContext.PreferenceDocumentTypes,
+                ear => ear.AuthenticationDocumentTypeId,
+                dt => dt.Id,
+                (ear, dt) => new { ear, DocumentTypeName = dt.Name })
+            .Join(
+                ReadOnlyContext.ExportAuthenticationRequestStatuses,
+                x => x.ear.StatusId,
+                ears => (int?)ears.Id,
+                (x, ears) => new { x.ear, x.DocumentTypeName, RequestStatusName = ears.Name })
+            .OrderBy(x => x.ear.Id)
+            .Select(x => new GetExportDocumentAuthenticationRequestSearchResultDto
+            {
+                RequestId = x.ear.Id,
+                CountryId = x.ear.CountryId,
+                CustomerId = x.ear.CustomerId,
+                DocumentTypeName = x.DocumentTypeName,
+                ExportDeclarationTitle = x.ear.LeadDocuments
+                    .OrderBy(l => l.Id)
+                    .Select(l => l.LeadDocumentTitle)
+                    .FirstOrDefault(),
+                RequestStatusName = x.RequestStatusName,
+                ExporterCustomerId = x.ear.ExporterCustomerId,
+                ExportLeadDocumentId = x.ear.ExportLeadDocumentId,
+            })
+            .ToListAsync();
+
+        return result;
     }
 
     public async Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(object? parameters)
