@@ -10,6 +10,8 @@ using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -27,25 +29,34 @@ public class SaveCertificateOfOriginQrCodeTests
     private const string QueryUrlTemplate = "https://verify.example/{0}";
     private const string UploadedExternalId = "documents/qr/resource-path";
 
+    // TimeStamp is the [Timestamp] concurrency token. An update must round-trip the stored row version or the save
+    // fails the concurrency check (BaseBL maps that to RestConflictException) — so the seeded row and the update
+    // request share this value. A create sends none.
+    private static readonly byte[] SeedRowVersion = [0, 0, 0, 0, 0, 0, 0, 1];
+
     [Test]
     public async Task NewCertificatePublishedInOneSaveLinksQrDocumentToSavedIdNotZero()
     {
-        const int savedId = 4242;
         var request = NewPublishedRequest(id: 0, originalStatusId: 0);
 
-        var captures = await RunSaveAsync(request, savedIdReturnedByDal: savedId);
+        var captures = await RunSaveAsync(request, seedExistingId: null);
+
+        // The id is assigned by the real save (EF identity), not injected by a fake — so read it back from the
+        // certificate the BL re-fetched after saving.
+        var savedId = captures.Returned!.Id;
 
         Assert.Multiple(() =>
         {
             // The bug: the QR document was linked to certificate id 0. The fix links it to the real saved id.
+            Assert.That(savedId, Is.Not.Zero, "the save must assign a real certificate id");
             Assert.That(captures.QrDocumentEntityId, Is.EqualTo(savedId),
                 "the QR document must be linked to the saved certificate id, not 0");
             Assert.That(captures.QrDocumentEntityId, Is.Not.Zero);
 
-            // The id-linked upload only became possible once the save assigned the id — so at the main upsert the entity
-            // id was still 0 (new instance) and the resource path was not yet known.
-            Assert.That(captures.EntityIdAtMainSave, Is.Zero,
-                "the entity id is still 0 during the main upsert of a new certificate");
+            // The id-linked upload only becomes possible after the save, so at the main upsert the resource path was
+            // not yet known. (EntityIdAtMainSave is deliberately NOT asserted to be 0: identity-value timing is
+            // provider-specific — SQL Server assigns it on INSERT, the in-memory provider already at Add — so it
+            // would test the provider, not this ordering fix.)
             Assert.That(captures.QrCodePathAtMainSave, Is.Null.Or.Empty,
                 "QrCodePath is only resolved by the post-save upload, so it must be empty at the main upsert");
 
@@ -72,13 +83,22 @@ public class SaveCertificateOfOriginQrCodeTests
         // linked to the existing id and QrCodePath persisted (the fix keeps the update path working too).
         var request = NewPublishedRequest(id: existingId, originalStatusId: (int)ECertificateOfOriginStatus.Published);
 
-        var captures = await RunSaveAsync(request, savedIdReturnedByDal: existingId);
+        var captures = await RunSaveAsync(request, seedExistingId: existingId);
 
         Assert.Multiple(() =>
         {
             Assert.That(captures.QrDocumentEntityId, Is.EqualTo(existingId));
             Assert.That(captures.QrPathUpdateId, Is.EqualTo(existingId));
             Assert.That(captures.QrPathUpdateValue, Is.EqualTo(UploadedExternalId));
+
+            // CertificateOfOrigin is an ICloudEntity, so BaseBL.UpdateEntity marks CreateDate/CreateUserId
+            // not-modified: the round-tripped DTO does not carry them, and without that guard the update would zero
+            // them (CreateDate → 0001-01-01, a SqlDateTime overflow in production). This replaced the hand-rolled
+            // Entry(...).IsModified = false guards the DAL used to apply.
+            Assert.That(captures.PersistedCreateDate, Is.EqualTo(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Unspecified)),
+                "CreateDate must survive the update untouched");
+            Assert.That(captures.PersistedCreateUserId, Is.EqualTo(99),
+                "CreateUserId must survive the update untouched");
         });
     }
 
@@ -96,13 +116,43 @@ public class SaveCertificateOfOriginQrCodeTests
             OriginalFeedbackRemark = "remark", // unchanged → no feedback-message side effect
             QrCodePath = null,                 // empty → QR generation is required on publish
             QrImage = null,
+            TimeStamp = id == 0 ? null : SeedRowVersion, // an update round-trips the stored row version
             CertificateOfOriginDetails = [],   // no detail rows → no per-field enrichment proxy calls
         };
     }
 
-    private static async Task<Captures> RunSaveAsync(SaveCertificateOfOriginRequestDto request, int savedIdReturnedByDal)
+    // seedExistingId: null → a brand-new certificate (the save assigns the id). Non-null → seed that row first so the
+    // update path has something to update.
+    private static async Task<Captures> RunSaveAsync(SaveCertificateOfOriginRequestDto request, int? seedExistingId)
     {
         var captures = new Captures();
+
+        // A REAL DbContext (in-memory). The certificate upsert now runs through BaseBL.AddEntity/UpdateEntity +
+        // SaveChangesAsync, and BaseBL routes both through ((IBaseDal)DataLayer).DbContext / .SaveChangesAsync — so the
+        // fake DAL below hands it this context. That makes the id assignment real: for a new certificate the id is
+        // generated by the save, exactly as in production, instead of being injected by the fake.
+        var dbOptions = new DbContextOptionsBuilder<CertificateOfOriginsDbContext>()
+            .UseInMemoryDatabase($"coo-qr-{Guid.NewGuid()}")
+            .AddInterceptors(new UpsertSnapshotInterceptor(captures))
+            .Options;
+        using var dbContext = new CertificateOfOriginsDbContext(dbOptions);
+        if (seedExistingId is int existingId)
+        {
+            // The update path needs the row to exist. Seeded with audit values the save must PRESERVE — UpdateEntity
+            // marks CreateDate/CreateUserId not-modified.
+            dbContext.CertificateOfOrigins.Add(new CertificateOfOrigin
+            {
+                Id = existingId,
+                CertificateNumber = request.CertificateNumber,
+                Title = request.CertificateNumber,
+                TimeStamp = SeedRowVersion,
+                CreateDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
+                CreateUserId = 99,
+            });
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+            captures.MainSaveCaptured = false; // the seed save must not consume the snapshot
+        }
 
         // The QR document builder: record the entity id the certificate is linked to, and return itself for chaining.
         var documentBuilder = default(IDocumentBuilder);
@@ -136,15 +186,27 @@ public class SaveCertificateOfOriginQrCodeTests
                 case "GetLatestCertificateByNumber":
                     return Task.FromResult<CertificateOfOrigin?>(null); // no previous version to supersede
 
-                case "SaveCertificateOfOrigin":
-                    var entity = (CertificateOfOrigin)args![0]!;
-                    // Snapshot the persisted-with-the-upsert state at the moment of the save (before the id is assigned
-                    // from the return value and before the post-save upload stamps QrCodePath).
-                    captures.EntityIdAtMainSave = entity.Id;
-                    captures.QrImageAtMainSave = entity.QrImage;
-                    captures.GuidAtMainSave = entity.Guid;
-                    captures.QrCodePathAtMainSave = entity.QrCodePath;
-                    return Task.FromResult(savedIdReturnedByDal);
+                // The parent upsert is no longer a DAL call. BaseBL.AddEntity/UpdateEntity route through these IBaseDal
+                // members — Add/Update to track the entity, DbContext for the CreateDate/CreateUserId not-modified
+                // guards, SaveChangesAsync to commit — so they are wired to the real in-memory context. Add/Update
+                // return EntityEntry<ICloudEntity>, which BaseBL discards, so returning null here is safe.
+                case "Add":
+                    dbContext.Add(args![0]!);
+                    return null;
+
+                case "Update":
+                    dbContext.Update(args![0]!);
+                    return null;
+
+                case "get_DbContext":
+                    return dbContext;
+
+                case "SaveChangesAsync":
+                    return dbContext.SaveChangesAsync();
+
+                // The DAL now only diff-merges the child rows (no audit columns).
+                case "MergeCertificateOfOriginChildren":
+                    return Task.CompletedTask;
 
                 case "UpdateCertificateQrCodePath":
                     captures.QrPathUpdateId = (int)args![0]!;
@@ -214,6 +276,14 @@ public class SaveCertificateOfOriginQrCodeTests
             parametersUtil);
 
         captures.Returned = await bl.SaveCertificateOfOrigin(request);
+
+        // Read the persisted row back so the audit columns can be asserted (they are stamped by the infrastructure,
+        // not by this repo's code, since the entity is an ICloudEntity).
+        var persisted = await dbContext.CertificateOfOrigins.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == captures.Returned!.Id);
+        captures.PersistedCreateDate = persisted?.CreateDate;
+        captures.PersistedCreateUserId = persisted?.CreateUserId;
+
         return captures;
     }
 
@@ -222,11 +292,41 @@ public class SaveCertificateOfOriginQrCodeTests
         public int QrDocumentEntityId = int.MinValue;
         public int QrPathUpdateId = int.MinValue;
         public string? QrPathUpdateValue;
+        public bool MainSaveCaptured;
+        public DateTime? PersistedCreateDate;
+        public int? PersistedCreateUserId;
         public int EntityIdAtMainSave = int.MinValue;
         public byte[]? QrImageAtMainSave;
         public Guid? GuidAtMainSave;
         public string? QrCodePathAtMainSave = "<not-captured>";
         public CertificateOfOriginDto? Returned;
+    }
+
+    // Snapshots the certificate exactly as it is being written by the main upsert — the seam the fake DAL used to
+    // provide. At SavingChanges the identity id is still unassigned for a new row, which is what lets the test prove
+    // the QR document is linked only AFTER the save.
+    private sealed class UpsertSnapshotInterceptor(Captures captures) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!captures.MainSaveCaptured)
+            {
+                var entry = eventData.Context?.ChangeTracker.Entries<CertificateOfOrigin>().FirstOrDefault();
+                if (entry is not null)
+                {
+                    captures.MainSaveCaptured = true;
+                    captures.EntityIdAtMainSave = entry.Entity.Id;
+                    captures.QrImageAtMainSave = entry.Entity.QrImage;
+                    captures.GuidAtMainSave = entry.Entity.Guid;
+                    captures.QrCodePathAtMainSave = entry.Entity.QrCodePath;
+                }
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     private sealed class FakeDocumentResponse : IDocumentResponse

@@ -14,4 +14,79 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // ---------------------------------------------------------------------------------------------------
+      // Assertions for the whole collection.
+      //
+      // They live here rather than on the individual requests because the v3 `http-request` model rejects a
+      // request-level `scripts:` block ("Failed to load V3 collection: Invalid input for model") — only the
+      // collection carries scripts.
+      // ---------------------------------------------------------------------------------------------------
+
+      // Invariant 1 — the one that matters most. A 5xx is always a defect: the service either handles the input
+      // or rejects it with a 4xx. Before this existed the collection asserted NOTHING, so a run in which 31 of
+      // 38 requests returned 500 still reported "passed".
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, `HTTP ${pm.response.code} from ${pm.request.url.getPath()}`).to.be.below(500);
+      });
+
+      // Invariant 2 — a hung dependency must not pass as slow-but-green.
+      pm.test('responds within 10s', function () {
+          pm.expect(pm.response.responseTime).to.be.below(10000);
+      });
+
+      // Invariant 3 — whatever body we return must be valid JSON (204/205 carry none by definition).
+      pm.test('body is valid JSON when present', function () {
+          if ([204, 205].includes(pm.response.code) || !pm.response.text()) { return; }
+          pm.expect(() => pm.response.json(), 'body did not parse as JSON').to.not.throw();
+      });
+
+      // Per-request expected status, taken from the ENDPOINT CONTRACT rather than from whatever the service
+      // happened to return — asserting the observed value would freeze current behaviour, bugs included.
+      //   404 = a by-id/route lookup whose fixture id deliberately does not exist, so the repo's not-found
+      //         contract (BL throws RestNotFoundException -> 404, see C1) must hold.
+      //   200 = everything else: searches and filters (an empty result is still 200), checks, and writes.
+      var EXPECTED = {
+          'CertificateOfOriginById': 404,
+          'CertificateOfOriginID': 404,
+          'AuthenticationRequestByID': 404,
+          'AuthenticationRequestFileByID': 404,
+          'SaveImportAuthenticationRequest': 404,
+          'SaveAuthenticationRequestFile': 404,
+      };
+
+      // Requests whose current response is NOT yet confirmed correct. They keep the three invariants above but
+      // get no status assertion — blessing an unverified status would lock in a possible bug.
+      // TODO: confirm each with the developer, then move it into EXPECTED.
+      //   Convert                              -> 404 (fixture id absent, or wrong route?)
+      //   CertificateOfOriginByExternalIdExist -> 204 from an endpoint declared to return bool (null result?)
+      //   CertificateOfOriginRequest (GetRequestStatus) -> 400 (payload rejected; intended?)
+      //   CertificateOfOriginRequest (Cancellation)     -> 400 (same)
+      var UNVERIFIED = [
+          'Convert',
+          'CertificateOfOriginByExternalIdExist',
+          'CertificateOfOriginRequest (GetRequestStatus)',
+          'CertificateOfOriginRequest (Cancellation)',
+      ];
+
+      var name = pm.info.requestName;
+      if (UNVERIFIED.indexOf(name) === -1) {
+          var expected = Object.prototype.hasOwnProperty.call(EXPECTED, name) ? EXPECTED[name] : 200;
+          pm.test(`${name}: status is ${expected}`, function () {
+              pm.response.to.have.status(expected);
+          });
+      }
     language: text/javascript

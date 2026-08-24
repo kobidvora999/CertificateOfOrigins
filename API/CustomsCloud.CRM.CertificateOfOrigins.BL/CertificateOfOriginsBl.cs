@@ -882,9 +882,23 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             entity.ApproveUserId = userId;
         }
 
-        // Persist (upsert + diff-merge details + diff-merge the invoice/item graph when supplied by the incoming-message
-        // create branch; the SPA save path sends no invoices).
-        entity.Id = await DataLayer.SaveCertificateOfOrigin(entity, details, request.CertificateOfOriginInvoiceDetails, userId);
+        // Persist the certificate through BaseBL (ICloudEntity — the audit columns are stamped server-side from
+        // RequestMetadata by SetEntityFields, and UpdateEntity marks CreateDate/CreateUserId not-modified so a
+        // round-tripped DTO cannot overwrite them; see C12). Then diff-merge the detail rows and the invoice/item
+        // graph when supplied by the incoming-message create branch (the SPA save path sends no invoices).
+        if (entity.Id == 0)
+        {
+            AddEntity(entity);
+            AuditUserStamp.ForInsert(entity, RequestMetadata.UserId);
+        }
+        else
+        {
+            UpdateEntity(entity);
+            AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
+        }
+
+        await SaveChangesAsync();
+        await DataLayer.MergeCertificateOfOriginChildren(entity.Id, details, request.CertificateOfOriginInvoiceDetails);
 
         // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
         // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is
@@ -1204,10 +1218,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
     }
 
-    // Legacy RaiseCertificateOfOriginEvents: the status-driven event for the new status, plus the "new certificate
-    // created" secondary event on the Received / DeclarationMatch statuses. The legacy DeclarationMismatch "assessor
-    // decision" is a no-op (empty in the legacy), so nothing is raised there.
-    private async Task RaiseStatusEvents(CertificateOfOrigin entity, IEventUtil eventUtil)
+    // Legacy RaiseCertificateOfOriginEvents: the status-driven event for the new status. The legacy also raised a
+    // "new certificate created" secondary event on Received / DeclarationMatch, but only when the export-declaration
+    // integration was off — that branch is gone (see the note at the end of this method). The legacy
+    // DeclarationMismatch "assessor decision" is a no-op (empty in the legacy), so nothing is raised there.
+    private static async Task RaiseStatusEvents(CertificateOfOrigin entity, IEventUtil eventUtil)
     {
         int? specificEvent = entity.CertificateOfOriginStatusId switch
         {
@@ -1229,32 +1244,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo);
         }
 
-        await RaiseNewCertificateOfOriginCreatedEvent(entity, eventUtil);
-    }
-
-    // Legacy RaiseNewCertificateOfOriginCreatedEvent — on Received / DeclarationMatch, open the "new certificate check"
-    // event (RaiseTaskNewCertificateOfOriginCheck → assessor as preferred user), skipped for the transient reasons and
-    // only when the export-declaration integration is off.
-    private async Task RaiseNewCertificateOfOriginCreatedEvent(CertificateOfOrigin entity, IEventUtil eventUtil)
-    {
-        if (entity.CertificateOfOriginStatusId is not ((int)ECertificateOfOriginStatus.Received or (int)ECertificateOfOriginStatus.DeclarationMatch))
-        {
-            return;
-        }
-
-        if (entity.RequestReasonCode is (int)ERequestReason.GetRequestStatus or (int)ERequestReason.CertificateCancellation
-            or (int)ERequestReason.EmptyCertificate or (int)ERequestReason.Draft)
-        {
-            return;
-        }
-
-        var isExportDeclarationActive = await parametersUtil.Get<bool>("IsExportDeclarationActive");
-        if (isExportDeclarationActive)
-        {
-            return;
-        }
-
-        await RaiseCertificatePreferredAssessorEvent(entity, eventUtil, (int)EEventType.CertificateOfOriginNewCertificateOfOriginCreated);
+        // Legacy RaiseNewCertificateOfOriginCreatedEvent removed (developer decision 2026-08-23). It raised the
+        // CertificateOfOriginNewCertificateOfOriginCreated event (assessor as preferred user) ONLY when the
+        // export-declaration integration was off — i.e. when the "IsExportDeclarationActive" parameter was false.
+        // That parameter is obsolete and is now always true, so the guard always returned and the event could never
+        // be raised. The dead branch and its parameter read are dropped rather than seeding a flag that only ever
+        // has one value. RaiseCertificatePreferredAssessorEvent itself is still used by the declaration-match flow.
     }
 
     // Legacy SendRequestFeedback — the certificate request-feedback EAI message to the creating customer.

@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 
 [Table("CertificateOfOrigins_CertificateOfOrigin", Schema = "CRM")]
-public class CertificateOfOrigin
+public partial class CertificateOfOrigin
 {
     [Key]
     [Column("ID")]

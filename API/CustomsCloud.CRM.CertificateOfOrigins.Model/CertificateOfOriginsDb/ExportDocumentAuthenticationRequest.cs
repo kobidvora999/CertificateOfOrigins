@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
 
 [Table("CertificateOfOrigins_ExportDocumentAuthenticationRequest", Schema = "CRM")]
-public class ExportDocumentAuthenticationRequest
+public partial class ExportDocumentAuthenticationRequest
 {
     [Key]
     [Column("ID")]

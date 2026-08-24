@@ -24,13 +24,13 @@ body:
         "originCountry": "IL",
         "destinationCountry": "DE",
         "customsHouse": "SITE01",
-        "dateOfDeclaration": "2026-08-12T00:00:00",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
         "isDeclaredByManufacturer": true,
         "isDeclaredByExporter": true,
         "invoiceDetails": [
           {
             "invoiceNum": "INV1",
-            "invoiceDate": "2026-08-01T00:00:00",
+            "invoiceDate": "{{tenDaysAgo}}",
             "descriptionOfInvoice": "goods",
             "itemDetails": [
               {

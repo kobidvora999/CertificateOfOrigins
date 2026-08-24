@@ -33,8 +33,6 @@ CONSTRAINT [UQ_CertificateOfOrigins_c_OriginCriterion_Name] UNIQUE NONCLUSTERED
 ALTER TABLE [CRM].[CertificateOfOrigins_c_OriginCriterion] ADD  CONSTRAINT [DF_CertificateOfOrigins_c_OriginCriterion_State]  DEFAULT ((1)) FOR [State]
 
  
-ALTER TABLE [CRM].[CertificateOfOrigins_c_OriginCriterion]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_c_OriginCriterion_CertificateOfOrigins_enum_CertificateOfOriginTypeCode] FOREIGN KEY([CertificateOfOriginTypeCodeID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateOfOriginTypeCode] ([ID])
 
  
 --ALTER TABLE [CRM].[CertificateOfOrigins_c_OriginCriterion] CHECK CONSTRAINT [FK_CertificateOfOrigins_c_OriginCriterion_CertificateOfOrigins_enum_CertificateOfOriginTypeCode]
@@ -166,15 +164,11 @@ CONSTRAINT [PK_CertificateOfOrigins_CertificateOfOriginDetails] PRIMARY KEY CLUS
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
-REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_CertificateOfOrigin]
 
 --ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_enum_CertificateDetailsTypeCode] FOREIGN KEY([CertificateDetailsTypeCodeID])
 --REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateDetailsTypeCode] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_enum_CertificateDetailsTypeCode]
 END
 
 ----- CertificateOfOrigins_CertificateOfOriginInvoiceDetail ----
@@ -205,10 +199,7 @@ ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] ADD  C
 
 ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] ADD  CONSTRAINT [DF_CertificateOfOrigins_CertificateOfOriginInvoiceDetail_IsToPrint]  DEFAULT ((0)) FOR [IsToPrint]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginInvoiceDetail_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
-REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginInvoiceDetail_CertificateOfOrigins_CertificateOfOrigin]
 END
 
 ----- CertificateOfOrigins_CertificateOfOriginItemDetail ----
@@ -241,15 +232,9 @@ CONSTRAINT [PK_CertificateOfOrigins_CertificateOfOriginItemDetail] PRIMARY KEY C
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_c_OriginCriterion] FOREIGN KEY([OriginCriterionID])
-REFERENCES [CRM].[CertificateOfOrigins_c_OriginCriterion] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_c_OriginCriterion]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_CertificateOfOriginInvoiceDetail] FOREIGN KEY([CertificateOfOriginInvoiceDetailID])
-REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_CertificateOfOriginInvoiceDetail]
 END
 
 ----- CertificateOfOrigins_CertificateOfOriginVsDeclarationError ----
@@ -274,10 +259,7 @@ CONSTRAINT [PK_CertificateOfOrigins_CertificateOfOriginVsDeclarationError] PRIMA
 
 ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginVsDeclarationError] ADD  DEFAULT ((1)) FOR [State]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginVsDeclarationError]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginVsDeclarationError_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
-REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginVsDeclarationError] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginVsDeclarationError_CertificateOfOrigins_CertificateOfOrigin]
 END
 
 
@@ -348,20 +330,11 @@ CONSTRAINT [UQ_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigin
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateDetailsTypeCode] FOREIGN KEY([CertificateDetailsTypeCodeID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateDetailsTypeCode] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateDetailsTypeCode]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateOfOriginTypeCode] FOREIGN KEY([CertificateOfOriginTypeCodeID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateOfOriginTypeCode] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateOfOriginTypeCode]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_ConstraintTypeEnum] FOREIGN KEY([ConstraintTypeEnumID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_ConstraintTypeEnum] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_ConstraintTypeEnum]
 END
 
 ----- CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea ----
@@ -384,10 +357,7 @@ CONSTRAINT [PK_CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingA
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) 
 ) 
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea_CertificateOfOrigins_ExportDocumentAuthenticationRequest] FOREIGN KEY([ExportAuthenticationRequestID])
-REFERENCES [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea_CertificateOfOrigins_ExportDocumentAuthenticationRequest]
 END
 
 ----- CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument ----
@@ -410,10 +380,7 @@ CONSTRAINT [PK_CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDo
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) 
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument_ExportDocumentAuthenticationRequest] FOREIGN KEY([ExportRequestID])
-REFERENCES [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument_ExportDocumentAuthenticationRequest]
 END
 
 ----- CertificateOfOrigins_enum_AuthenticationFileStatus ----
@@ -1056,20 +1023,11 @@ CONSTRAINT [PK_CertificateOfOrigins_ExportDocumentAuthenticationRequest] PRIMARY
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_DeliveryMethod] FOREIGN KEY([DeliveryMethodID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_DeliveryMethod] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_DeliveryMethod]
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType] FOREIGN KEY([AuthenticationDocumentTypeID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_PrefernceDocumentType] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_enum_ExportAuthenticationRequestStatus] FOREIGN KEY([StatusID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_ExportAuthenticationRequestStatus] ([ID])
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_enum_ExportAuthenticationRequestStatus]
 END
 
 ----- CertificateOfOrigins_ImportAuthenticationFileDetails ----
@@ -1110,25 +1068,13 @@ ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] ADD  CO
  
 ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] ADD  CONSTRAINT [DF_CertificateOfOrigins_ImportAuthenticationFileDetails_CreateDate]  DEFAULT (getdate()) FOR [CreateDate]
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_AuthenticationFileStatus] FOREIGN KEY([AuthenticationFileStatusID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_AuthenticationFileStatus] ([ID])
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_AuthenticationFileStatus]
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_DeliveryMethod] FOREIGN KEY([DeliveryMethodID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_DeliveryMethod] ([ID])
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_DeliveryMethod]
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ImporterContactingReason] FOREIGN KEY([ImporterContactingReasonID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_ImporterContactingReason] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ImporterContactingReason]
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ReminderMethod] FOREIGN KEY([ReminderMethodID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_ReminderMethod] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ReminderMethod]
 END
 
 ----- CertificateOfOrigins_ImportAuthenticationRequest ----
@@ -1187,25 +1133,13 @@ ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] ADD  CONSTR
 
 ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] ADD  CONSTRAINT [DF_CertificateOfOrigins_ImportAuthenticationRequest_IsOldIndication]  DEFAULT ((0)) FOR [IsOldIndication]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_authenticationFile] FOREIGN KEY([AuthenticationFileID])
-REFERENCES [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_authenticationFile]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Circumstances] FOREIGN KEY([RequestCircumstancesID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_Circumstances] ([ID])
  
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Circumstances]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Decision] FOREIGN KEY([DecisionID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_Decision] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Decision]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType] FOREIGN KEY([PreferenceDocumentTypeID])
-REFERENCES [CRM].[CertificateOfOrigins_enum_PrefernceDocumentType] ([ID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType]
 END
 
 
@@ -1228,9 +1162,83 @@ CONSTRAINT [PK_CertificateOfOrigins_ItemDetails] PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ItemDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ItemDetails_Id_CertificateOfOrigins_ImportAuthenticationRequest] FOREIGN KEY([ImportAuthenticationRequestID])
-REFERENCES [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] ([DocumentID])
 
-ALTER TABLE [CRM].[CertificateOfOrigins_ItemDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ItemDetails_Id_CertificateOfOrigins_ImportAuthenticationRequest]
 END
 
+
+-- ---------------------------------------------------------------------------------------------
+-- FOREIGN KEY constraints, moved here from inline so they run AFTER every CREATE TABLE above.
+-- This file contains no GO separators, so it executes as ONE batch: an FK that referenced a table
+-- created further down aborted the whole script and left the database with 2 of 29 tables.
+-- Order within this block is unchanged.
+-- ---------------------------------------------------------------------------------------------
+ALTER TABLE [CRM].[CertificateOfOrigins_c_OriginCriterion]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_c_OriginCriterion_CertificateOfOrigins_enum_CertificateOfOriginTypeCode] FOREIGN KEY([CertificateOfOriginTypeCodeID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateOfOriginTypeCode] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
+REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_CertificateOfOrigin]
+-- orphan: the matching "WITH CHECK ADD CONSTRAINT" for this FK is commented out above, so enabling it fails with Msg 4917.
+--ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginDetails_CertificateOfOrigins_enum_CertificateDetailsTypeCode]
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginInvoiceDetail_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
+REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginInvoiceDetail_CertificateOfOrigins_CertificateOfOrigin]
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_c_OriginCriterion] FOREIGN KEY([OriginCriterionID])
+REFERENCES [CRM].[CertificateOfOrigins_c_OriginCriterion] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_c_OriginCriterion]
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_CertificateOfOriginInvoiceDetail] FOREIGN KEY([CertificateOfOriginInvoiceDetailID])
+REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOriginInvoiceDetail] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginItemDetail] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginItemDetail_CertificateOfOrigins_CertificateOfOriginInvoiceDetail]
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginVsDeclarationError]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginVsDeclarationError_CertificateOfOrigins_CertificateOfOrigin] FOREIGN KEY([CertificateOfOriginID])
+REFERENCES [CRM].[CertificateOfOrigins_CertificateOfOrigin] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_CertificateOfOriginVsDeclarationError] CHECK CONSTRAINT [FK_CertificateOfOrigins_CertificateOfOriginVsDeclarationError_CertificateOfOrigins_CertificateOfOrigin]
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateDetailsTypeCode] FOREIGN KEY([CertificateDetailsTypeCodeID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateDetailsTypeCode] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateDetailsTypeCode]
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateOfOriginTypeCode] FOREIGN KEY([CertificateOfOriginTypeCodeID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_CertificateOfOriginTypeCode] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_CertificateOfOriginTypeCode]
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_ConstraintTypeEnum] FOREIGN KEY([ConstraintTypeEnumID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_ConstraintTypeEnum] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_DetailsPerCertificate] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_DetailsPerCertificate_CertificateOfOrigins_enum_ConstraintTypeEnum]
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea_CertificateOfOrigins_ExportDocumentAuthenticationRequest] FOREIGN KEY([ExportAuthenticationRequestID])
+REFERENCES [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_ExportAuthenticationRequestManufacturingArea_CertificateOfOrigins_ExportDocumentAuthenticationRequest]
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument_ExportDocumentAuthenticationRequest] FOREIGN KEY([ExportRequestID])
+REFERENCES [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument] CHECK CONSTRAINT [FK_CertificateOfOrigins_cl_ExportDocumentAuthenticationRequestLeadDocument_ExportDocumentAuthenticationRequest]
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_DeliveryMethod] FOREIGN KEY([DeliveryMethodID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_DeliveryMethod] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_DeliveryMethod]
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType] FOREIGN KEY([AuthenticationDocumentTypeID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_PrefernceDocumentType] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType]
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_enum_ExportAuthenticationRequestStatus] FOREIGN KEY([StatusID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_ExportAuthenticationRequestStatus] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ExportDocumentAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ExportDocumentAuthenticationRequest_enum_ExportAuthenticationRequestStatus]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_AuthenticationFileStatus] FOREIGN KEY([AuthenticationFileStatusID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_AuthenticationFileStatus] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_AuthenticationFileStatus]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_DeliveryMethod] FOREIGN KEY([DeliveryMethodID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_DeliveryMethod] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_DeliveryMethod]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ImporterContactingReason] FOREIGN KEY([ImporterContactingReasonID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_ImporterContactingReason] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ImporterContactingReason]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ReminderMethod] FOREIGN KEY([ReminderMethodID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_ReminderMethod] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationFileDetails_CertificateOfOrigins_enum_ReminderMethod]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_authenticationFile] FOREIGN KEY([AuthenticationFileID])
+REFERENCES [CRM].[CertificateOfOrigins_ImportAuthenticationFileDetails] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_authenticationFile]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Circumstances] FOREIGN KEY([RequestCircumstancesID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_Circumstances] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Circumstances]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Decision] FOREIGN KEY([DecisionID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_Decision] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_Decision]
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType] FOREIGN KEY([PreferenceDocumentTypeID])
+REFERENCES [CRM].[CertificateOfOrigins_enum_PrefernceDocumentType] ([ID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] CHECK CONSTRAINT [FK_CertificateOfOrigins_ImportAuthenticationRequest_CertificateOfOrigins_enum_PrefernceDocumentType]
+ALTER TABLE [CRM].[CertificateOfOrigins_ItemDetails]  WITH CHECK ADD  CONSTRAINT [FK_CertificateOfOrigins_ItemDetails_Id_CertificateOfOrigins_ImportAuthenticationRequest] FOREIGN KEY([ImportAuthenticationRequestID])
+REFERENCES [CRM].[CertificateOfOrigins_ImportAuthenticationRequest] ([DocumentID])
+ALTER TABLE [CRM].[CertificateOfOrigins_ItemDetails] CHECK CONSTRAINT [FK_CertificateOfOrigins_ItemDetails_Id_CertificateOfOrigins_ImportAuthenticationRequest]

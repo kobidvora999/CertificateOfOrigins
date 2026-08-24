@@ -1,4 +1,6 @@
-USE [CertificateOfOrigins];
+-- USE removed: DbUp already connects to the target database. A hardcoded USE redirected these statements
+-- to a database literally named CertificateOfOrigins, so on any other target (or a from-zero replay) the
+-- objects/parameters landed in the wrong database while the script still reported success.
 GO
 
 -- GetPC_MSG2280_2281 create branch: the certificate-number generator (legacy

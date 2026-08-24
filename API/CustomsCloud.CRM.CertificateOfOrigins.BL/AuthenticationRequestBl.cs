@@ -188,7 +188,11 @@ public class AuthenticationRequestBl(
         {
             Id = file.Id,
             State = file.State,
-            CreateDate = file.CreateDate,
+
+            // The entity maps CreateDate as DateTime (ICloudEntity); the DTO exposes DateTimeOffset. Build it with a
+            // ZERO offset to match what the DbContext DateTimeOffset value converter produced before C12 — an implicit
+            // DateTime→DateTimeOffset conversion would stamp the LOCAL offset and shift the instant on the wire.
+            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
             AuthenticationFileStatusId = file.AuthenticationFileStatusId,
             Notes = file.Notes,
             PostalAdress = file.PostalAdress,
@@ -357,7 +361,6 @@ public class AuthenticationRequestBl(
 
         var first = importAuthenticationRequests[0];
         var userId = RequestMetadata.UserId ?? 0;
-        var now = DateTimeOffset.Now;
 
         // Build the new file from the first request (trust-client). "gg"/"ss" are the legacy placeholder literals,
         // preserved as-is (developer-confirmed, not TODOs).
@@ -372,10 +375,6 @@ public class AuthenticationRequestBl(
             EmailAdress = first.ResponseNameEmail,
             ReminderMethodId = 1,
             UserNameIssuingLetter = "ss",
-            CreateDate = now,
-            UpdateDate = now,
-            CreateUserId = userId,
-            UpdateUserId = userId,
         };
 
         // Per-request event: NewDecisionBeforeAssociation (closes each request's SetDecisionBeforeAssociation task).
@@ -397,8 +396,12 @@ public class AuthenticationRequestBl(
         // OrganizationUnitId is a transient (non-column) field on the legacy entity — used for the file event only.
         var organizationUnitId = first.OrganizationUnitIdNum ?? 0;
 
-        // INSERT the file, then link the requests to it.
-        var fileId = await DataLayer.InsertAuthenticationFile(file);
+        // INSERT the file through BaseBL (ICloudEntity — CreateDate/CreateUserId/UpdateDate/UpdateUserId are stamped
+        // server-side from RequestMetadata by SetEntityFields; see C12), then link the requests to it.
+        AddEntity(file);
+        AuditUserStamp.ForInsert(file, RequestMetadata.UserId);
+        await SaveChangesAsync();
+        var fileId = file.Id;
         await DataLayer.LinkRequestsToAuthenticationFile(documentIds, fileId);
 
         // Final event: NewAuthenticationRequestFile (opens the HandleAuthenticationRequestFile task).
@@ -422,7 +425,9 @@ public class AuthenticationRequestBl(
             DeliveryMethodId = file.DeliveryMethodId,
             ReminderMethodId = file.ReminderMethodId,
             EmailAdress = file.EmailAdress,
-            CreateDate = file.CreateDate,
+
+            // Zero offset — see the note at CreateDate in MapToFileResultDto above (ICloudEntity DateTime → DTO DateTimeOffset).
+            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
         };
     }
 
