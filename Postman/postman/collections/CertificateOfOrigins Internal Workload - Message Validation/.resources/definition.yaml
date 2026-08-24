@@ -1,0 +1,88 @@
+$kind: collection
+id: certificateoforigins-message-validation-v1
+name: CertificateOfOrigins Message Validation
+description: >-
+  Body-variant scenarios for the incoming-message field/cross-field validation engine
+  (GetPC_MSG2280_2281). Every request targets a specific validator branch in
+  CertificateOfOriginsBl.MessageCrossField.cs and asserts the in-band exceptionType it must raise,
+  so the assertion proves the BRANCH ran - not merely that the endpoint answered.
+  Certificate type 1 (EURMED) is used deliberately: it is the only type whose cl_DetailsPerCertificate
+  catalogue carries IsCumulation (field 19), and it has the richest catalogue (30 fields vs 19 for MERCOSUR).
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Invariants (same contract as the API collection).
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      // Branch proof: each scenario declares, via the request name, which in-band exceptionType the
+      // validator must raise (or must NOT raise). The message engine answers 200 with an `exceptions`
+      // array, so the status alone proves nothing about which validator ran.
+      var EXPECT_CODE = {
+          'CumulationBothCountryAndGroup': 5040,  // CheckCumulationCountry -> CountryAndCountryGroup
+          'CumulationNeither':             5003,  // CheckCumulationCountry -> CumulationCountryRequired
+      };
+      var MUST_NOT = {
+          'CumulationCountryOnly': [5003, 5040],  // exactly one supplied -> neither error may appear
+      };
+
+      // Each scenario folder creates its OWN certificate and captures the id into its OWN variable, keyed off the
+      // request NAME. (An earlier version keyed off pm.info.requestPath, which is not a Postman API — the capture
+      // silently no-oped, the follow-ups sent the literal "{{certIdUpdate}}" as a certificate id, and the run still
+      // went green. It only surfaced when a later parallel run hit the 5-minute ILockUtil lease left on that literal
+      // key: setup 200, follow-up 400 "The certificate is locked by another request".)
+      // The lock is keyed on AgentRequest.CertificateId (CertificateOfOriginsBl.cs:86) and only taken when that id is
+      // non-empty, which is why the reason-2 setup never contends but every follow-up does.
+      var SETUP_VAR = {
+          '00-setup-Update':       'certIdUpdate',
+          '00-setup-Replacement':  'certIdReplace',
+          '00-setup-CancelWithId': 'certIdCancelA',
+          '00-setup-CancelNoId':   'certIdCancelB',
+      };
+      if (SETUP_VAR[pm.info.requestName]) {
+          var made = (pm.response.json().feedback || {}).certificateId;
+          pm.test(pm.info.requestName + ': created a certificate to chain from', function () {
+              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+          });
+          if (made) { pm.collectionVariables.set(SETUP_VAR[pm.info.requestName], made); }
+      }
+
+      var name = pm.info.requestName;
+      var codes = (pm.response.json().exceptions || []).map(function (e) { return e.exceptionType; });
+
+      if (EXPECT_CODE[name] !== undefined) {
+          pm.test(name + ': raises exceptionType ' + EXPECT_CODE[name], function () {
+              pm.expect(codes).to.include(EXPECT_CODE[name]);
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': raises no cumulation error', function () {
+              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(c); });
+          });
+      }
+    language: text/javascript
