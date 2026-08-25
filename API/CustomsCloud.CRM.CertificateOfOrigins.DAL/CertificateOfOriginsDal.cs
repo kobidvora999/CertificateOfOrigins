@@ -709,15 +709,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // Faithful LINQ port of dbo.ExportDocumentAuthenticationRequestSearch (a dynamic-filter search — every dynamic
         // clause was just a conditional AND, no procedural logic). The two INNER JOINs to the enum tables both resolve
-        // a Name AND exclude rows whose type/status is unmatched; the three IS-NOT-NULL guards preserve the row-membership
-        // of the removed cross-service INNER JOINs (CountryID / CustomerID / ExporterCustomerID). ExportDeclarationTitle is
-        // the legacy OUTER APPLY (first lead-document title by id). CountryName / ForeignCustomsHouseName / RequestIssuerName
+        // a Name AND exclude rows whose type/status is unmatched; the two IS-NOT-NULL guards preserve the row-membership
+        // of the removed cross-service INNER JOINs on the nullable FKs (CountryID / ExporterCustomerID). CustomerID is
+        // non-nullable so its INNER JOIN never excludes on null — no guard needed. ExportDeclarationTitle is the
+        // legacy OUTER APPLY (first lead-document title by id). CountryName / ForeignCustomsHouseName / RequestIssuerName
         // stay null here and are enriched in the BL (Country lookup + Customers proxy).
-        // The three IS-NOT-NULL guards + all conditional filters are on the request row itself (fluent .Where chain,
+        // The two IS-NOT-NULL guards + all conditional filters are on the request row itself (fluent .Where chain,
         // matching the rest of the DAL). The two INNER JOINs (for the names) are applied after — they also exclude
         // rows with an unmatched type/status, exactly like the legacy SP.
         var requests = ReadOnlyContext.ExportDocumentAuthenticationRequests
-            .Where(ear => ear.CountryId != null && ear.CustomerId != null && ear.ExporterCustomerId != null);
+            .Where(ear => ear.CountryId != null && ear.ExporterCustomerId != null);
 
         if (filter.CountryId.HasValue)
         {

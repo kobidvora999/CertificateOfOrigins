@@ -67,7 +67,7 @@
 | CreateNewAuthenticationFile | ✅ הומרה | |
 | GetAuthenticationRequestFileByID | ✅ הומרה | |
 | GetAuthenticationRequestByID | ✅ הומרה | |
-| GetExportDocumentAuthenticationRequestSearch | ✅ הומרה | SP→LINQ (החלטת מפתח, נאמן ל-CROSS_ SP); שמירת row-membership של 3 ה-INNER JOIN החוצי-שירות (CountryID/CustomerID/ExporterCustomerID); אומת חי 6/6 (2b670b5) |
+| GetExportDocumentAuthenticationRequestSearch | ✅ הומרה | SP→LINQ (החלטת מפתח, נאמן ל-CROSS_ SP); שמירת row-membership של ה-INNER JOIN החוצי-שירות דרך 2 IS-NOT-NULL על ה-FK ה-nullable (CountryID/ExporterCustomerID). CustomerID לא-nullable (DB: NOT NULL) ולכן ה-INNER JOIN שלו לעולם לא מסנן null — ה-guard השלישי (2b670b5) הוסר כמיותר. אומת חי 7/7: LINQ==SP-equivalent |
 | GetExportDocumentAuthenticationRequestByID | ✅ הומרה | |
 | GetCustomerInformation | ✅ הומרה | |
 | GetCustomerInformationByCountry | ✅ הומרה | |
