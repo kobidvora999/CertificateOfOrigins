@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginNumber={{webQueryNumber}}&issuingDate=2020-01-01"
+method: GET
+# The SECOND locator the endpoint supports (number + issuing date). No certificate carries an IssuingDate,
+# so this deliberately exercises the in-band not-found contract: HTTP 200 with ExceptionDescription set,
+# never a 404 (the external portal depends on that).
+order: 13000

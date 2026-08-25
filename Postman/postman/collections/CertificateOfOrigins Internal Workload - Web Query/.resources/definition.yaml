@@ -1,0 +1,81 @@
+$kind: collection
+id: certificateoforigins-web-query-v1
+name: CertificateOfOrigins Web Query
+description: >-
+  The public-portal verification path (GetCertificateOfOriginDataForWebQuery, exposed as RequestByGuid).
+  A three-step self-contained chain: publish a certificate (the only path that stamps Guid), read the guid
+  back by id, then verify by guid. Covers the field-mapping loop in CertificateOfOriginsBl.cs:464-541.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      var name = pm.info.requestName;
+      var j = pm.response.json();
+
+      // --- chain captures (run before the assertions so a failure cannot break the chain) ---
+      if (name === '00-setup-publish') {
+          pm.collectionVariables.set('webQueryCertId', j.id);
+          pm.collectionVariables.set('webQueryNumber', j.certificateNumber);
+          pm.test('published certificate created', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status must be Published(8) or the Guid is never stamped').to.eql(8);
+          });
+      }
+
+      if (name === '10-read-guid') {
+          pm.collectionVariables.set('webQueryGuid', j.guid);
+          pm.test('publishing stamped a Guid', function () {
+              pm.expect(j.guid, 'guid').to.be.a('string').and.not.empty;
+          });
+      }
+
+      // --- the actual coverage target ---
+      if (name === '20-request-by-guid') {
+          pm.test('resolves the certificate by guid', function () {
+              pm.expect(j.certificateNumber, 'certificateNumber').to.be.a('string').and.not.empty;
+              pm.expect(j.queryUrl || '', 'queryUrl must embed the guid').to.contain(pm.collectionVariables.get('webQueryGuid'));
+          });
+          // This is the branch proof: an empty details array means the mapping loop never ran, which is exactly
+          // the state the collection exists to prevent regressing to.
+          pm.test('the field-mapping loop produced details', function () {
+              pm.expect(j.certificateOfOriginDetails, 'certificateOfOriginDetails').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('mapped details carry labels', function () {
+              pm.expect(j.certificateOfOriginDetails.filter(function (d) { return d.label; }).length).to.be.above(0);
+          });
+      }
+
+      if (name === '30-request-by-number') {
+          // In-band not-found contract: 200 + ExceptionDescription, never a 404.
+          pm.test('unknown number+date answers in-band, not 404', function () {
+              pm.expect(pm.response.code).to.eql(200);
+          });
+      }
+    language: text/javascript

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{webQueryCertId}}"
+method: GET
+# The save response omits guid (null values are not serialised), so the guid is read back by id.
+order: 11000

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{webQueryGuid}}"
+method: GET
+# The portal verification path (GetCertificateOfOriginDataForWebQuery) - drives the field-mapping loop.
+order: 12000
