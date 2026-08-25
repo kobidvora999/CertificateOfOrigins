@@ -1,0 +1,82 @@
+$kind: collection
+id: certificateoforigins-auth-lifecycle-v1
+name: CertificateOfOrigins Auth Lifecycle
+description: >-
+  Import-authentication request/file reads and the delivery-status machine.
+  REQUIRES the seed: Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql.
+  This service has no insert path for CertificateOfOrigins_ImportAuthenticationRequest (the DAL only reads it
+  and updates it set-based), so these rows cannot be created through the API and a seed is the only way in.
+  The seed is idempotent AND resets the seeded rows, so the run stays repeatable even though the delivery
+  scenarios advance the file's status.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      var name = pm.info.requestName;
+      var j = pm.response.json();
+
+      // A 404 here means the seed did not run. Say so explicitly rather than letting the suite look merely red.
+      if (pm.response.code === 404) {
+          pm.test('SEED MISSING - run seed/seed_ImportAuthenticationRequests.sql', function () {
+              pm.expect.fail('seeded row not found; the seed script has not been applied to this database');
+          });
+      }
+
+      if (name === '00-request-linked') {
+          pm.test('mapper returned the seeded request, attached to its file', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(990101);
+              pm.expect(j.authenticationFileId, 'authenticationFileId').to.eql(990001);
+          });
+      }
+
+      if (name === '10-request-unlinked') {
+          pm.test('mapper handles a request with no file', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(990102);
+              pm.expect(j.authenticationFileId, 'authenticationFileId must stay null').to.be.oneOf([null, undefined]);
+          });
+      }
+
+      if (name === '20-file-by-id') {
+          pm.test('file resolves with its child requests', function () {
+              pm.expect(j.id, 'id').to.eql(990001);
+              pm.expect(j.importAuthenticationRequests || j.requests || [], 'child requests').to.be.an('array');
+          });
+      }
+
+      if (name === '30-delivery-vendor' || name === '40-reminder-vendor') {
+          // AdvanceDeliveryStatus returns the file's new status + delivery method; asserting they came back
+          // non-zero is the proof the status machine actually ran rather than exiting early on a missing file
+          // (which is what the pre-seed fixture did with id=1).
+          pm.test(name + ': the status machine returned a new state', function () {
+              pm.expect(j, 'response body').to.be.an('object');
+              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.be.a('number').and.above(0);
+          });
+      }
+    language: text/javascript

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent"
+method: POST
+headers:
+  Content-Type: application/json
+# Delivery to the vendor - advances the seeded file's status machine (AdvanceDeliveryStatus). isDelivery=true is the delivery branch.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990001,
+      "authenticationFileStatusId": 1,
+      "deliveryMethodId": 1,
+      "isDelivery": true
+    }
+order: 13000

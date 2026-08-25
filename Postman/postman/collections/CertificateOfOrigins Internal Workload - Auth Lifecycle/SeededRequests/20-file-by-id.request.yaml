@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/File/990001"
+method: GET
+# The seeded file with its child requests enriched.
+order: 12000

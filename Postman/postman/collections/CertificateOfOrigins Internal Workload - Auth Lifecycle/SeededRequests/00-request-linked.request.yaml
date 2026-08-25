@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990101"
+method: GET
+# Seeded request ATTACHED to a file - drives AuthenticationRequestBl.MapToResultDto (26 lines, previously 0% because the only fixture pointed at a nonexistent id and correctly 404'd).
+order: 10000

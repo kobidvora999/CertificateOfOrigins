@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990102"
+method: GET
+# Seeded request with AuthenticationFileID NULL - the other branch of the same mapper.
+order: 11000
