@@ -31,6 +31,9 @@ scripts:
       pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
       pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
       pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+      pm.collectionVariables.set('tomorrow', iso(now + DAY));
+      pm.collectionVariables.set('fourMonthsAhead', iso(now + 125 * DAY));
+      pm.collectionVariables.set('twoYearsAgo', iso(now - 730 * DAY));
     language: text/javascript
   - type: http:afterResponse
     code: |-
@@ -46,6 +49,8 @@ scripts:
       var EXPECT_CODE = {
           'CumulationBothCountryAndGroup': 5040,  // CheckCumulationCountry -> CountryAndCountryGroup
           'CumulationNeither':             5003,  // CheckCumulationCountry -> CumulationCountryRequired
+          'DeclarationDateFuture':          5010,  // CheckDeclarationDate -> ExporterDecDateIllegal (future)
+          'DeclarationDateTooOld':          5010,  // CheckDeclarationDate -> ExporterDecDateIllegal (older than 5 days)
       };
       var MUST_NOT = {
           'CumulationCountryOnly': [5003, 5040],  // exactly one supplied -> neither error may appear

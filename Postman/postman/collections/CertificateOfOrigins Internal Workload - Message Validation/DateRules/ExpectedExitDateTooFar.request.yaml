@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+# CheckExpectedExitDate allows [today, today+3 months]. Four months out -> ExitDateIllegal.
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": { "customsHouse": "SITE01" },
+      "nonManipulationCertificate": {
+        "exportDate": "{{twoDaysAgo}}", "exportCountry": "DE", "importBillOfLadingNum": "IBL1", "exportPort": "DEHAM",
+        "importDate": "{{tenDaysAgo}}", "exportBillOfLadingNum": "EBL1", "transitCountry": "IL", "portOfEntrance": "ILHFA",
+        "expectedExitDate": "{{fourMonthsAhead}}", "exitPort": "ILASH", "goodsDescription": "widgets",
+        "declaringCompany": "Acme", "declaringPerson": "John", "declaringPosition": "Manager", "manifestNum": "MAN1"
+      }
+    }
+order: 14000
