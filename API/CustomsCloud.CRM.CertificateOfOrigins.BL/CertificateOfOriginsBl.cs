@@ -1,3 +1,4 @@
+using CustomsCloud.CRM.CertificateOfOrigins.BL.Validations;
 using CustomsCloud.CRM.CertificateOfOrigins.BL.Proxies;
 using CustomsCloud.CRM.CertificateOfOrigins.DAL;
 using CustomsCloud.CRM.CertificateOfOrigins.Model.CertificateOfOriginsDb;
@@ -853,6 +854,20 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // the exact EAI feedback-message mapping are deferred (inline TODOs).
     public async Task<CertificateOfOriginDto> SaveCertificateOfOrigin(SaveCertificateOfOriginRequestDto request)
     {
+        // Guard the DB-required fields before anything reaches the context. Without this a malformed body (e.g. an
+        // empty "{}") produced an entity with zeroed keys, the INSERT failed on a foreign key, and the
+        // DbUpdateException escaped as an unhandled 500 instead of a 400.
+        var validation = await new SaveCertificateOfOriginRequestValidator().ValidateAsync(request);
+        if (!validation.IsValid)
+        {
+            // RestValidationException takes (field, message) — the same shape the CertificateId lock guard uses.
+            // Report every failure in one response rather than the first, so a malformed body is fixed in one round.
+            var failures = validation.Errors;
+            throw new RestValidationException(
+                failures[0].PropertyName,
+                string.Join(" ", failures.Select(f => f.ErrorMessage)));
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var eventUtil = Resolve<IEventUtil>();
 
@@ -898,7 +913,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
 
         await SaveChangesAsync();
-        await DataLayer.MergeCertificateOfOriginChildren(entity.Id, details, request.CertificateOfOriginInvoiceDetails);
+
+        await PersistCertificateChildren(entity.Id, details, request.CertificateOfOriginInvoiceDetails);
 
         // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
         // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is
@@ -948,6 +964,27 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
 
         return await GetCertificateOfOriginById(entity.Id);
+    }
+
+    // The child rows are staged by the DAL and committed here, so a concurrency conflict raised during a child
+    // merge maps to 409 exactly like one on the parent row — BaseBL.SaveChangesAsync owns that mapping, and the
+    // DAL calling Context.SaveChangesAsync itself is what let those conflicts escape as an unhandled 500.
+    // The invoice save must land before the items are staged: EF assigns the invoice ids there.
+    private async Task PersistCertificateChildren(int certificateId, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices)
+    {
+        await DataLayer.StageCertificateOfOriginDetails(certificateId, details);
+        await SaveChangesAsync();
+
+        if (invoices.Count == 0)
+        {
+            return;
+        }
+
+        await DataLayer.StageCertificateOfOriginInvoices(certificateId, invoices);
+        await SaveChangesAsync();
+
+        await DataLayer.StageCertificateOfOriginInvoiceItems(invoices);
+        await SaveChangesAsync();
     }
 
     private static CertificateOfOrigin BuildCertificateEntity(SaveCertificateOfOriginRequestDto r)
@@ -1471,6 +1508,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             {
                 // Append the mismatch-log rows (legacy item.CertificateOfOriginVsDeclarationError.Add per exception).
                 await DataLayer.AddCertificateVsDeclarationErrors(certificate.Id, certificateExceptions.Select(exception => exception.ExceptionDescription ?? string.Empty).ToList());
+                await SaveChangesAsync();
             }
         }
 

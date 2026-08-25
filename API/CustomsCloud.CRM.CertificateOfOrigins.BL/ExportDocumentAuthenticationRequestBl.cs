@@ -167,7 +167,9 @@ public class ExportDocumentAuthenticationRequestBl(
         await SaveChangesAsync();
         var id = entity.Id;
 
+        // Staged by the DAL, committed here so a child-merge conflict maps to 409 rather than escaping as 500.
         await DataLayer.MergeExportDocumentAuthenticationRequestChildren(id, customsItems, leadDocuments, manufacturingAreas);
+        await SaveChangesAsync();
 
         // Status transition → status-update event (+ a status-specific event) and, for some statuses, a message.
         if (request.StatusId != request.OriginalStatusId)

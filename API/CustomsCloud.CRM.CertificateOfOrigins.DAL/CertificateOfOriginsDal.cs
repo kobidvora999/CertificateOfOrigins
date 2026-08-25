@@ -108,41 +108,41 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details)
-    {
-        await MergeCertificateOfOriginChildren(certificateId, details, []);
-    }
+    // ---------------------------------------------------------------------------------------------------------
+    // The child-row merges below only STAGE changes on the tracked context; the BL commits them with
+    // BaseBL.SaveChangesAsync. That matters for more than layering: BaseBL.SaveChangesAsync is what maps
+    // DbUpdateConcurrencyException to a 409 RestConflictException. While these methods called
+    // Context.SaveChangesAsync themselves, a concurrency conflict raised during a child merge escaped as an
+    // unhandled 500 while the very same conflict on the parent row returned 409 — the same logical error
+    // answering differently depending on which stage of the save it hit.
+    //
+    // The staging is split into three steps because EF must assign the invoice ids before the item rows can be
+    // bound to them, so the BL saves between step 2 and step 3.
+    // ---------------------------------------------------------------------------------------------------------
 
-    // The PARENT certificate row is persisted by the BL through BaseBL.AddEntity/UpdateEntity (CertificateOfOrigin is
-    // an ICloudEntity — audit stamped server-side from RequestMetadata; see C12). This method owns only the child
-    // rows, which carry no audit columns: DIFF-MERGE the detail rows by surrogate id, then (incoming-message create
-    // branch) the invoice rows + each invoice's item rows.
-    public async Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices)
+    // Step 1 — the certificate's detail rows, diff-merged by surrogate id.
+    public Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details)
     {
         foreach (var detail in details)
         {
             detail.CertificateOfOriginId = certificateId;
         }
 
-        await MergeChildrenAsync(
+        return MergeChildrenAsync(
             details,
             Context.Set<CertificateOfOriginDetails>().Where(d => d.CertificateOfOriginId == certificateId),
             detail => detail.Id);
-        await Context.SaveChangesAsync();
-
-        await SaveInvoiceDetails(certificateId, invoices);
     }
 
-    // Diff-merge the certificate's invoice rows, then each invoice's item rows. Invoices are keyed to the certificate;
-    // items are keyed to their invoice's surrogate id (assigned after the invoice save for freshly-inserted invoices).
-    // An EMPTY list means "the caller did not manage invoices" (the SPA save path) — do NOT touch the existing rows;
-    // only the incoming-message create branch supplies invoices, and it always supplies the full set. (Diff-merging an
-    // empty list would delete every existing invoice/item — a data-loss bug for the SPA update path.)
-    private async Task SaveInvoiceDetails(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices)
+    // Step 2 — the invoice rows. An EMPTY list means "the caller did not manage invoices" (the SPA save path) —
+    // do NOT touch the existing rows; only the incoming-message create branch supplies invoices, and it always
+    // supplies the full set. (Diff-merging an empty list would delete every existing invoice/item — a data-loss
+    // bug for the SPA update path.)
+    public Task StageCertificateOfOriginInvoices(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices)
     {
         if (invoices.Count == 0)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         foreach (var invoice in invoices)
@@ -150,12 +150,15 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             invoice.CertificateOfOriginId = certificateId;
         }
 
-        await MergeChildrenAsync(
+        return MergeChildrenAsync(
             invoices,
             Context.Set<CertificateOfOriginInvoiceDetail>().Where(i => i.CertificateOfOriginId == certificateId),
             invoice => invoice.Id);
-        await Context.SaveChangesAsync();
+    }
 
+    // Step 3 — each invoice's item rows, keyed to the invoice id the save in step 2 assigned.
+    public async Task StageCertificateOfOriginInvoiceItems(List<CertificateOfOriginInvoiceDetail> invoices)
+    {
         foreach (var invoice in invoices)
         {
             var items = invoice.CertificateOfOriginItemDetail;
@@ -169,8 +172,6 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 Context.Set<CertificateOfOriginItemDetail>().Where(it => it.CertificateOfOriginInvoiceDetailId == invoice.Id),
                 item => item.Id);
         }
-
-        await Context.SaveChangesAsync();
     }
 
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
@@ -273,7 +274,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             })
             .ToList();
         Context.Set<CertificateOfOriginVsDeclarationError>().AddRange(rows);
-        await Context.SaveChangesAsync();
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
 
     public async Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId)
@@ -618,7 +620,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             Context.Set<ExportAuthenticationRequestManufacturingArea>().Where(m => m.ExportAuthenticationRequestId == requestId),
             area => area.Id);
 
-        await Context.SaveChangesAsync();
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
 
     // Diff-merge a child collection against the DB by surrogate id (reproduces the legacy Self-Tracking-Entity Save):

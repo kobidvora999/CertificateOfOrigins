@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Empty body -> 400 from SaveCertificateOfOriginRequestValidator. This returned 500 until 2026-08-25:
+# the service had no validation layer, so zeroed keys reached the INSERT and the FK violation escaped
+# as an unhandled DbUpdateException. This request is the regression guard for that fix.
+body:
+  type: json
+  content: |-
+    {}
+order: 20200

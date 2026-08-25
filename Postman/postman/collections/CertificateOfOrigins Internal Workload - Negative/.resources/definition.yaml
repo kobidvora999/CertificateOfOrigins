@@ -50,6 +50,8 @@ scripts:
           'create-file-empty-body':  400,
           '00-setup':                200,
           '10-stale-timestamp':      409,
+          '20-stale-with-children':  409,
+          'certificate-empty-body':  400,
       };
 
       if (name === '00-setup') {

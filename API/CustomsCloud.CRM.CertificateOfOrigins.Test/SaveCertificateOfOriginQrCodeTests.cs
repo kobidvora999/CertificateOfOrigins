@@ -108,6 +108,12 @@ public class SaveCertificateOfOriginQrCodeTests
         {
             Id = id,
             TypeId = 1,
+            // Title / CustomerId / OrganizationUnitId are NOT NULL columns and are now enforced by
+            // SaveCertificateOfOriginRequestValidator. This fixture previously set only the fields the QR
+            // assertions read, so it was not in fact a valid save request.
+            Title = "COO-1001",
+            CustomerId = 777,
+            OrganizationUnitId = 1,
             CertificateNumber = "COO-1001",
             CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Published,
             OriginalCertificateOfOriginStatusId = originalStatusId,
@@ -204,8 +210,12 @@ public class SaveCertificateOfOriginQrCodeTests
                 case "SaveChangesAsync":
                     return dbContext.SaveChangesAsync();
 
-                // The DAL now only diff-merges the child rows (no audit columns).
-                case "MergeCertificateOfOriginChildren":
+                // The DAL now only STAGES the child rows (no audit columns); the BL commits them via
+                // SaveChangesAsync, which is what maps a concurrency conflict to 409 instead of letting it
+                // escape as a 500. Three steps because EF must assign the invoice ids before the items bind.
+                case "StageCertificateOfOriginDetails":
+                case "StageCertificateOfOriginInvoices":
+                case "StageCertificateOfOriginInvoiceItems":
                     return Task.CompletedTask;
 
                 case "UpdateCertificateQrCodePath":

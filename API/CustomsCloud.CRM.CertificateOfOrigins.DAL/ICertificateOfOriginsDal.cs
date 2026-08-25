@@ -84,9 +84,11 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId);
 
-    Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details);
+    Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details);
 
-    Task MergeCertificateOfOriginChildren(int certificateId, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices);
+    Task StageCertificateOfOriginInvoiceItems(List<CertificateOfOriginInvoiceDetail> invoices);
+
+    Task StageCertificateOfOriginInvoices(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices);
 
     Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
 
