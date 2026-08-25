@@ -72,3 +72,56 @@
 | רף C13 | **≥ 70%** |
 
 הרף בר-השגה, אבל שני המנופים הנותרים דורשים ערכים עסקיים או תרחישי setup שמייצרים נתונים — לא ניחוש.
+
+---
+
+## סבב CONTRACT (2026-08-25) — שני פגמים אמיתיים
+
+סבב ה-negative תוכנן להוסיף כיסוי, ובפועל חשף שני פגמים. **לא** נכתבה עליהם assertion —
+לברך על 500 זה לקבע באג. שניהם אומתו מול השירות החי.
+
+### 🔴 1. אין שכבת ולידציה בשירות בכלל
+
+`POST /CertificateOfOrigins` עם `{}` מחזיר **500**:
+
+```
+DbUpdateException -> SqlException: The INSERT statement conflicted with the FOREIGN KEY constraint ...
+```
+
+גוף ריק מייצר ישות עם כל מזהי-ה-FK באפס, ה-INSERT מפר FK, והחריגה בורחת כ-500.
+`grep -rl AbstractValidator` על כל ה-repo מחזיר **אפס** — אין ולו validator אחד, ואין תיקיית
+`Validations/` שהארכיטקטורה מגדירה. כלומר קלט זבל מגיע ישר ל-DB בכל endpoint שאין לו
+`[BindRequired]` או זריקה מפורשת ב-BL.
+
+לשם השוואה, `POST /ExportDocumentAuthenticationRequest` עם `{}` מחזיר **400** כראוי — כך
+שההתנהגות לא עקבית בין endpoints.
+
+**התיקון:** `/net10-validation` על `SaveCertificateOfOriginRequestDto`. זה שינוי התנהגות ב-endpoint
+כתיבה (יתחיל לדחות בקשות שקודם הגיעו ל-DB) — דורש הכרעת מפתח.
+
+### 🔴 2. התנגשות concurrency ב-merge של שורות-הילד בורחת כ-500 במקום 409
+
+- `timeStamp` מעופש על שמירת ההורה → **409** ✅ (`BaseBL.SaveChangesAsync` ממפה
+  `DbUpdateConcurrencyException` ל-`RestConflictException`) — זה מכוסה עכשיו באוסף Negative.
+- אותה התנגשות שנוצרת בתוך ה-merge של שורות-הילד → **500** עם
+  `"Entity(s) current state was changed since last read"` (הודעה מ-InfrastructureCore).
+
+הסיבה: ב-DAL נשארו **5** קריאות `Context.SaveChangesAsync()` (שורות 131, 157, 173, 276, 621)
+שלא עוברות דרך `BaseBL.SaveChangesAsync` ולכן לא מקבלות את מיפוי ה-409.
+
+זו תוצאה ישירה של פיצול C12 שביצעתי — ההורה עבר ל-BaseBL והילדים נשארו ב-DAL. לפני C12 הכל
+היה 500, כך שהחומרה לא הורעה, אבל התוצאה עכשיו **לא עקבית**: אותה שגיאה לוגית מחזירה 409 או
+500 תלוי באיזה שלב של השמירה היא קרתה.
+
+**התיקון:** לנתב את שמירות שורות-הילד דרך ה-BL, או לתפוס ולמפות ב-DAL.
+
+### מה כן נאסר באוסף Negative
+
+| תרחיש | סטטוס | מאומת |
+|---|---|---|
+| 4 מסלולי by-id עם id לא קיים | 404 | ✅ |
+| `ExportDocumentAuthenticationRequest` גוף ריק | 400 | ✅ |
+| `CreateNewFile` גוף שאינו מערך | 400 | ✅ |
+| `timeStamp` מעופש (שמירת הורה) | 409 | ✅ |
+
+🟡 `CreateNewFile` עם מערך ריק `[]` מחזיר **204 No Content** ולא 400. לא נאסר — לא אומת שזו הכוונה.

@@ -1,0 +1,78 @@
+$kind: collection
+id: certificateoforigins-negative-v1
+name: CertificateOfOrigins Negative
+description: >-
+  The ERROR contract, which the happy-path collections never touch: unknown id -> 404, bad body -> 400,
+  stale rowversion -> 409. Every status here was verified against the live service before being asserted;
+  nothing blesses an observed value.
+  NOT COVERED HERE (deliberately) - two verified defects that must be fixed, not asserted:
+    * POST /CertificateOfOrigins with {} returns 500 (DbUpdateException, FK violation). The service has NO
+      validation layer at all - no AbstractValidator anywhere - so garbage reaches the database.
+    * A concurrency conflict raised inside the DAL child-merge saves escapes as 500 instead of 409, because
+      those 5 Context.SaveChangesAsync() calls bypass BaseBL.SaveChangesAsync's DbUpdateConcurrency mapping.
+  Asserting either would freeze a bug. See reports/gap-analysis.md.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Deliberately NO blanket "no 5xx" here: this collection probes error paths, and the two known 500s are
+      // excluded by construction (see the collection description) rather than silently tolerated.
+      var name = pm.info.requestName;
+
+      var EXPECT = {
+          'certificate-by-id':       404,
+          'export-req-by-id':        404,
+          'auth-req-by-id':          404,
+          'auth-file-by-id':         404,
+          'export-req-empty-body':   400,
+          'create-file-empty-body':  400,
+          '00-setup':                200,
+          '10-stale-timestamp':      409,
+      };
+
+      if (name === '00-setup') {
+          pm.collectionVariables.set('conflictId', pm.response.json().id);
+          pm.test('conflict target created', function () {
+              pm.expect(pm.response.json().id, 'id').to.be.a('number').and.not.equal(0);
+          });
+      }
+
+      pm.test(name + ': status is ' + EXPECT[name], function () {
+          pm.response.to.have.status(EXPECT[name]);
+      });
+
+      // A 404 must be the repo's not-found contract, not an unhandled crash rendered as 404.
+      if (EXPECT[name] === 404) {
+          pm.test(name + ': answered 404 rather than an empty 200', function () {
+              pm.expect(pm.response.code).to.eql(404);
+          });
+      }
+
+      if (name === '10-stale-timestamp') {
+          pm.test('stale rowversion maps to 409, not 500', function () {
+              pm.expect(pm.response.code, 'a 500 here means the concurrency exception escaped unmapped').to.eql(409);
+          });
+      }
+    language: text/javascript

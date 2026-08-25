@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# Body is an OBJECT where the endpoint expects an array -> model binding rejects it with 400. Verified.
+# NOTE: an empty ARRAY ("[]") instead returns 204 No Content (null result), which is a different contract and
+# has NOT been confirmed as intended - so it is deliberately not asserted here.
+body:
+  type: json
+  content: |-
+    {}
+order: 20100

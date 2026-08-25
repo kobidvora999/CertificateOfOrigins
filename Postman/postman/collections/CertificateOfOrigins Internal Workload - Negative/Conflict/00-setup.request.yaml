@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# Creates a row so the conflict scenario below has a real target and its own timeStamp.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "organizationUnitId": 1, "statusId": 2, "originalStatusId": 0,
+      "title": "concurrency setup", "customerId": 777, "exporterCustomerId": 888,
+      "typeId": 1, "countryId": 32, "authenticationRequestNotes": "concurrency setup",
+      "listOfAdditionalDocumentsIds": [], "customsItems": [], "leadDocuments": [], "manufacturingAreas": [],
+      "authenticationDocumentTypeId": 1
+    }
+order: 30000

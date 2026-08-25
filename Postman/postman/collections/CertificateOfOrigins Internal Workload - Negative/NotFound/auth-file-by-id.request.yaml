@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/File/99999999"
+method: GET
+# Unknown authentication-file id -> 404.
+order: 10300

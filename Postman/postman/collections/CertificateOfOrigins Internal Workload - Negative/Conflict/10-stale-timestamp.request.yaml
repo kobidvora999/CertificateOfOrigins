@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# Re-saves the row above with an all-zero (stale) timeStamp. The rowversion no longer matches, so
+# BaseBL.SaveChangesAsync maps DbUpdateConcurrencyException -> 409 RestConflictException. Verified live.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{conflictId}}, "timeStamp": "AAAAAAAAAAA=",
+      "state": 1, "organizationUnitId": 1, "statusId": 2, "originalStatusId": 2,
+      "title": "concurrency setup", "customerId": 777, "exporterCustomerId": 888,
+      "typeId": 1, "countryId": 32, "authenticationRequestNotes": "stale write",
+      "listOfAdditionalDocumentsIds": [], "customsItems": [], "leadDocuments": [], "manufacturingAreas": [],
+      "authenticationDocumentTypeId": 1
+    }
+order: 30100

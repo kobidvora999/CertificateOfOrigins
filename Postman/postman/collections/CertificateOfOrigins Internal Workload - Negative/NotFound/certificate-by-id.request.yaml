@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/99999999"
+method: GET
+# Unknown certificate id -> 404 from RestNotFoundException, not an empty 200.
+order: 10000

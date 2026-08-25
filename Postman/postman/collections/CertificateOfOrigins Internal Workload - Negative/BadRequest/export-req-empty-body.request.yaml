@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# Empty body -> 400. This endpoint validates before touching the DB, which is the contract every write endpoint should honour.
+body:
+  type: json
+  content: |-
+    {}
+order: 20000
