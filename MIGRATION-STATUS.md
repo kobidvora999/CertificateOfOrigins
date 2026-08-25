@@ -67,7 +67,7 @@
 | CreateNewAuthenticationFile | ✅ הומרה | |
 | GetAuthenticationRequestFileByID | ✅ הומרה | |
 | GetAuthenticationRequestByID | ✅ הומרה | |
-| GetExportDocumentAuthenticationRequestSearch | ✅ הומרה | |
+| GetExportDocumentAuthenticationRequestSearch | ✅ הומרה | SP→LINQ (החלטת מפתח, נאמן ל-CROSS_ SP); שמירת row-membership של 3 ה-INNER JOIN החוצי-שירות (CountryID/CustomerID/ExporterCustomerID); אומת חי 6/6 (2b670b5) |
 | GetExportDocumentAuthenticationRequestByID | ✅ הומרה | |
 | GetCustomerInformation | ✅ הומרה | |
 | GetCustomerInformationByCountry | ✅ הומרה | |
