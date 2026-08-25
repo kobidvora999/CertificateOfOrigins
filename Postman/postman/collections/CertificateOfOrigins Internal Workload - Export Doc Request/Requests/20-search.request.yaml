@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/Search"
+method: QUERY
+headers:
+  Content-Type: application/json
+# Search with an empty filter. It returns rows only because the setup above set exporterCustomerId - that is what makes FillExportRequestNames (lines 371-403, the largest gap in this class) execute at all.
+body:
+  type: json
+  content: |-
+    {}
+order: 12000

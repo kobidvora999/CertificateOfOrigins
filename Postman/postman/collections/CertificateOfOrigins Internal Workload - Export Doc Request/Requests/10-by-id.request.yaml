@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/{{exportReqId}}"
+method: GET
+# Reads the request created above, driving the enrichment block in GetExportDocumentAuthenticationRequestById (lines 95-117).
+order: 11000

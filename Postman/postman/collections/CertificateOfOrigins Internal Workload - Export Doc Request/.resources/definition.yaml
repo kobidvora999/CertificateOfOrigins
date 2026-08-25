@@ -1,0 +1,80 @@
+$kind: collection
+id: certificateoforigins-export-doc-request-v1
+name: CertificateOfOrigins Export Doc Request
+description: >-
+  Export-document authentication requests: save with child collections, read back by id, search, and the
+  status-notification switch. Targets ExportDocumentAuthenticationRequestBl, which the stock API collection
+  left at 62% because its save fixture sends empty child arrays and omits exporterCustomerId.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock for local/test
+      // runs (replaces the old per-interface 'x-mock-proxy' list, removed in the 1.10.80 package). Per-scenario
+      // mock flags still use 'x-mock-feature--{Feature}' (double dash).
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
+      // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
+      // fixture silently rotted and every run was rejected in-band (exceptionType 5010) BEFORE the field-
+      // validation engine ran — which is why that whole subsystem sat at 0%% coverage.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      var name = pm.info.requestName;
+      var j = pm.response.json();
+
+      if (name === '00-setup-save-children') {
+          pm.collectionVariables.set('exportReqId', j.id);
+          pm.test('saved with its child collections mapped', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              // Proof that BuildEntity's child mapping ran rather than being skipped on empty arrays.
+              pm.expect(j.customsItems, 'customsItems').to.be.an('array').that.is.not.empty;
+              pm.expect(j.exportDeclarationIds, 'exportDeclarationIds (from leadDocuments)').to.be.an('array').that.is.not.empty;
+          });
+      }
+
+      if (name === '10-by-id') {
+          pm.test('reads back the saved request', function () {
+              pm.expect(j.id).to.eql(Number(pm.collectionVariables.get('exportReqId')));
+          });
+      }
+
+      if (name === '20-search') {
+          // The whole point of this collection: an empty array here means the SP filtered everything out
+          // (EAR.ExporterCustomerID IS NOT NULL) and the enrichment method never ran.
+          pm.test('search returns rows', function () {
+              pm.expect(j, 'search results').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('FillExportRequestNames enriched the rows', function () {
+              var r = j[0];
+              pm.expect(r.countryName, 'countryName (lookup)').to.be.a('string').and.not.empty;
+              pm.expect(r.requestStatusName, 'requestStatusName (local enum join)').to.be.a('string').and.not.empty;
+              pm.expect(r.requestIssuerName, 'requestIssuerName (Customers proxy, via exporterCustomerId)').to.be.a('string').and.not.empty;
+          });
+      }
+
+      if (name === '30-status-ready' || name === '40-status-closed' || name === '50-status-cancelled') {
+          pm.test(name + ': saved and the status switch ran', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              // originalStatusId comes back equal to statusId once the save has applied it, which is how we know
+              // the transition (and therefore CheckStatusAndNotify) was actually processed.
+              pm.expect(j.statusId, 'statusId').to.be.a('number').and.above(0);
+          });
+      }
+    language: text/javascript
