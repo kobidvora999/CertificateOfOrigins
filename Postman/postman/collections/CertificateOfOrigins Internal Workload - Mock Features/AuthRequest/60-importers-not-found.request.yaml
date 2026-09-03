@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+  x-mock-feature--Customers.NotFound: "true"
+# FillAuthenticationRequestNames: GetCustomersByIds -> null, so the importer-name fill is skipped (29/42
+# branches covered before this; the null side of both proxy results was never taken).
+body:
+  type: json
+  content: |-
+    {
+      "fromRequestDate": "2000-01-01",
+      "toRequestDate": "2100-01-01"
+    }
+order: 40500

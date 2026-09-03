@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{mfCertA}}"
+method: GET
+# Publishing stamped the Guid (CreateQrCodeIfNeeded); read it for the web-query calls below.
+order: 60150

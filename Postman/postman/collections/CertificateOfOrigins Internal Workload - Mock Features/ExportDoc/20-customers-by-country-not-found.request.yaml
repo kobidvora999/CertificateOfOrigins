@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
+method: GET
+headers:
+  x-mock-feature--Customers.NotFound: "true"
+# GetCustomersByCountry -> null: the empty side of the by-country read.
+order: 50100

@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{mfGuidA}}"
+method: GET
+headers:
+  x-mock-feature--Documents.Empty: "true"
+# GetDocumentsByEntity returns nothing -> GetCertificateDocumentId's 'no document' fallback to 0.
+order: 60280

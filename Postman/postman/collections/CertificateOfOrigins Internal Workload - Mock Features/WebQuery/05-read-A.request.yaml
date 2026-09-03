@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{mfCertA}}"
+method: GET
+# Reads back the rowversion the publish below needs (the save response omits nulls, so timeStamp is taken from the read).
+order: 60050

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+  x-mock-feature--Vendors.NotFound: "true"
+# The other half of FillAuthenticationRequestNames: GetVendorsByIds -> null.
+body:
+  type: json
+  content: |-
+    {
+      "fromRequestDate": "2000-01-01",
+      "toRequestDate": "2100-01-01"
+    }
+order: 40600

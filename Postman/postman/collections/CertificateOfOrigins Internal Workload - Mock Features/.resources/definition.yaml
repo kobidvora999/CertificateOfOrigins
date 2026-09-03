@@ -1,0 +1,205 @@
+$kind: collection
+id: certificateoforigins-mock-features-v1
+name: CertificateOfOrigins Mock Features
+description: >-
+  The MOCK lever, which no collection had used. The service ships 34 scenario flags in its mock proxies
+  (IProxyMockUtil.HasMockFeature), and before this collection ZERO of them were ever sent: every proxy always
+  returned its happy answer, so the negative side of every proxy-driven `if` was dead code. That is why line
+  coverage sat at 80.9%% while BRANCH coverage sat at 63.6%% - 548 of 1504 branches unentered.
+  Each request here sends exactly ONE `x-mock-feature--{Flag}: true` header on an otherwise identical fixture,
+  so any exception it raises can only be that flag's doing. The Message folder proves this with 00-baseline:
+  the same body, no flag, no codes.
+  THREE FLAGS ARE DELIBERATELY NOT EXERCISED - Collateral.ChangeFail, Collateral.GrantFail and
+  MessageManagement.Fail all throw InvalidOperationException inside the mock. They add no branch (the exception
+  aborts the call) and the BL does not catch them, so they would surface as 500. Whether a downstream transport
+  failure SHOULD be a 500 or a 502 is a contract question for the developer; asserting the current 500 would
+  freeze an unreviewed answer. See reports/gap-analysis.md.
+  REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql for AuthRequest.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention (InfrastructureCore.Proxy 1.10.86): REAL proxies are the default; the single
+      // global header 'x-mock-mode: x-mock-mode' switches ALL proxies to their in-service mock. Per-scenario
+      // flags are carried in the header NAME with a DOUBLE dash - 'x-mock-feature--{Flag}: true' - because
+      // ProxyMockUtil.HasMockFeature(name) reads 'x-mock-feature-' + '-name'. Those per-request headers live in
+      // the request yaml, not here: one flag per scenario is the whole point.
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var body = pm.response.text();
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+
+      // Most scenarios answer 200 with the branch visible in the body. Three do NOT, and their non-200 IS the
+      // branch proof - every one below was verified against the live service before being asserted here:
+      //   * ExportDoc: Customers.NotFound flips the customer read 200 -> 404 (control run confirms the 200).
+      //   * 90-site-not-found: the site never resolves, so context.OrganizationUnitId is never set and the save
+      //     is rejected by the validator - the early return above the org-unit check, seen from outside.
+      var EXPECT_STATUS = {
+          '10-customer-information-not-found': 404,
+          '20-customers-by-country-not-found': 404,
+          '90-site-not-found':                 400
+      };
+      var expected = EXPECT_STATUS[name] || 200;
+      pm.test('status is ' + expected, function () { pm.response.to.have.status(expected); });
+
+      if (name === '90-site-not-found') {
+          pm.test('90-site-not-found: rejected on the org unit the unresolved site never supplied', function () {
+              pm.expect(body).to.include('OrganizationUnitId');
+          });
+      }
+
+      // ---- captures (before the assertions, so a failed assertion cannot break the chain) ----
+      var SETUP_VAR = {
+          '00-setup-cancel':        'certIdCancelMf',
+          '00-setup-supersede':     'certIdSupersedeMf',
+          '00-setup-importreplace': 'certIdImportMf'
+      };
+      if (SETUP_VAR[name] && j) {
+          var made = (j.feedback || {}).certificateId;
+          if (made) { pm.collectionVariables.set(SETUP_VAR[name], made); }
+          pm.test(name + ': created a certificate to chain from', function () {
+              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+          });
+      }
+      var CERT_VAR = { '00-setup-A': 'mfCertA', '30-setup-B': 'mfCertB', '50-setup-C': 'mfCertC' };
+      if (CERT_VAR[name] && j) {
+          pm.collectionVariables.set(CERT_VAR[name], j.id);
+          pm.test(name + ': saved at status Received', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(2);
+          });
+      }
+      var TS_VAR = { '05-read-A': 'mfTsA', '35-read-B': 'mfTsB', '55-read-C': 'mfTsC' };
+      if (TS_VAR[name] && j) {
+          pm.collectionVariables.set(TS_VAR[name], j.timeStamp);
+          pm.test(name + ': rowversion available for the publish step', function () {
+              pm.expect(j.timeStamp, 'timeStamp - without it the publish cannot be an UPDATE').to.be.a('string').and.not.empty;
+          });
+      }
+      if (name === '15-read-A-guid' && j) {
+          pm.collectionVariables.set('mfGuidA', j.guid);
+          // The Guid is stamped ONLY by CreateQrCodeIfNeeded, which only runs on a real transition into
+          // Published. Its presence is the proof that PublishAttachments actually ran.
+          pm.test('publish stamped the Guid (PublishAttachments ran)', function () {
+              pm.expect(j.guid, 'guid').to.be.a('string').and.not.empty;
+          });
+      }
+
+      var exList = (j && j.exceptions) ? j.exceptions : [];
+      var codes = exList.map(function (e) { return e.exceptionType; });
+      var descr = exList.map(function (e) { return e.exceptionDescription || ''; }).join(' | ');
+
+      // ---- in-band message codes the flipped mock must raise ----
+      var MUST = {
+          '10-country-not-found':            [14027393],
+          '20-not-in-agreement':             [4990, 4995, 4997, 5004],
+          '30-customs-item-not-found':       [5012],
+          '40-measurement-unit-not-found':   [650],
+          '50-packing-type-not-found':       [650],
+          '60-currency-not-found':           [650],
+          '70-exporter-not-found':           [4978],
+          '80-orgunit-not-customs-house':    [5007],
+          '100-group-not-exists':            [650],
+          '110-group-not-in-agreement':      [5002],
+          '130-declaration-in-amendment':    [14027175],
+          '10-cancel-with-live-declaration': [14027174]
+      };
+      var MUST_NOT = {
+          // The site itself does not resolve, so CheckIfSiteExistAndCustomsHouse returns before the org-unit
+          // check - the customs-house error must NOT appear. This is the branch ABOVE 5007.
+          '90-site-not-found': [5007],
+          // Every code a sibling scenario asserts. The fixture alone must raise none of them.
+          '00-baseline': [14027393, 4990, 4995, 4997, 5004, 5012, 650, 4978, 5007, 5002, 14027175]
+      };
+      // Code 650 (TheValueInFieldNotExistsInSystem) is shared by four resolvers, so the code alone would not
+      // say WHICH one fired. The message carries the field name; assert that too.
+      var MUST_SAY = {
+          '40-measurement-unit-not-found': 'MeasureType',
+          '50-packing-type-not-found':     'PackageType',
+          '60-currency-not-found':         'CurrencyType',
+          '100-group-not-exists':          'DestinationGroupOfCountries'
+      };
+      // Reconciliation findings carry ExceptionType 0 (the real EMessages codes are still a migration TODO,
+      // CertificateOfOriginsBl.cs:2021), so they can only be identified by their text.
+      var MUST_CONTAIN = {
+          '20-no-declaration-invoices':   'אין חשבוניות בהצהרת היצוא',
+          // NOT the 6-digit mismatch: verified live, the mock declaration goods item carries CertificateOfOriginId
+          // 0, so the certificate-link check fires first and returns. See gap-analysis.md.
+          '30-customs-item-mismatch':     'מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא',
+          '50-destination-not-in-group':  'אי התאמה בין הארצות בהסכם לבין ארץ הקונה',
+          '10-no-associated-goods-items': 'אין בהצהרה טובין המקושרים להצהרת היבוא'
+      };
+      var MUST_NOT_CONTAIN = {
+          // LeadDocumentState 0 fails ReconcileWithSubmittedDeclaration's gate, so NO reconciliation finding
+          // may appear - that is the whole branch under test.
+          '10-declaration-not-released': ['אין חשבוניות בהצהרת היצוא', 'אינו תואם לפריט מכס בהצהרת היצוא']
+      };
+
+      if (MUST[name]) {
+          MUST[name].forEach(function (c) {
+              pm.test(name + ': raises exceptionType ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(c);
+              });
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': raises none of the flagged codes', function () {
+              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(c); });
+          });
+      }
+      if (MUST_SAY[name]) {
+          pm.test(name + ': the 650 names ' + MUST_SAY[name], function () {
+              pm.expect(descr).to.include(MUST_SAY[name]);
+          });
+      }
+      if (MUST_CONTAIN[name]) {
+          pm.test(name + ': reconciliation raised its finding', function () {
+              pm.expect(body).to.include(MUST_CONTAIN[name]);
+          });
+      }
+      if (MUST_NOT_CONTAIN[name]) {
+          pm.test(name + ': the reconciliation was skipped entirely', function () {
+              MUST_NOT_CONTAIN[name].forEach(function (t) { pm.expect(body).to.not.include(t); });
+          });
+      }
+
+      // ---- scenarios whose branch has no visible output: coverage is the proof ----
+      // 40-no-assessor, 10-update-no-lead-document and the AuthRequest/ExportDoc reads all change only what an
+      // enrichment leaves unset. Asserting "field is absent" would also pass if the endpoint silently broke, so
+      // the status assertions above are the contract and the cobertura delta is the proof.
+      // The declaration resolves to null, so nothing is reconciled. Proved by contrast with the control run:
+      // reason 2 WITHOUT this flag answers status 3 (Rejected) carrying four reconciliation findings.
+      if (name === '120-declaration-unresolvable') {
+          pm.test('120: no declaration resolved, so the reconciliation never ran', function () {
+              pm.expect(exList, 'exceptions').to.be.an('array').that.is.empty;
+              pm.expect((j.feedback || {}).certificateOfOriginStatusCode, 'status stays Received (2), not Rejected (3)').to.eql(2);
+          });
+      }
+      if (name === '10-publish-A') {
+          pm.test('10-publish-A: published and stamped an issuing date', function () {
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
+              pm.expect(j.issuingDate, 'issuingDate is stamped by PublishAttachments').to.be.a('string').and.not.empty;
+          });
+      }
+      if (name === '40-publish-B-qr-empty' || name === '60-publish-C-templates-empty') {
+          pm.test(name + ': the publish transition was accepted', function () {
+              pm.expect(j && j.certificateOfOriginStatusId, 'status').to.eql(8);
+          });
+      }
+    language: text/javascript

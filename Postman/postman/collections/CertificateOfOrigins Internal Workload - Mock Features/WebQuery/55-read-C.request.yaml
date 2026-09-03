@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{mfCertC}}"
+method: GET
+# Rowversion for chain C.
+order: 60550

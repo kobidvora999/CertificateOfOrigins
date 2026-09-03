@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990101"
+method: GET
+headers:
+  x-mock-feature--Documents.ByIdNotFound: "true"
+# GetDocumentById -> null: the branch that leaves the request's document metadata unfilled.
+order: 40200

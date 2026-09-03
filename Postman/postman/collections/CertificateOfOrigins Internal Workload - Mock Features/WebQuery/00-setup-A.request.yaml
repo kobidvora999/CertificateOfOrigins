@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Chain A step 1: a NEW certificate at status 2 (Received). For a new instance isStatusChanged is true only at Received (CertificateOfOriginsBl.cs:942), so this is also the only way to reach RaiseStatusEvents + SendRequestFeedback. reason 2 (Retrospective) is deliberate: it is what puts a row into BuildHeaderFields.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0,
+      "typeId": 2, "state": 1, "title": "mock-features publish A",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "MF-COO-A",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 2,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetail": [
+        { "id": 0, "invoiceNumber": "INV-MF-COO-A", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 60000

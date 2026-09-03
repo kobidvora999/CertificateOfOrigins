@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990101"
+method: GET
+headers:
+  x-mock-feature--Collateral.Empty: "true"
+# GetCollateralRequest returns [] -> GetAuthenticationRequestByID's "no collaterals" branch (the default mock
+# always returned exactly one, so the empty side never ran). REQUIRES seed_ImportAuthenticationRequests.sql.
+order: 40000

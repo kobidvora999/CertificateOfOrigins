@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{mfGuidA}}"
+method: GET
+headers:
+  x-mock-feature--CurrencyType.NotFound: "true"
+# GetCurrencyTypesByIds -> null: GetCurrencyCodes' null branch, so the printable invoice keeps no currency code (8/23 before this).
+order: 60250

@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Chain A step 2: Received -> Published on the SAME row. This is the ONLY way into PublishAttachments (0/15), CreateQrCodeIfNeeded's generate branch, and PrintCertificateOfOriginAndSaveAttachments. Every earlier collection created a new row already at status 8, where isStatusChanged is false.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{mfCertA}},
+      "timeStamp": "{{mfTsA}}",
+      "typeId": 2, "state": 1, "title": "mock-features publish A",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "MF-COO-A",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 2,
+      "requestReasonCode": 2,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetail": [
+        { "id": 0, "invoiceNumber": "INV-MF-COO-A", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 60100

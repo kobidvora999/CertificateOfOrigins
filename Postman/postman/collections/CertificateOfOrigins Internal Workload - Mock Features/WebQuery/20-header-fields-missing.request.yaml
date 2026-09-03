@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{mfGuidA}}"
+method: GET
+headers:
+  x-mock-feature--DataDictionaryField.NotFound: "true"
+# GetDataDictionaryFieldsByIds -> null: GetFieldLabels returns [] and BuildHeaderFields falls back to empty labels. The retrospective row is what makes BuildHeaderFields request a label at all (16/38 before this).
+order: 60200

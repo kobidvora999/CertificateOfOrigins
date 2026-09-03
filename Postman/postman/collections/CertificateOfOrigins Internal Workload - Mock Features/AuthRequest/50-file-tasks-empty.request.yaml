@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/File/990001"
+method: GET
+headers:
+  x-mock-feature--Tasks.Empty: "true"
+  x-mock-feature--Collateral.Empty: "true"
+# The file read enriches every child request (BuildFileRequestDto): both its task lookup and its collateral
+# lookup take their empty side here.
+order: 40400

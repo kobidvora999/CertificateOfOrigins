@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--Users.NotFound: "true"
+# GetUsersByIds -> null: GetCurrentUserOrganizationUnitId falls back to 0 (the CC-USER-ID lookup miss). Runs on every save, but the mock never missed before.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0,
+      "typeId": 2, "state": 1, "title": "mock-features users not found",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "MF-COO-D",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 2,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetail": [
+        { "id": 0, "invoiceNumber": "INV-MF-COO-D", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 60700

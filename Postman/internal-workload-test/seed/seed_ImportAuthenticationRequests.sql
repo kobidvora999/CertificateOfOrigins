@@ -52,7 +52,6 @@ IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationReques
 
 SELECT (SELECT COUNT(*) FROM CRM.CertificateOfOrigins_ImportAuthenticationFileDetails WHERE ID = @fileId) AS SeededFiles,
        (SELECT COUNT(*) FROM CRM.CertificateOfOrigins_ImportAuthenticationRequest WHERE DocumentID IN (@docLinked, @docUnlinked)) AS SeededRequests;
-tail -14 "$S"
 
 -- Reset the seeded rows to their starting state on every run. The delivery scenarios ADVANCE the file's status
 -- machine, so without this reset a second run would start from an advanced status and take different branches --

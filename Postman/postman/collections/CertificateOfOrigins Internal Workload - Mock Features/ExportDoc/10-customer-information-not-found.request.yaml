@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformation/777"
+method: GET
+headers:
+  x-mock-feature--Customers.NotFound: "true"
+# GetCustomerInformation -> null: the not-found side of the single-customer read.
+order: 50000

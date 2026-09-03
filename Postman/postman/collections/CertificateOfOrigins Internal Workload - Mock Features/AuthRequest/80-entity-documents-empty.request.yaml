@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/EntityDocuments/999"
+method: GET
+headers:
+  x-mock-feature--Documents.Empty: "true"
+# GetEntityDocuments with no documents on the lead document -> the empty-list side of its filter/merge (23/32).
+order: 40700

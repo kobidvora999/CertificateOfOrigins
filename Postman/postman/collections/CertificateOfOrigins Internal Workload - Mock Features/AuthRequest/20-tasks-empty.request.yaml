@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990101"
+method: GET
+headers:
+  x-mock-feature--Tasks.Empty: "true"
+# IsTaskExist returns [] -> the "no open task" side of every task lookup in GetAuthenticationRequestByID.
+order: 40100

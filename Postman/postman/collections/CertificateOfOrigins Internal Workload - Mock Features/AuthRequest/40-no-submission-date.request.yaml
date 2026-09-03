@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/990101"
+method: GET
+headers:
+  x-mock-feature--DealFile.NoSubmissionDate: "true"
+# GetLeadDocumentSubmissionDate -> null: LeadDocumentSubmissionDate stays null instead of the mock's date.
+order: 40300

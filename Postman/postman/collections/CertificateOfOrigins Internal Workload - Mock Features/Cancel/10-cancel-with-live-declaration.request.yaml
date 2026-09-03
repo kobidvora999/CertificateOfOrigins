@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--DealFile.HasAssociatedDeclaration: "true"
+# GetLeadDocumentByCertificateOfOriginId returns a live lead document -> 14027174, and the cancel is blocked
+# (the exception gate runs before CancelCertificateOfOriginFromMessage). The default mock returns null, so this
+# whole arm was dead.
+# WHICH implementation: the CANCEL branch has its OWN inline copy of the check (CertificateOfOriginsBl.cs:150-154)
+# and that is the one this covers - verified by line hits. The sibling CheckDeclarationAssociatedWithCertificate
+# (MessagePerReason.cs:201) sits on the CREATE branch via ResolveCertificateForReason and is NOT reached by
+# reason 14; it stayed at 0/8. Two implementations of one legacy check - flagged in gap-analysis.md.
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146", "certificateId": "{{certIdCancelMf}}" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "invoiceDetails": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "invoiceSum": 100, "currencyType": "USD",
+            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+      }
+    }
+order: 30100
