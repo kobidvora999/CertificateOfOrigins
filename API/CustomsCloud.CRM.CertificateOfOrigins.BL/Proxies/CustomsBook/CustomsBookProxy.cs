@@ -15,7 +15,7 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         // microservice + endpoint route (until then the mock is enabled via x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"CustomsBook/IsTradeAgreementForCountry/{certificateTypeId}/{countryId}/{isCountryGroup}");
+            .WithResource($"api/CustomsBook/IsTradeAgreementForCountry/{certificateTypeId}/{countryId}/{isCountryGroup}");
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }
@@ -26,7 +26,7 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         // endpoint route (until then the mock is enabled via x-mock-mode).
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("CustomsBook/CustomsItemsByIds")
+            .WithResource("api/CustomsBook/CustomsItemsByIds")
             .AddBody(filters);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomsItemDto>>();
@@ -39,7 +39,7 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         // create-branch passes (ECustomsBookType.Export).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}");
+            .WithResource($"api/CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}");
         var response = await ExecuteAsync(req);
         return await response.GetResult<int?>();
     }

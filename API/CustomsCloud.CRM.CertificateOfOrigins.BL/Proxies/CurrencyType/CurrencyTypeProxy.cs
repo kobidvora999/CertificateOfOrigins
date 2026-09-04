@@ -15,7 +15,7 @@ public class CurrencyTypeProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("CurrencyType/CurrencyTypesByIds") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/CurrencyType/CurrencyTypesByIds") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(currencyTypeIds);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CurrencyTypeDto>>();
@@ -27,7 +27,7 @@ public class CurrencyTypeProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("CurrencyType/CurrencyTypesByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/CurrencyType/CurrencyTypesByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(currencyCodes);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CurrencyTypeDto>>();

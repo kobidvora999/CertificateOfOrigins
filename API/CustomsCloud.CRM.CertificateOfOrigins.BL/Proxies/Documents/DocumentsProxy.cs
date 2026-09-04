@@ -15,7 +15,7 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Document/DocumentsByEntity/{entityId}/{entityTypeId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .WithResource($"api/Document/DocumentsByEntity/{entityId}/{entityTypeId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<DocumentDto>>();
     }
@@ -26,7 +26,7 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Document/DeleteDocuments") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .WithResource("api/Document/DeleteDocuments") // TODO(blocking): confirm endpoint name/route with the Documents microservice
             .AddBody(new { DocumentIds = documentIds, Entity = entity });
         await ExecuteAsync(req);
     }
@@ -37,7 +37,7 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Document/{documentId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .WithResource($"api/Document/{documentId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<DocumentDto>();
     }
@@ -47,7 +47,7 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Document/AttachDocumentsToEntity") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .WithResource("api/Document/AttachDocumentsToEntity") // TODO(blocking): confirm endpoint name/route with the Documents microservice
             .AddBody(new List<DocumentsToEntityDto> { documents });
         await ExecuteAsync(req);
     }

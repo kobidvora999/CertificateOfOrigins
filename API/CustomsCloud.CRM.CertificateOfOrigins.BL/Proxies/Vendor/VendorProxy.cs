@@ -13,7 +13,7 @@ public class VendorProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Vendor/VendorsByIds") // TODO(blocking): confirm endpoint name/route with the Vendors microservice
+            .WithResource("api/Vendor/VendorsByIds") // TODO(blocking): confirm endpoint name/route with the Vendors microservice
             .AddBody(vendorIds);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<VendorDto>>();

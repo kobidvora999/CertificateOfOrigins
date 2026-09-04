@@ -15,7 +15,7 @@ public class MessageManagementProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Message/SendMessage") // TODO(blocking): confirm endpoint name/route with the Message-Management (Common) microservice
+            .WithResource("api/Message/SendMessage") // TODO(blocking): confirm endpoint name/route with the Message-Management (Common) microservice
             .AddBody(message);
         await ExecuteAsync(req);
     }

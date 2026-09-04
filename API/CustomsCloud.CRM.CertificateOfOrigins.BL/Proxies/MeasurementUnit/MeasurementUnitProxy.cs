@@ -15,7 +15,7 @@ public class MeasurementUnitProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("MeasurementUnit/MeasurementUnitsByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/MeasurementUnit/MeasurementUnitsByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(externalIdNumbers);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<MeasurementUnitByCodeDto>>();

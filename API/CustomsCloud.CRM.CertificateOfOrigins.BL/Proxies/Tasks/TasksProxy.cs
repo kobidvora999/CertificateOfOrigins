@@ -15,7 +15,7 @@ public class TasksProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Task/IsTaskExist") // TODO(blocking): confirm endpoint name/route with the Tasks microservice
+            .WithResource("api/Task/IsTaskExist") // TODO(blocking): confirm endpoint name/route with the Tasks microservice
             .AddBody(new { EntityId = entityId, EntityTypeId = entityTypeId, TaskTypeIds = taskTypeIds });
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<TaskExistResultDto>>();
@@ -27,7 +27,7 @@ public class TasksProxy(IHttpProxy httpProxy)
         // LatestUserHandlingEntityTasksResult whose UserID is the assessor (legacy adapter returned result.UserID).
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Task/LatestUserHandlingEntityTasksWithTaskUnification")
+            .WithResource("api/Task/LatestUserHandlingEntityTasksWithTaskUnification")
             .AddBody(filter);
         var response = await ExecuteAsync(req);
         return await response.GetResult<int?>();

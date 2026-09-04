@@ -15,7 +15,7 @@ public class DataDictionaryFieldProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("DataDictionaryField/DataDictionaryFieldsByIds") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/DataDictionaryField/DataDictionaryFieldsByIds") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(fieldIds);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<DataDictionaryFieldDto>>();

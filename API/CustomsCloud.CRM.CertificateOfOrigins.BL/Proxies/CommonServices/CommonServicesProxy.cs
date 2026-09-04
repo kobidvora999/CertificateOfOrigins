@@ -13,7 +13,7 @@ public class CommonServicesProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("CommonServices/CreateQrCode") // TODO(blocking): confirm endpoint name/route with the Common (QR) microservice
+            .WithResource("api/CommonServices/CreateQrCode") // TODO(blocking): confirm endpoint name/route with the Common (QR) microservice
             .AddBody(url);
         var response = await ExecuteAsync(req);
         return await response.GetResult<byte[]>();
@@ -25,7 +25,7 @@ public class CommonServicesProxy(IHttpProxy httpProxy)
         // — confirm the route and run template-migrate for the real templates (until then the mock is used).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"CommonServices/GenerateTemplate/{templateId}/{certificateOfOriginId}")
+            .WithResource($"api/CommonServices/GenerateTemplate/{templateId}/{certificateOfOriginId}")
             .AddQueryStringParameter("additionalInfo", additionalInfo ?? string.Empty);
         var response = await ExecuteAsync(req);
         return await response.GetResult<TemplateResultDto>();

@@ -13,7 +13,7 @@ public class UserProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("User/UsersByIds") // TODO(blocking): confirm endpoint name/route with the Users microservice
+            .WithResource("api/User/UsersByIds") // TODO(blocking): confirm endpoint name/route with the Users microservice
             .AddBody(userIds);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<UserDto>>();

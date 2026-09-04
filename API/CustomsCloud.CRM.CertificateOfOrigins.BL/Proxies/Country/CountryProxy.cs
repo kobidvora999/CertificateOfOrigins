@@ -15,7 +15,7 @@ public class CountryProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Country/CountriesByAlphaCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/Country/CountriesByAlphaCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(alphaCodes);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CountryByCodeDto>>();

@@ -13,7 +13,7 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Customer/CustomersByIds") // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource("api/Customer/CustomersByIds") // TODO(blocking): confirm endpoint name/route with the Customers microservice
             .AddBody(customerIds);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
@@ -23,7 +23,7 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Customer/CustomerInformation/{customerId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource($"api/Customer/CustomerInformation/{customerId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<CustomerDto>();
     }
@@ -34,7 +34,7 @@ public class CustomerProxy(IHttpProxy httpProxy)
         // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) alongside the country id.
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Customer/CustomersByCountry/{countryId}/{CertificateOfOriginsConsts.ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource($"api/Customer/CustomersByCountry/{countryId}/{CertificateOfOriginsConsts.ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
     }
@@ -43,7 +43,7 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"Customer/IdByExternalId/{externalId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource($"api/Customer/IdByExternalId/{externalId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
         var response = await ExecuteAsync(req);
         return await response.GetResult<int?>();
     }

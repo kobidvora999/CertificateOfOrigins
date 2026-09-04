@@ -15,7 +15,7 @@ public class PackingTypeProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("PackingType/PackingTypesByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/PackingType/PackingTypesByCodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(commonCodes);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<PackingTypeByCodeDto>>();

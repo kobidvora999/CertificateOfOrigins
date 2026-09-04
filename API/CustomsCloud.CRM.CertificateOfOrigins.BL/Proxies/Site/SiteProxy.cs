@@ -16,7 +16,7 @@ public class SiteProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("Site/SitesByExternalNumbers") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/Site/SitesByExternalNumbers") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(externalSiteNumbers);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<SiteByExternalNumberDto>>();

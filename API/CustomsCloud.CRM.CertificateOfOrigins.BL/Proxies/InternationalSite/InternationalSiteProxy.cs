@@ -15,7 +15,7 @@ public class InternationalSiteProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource("InternationalSite/InternationalSitesByLocodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
+            .WithResource("api/InternationalSite/InternationalSitesByLocodes") // TODO(blocking): confirm endpoint name/route with the SystemTables microservice
             .AddBody(locodes);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<InternationalSiteByLocodeDto>>();
