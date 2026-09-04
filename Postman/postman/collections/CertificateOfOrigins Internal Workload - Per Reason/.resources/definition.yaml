@@ -1,0 +1,111 @@
+$kind: collection
+id: certificateoforigins-per-reason-v1
+name: CertificateOfOrigins Per Reason
+description: >-
+  ResolveCertificateForReason and its helpers (CertificateOfOriginsBl.MessagePerReason.cs) — the switch over
+  ERequestReason that runs before the save. It was the biggest remaining gap at 50.3% line / 49.4% branch,
+  because every earlier fixture sent the same two shapes: reason 1 with no certificateId, and reason 3/4 with
+  one. Whole arms had never been entered (EmptyCertificate, Draft, the default arm), and the helpers were only
+  ever driven down their success side — CheckCertificateNumber was never given a blank or an unknown id,
+  CheckCertificateUpdate never saw a mismatched agent or a type switch, ValidateCertificateInReplacement was
+  never reached at all because no fixture sent certificateIdToCancel.
+  Rows are saved directly at the statuses the checks care about (PR-PUB-* at Published, PR-MATCH at
+  DeclarationMatch) — a certificate saved straight into a status is not a status CHANGE, so no publish side
+  effects fire and the rows cost nothing but their own existence.
+  WHY SIX PUBLISHED ROWS AND NOT ONE: the message endpoint takes an ILockUtil lease keyed on
+  AgentRequest.CertificateId (CertificateOfOriginsBl.cs:88) whenever that id is non-empty, and the lease is
+  NOT released — verified live: first call 200, second and third 400 "The certificate is locked by another
+  request" for the full five minutes, even though the BL calls SafeReleaseAsync in a finally. So a certificate
+  id can be transmitted exactly ONCE per five minutes, and every scenario that sends one needs its own row.
+  That is a defect in its own right, recorded in reports/gap-analysis-mock-features.md — an agent retransmitting
+  the same certificate hits a spurious 400.
+  The message endpoint answers 200 with an `exceptions` array, so the status says nothing: every assertion here
+  is on the in-band exceptionType, and the scenarios that must raise NOTHING assert that too.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+
+      // Every certificate id this collection transmits is minted fresh per RUN. The lock described above is not
+      // released, so a constant id makes the collection un-rerunnable for five minutes - which is exactly how it
+      // failed the first time it was run twice in a row. Set once per run, then reused by every request.
+      if (!pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(now).slice(-7));
+      }
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+
+      // One scenario answers 400 and that IS its result: an unknown requestReasonCode is refused by a validator
+      // before the per-reason switch is ever entered, so the switch's default arm is dead code behind validation.
+      var expected = (name === '70-unknown-reason') ? 400 : 200;
+      pm.test(name + ': status is ' + expected, function () { pm.response.to.have.status(expected); });
+
+      if (name === '70-unknown-reason') {
+          pm.test('70: an undefined reason is refused by name, not silently accepted', function () {
+              pm.expect(pm.response.text()).to.include('RequestReasonCode');
+          });
+          return;
+      }
+
+      if (name === '08-setup-received' && j) {
+          var made = (j.feedback || {}).certificateId;
+          if (made) { pm.collectionVariables.set('prReceived', made); }
+          pm.test('08-setup: created a NOT-published certificate to replace', function () {
+              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+          });
+      }
+
+      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+
+      // Each scenario names the in-band code(s) its arm must raise. The message endpoint always answers 200, so
+      // the code IS the branch proof — there is nothing else to look at.
+      var MUST = {
+          '10-empty-with-id':            [2942],            // CheckCertificateIdIsEmpty
+          '30-new-with-published':       [14027037],        // NewCertificate -> published/cancelled
+          '40-retro-with-published':     [14027037],        // Retrospective  -> published/cancelled
+          '50-retro-no-declaration':     [4987],            // CheckExportDeclarationNumber, required
+          '60-draft-with-published':     [14027037],        // Draft          -> published/cancelled
+          '80-update-empty-id':          [14026318],        // CheckCertificateNumber, blank
+          '90-update-unknown-id':        [13680],           // CheckCertificateNumber, not found
+          '100-update-agent-mismatch':   [11908, 14027037], // CheckCertificateUpdate, agent + status arms
+          '110-update-type-switch':      [11909],           // CheckCertificateUpdate, type-switch arm
+          '130-replace-not-published':   [4984, 4986],      // ValidateCertificateInReplacement, both arms
+          '140-replace-no-idtocancel':   [6, 14026318],     // CheckCertificateIdToCancelHasValue + blank id
+          '150-correction-blocked':      [14027036]         // the tail: a customs-employee task is open
+      };
+      // The clean sides. Asserting the ABSENCE is what makes the positive cases mean something: without these,
+      // a validator that fired on everything would look just as green.
+      var MUST_NOT = {
+          '20-empty-clean':        [2942],
+          '120-replace-published': [4984, 4986]
+      };
+
+      if (MUST[name]) {
+          MUST[name].forEach(function (c) {
+              pm.test(name + ': raises exceptionType ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(c);
+              });
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': raises none of the per-reason codes', function () {
+              MUST_NOT[name].forEach(function (c) {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+              });
+          });
+      }
+    language: text/javascript

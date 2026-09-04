@@ -320,3 +320,79 @@ Scenario 70 is the one with real assertions rather than coverage-only proof: `ve
 | `SendDecisionMessage` | 25/36, br 4/10 | the responder-differs-from-creator arms |
 | `ValidateCertificateGoodsItem` | 31/49 | the origin-country-group arm |
 | `CheckDeclarationAssociatedWithCertificate` | 0/8 | unreachable for reason 14 — migration duplication, see round 1 |
+
+---
+
+# Round 5 — the per-reason switch
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Per Reason`
+
+## Result
+
+| | before | after |
+|---|---|---|
+| `MessagePerReason.cs` line | 50.3% | **88.4%** (130/147) |
+| `MessagePerReason.cs` branch | 49.4% | **89.4%** (76/85) |
+| `ResolveCertificateForReason` | 33/61 | **55/61**, br 34/37 |
+| the static helpers (`<sync>`) | 14/39 | **39/39**, br 21/22 |
+| `CheckCertificateNumber` | 9/12 | **12/12** |
+| `CheckIfCertificatePublishedOrCanceled` | 5/8 | **8/8**, br 8/8 |
+
+| | round 4 | round 5 |
+|---|---|---|
+| Line (merged) | 88.9% | **90.0%** (4235/4704) |
+| Branch (pass 1) | 74.1% | **76.4%** (1149/1504) |
+
+10 collections, 175 requests, 541 assertions, 0 failures.
+
+Every earlier fixture sent the same two shapes — reason 1 without a certificateId, reason 3/4 with one — so whole
+arms had never been entered and the helpers were only ever driven down their success side. The 18 requests here
+walk every arm and, for the guards, **both** sides: the clean cases assert the ABSENCE of their siblings' codes,
+which is what stops a validator that fires on everything from looking equally green.
+
+## Three things the live service taught us
+
+### 1. The message lock is never released — a certificate id is single-use for five minutes
+`GetPC22802281CertificateOfOriginRequest` takes an `ILockUtil` lease keyed on `AgentRequest.CertificateId`
+(`CertificateOfOriginsBl.cs:88`) whenever that id is non-empty, and releases it with `SafeReleaseAsync` in a
+`finally`. **It does not release.** Reproduced directly against the live service with a fresh id:
+
+```
+call 1 -> HTTP=200  ok
+call 2 -> HTTP=400  locked by another request
+call 3 -> HTTP=400  locked by another request
+```
+
+The lease is `TimeSpan.FromMinutes(5)`, and `LockUntilAsync` appears to mean exactly that — held until the
+deadline, regardless of the release call. The BL's intent is plainly otherwise ("released in a finally" is in
+its own comment). **An agent that retransmits the same certificate within five minutes gets a spurious 400.**
+
+For the collection this meant two changes: every scenario that transmits a certificateId needs its own row
+(six published rows, not one), and every id is minted per RUN via a `runId` suffix — otherwise the suite cannot
+be run twice inside five minutes. Verified: two consecutive full runs, both 10/10 green.
+
+### 2. The switch's `default` arm is dead code behind validation
+`requestReasonCode: 99` never reaches the switch — a validator rejects it first with 400
+`RequestReasonCode must be a defined ERequestReason value`. The scenario is kept and now asserts that 400: it is
+what proves the arm is unreachable rather than merely untested. Nothing anywhere raises `RequestReasonNotExist`
+(5020), which the migrated code still defines.
+
+### 3. Reaching `IllegalCertificateTypeUpdate` requires the STORED certificate to be NonManipulation
+Sending `certificateOfOriginTypeCode: 5` makes the message itself a NonManipulation message, whose field
+catalogue demands manifest/import/export values an EURMED body does not carry — the run came back with only
+`MandatoryValue(2387)` and never reached `CheckCertificateUpdate`. Inverting it (stored certificate type 5,
+transmitted as type 1) reaches the arm.
+
+## Still open in this file
+
+| method | lines | why |
+|---|---|---|
+| `CheckExportDeclarationNumber` | 9/12 | the Draft/Canceled declaration arm needs `LeadDocumentStateId` in {1,5,6}; `ExportDealFileMockProxy` hardcodes 0 and there is no flag for it. **A new mock feature is the only way in** — a one-line code change, so it is reported rather than made |
+| `CheckDeclarationAssociatedWithCertificate` | 0/8 | unreachable for reason 14 — the cancel branch has its own inline copy. Migration duplication, see round 1 |
+
+## Environment note
+
+Consul `Main/CentralConfig` was pointed at **PreRulings** partway through this round by work outside this
+session; a run collided with it and every collection failed with `Could not find stored procedure`. It was
+repointed for the measurement and restored to **PreRulings** — the value found, not the `Customers` of earlier
+rounds. Anyone re-running must set it to `CertificateOfOrigins` first.

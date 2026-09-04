@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# A PUBLISHED row to point the per-reason checks at. Saved straight at status 8 - that is NOT a status CHANGE for a new instance (CertificateOfOriginsBl.cs:942) so no publish side effects fire; all this scenario needs is the row.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 1, "title": "per-reason fixture PR-PUB-G-{{runId}}",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "PR-PUB-G-{{runId}}",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [ { "certificateDetailsTypeCodeId": 2, "value": "יצואן" } ]
+    }
+order: 10005
