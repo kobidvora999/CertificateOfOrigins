@@ -1,0 +1,39 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# decision 7 (AuthenticationNeedless) does three things at once that nothing else reached: it falls to the DEFAULT switch arm (NewDecisionBeforeAssociation event + SendDecisionMessage), it then raises the rejection event with a task assignment, and vendorId 0 exercises the 0 -> null normalisation. A non-empty collaterals list also drives CollateralId = the first collateral + ChangeTempCollateralRequest.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 990103,
+      "authenticationFileId": 990001,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 7,
+      "leadDocumentId": 111,
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 0,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": [
+        { "collateralRequestId": 9901, "customerId": 777, "collateralType": 1, "amountToGrant": 1000,
+          "relatedEntityType": 1, "collateralRequestStatus": 1, "organizationUnitId": 1, "organizationUnitType": 1,
+          "initiatorUserId": 5 }]
+    }
+order: 10600

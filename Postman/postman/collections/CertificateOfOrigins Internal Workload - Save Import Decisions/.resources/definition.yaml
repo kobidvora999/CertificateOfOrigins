@@ -1,0 +1,88 @@
+$kind: collection
+id: certificateoforigins-save-import-decisions-v1
+name: CertificateOfOrigins Save Import Decisions
+description: >-
+  Every arm of SaveImportAuthenticationRequest's decision switch (AuthenticationRequestBl.cs:817).
+  The stock fixture pointed at documentId 900001, which does not exist: the set-based update affects 0 rows,
+  the BL throws RestNotFoundException, and the whole tail of the method - the VendorId 0 -> null
+  normalisation, the AuthenticationNeedless rejection event, the save and the re-read - was unreachable. Only
+  one of the four switch paths ever ran, and RaiseNewRequestEvent sat at 0/14.
+  These scenarios drive SEEDED rows instead, so the save succeeds and the method runs to the end.
+  REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql, which now also
+  creates 990103 / 990104. Those two are DEDICATED to this collection and deliberately separate from
+  990101 / 990102: this save is a set-based UPDATE that writes AuthenticationFileID, DecisionID and VendorID,
+  the Auth Lifecycle collection asserts exactly those columns, and the collections run in PARALLEL.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('today', iso(Date.now()));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      // 80-missing-row is the one scenario whose 4xx IS the branch - the rest must reach the tail and come back
+      // with the re-read graph.
+      var expected = (name === '80-missing-row') ? 404 : 200;
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is ' + expected, function () { pm.response.to.have.status(expected); });
+
+      if (name === '80-missing-row') {
+          pm.test('80: a missing request row is a 404, not a silent no-op 200', function () {
+              pm.expect(pm.response.code).to.eql(404);
+          });
+          return;
+      }
+
+      // What each scenario sent, and therefore what the re-read must show. The response is
+      // GetAuthenticationRequestByID's own graph, re-read AFTER the update - so these values coming back are the
+      // proof that the switch ran, the save landed, and the method reached its last line. Several of the arms
+      // (RaiseNewRequestEvent, the processed-after-rejection event, the rejection event) only raise events, which
+      // the response cannot show; for those the status assertions are the contract and coverage is the proof.
+      var SENT = {
+          '10-new-request-with-file':   { doc: 990103, decision: 1, file: 990001, vendor: 777 },
+          '20-new-request-no-file':     { doc: 990104, decision: 1, file: null,   vendor: 778 },
+          '30-new-request-user-handles':{ doc: 990103, decision: 1, file: 990001, vendor: 777 },
+          '40-new-request-task-exists': { doc: 990103, decision: 1, file: 990001, vendor: 777 },
+          '50-authreq-rejected-task':   { doc: 990104, decision: 6, file: null,   vendor: 778 },
+          '60-authreq-no-rejected':     { doc: 990104, decision: 6, file: null,   vendor: 778 },
+          '70-needless-collaterals':    { doc: 990103, decision: 7, file: 990001, vendor: null }
+      };
+      var want = SENT[name];
+      if (!want || !j) { return; }
+
+      pm.test(name + ': re-read returned the row that was saved', function () {
+          pm.expect(j.documentId, 'documentId').to.eql(want.doc);
+          pm.expect(j.decisionId, 'decisionId - proves the set-based update landed').to.eql(want.decision);
+      });
+
+      if (want.file === null) {
+          pm.test(name + ': authenticationFileId stayed null', function () {
+              pm.expect(j.authenticationFileId).to.be.oneOf([null, undefined]);
+          });
+      } else {
+          pm.test(name + ': authenticationFileId round-tripped', function () {
+              pm.expect(j.authenticationFileId).to.eql(want.file);
+          });
+      }
+
+      if (name === '70-needless-collaterals') {
+          // Two things only this scenario reaches. VendorId 0 is normalised to null before the save
+          // (AuthenticationRequestBl.cs:890), and the first collateral supplies CollateralId - both are visible
+          // in the re-read, so this is a real assertion rather than a coverage-only one.
+          pm.test('70: vendorId 0 was normalised to null', function () {
+              pm.expect(j.vendorId, 'vendorId').to.be.oneOf([null, undefined]);
+          });
+          pm.test('70: CollateralId came from the first collateral', function () {
+              pm.expect(j.collateralId, 'collateralId').to.eql(9901);
+          });
+      }
+    language: text/javascript

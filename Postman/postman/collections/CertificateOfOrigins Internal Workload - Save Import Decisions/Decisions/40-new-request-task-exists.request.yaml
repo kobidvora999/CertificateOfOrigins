@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# Same arm with the DEFAULT tasks mock, which returns one open SetDecisionBeforeAssociation task: the Count == 0 side of the guard.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 990103,
+      "authenticationFileId": 990001,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 1,
+      "leadDocumentId": 111,
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 10300

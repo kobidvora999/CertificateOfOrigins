@@ -258,3 +258,65 @@ merge shows 25/25 and 15/15. That is what correct looks like.
 | `ValidateCertificateDetails` | 32/46 | the individual mismatch findings in isolation — currently only some fire together |
 | `RaiseNewRequestEvent` (Auth) | 0/14 | `SaveImportAuthenticationRequest` with `decisionId` = NewAuthenticationRequest on an EXISTING row |
 | `CheckDeclarationAssociatedWithCertificate` | 0/8 | unreachable for reason 14 — migration duplication, see round 1 |
+
+---
+
+# Round 4 — the SaveImportAuthenticationRequest decision switch
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Save Import Decisions`
+
+## Why the whole method was half-dead
+
+The stock fixture posted `documentId: 900001`, which does not exist. The set-based update affects 0 rows, the
+BL throws `RestNotFoundException`, and **everything after the switch** — the `VendorId 0 -> null`
+normalisation, the `AuthenticationNeedless` rejection event, the save itself and the re-read — was unreachable.
+Of the four switch paths only `default` ever ran, and `RaiseNewRequestEvent` sat at 0/14.
+
+The fix is a seed, not a mock: two rows dedicated to this collection (990103 / 990104), deliberately separate
+from the Auth Lifecycle pair. This save is a set-based UPDATE that writes `AuthenticationFileID`, `DecisionID`
+and `VendorID` — exactly the columns Auth Lifecycle asserts — and the collections run in **parallel**, so
+sharing rows would have been a race.
+
+## Result
+
+| method | before | after |
+|---|---|---|
+| `RaiseNewRequestEvent` | **0/14** | **14/14** (br 2/2) |
+| `SaveImportAuthenticationRequest` | 31/74, br 4/18 | **74/74**, br 16/18 |
+| `GetAuthenticationRequestByID` | partial | **42/42** |
+| `ChangeTempCollateralRequest` | 0/6 | **6/6** |
+| `AuthenticationRequestBl.cs` | 80.7% | **88.2%** |
+
+| | round 3 | round 4 |
+|---|---|---|
+| Line (merged) | 87.4% | **88.9%** (4181/4704) |
+| Branch (pass 1) | 72.9% | **74.1%** (1114/1504) |
+
+9 collections, 152 requests, 476 assertions, 0 failures. Green on the first run.
+
+## The eight scenarios
+
+Both sides of every guard, not just the interesting side:
+
+| scenario | decision | what it proves |
+|---|---|---|
+| `10-new-request-with-file` | 1 + `Tasks.Empty` | `RaiseNewRequestEvent` **and** its `AddRelatedEntity` branch |
+| `20-new-request-no-file` | 1 + `Tasks.Empty`, file null | the other side of that `if` |
+| `30-new-request-user-handles` | 1, `IsCurrentUserHandleRequest` true | the guard's short-circuit |
+| `40-new-request-task-exists` | 1, default tasks mock | the `Count == 0` false side |
+| `50-authreq-rejected-task` | 6, default mock | processed-after-rejection event + a second entry into `RaiseNewRequestEvent` |
+| `60-authreq-no-rejected` | 6 + `Tasks.Empty` | the empty side of that guard |
+| `70-needless-collaterals` | 7, vendorId 0, one collateral | the `default` arm, the rejection event, the `VendorId 0 -> null` normalisation and `CollateralId` from the first collateral |
+| `80-missing-row` | 1, documentId 900001 | the 404 the stock fixture hit on every run — kept deliberately, as a scenario rather than as the only behaviour |
+
+Scenario 70 is the one with real assertions rather than coverage-only proof: `vendorId` comes back null and
+`collateralId` comes back 9901, both visible in the re-read.
+
+## Still open
+
+| method | lines | what it needs |
+|---|---|---|
+| `CertificateOfOriginsBl.MessagePerReason.cs` | 50.3% | the per-reason arms not yet driven (Replacement, Retrospective, Draft) |
+| `SendDecisionMessage` | 25/36, br 4/10 | the responder-differs-from-creator arms |
+| `ValidateCertificateGoodsItem` | 31/49 | the origin-country-group arm |
+| `CheckDeclarationAssociatedWithCertificate` | 0/8 | unreachable for reason 14 — migration duplication, see round 1 |

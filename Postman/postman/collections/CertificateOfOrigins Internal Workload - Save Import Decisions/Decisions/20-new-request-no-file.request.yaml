@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--Tasks.Empty: "true"
+# Same arm with authenticationFileId NULL - the other side of RaiseNewRequestEvent's only if.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 990104,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 1,
+      "leadDocumentId": 111,
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 778,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 10100

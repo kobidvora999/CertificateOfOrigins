@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# decision 6 (AuthenticationRequried) with a HandleRejectedAuthenticationRequest task present (default mock) -> the processed-after-rejection event AND a second call into RaiseNewRequestEvent.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 990104,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 6,
+      "leadDocumentId": 111,
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 778,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 10400

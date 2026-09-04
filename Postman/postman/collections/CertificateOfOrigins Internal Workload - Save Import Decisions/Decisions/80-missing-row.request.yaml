@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--Tasks.Empty: "true"
+# documentId 900001 does not exist -> the set-based update affects 0 rows -> RestNotFoundException. This is what the STOCK fixture did on every run, which is why the whole tail of the method (VendorId normalisation, the save, the re-read) was unreachable.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": 900001,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 1,
+      "leadDocumentId": 111,
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 10700

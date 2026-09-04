@@ -65,3 +65,41 @@ UPDATE CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
 UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
    SET DecisionID = NULL, CollateralID = NULL, IsOldIndication = 0, UpdateDate = @now, UpdateUserID = 5
  WHERE DocumentID IN (@docLinked, @docUnlinked);
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Two MORE requests, dedicated to the "Save Import Decisions" collection (SaveImportAuthenticationRequest).
+-- They are separate from 990101/990102 on purpose: that save is a set-based UPDATE that writes
+-- AuthenticationFileID, DecisionID, VendorID and more, and the Auth Lifecycle collection asserts exactly those
+-- columns on 990101/990102. The collections run in PARALLEL, so sharing rows would be a race.
+DECLARE @docDecisionA int = 990103;   -- exercised WITH an authentication file on the request
+DECLARE @docDecisionB int = 990104;   -- exercised with AuthenticationFileID null on the request
+
+IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationRequest WHERE DocumentID = @docDecisionA)
+    INSERT INTO CRM.CertificateOfOrigins_ImportAuthenticationRequest
+        (DocumentID, CreateDate, CreateUserID, UpdateDate, UpdateUserID, AuthenticationFileID,
+         AuthenticationRequestDate, LeadDocumentID, DocumentIssuingDate, ImportCountryID, IssuingCountryID,
+         ItemDetailID, Number, IsOldIndication, OriginCountryID, PreferenceDocumentTypeID, Remarks,
+         RequestCircumstancesID, UserResponseID, ResponseNameEmail, ResponsePhoneNum, OrganizationUnitID, UserID,
+         VendorId, VendorName)
+    VALUES
+        (@docDecisionA, @now, 5, @now, 5, @fileId, @now, 990203, @now, 32, 32,
+         3, 3, 0, 32, 1, N'seed decision request A', 1, 5, N'seed@example.com', N'0500000000', 1, 5, 777, N'Seed Vendor');
+
+IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationRequest WHERE DocumentID = @docDecisionB)
+    INSERT INTO CRM.CertificateOfOrigins_ImportAuthenticationRequest
+        (DocumentID, CreateDate, CreateUserID, UpdateDate, UpdateUserID, AuthenticationFileID,
+         AuthenticationRequestDate, LeadDocumentID, DocumentIssuingDate, ImportCountryID, IssuingCountryID,
+         ItemDetailID, Number, IsOldIndication, OriginCountryID, PreferenceDocumentTypeID, Remarks,
+         RequestCircumstancesID, UserResponseID, ResponseNameEmail, ResponsePhoneNum, OrganizationUnitID, UserID,
+         VendorId, VendorName)
+    VALUES
+        (@docDecisionB, @now, 5, @now, 5, NULL, @now, 990204, @now, 32, 32,
+         4, 4, 0, 32, 1, N'seed decision request B', 1, 5, N'seed@example.com', N'0500000000', 1, 5, 778, N'Seed Vendor 2');
+
+-- The decision scenarios overwrite DecisionID / AuthenticationFileID / VendorID on these two rows, so reset them
+-- the same way as the pair above.
+UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
+   SET DecisionID = NULL, CollateralID = NULL, AuthenticationFileID = CASE WHEN DocumentID = @docDecisionA THEN @fileId ELSE NULL END,
+       VendorId = CASE WHEN DocumentID = @docDecisionA THEN 777 ELSE 778 END,
+       UpdateDate = @now, UpdateUserID = 5
+ WHERE DocumentID IN (@docDecisionA, @docDecisionB);
