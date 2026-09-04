@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+method: GET
+# DeclarationMatch (6) is the proof: only the no-errors-no-warnings arm sets it.
+order: 10200

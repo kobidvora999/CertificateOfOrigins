@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# Everything matches: destination 32, exporter 888, same declaration number. ApplyReconciliationOutcome takes its FIRST arm -> RaiseCertificatePreferredAssessorEvent + ResolveAssessorUserId, both 0% until now. leadDocumentId 111 on the certificate is what makes ResolveAssessorUserId go past its null guard.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }
+      ]
+    }
+order: 10100

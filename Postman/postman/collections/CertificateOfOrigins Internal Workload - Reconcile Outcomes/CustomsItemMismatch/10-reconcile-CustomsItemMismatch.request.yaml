@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--CustomsBook.CustomsItemMismatch: "true"
+# Round 1 could not reach this: through the MESSAGE path the declaration comes from the mock, whose goods item has CertificateOfOriginId 0, so the certificate-link Error fired first. Here the declaration payload is OURS - certificateOfOriginId is the real id, so the link check passes and the 6-digit comparison is finally reached. The mock gives each item a distinct classification under this flag (111111 vs 222222), so BOTH directions fire: CustomsItemMismatch forward and CustomsItemInDeclarationNotInCertificate in reverse.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [
+          { "certificateOfOriginId": {{certId}}, "customsItemId": 222222, "originCountryId": 32 }] }
+      ]
+    }
+order: 14100

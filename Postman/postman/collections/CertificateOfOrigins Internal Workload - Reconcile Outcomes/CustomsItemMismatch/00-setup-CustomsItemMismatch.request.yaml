@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# MERCOSUR (type 3) - the only reason the 6-digit checks run at all: IsCustomsItemMandatory is True for 3/6/7/8/10 and False for EUR1/EURMED. Invoice INV1 carries customs item 111111.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 3, "title": "reconcile-outcomes RC-CIMM",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "RC-CIMM",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+        ,{ "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetails": [
+        { "id": 0, "invoiceNumber": "INV1", "invoiceAmount": 50, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "matched invoice", "isToPrint": true,
+          "certificateOfOriginItemDetail": [
+            { "id": 0, "customsItemId": 111111, "fullClassification": "1111110000000", "marksAndNumbers": "M1",
+              "itemGoodsDescription": "widget", "quantity": 1, "rowNum": 1, "measurementUnitId": 1 } ] }]
+    }
+order: 14000

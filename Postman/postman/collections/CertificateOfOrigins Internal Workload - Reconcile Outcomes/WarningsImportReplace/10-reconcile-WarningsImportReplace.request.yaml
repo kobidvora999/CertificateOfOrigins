@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--DealFile.NoAssociatedGoodsItems: "true"
+# No associated goods items -> ImportReplacementNoTradeAgreement (WARNING) and isLinkedToImportDeclaration=true. Warnings-only AND linked, so the warnings arm also opens the replacement-handling task (OpenTaskHandlingTheReplacementOfAnImportCertificate) before raising the warnings event.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }
+      ]
+    }
+order: 13100

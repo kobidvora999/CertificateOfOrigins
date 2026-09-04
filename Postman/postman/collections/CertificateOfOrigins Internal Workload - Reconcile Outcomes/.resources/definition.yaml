@@ -1,0 +1,98 @@
+$kind: collection
+id: certificateoforigins-reconcile-outcomes-v1
+name: CertificateOfOrigins Reconcile Outcomes
+description: >-
+  The three arms of ApplyReconciliationOutcome (CertificateOfOriginsBl.cs:1520), driven through
+  POST /CertificateOfOrigins/Reconcile. Every earlier collection reached the reconciliation only through the
+  MESSAGE path, where the declaration comes from ExportDealFileMockProxy and always disagrees with the
+  certificate - so every run produced Error-level findings and only the middle arm (hasErrors -> Rejected) ever
+  ran. The match arm and the warnings arm were both dead:
+    * no errors, no warnings -> RaiseCertificatePreferredAssessorEvent + ResolveAssessorUserId   (0/17, 0/14)
+    * warnings only          -> RaiseDeclarationHasWarningsEvent                                  (0/21)
+  Here the declaration payload is OURS, so the two sides can be made to agree - or to disagree in exactly one
+  controlled way. Each folder creates its own certificate at status Received, reconciles it once (the status
+  moves away from Received, so a certificate is reconcilable exactly once), then READS IT BACK: the resulting
+  status is the branch proof, because each arm sets a different one -
+  DeclarationMatch 6 / DeclarationMismatch 5 / Rejected 3.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('tenDaysAgo', iso(Date.now() - 10 * 86400000));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Every request name carries its scenario as a suffix ("10-reconcile-Warnings"), and the step is the
+      // prefix. Deliberately NOT pm.info.requestPath: that is not a Postman API - it reads undefined, the
+      // lookups silently no-op and the run goes green having asserted nothing. This repo has been bitten by
+      // exactly that before (see the Message Validation collection's note).
+      var name   = pm.info.requestName;
+      var step   = name.substring(0, name.indexOf('-', 3));
+      var folder = name.substring(name.indexOf('-', 3) + 1);
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      // Each folder reconciles the certificate IT created. The folders are ordered so that a setup always
+      // immediately precedes its own reconcile, so one shared variable is enough.
+      if (step === '00-setup' && j) {
+          pm.collectionVariables.set('certId', j.id);
+          pm.test(folder + '/00-setup: created at Received', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status must be Received(2) or the reconcile gate skips it').to.eql(2);
+          });
+      }
+
+      var DECLARATION_MATCH = 6, DECLARATION_MISMATCH = 5, REJECTED = 3;
+
+      // folder -> what the reconcile must return, and the status it must leave behind.
+      var EXPECT = {
+          'Match':                 { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'MatchNoAssessor':       { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'Warnings':              { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אינה תואמת לחשבונית בהצהרת היצוא'] },
+          'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אין בהצהרה טובין המקושרים להצהרת היבוא'] },
+          'CustomsItemMismatch':   { levels: [1],   status: REJECTED,             contains: ['אינו תואם לפריט מכס בהצהרת היצוא',
+                                                                                             'אינו תואם לפריטי המכס בתעודה'] }
+      };
+      var want = EXPECT[folder];
+
+      if (step === '10-reconcile' && want && j) {
+          var levels = j.map(function (e) { return e.exceptionLevel; });
+          var text   = j.map(function (e) { return e.exceptionDescription || ''; }).join(' | ');
+
+          if (want.levels.length === 0) {
+              pm.test(folder + '/10: reconciled clean - no findings at all', function () {
+                  pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.empty;
+              });
+          } else {
+              // The arm is chosen by LEVEL, not by count: one Error anywhere sends it to the errors arm, so a
+              // warnings-only run must prove the absence of Errors, not merely the presence of a warning.
+              pm.test(folder + '/10: findings are exactly level ' + want.levels[0], function () {
+                  pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.not.empty;
+                  levels.forEach(function (l) { pm.expect(l, 'level (1=Error, 2=Warning)').to.eql(want.levels[0]); });
+              });
+              want.contains.forEach(function (t) {
+                  pm.test(folder + '/10: raised "' + t + '"', function () {
+                      pm.expect(text).to.include(t);
+                  });
+              });
+          }
+      }
+
+      if (step === '20-verify' && want && j) {
+          // The real branch proof. ApplyReconciliationOutcome's three arms each leave a different status, and
+          // nothing else in the flow writes these values, so the status alone says which arm ran.
+          pm.test(folder + '/20: outcome status is ' + want.status, function () {
+              pm.expect(j.certificateOfOriginStatusId,
+                  '6=DeclarationMatch (no findings), 5=DeclarationMismatch (warnings only), 3=Rejected (any error)')
+                  .to.eql(want.status);
+          });
+      }
+    language: text/javascript

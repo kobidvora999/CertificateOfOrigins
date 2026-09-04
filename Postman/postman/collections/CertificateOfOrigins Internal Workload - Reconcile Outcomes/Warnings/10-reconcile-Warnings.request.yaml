@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# The unmatched invoice raises ExportInvoiceNotMatch - a WARNING - and ValidateCertificateInvoices returns false immediately, so no goods-item Error can follow. Details all match, so the run ends warnings-only: the third arm of ApplyReconciliationOutcome -> RaiseDeclarationHasWarningsEvent, 0/21 until now.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }
+      ]
+    }
+order: 12100

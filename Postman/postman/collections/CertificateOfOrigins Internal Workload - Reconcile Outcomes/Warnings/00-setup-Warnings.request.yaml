@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# EUR1 with ONE invoice numbered INV-OTHER. The reconcile payload declares INV1, so the numbers do not match.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-WARN",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "RC-WARN",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+      ],
+      "certificateOfOriginInvoiceDetails": [
+        { "id": 0, "invoiceNumber": "INV-OTHER", "invoiceAmount": 50, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "unmatched invoice", "isToPrint": true }]
+    }
+order: 12000

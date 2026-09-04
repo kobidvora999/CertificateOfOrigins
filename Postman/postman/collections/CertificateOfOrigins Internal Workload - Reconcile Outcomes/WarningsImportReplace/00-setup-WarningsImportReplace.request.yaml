@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# reason 5 (ImportCertificateReplacement), no invoices - so the only finding can come from ValidateImportReplacement.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-IMPREP",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "RC-IMPREP",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 5,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+      ],
+      "certificateOfOriginInvoiceDetails": []
+    }
+order: 13000

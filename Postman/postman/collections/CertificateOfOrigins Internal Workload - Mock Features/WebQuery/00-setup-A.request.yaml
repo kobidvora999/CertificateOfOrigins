@@ -21,7 +21,7 @@ body:
         { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
         { "certificateDetailsTypeCodeId": 13, "value": "32" }
       ],
-      "certificateOfOriginInvoiceDetail": [
+      "certificateOfOriginInvoiceDetails": [
         { "id": 0, "invoiceNumber": "INV-MF-COO-A", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
           "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
       ]

@@ -166,3 +166,95 @@ This machine did not show the fault: the row was created on 2026-07-14 by the ol
 in `dbo.SchemaVersions`, `Level=0`), so when `add params.sql` ran on 08-23 its guard matched the clean row and
 skipped the tabbed insert. Only a from-zero bootstrap would hit it — which is what `db-scripts-check` exists to
 catch. Tab removed; it was the only one in the file.
+
+---
+
+# Round 3 — the reconciliation outcome arms
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Reconcile Outcomes`
+
+## Why two of the three arms were dead
+
+`ApplyReconciliationOutcome` (`CertificateOfOriginsBl.cs:1520`) has three arms, each leaving a different status:
+
+| condition | event | status |
+|---|---|---|
+| no errors, no warnings | `RaiseCertificatePreferredAssessorEvent` → `ResolveAssessorUserId` | DeclarationMatch (6) |
+| any error | mismatch event | Rejected (3) |
+| warnings only | `RaiseDeclarationHasWarningsEvent` | DeclarationMismatch (5) |
+
+Every earlier collection reached the reconciliation only through the **message** path, where the declaration
+comes from `ExportDealFileMockProxy` and always disagrees with the certificate. So every run produced
+Error-level findings and only the middle arm ever ran.
+
+The fix was not another mock flag but a different **door**: `POST /CertificateOfOrigins/Reconcile`, where the
+declaration payload is ours. Two sides that can be made to agree — or to disagree in exactly one controlled way.
+
+## Result
+
+| method | before | after |
+|---|---|---|
+| `RaiseDeclarationHasWarningsEvent` | **0/21** | **21/21** |
+| `RaiseCertificatePreferredAssessorEvent` | **0/17** | **17/17** |
+| `ResolveAssessorUserId` | **0/14** | 12/14 |
+| `ApplyReconciliationOutcome` | 10/19 | **19/19** |
+| `ValidateCertificateInvoices` | 15/24 | 22/24 |
+
+| | round 2 | round 3 |
+|---|---|---|
+| Line (merged) | 84.9% | **87.4%** (4111/4704) |
+| Branch (pass 1) | 69.9% | **72.9%** (1096/1504) |
+
+8 collections, 144 requests, 443 assertions, 0 failures (+3 requests / 10 assertions in the issue-by-worker pass).
+
+The scenarios: `Match` (no certificate invoices → the invoice block is skipped → zero findings),
+`MatchNoAssessor` (same, plus `Tasks.NoAssessor`), `Warnings` (one certificate invoice whose number the
+declaration does not carry → `ExportInvoiceNotMatch`, a WARNING, and the forward loop returns immediately so no
+Error can follow), `WarningsImportReplace` (reason 5 + `DealFile.NoAssociatedGoodsItems`) and
+`CustomsItemMismatch`. Each folder then **reads the certificate back**: the status is the branch proof, because
+the three arms are the only writers of 6 / 5 / 3.
+
+## The round-1 blocker, resolved from the other side
+
+Round 1 recorded that `CustomsBook.CustomsItemMismatch` could not reach its branch, because the mock's
+declaration goods item carries `CertificateOfOriginId` 0 and the certificate-link Error fires first — and that
+fixing it needed a mock code change. Through `/Reconcile` no mock change is needed: the payload is ours, so
+`certificateOfOriginId` is the real id, the link check passes, and both directions of the 6-digit comparison
+are reached (`CustomsItemMismatch` forward, `CustomsItemInDeclarationNotInCertificate` in reverse). The mock
+gap is still real for the message path; it is simply no longer the only way in.
+
+## Two traps found and fixed
+
+### 1. A silently-ignored request field — `certificateOfOriginInvoiceDetail`
+The save DTO property is `CertificateOfOriginInvoiceDetail**s**` (plural). Every fixture in this repo sent the
+singular key. The binder accepted the body and dropped the field, so **no certificate ever got an invoice row** —
+which is why `GetCertificateOfOriginInvoiceDetails` sat at 8/23 and `GetCurrencyCodes` at 6/11 after the mock
+round, and why the first run of this collection reported "no findings" for scenarios built around invoices.
+Fixed in 14 fixtures across three collections; those two methods are now 23/23 and 11/11.
+
+The lesson generalises: a JSON key that does not match a DTO property is not an error, it is a silent no-op.
+An assertion that only checks status 200 cannot see it — only a value read back can.
+
+### 2. `IParametersUtil` caches in Redis with NO TTL — restoring the DB row is not enough
+`Parameters.CertificateOfOrigins` is a Redis hash (field names lowercased, no expiry). The issue-by-worker pass
+sets the parameter, the service caches it, and restoring the row afterwards leaves Redis holding the old value.
+The next ordinary run then reads **True** from cache while the DB says False.
+
+That is not hypothetical — it happened here. A pass-1 run measured `SendCertificateToIssueQueue` at 25/25 and
+`PublishAttachments` at 14/15 with the parameter False in the database, because the inline-template line 1333
+never ran. The suite was green and the number was wrong. `run-issue-by-worker.ps1` now deletes the cache key
+after setting the parameter AND after restoring it (raw RESP over TCP, no redis-cli needed), and refuses to
+start at all if the parameter is already True — otherwise it would capture True as the "original" and
+faithfully restore the poisoned state.
+
+After the fix, pass 1 reports `SendCertificateToIssueQueue` 0/25 and `PublishAttachments` 9/15, and only the
+merge shows 25/25 and 15/15. That is what correct looks like.
+
+## Still open
+
+| method | lines | what it needs |
+|---|---|---|
+| `ValidateCertificateGoodsItem` | 31/49 | the origin-country-group arm (an OriginGroupOfCountries detail plus `CountryGroup.NotInGroup`) |
+| `ValidateCertificateDetails` | 32/46 | the individual mismatch findings in isolation — currently only some fire together |
+| `RaiseNewRequestEvent` (Auth) | 0/14 | `SaveImportAuthenticationRequest` with `decisionId` = NewAuthenticationRequest on an EXISTING row |
+| `CheckDeclarationAssociatedWithCertificate` | 0/8 | unreachable for reason 14 — migration duplication, see round 1 |

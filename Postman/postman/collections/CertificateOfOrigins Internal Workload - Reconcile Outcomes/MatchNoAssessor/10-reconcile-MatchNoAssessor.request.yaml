@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--Tasks.NoAssessor: "true"
+# Same match, but GetLatestUserHandlingEntityTasksWithTaskUnification returns null: ResolveAssessorUserId's 'no handling user' return and the branch in RaiseCertificatePreferredAssessorEvent that skips WithTaskArguments/PreferredUserId.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }
+      ]
+    }
+order: 11100

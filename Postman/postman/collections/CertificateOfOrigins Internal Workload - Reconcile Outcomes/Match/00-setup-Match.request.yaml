@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# EUR1, reason 1, NO invoices, details matching the reconcile payload exactly. With no certificate invoices the whole invoice/goods-item block is skipped (ValidateReconciliation:1685), so the reconciliation ends with ZERO findings - the only way into the match arm.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-MATCH",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "RC-MATCH",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+      ],
+      "certificateOfOriginInvoiceDetails": []
+    }
+order: 10000

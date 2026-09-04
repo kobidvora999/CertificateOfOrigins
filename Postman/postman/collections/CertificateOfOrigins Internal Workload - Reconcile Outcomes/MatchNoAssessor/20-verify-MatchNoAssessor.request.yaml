@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+method: GET
+# Still DeclarationMatch - a missing assessor changes the event, not the outcome.
+order: 11200
