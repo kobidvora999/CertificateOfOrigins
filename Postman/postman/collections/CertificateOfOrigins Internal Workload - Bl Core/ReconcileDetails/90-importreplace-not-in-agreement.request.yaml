@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--CustomsBook.NotInAgreement: "true"
+# Associated goods items EXIST (the default DealFile mock returns one) but none of their origin countries is in the trade agreement -> ValidateImportReplacement's foreach actually iterates and leaves isInTradeAgreement false. Round 3 used DealFile.NoAssociatedGoodsItems, which returns an empty list and skips the loop entirely - so the loop body was still unrun.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240, "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [ { "externalIdNum": "INV1", "exportGoodsItemInfoList": [
+          { "certificateOfOriginId": {{certId}}, "customsItemId": 111111, "originCountryId": 32 }] } ]
+    }
+order: 22090

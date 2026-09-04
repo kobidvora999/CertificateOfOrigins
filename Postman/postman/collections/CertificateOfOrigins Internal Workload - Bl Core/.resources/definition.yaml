@@ -1,0 +1,146 @@
+$kind: collection
+id: certificateoforigins-bl-core-v1
+name: CertificateOfOrigins Bl Core
+description: >-
+  The five clusters left in CertificateOfOriginsBl.cs after rounds 1-6, each blocked by a different thing:
+    * the web-query field mappers (MapDateOfDeclarationField / MapConsigneeField / PrintOutField) and
+      BuildHeaderFields' optional rows — no fixture ever published a certificate carrying the detail rows the
+      switch has cases for;
+    * FillCustomersInformation and Convert — both fixtures pointed at the literal certificate number
+      IL0000116895, which no longer matches anything, so the filter returned [] and Convert 404'd every run;
+    * GetSavedCertificateForMessage's two error arms — the GetRequestStatus fixture always supplied a valid id;
+    * the individual reconciliation findings — earlier rounds matched on every field at once, so the arms were
+      never isolated;
+    * HandleCertificateReplacement — reachable only on a real transition into Published on a reason-4
+      certificate.
+  Two run-scoped ids are used where a request carries AgentRequest.CertificateId, because that takes a
+  five-minute lease that is never released (see the Per Reason collection).
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      if (!pm.collectionVariables.get('runId')) { pm.collectionVariables.set('runId', String(now).slice(-7)); }
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+
+      // ---- captures ----
+      var SAVE_VAR = {
+          '00-setup-wq-target':   'wqTargetId',
+          '00-setup-repl-target': 'replTargetId',
+          '00-setup-eurmed':   'wqEurmedId',
+          '20-setup-mercosur': 'wqMercosurId'
+      };
+      if (SAVE_VAR[name] && j) {
+          pm.collectionVariables.set(SAVE_VAR[name], j.id);
+          pm.test(name + ': published row created', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
+          });
+      }
+      var GUID_VAR = { '05-read-eurmed': 'wqEurmedGuid', '25-read-mercosur': 'wqMercosurGuid' };
+      if (GUID_VAR[name] && j) {
+          pm.collectionVariables.set(GUID_VAR[name], j.guid);
+          // A direct save at status 8 still stamps the Guid: CreateQrCodeIfNeeded checks QrCodePath + status,
+          // not a transition. Without a Guid the whole web-query mapping loop is unreachable.
+          pm.test(name + ': the save stamped a Guid', function () {
+              pm.expect(j.guid, 'guid').to.be.a('string').and.not.empty;
+          });
+      }
+      // Every folder that reconciles or publishes captures the row it just created.
+      if (name.indexOf('-setup') > 0 && !SAVE_VAR[name] && j && typeof j.id === 'number') {
+          pm.collectionVariables.set('certId', j.id);
+          pm.test(name + ': created', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+          });
+      }
+      if (name === '05-read' && j) { pm.collectionVariables.set('replTs', j.timeStamp); }
+
+      // ---- web-query field mapping ----
+      // The response carries the rendered field list. Asserting on the LABELS proves which mapper ran: each one
+      // produces a differently-shaped row, and a mapper that returned null contributes nothing at all.
+      if (name === '10-webquery-eurmed' && j) {
+          var body = pm.response.text();
+          pm.test('10: the certificate resolved by guid', function () {
+              pm.expect(j.exceptionDescription, 'exceptionDescription must be empty on a hit').to.be.oneOf([null, undefined, '']);
+          });
+          pm.test('10: BuildHeaderFields emitted its retrospective + replacement + export-declaration rows', function () {
+              pm.expect(body).to.include('Issued Retrospectively');
+              // The id is generated, so assert the label the mapper builds, not the number.
+              pm.expect(body).to.include('Replacing certificate');
+              pm.expect(body).to.include('260146');
+          });
+      }
+      if (name === '30-webquery-mercosur' && j) {
+          pm.test('30: resolved by guid', function () {
+              pm.expect(j.exceptionDescription).to.be.oneOf([null, undefined, '']);
+          });
+          // MapConsigneeField's non-EUR arm prints the consignee rows; the EURMED read above must not.
+          pm.test('30: the consignee rows are printed for a non-EUR type', function () {
+              pm.expect(pm.response.text()).to.include('Buyer Ltd');
+          });
+      }
+
+      // ---- filter + convert ----
+      if (name === '10-by-filter' && j) {
+          pm.test('10-by-filter: the filter matched, so the enrichment actually ran', function () {
+              pm.expect(j, 'rows').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('10-by-filter: FillCustomersInformation resolved the customer names', function () {
+              var row = j[0];
+              pm.expect(row.exporterTitle, 'exporterTitle (Customers proxy)').to.be.a('string').and.not.empty;
+          });
+      }
+      if (name === '20-convert' && j) {
+          pm.test('20-convert: took the success path, not the 404', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.entityType, 'entityType').to.be.a('number');
+          });
+      }
+
+      // ---- message status arms ----
+      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+      var MSG = { '10-status-no-id': 14026318, '20-status-unknown-id': 13680 };
+      if (MSG[name]) {
+          pm.test(name + ': raises exceptionType ' + MSG[name], function () {
+              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MSG[name]);
+          });
+      }
+
+      // ---- reconciliation findings, one arm each ----
+      // These carry ExceptionType 0 (the real EMessages codes are still a migration TODO), so they can only be
+      // identified by their text.
+      var FINDING = {
+          '10-destination-mismatch':          'ארץ היעד בתעודה אינה תואמת לארץ היעד בהצהרת היצוא',
+          '30-declnum-mismatch':              'אינו קיים במערכת',
+          '50-origin-mismatch':               'ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא',
+          '70-origingroup-not-in-group':      'ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא',
+          '90-importreplace-not-in-agreement':'אין בהצהרה טובין המקושרים להצהרת היבוא'
+      };
+      if (FINDING[name]) {
+          pm.test(name + ': raised its finding', function () {
+              pm.expect(pm.response.text()).to.include(FINDING[name]);
+          });
+      }
+
+      if (name === '10-publish-replacement' && j) {
+          pm.test('10-publish-replacement: published a reason-4 certificate', function () {
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
+              pm.expect(j.requestReasonCode, 'reason must stay 4 - it is what selects HandleCertificateReplacement').to.eql(4);
+          });
+      }
+    language: text/javascript

@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+# reason 13 (GetRequestStatus) with NO certificateId -> GetSavedCertificateForMessage's missing-id arm, MustSendCertificateID(14026318). The stock fixture always supplied one.
+body:
+  type: json
+  content: |-
+    { "customerId": 1, "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1 } }
+order: 21000

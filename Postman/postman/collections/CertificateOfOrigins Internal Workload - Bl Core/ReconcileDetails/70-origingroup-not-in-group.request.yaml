@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--CountryGroup.NotInGroup: "true"
+# IsCountryInCountryGroup false for every declaration goods item -> the origin-country-GROUP arm raises OriginCountryMismatch. This is the loop that had never been entered: no fixture ever sent an OriginGroupOfCountries detail.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240, "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [ { "externalIdNum": "INV1", "exportGoodsItemInfoList": [
+          { "certificateOfOriginId": {{certId}}, "customsItemId": 111111, "originCountryId": 32 }] } ]
+    }
+order: 22070

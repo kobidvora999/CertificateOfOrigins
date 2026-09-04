@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{wqMercosurGuid}}"
+method: GET
+# The non-EUR arm of MapConsigneeField: the consignee rows ARE printed here.
+order: 10050

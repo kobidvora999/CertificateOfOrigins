@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# The declaration's destination country differs from the certificate's -> ValidateCertificateDetails' first finding, DestinationCountryMismatch. Earlier rounds always matched on this field, so those seven lines never ran.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240, "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 99,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [ { "externalIdNum": "INV1", "exportGoodsItemInfoList": [
+          { "certificateOfOriginId": {{certId}}, "customsItemId": 111111, "originCountryId": 32 }] } ]
+    }
+order: 22010

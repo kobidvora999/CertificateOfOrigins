@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Received -> Published on a reason-4 certificate. PublishAttachments runs, and because the reason is
+# CertificateReplacement the publish ALSO calls HandleCertificateReplacement (0/7) - the arm that cancels
+# the replaced certificate. Only a real status transition reaches it, and only reason 4 selects it.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{certId}}, "timeStamp": "{{replTs}}",
+      "state": 1, "typeId": 2, "title": "bl-core BLC-REPL",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "BLC-REPL",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 2,
+      "requestReasonCode": 4, "certificateIdToCancel": {{replTargetId}},
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [ { "certificateDetailsTypeCodeId": 15, "value": "32" } ]
+    }
+order: 23020

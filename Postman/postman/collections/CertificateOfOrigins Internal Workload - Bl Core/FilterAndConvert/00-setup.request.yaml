@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# A certificate with a number this collection controls. Both fixtures below used to point at the literal IL0000116895, which no longer matches anything - so ByFilter returned [] and Convert 404'd on every run, leaving FillCustomersInformation at 6/27 and Convert at 4/13.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "bl-core BLC-FILTER",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "BLC-FILTER",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ]
+    }
+order: 20000

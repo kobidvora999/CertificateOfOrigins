@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Convert"
+method: POST
+headers:
+  Content-Type: application/json
+# Convert resolves a certificate number to a VirtualEntity. With a number that exists it takes the SUCCESS path (9 lines) instead of the RestNotFoundException it hit on every previous run.
+body:
+  type: json
+  content: |-
+    { "entityIdKey1": "BLC-FILTER" }
+order: 20020

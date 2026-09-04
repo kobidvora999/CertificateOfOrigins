@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Destination country 32 on the certificate; the reconcile below declares 99.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "bl-core BLC-RC-DEST",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "BLC-RC-DEST",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }],
+      "certificateOfOriginInvoiceDetails": [
+        { "id": 0, "invoiceNumber": "INV1", "invoiceAmount": 50, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true,
+          "certificateOfOriginItemDetail": [
+            { "id": 0, "customsItemId": 111111, "fullClassification": "1111110000000", "marksAndNumbers": "M1",
+              "itemGoodsDescription": "widget", "quantity": 1, "rowNum": 1, "measurementUnitId": 1 } ] }
+      ]
+    }
+order: 22000

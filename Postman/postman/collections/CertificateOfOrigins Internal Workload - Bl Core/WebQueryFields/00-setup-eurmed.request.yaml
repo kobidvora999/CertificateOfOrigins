@@ -1,0 +1,40 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# EURMED(1) published directly at status 8 - which DOES stamp the Guid (CreateQrCodeIfNeeded only checks QrCodePath+status, not a transition). Carries every detail row the web-query field switch has a case for, so one read exercises the whole mapping loop instead of the two rows earlier fixtures sent. reason 2 + certificateIdToCancel + IsExportDecForPrint(26) are what make BuildHeaderFields emit all three of its optional header rows.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 1, "title": "bl-core BLC-WQ-EURMED",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "BLC-WQ-EURMED",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 2,
+      "certificateIdToCancel": {{wqTargetId}},
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2,  "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 8,  "value": "Buyer Ltd" },
+        { "certificateDetailsTypeCodeId": 9,  "value": "2 Buyer St" },
+        { "certificateDetailsTypeCodeId": 10, "value": "DE" },
+        { "certificateDetailsTypeCodeId": 12, "value": "true" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" },
+        { "certificateDetailsTypeCodeId": 16, "value": "5" },
+        { "certificateDetailsTypeCodeId": 17, "value": "SEA" },
+        { "certificateDetailsTypeCodeId": 18, "value": "ILHFA" },
+        { "certificateDetailsTypeCodeId": 26, "value": "true" },
+        { "certificateDetailsTypeCodeId": 28, "value": "IL" },
+        { "certificateDetailsTypeCodeId": 29, "value": "1" },
+        { "certificateDetailsTypeCodeId": 31, "value": "{{twoDaysAgo}}" }
+      ],
+      "certificateOfOriginInvoiceDetails": [
+        { "id": 0, "invoiceNumber": "INV-BLC-WQ-EURMED", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 10000

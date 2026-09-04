@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+# A filter that actually matches -> the enrichment runs: FillCustomersInformation resolves the exporter and customs-agent names through the Customers proxy (21 lines and 15 of 16 branches that had never run, because the list was always empty).
+body:
+  type: json
+  content: |-
+    { "certificateNumber": "BLC-FILTER" }
+order: 20010

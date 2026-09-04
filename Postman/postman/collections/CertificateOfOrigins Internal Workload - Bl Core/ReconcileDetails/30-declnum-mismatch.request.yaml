@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# A declaration number that does not match the one stamped on the certificate -> ExportDeclarationNotInSystem. The other half of ValidateCertificateDetails.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240, "leadDocumentId": 111,
+      "exportDeclarationNum": "260999",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 32,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [ { "externalIdNum": "INV1", "exportGoodsItemInfoList": [
+          { "certificateOfOriginId": {{certId}}, "customsItemId": 111111, "originCountryId": 32 }] } ]
+    }
+order: 22030

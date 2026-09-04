@@ -454,3 +454,45 @@ other code silently misses the branch.
 fixture answers 200 and the line still never runs, so that flow evidently does not pass through
 `ConvertInvoiceDetails` at all; the guard looks like defensive code unreachable from the API. Two lines, recorded
 rather than chased.
+
+---
+
+# Round 7 — the five clusters left in CertificateOfOriginsBl.cs
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Bl Core`
+
+Each cluster was blocked by a different thing, and none of them by a mock flag.
+
+| method | before | after | what it needed |
+|---|---|---|---|
+| `BuildHeaderFields` | 22/38 | **38/38** | a published certificate that is retrospective AND has a `certificateIdToCancel` AND an `IsExportDecForPrint` detail — all three optional header rows at once |
+| `Convert` | 4/13 | **13/13** | a certificate number that exists (the fixture pointed at `IL0000116895`, which matches nothing, so it 404'd every run) |
+| `FillCustomersInformation` | 6/27, br 1/16 | **25/27** | the same: a filter that returns rows, so the enrichment has something to enrich |
+| `GetSavedCertificateForMessage` | 6/12 | **12/12** | reason 13 with no id, and with an unknown id |
+| `ValidateCertificateDetails` | 32/46 | **46/46** | each mismatch in isolation — earlier rounds matched on every field at once |
+| `ValidateCertificateGoodsItem` | 31/49 | **46/49** | an `OriginGroupOfCountries` detail, which no fixture had ever sent |
+| `ValidateImportReplacement` | 17/25 | **20/25** | associated goods items that EXIST but are not in the agreement — round 3 used the empty-list flag, which skips the loop |
+| the static web-query mappers | 243/277 | **272/277** | a certificate carrying every detail row the field switch has a case for, published once as EURMED and once as MERCOSUR (`MapConsigneeField` branches on the type) |
+| `HandleCertificateReplacement` | 0/7 | 5/7 | a real transition into Published on a reason-4 certificate |
+
+| | round 6 | round 7 |
+|---|---|---|
+| `CertificateOfOriginsBl.cs` | 84.0% / 73.4% | **93.5% / 84.1%** |
+| Line (merged) | 90.8% | **93.4%** (4392/4704) |
+| Branch (pass 1) | 77.5% | **81.6%** (1228/1504) |
+| BL line / branch | 88.0% / 76.6% | **91.3% / 81.0%** |
+
+12 collections, 212 requests, 657 assertions, 0 failures.
+
+## `CertificateIdToCancel` is a self-referencing foreign key
+The first run failed with HTTP 500 on every setup that carried a literal `certificateIdToCancel: 4242`:
+`FK_CertificateOfOrigins_CertificateOfOrigin_CertificateOfOrigins_CertificateOfOrigin`. It points at
+`CertificateOfOrigin.ID`, so it cannot be an invented number — the fixtures now create a real target row first
+and reference its captured id.
+
+## Environment: the Consul key is being reset by other work
+Twice during this round `Main/CentralConfig` → `ConnectionStrings.CustomsDb` flipped back to **PreRulings**
+mid-run, and every collection failed with `Could not find stored procedure`. The third attempt held and is the
+measurement reported here. Anyone re-running needs the key on `CertificateOfOrigins` for the duration; a guard
+in `run.ps1` that reads the key at start and re-checks it at the end would turn this from a mystifying wall of
+500s into one clear message.

@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# CertificateIdToCancel is a SELF-REFERENCING foreign key on CertificateOfOrigin.ID, so it cannot be an
+# invented number - a literal 4242 fails the insert with an FK violation (verified: HTTP 500). This row exists
+# only to be pointed at.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "bl-core BLC-WQ-TARGET",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "BLC-WQ-TARGET",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [ { "certificateDetailsTypeCodeId": 2, "value": "target" } ]
+    }
+order: 9990

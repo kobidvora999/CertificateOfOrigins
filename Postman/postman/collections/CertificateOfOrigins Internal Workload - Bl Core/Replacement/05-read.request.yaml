@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+method: GET
+# Rowversion for the publish.
+order: 23010
