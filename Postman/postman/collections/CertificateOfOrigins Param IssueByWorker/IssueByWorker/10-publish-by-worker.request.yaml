@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Step 2: Received -> Published while IssueCertificateOfOriginByWorker is TRUE. PublishAttachments then
+# stamps IsInPublishingProcess and hands the certificate to the RabbitMQ issue queue INSTEAD of rendering
+# the template inline - SendCertificateToIssueQueue, which was 0/25 because the parameter is False in
+# every other run. The flag on the response is the branch proof: it is set nowhere else.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{wCertId}},
+      "timeStamp": "{{wTs}}",
+      "typeId": 2, "state": 1, "title": "issue-by-worker chain",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "MF-COO-W",
+      "certificateOfOriginStatusId": 8,
+      "originalCertificateOfOriginStatusId": 2,
+      "requestReasonCode": 2,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetail": [
+        { "id": 0, "invoiceNumber": "INV-W", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 10200

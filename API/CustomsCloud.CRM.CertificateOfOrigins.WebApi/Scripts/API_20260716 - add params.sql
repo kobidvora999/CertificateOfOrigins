@@ -412,7 +412,7 @@ BEGIN
     INSERT INTO [Infrastructure].[Parameters]
            ([Name],[Description],[Value],[UpdateDate],[UpdateUser],[Regex],[Level],[Active])
     VALUES
-           ('IssueCertificateOfOriginByWorker	',
+           ('IssueCertificateOfOriginByWorker',
             N'הנפקת תעודת מקור ע"י וורקר',
             N'False',
             GETDATE(),

@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# Step 1: a NEW certificate at status 2 (Received). A new instance counts as status-changed only at
+# Received (CertificateOfOriginsBl.cs:942), so the publish below has to be an UPDATE of this same row.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0,
+      "typeId": 2, "state": 1, "title": "issue-by-worker chain",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "MF-COO-W",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 2,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 2, "value": "יצואן לדוגמה" },
+        { "certificateDetailsTypeCodeId": 13, "value": "32" }
+      ],
+      "certificateOfOriginInvoiceDetail": [
+        { "id": 0, "invoiceNumber": "INV-W", "invoiceAmount": 100, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "goods", "isToPrint": true, "currencyTypeId": 1 }
+      ]
+    }
+order: 10000

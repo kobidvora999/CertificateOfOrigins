@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/{{wCertId}}"
+method: GET
+# The rowversion the publish needs (the save response omits nulls).
+order: 10100

@@ -107,3 +107,62 @@ answer, so these three are left out and recorded here instead.
 3. **`seed_ImportAuthenticationRequests.sql` carried a stray shell line** (`tail -14 "$S"`) at line 55,
    committed in 5a97d00. It is invalid T-SQL and would abort the script before its reset block — the block that
    keeps the Auth Lifecycle collection repeatable across runs. Removed.
+
+---
+
+# Round 2 — the parameter lever (`IssueCertificateOfOriginByWorker`)
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Param IssueByWorker` · runner `run-issue-by-worker.ps1`
+
+## The branch no header can reach
+
+`PublishAttachments` forks on `parametersUtil.Get<bool>("IssueCertificateOfOriginByWorker")`
+(`CertificateOfOriginsBl.cs:1313`). That is a row in `Infrastructure.Parameters` — **service-wide, not
+per-request** — so there is no `x-mock-feature--` for it and no request body can flip it. It is `False`
+everywhere, which is exactly why `SendCertificateToIssueQueue` stayed at 0/25 after the mock round.
+
+It also cannot just be switched on for the whole suite: with the flag `True`, *every* publish takes the queue
+path and the inline-template path (`PrintCertificateOfOriginAndSaveAttachments`, 100% since round 1) goes dark.
+So this is a **second pass** — one small collection, its own coverage session, merged afterwards. The folder is
+deliberately named `CertificateOfOrigins Param IssueByWorker` so it does **not** match the runner's
+`CertificateOfOrigins Internal Workload -` prefix and is skipped by the ordinary run.
+
+`run-issue-by-worker.ps1` backs the parameter up, sets it `True`, runs the pass, restores it in a `finally`
+(and verifies the restore), then merges into the main cobertura.
+
+## Result
+
+| method | after round 1 | after round 2 |
+|---|---|---|
+| `SendCertificateToIssueQueue` | **0/25** | **25/25** |
+| `PublishAttachments` | 9/15 | **15/15** (both sides of the fork) |
+| `PrintCertificateOfOriginAndSaveAttachments` | 17/17 | 17/17 (kept — the merge is a union) |
+| `SaveCertificateOfOriginAttachments` | 39/39 | 39/39 |
+| `CreateQrCodeIfNeeded` | 12/12 | 12/12 |
+
+Merged line coverage (our code, excl. generated): **3992/4704 = 84.9%** (from 84.2%).
+
+3 requests, 10 assertions, 0 failures. The branch proof is `isInPublishingProcess` on the response: it is set in
+exactly one place — `CertificateOfOriginsBl.cs:1316`, under `if (issueByWorker)` — and that is the same
+condition gating the queue hand-off two lines later.
+
+⚠️ **The merged BRANCH figure is not comparable** to the single-pass one. `dotnet-coverage merge` renormalises
+branch points: the denominator drops from 1504 to 1447 and per-method branch counts change shape (e.g.
+`CreateQrCodeIfNeeded` reads 4/4 merged vs 8/10 in pass 1). Track branch % from the **single-pass** report
+(69.9%) and line % from the merged one; the per-method line numbers above are reliable in both.
+
+## Defect found and fixed: a parameter name with a trailing TAB
+
+`Scripts/API_20260716 - add params.sql:415` inserted the name as `'IssueCertificateOfOriginByWorker<TAB>'`,
+while its own existence guard on line 409 checks the clean name. Consequences on a **from-zero** database:
+
+* the guard never matches its own insert, so the script is not idempotent — every run adds another row;
+* `parametersUtil.Get<bool>("IssueCertificateOfOriginByWorker")` never matches the tabbed row (SQL Server
+  ignores trailing *spaces* in `=`, but a tab is not a space), so the parameter silently reads as its default
+  `false` and the issue-by-worker feature can never be turned on in a fresh environment.
+
+This machine did not show the fault: the row was created on 2026-07-14 by the older
+`API_260714183003 - SeedParameter_IssueCertificateOfOriginByWorker.sql` (now removed from `Scripts/` but still
+in `dbo.SchemaVersions`, `Level=0`), so when `add params.sql` ran on 08-23 its guard matched the clean row and
+skipped the tabbed insert. Only a from-zero bootstrap would hit it — which is what `db-scripts-check` exists to
+catch. Tab removed; it was the only one in the file.

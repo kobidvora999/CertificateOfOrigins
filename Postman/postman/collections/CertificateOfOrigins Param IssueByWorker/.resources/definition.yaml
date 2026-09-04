@@ -1,0 +1,68 @@
+$kind: collection
+id: certificateoforigins-param-issuebyworker-v1
+name: CertificateOfOrigins Param IssueByWorker
+description: >-
+  The one branch no header can reach. PublishAttachments forks on
+  `parametersUtil.Get<bool>("IssueCertificateOfOriginByWorker")` (CertificateOfOriginsBl.cs:1313) - a row in
+  Infrastructure.Parameters, not a mock proxy, so there is no `x-mock-feature--` for it and no request body can
+  flip it. It is False everywhere, which is why SendCertificateToIssueQueue sat at 0/25.
+  The parameter is per-SERVICE, not per-request, so this collection CANNOT run in the same pass as the others:
+  with the flag on, every publish in the suite would take the queue path and the inline-template path
+  (PrintCertificateOfOriginAndSaveAttachments, currently 100%) would go dark. Hence the deliberately different
+  folder name - it does NOT match the runner's "CertificateOfOrigins Internal Workload -" prefix and is skipped
+  by the normal run.
+  Drive it with Postman/internal-workload-test/run-issue-by-worker.ps1, which flips the parameter, runs this
+  collection under its own coverage session, restores the parameter, and merges the result into the main
+  cobertura. Do not run it by hand against a database whose parameter is still False - the assertion below
+  would fail for the right reason, but you would have measured nothing.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('tenDaysAgo', iso(Date.now() - 10 * 86400000));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      if (name === '00-setup' && j) {
+          pm.collectionVariables.set('wCertId', j.id);
+          pm.test('00-setup: saved at Received', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(2);
+          });
+      }
+
+      if (name === '05-read' && j) {
+          pm.collectionVariables.set('wTs', j.timeStamp);
+          pm.test('05-read: rowversion available for the publish', function () {
+              pm.expect(j.timeStamp, 'timeStamp').to.be.a('string').and.not.empty;
+          });
+      }
+
+      if (name === '10-publish-by-worker' && j) {
+          pm.test('10-publish: published', function () {
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
+              pm.expect(j.issuingDate, 'issuingDate is stamped by PublishAttachments').to.be.a('string').and.not.empty;
+          });
+          // IsInPublishingProcess is set in exactly one place - PublishAttachments, under `if (issueByWorker)`
+          // (CertificateOfOriginsBl.cs:1316) - and it is the same condition that gates the queue hand-off two
+          // lines later. A true here therefore proves SendCertificateToIssueQueue ran; a false means the
+          // parameter was not flipped and this run measured the ordinary inline path instead.
+          pm.test('10-publish: took the QUEUE path, not the inline template path', function () {
+              pm.expect(j.isInPublishingProcess,
+                  'isInPublishingProcess false => IssueCertificateOfOriginByWorker was not True in the DB for this run')
+                  .to.eql(true);
+          });
+      }
+    language: text/javascript
