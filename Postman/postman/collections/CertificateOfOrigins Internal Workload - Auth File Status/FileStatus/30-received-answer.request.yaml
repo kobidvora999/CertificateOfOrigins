@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# ReceivedAnswerInFile(5) is both an open-task status AND the one that fires UpdateFileStatusFinalDecisionInCase - two arms in one request.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 5,
+      "originalAuthenticationFileStatusId": 1,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990105, "authenticationFileId": 990002, "decisionId": 3, "originalRequestDecisionId": 1,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30020

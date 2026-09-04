@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# Three arms at once: the child's Rejection(2) decision drives ManageFileStatus' rejection loop AND SendDecisionMessage's Rejection case (a different message type + parameters), and userId 7 != userResponseId 5 makes the message a GROUP message - both of those had never run because every fixture sent 5/5.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 6,
+      "originalAuthenticationFileStatusId": 1,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990105, "authenticationFileId": 990002, "decisionId": 2, "originalRequestDecisionId": 1,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 7, "userResponseId": 5 }]
+    }
+order: 30050

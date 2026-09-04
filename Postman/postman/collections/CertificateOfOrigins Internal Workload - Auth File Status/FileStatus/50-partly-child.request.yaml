@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# Status 2 is not an open-task status, but a child with a Partly(5) decision opens the handling task anyway - the second half of that OR, which the status alone never reaches.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 2,
+      "originalAuthenticationFileStatusId": 1,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990106, "authenticationFileId": 990002, "decisionId": 5, "originalRequestDecisionId": 1,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30040

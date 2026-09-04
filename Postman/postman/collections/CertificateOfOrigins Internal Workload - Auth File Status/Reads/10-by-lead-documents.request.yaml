@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/ByLeadDocumentIDs"
+method: POST
+headers:
+  Content-Type: application/json
+# Lead-document ids that actually exist. The stock fixture sends [1], which matches nothing, so
+# FillLeadDocumentRequestNames returned at its empty guard on every run and its two lookup fills never ran.
+body:
+  type: json
+  content: |-
+    [990205, 990206]
+order: 32000

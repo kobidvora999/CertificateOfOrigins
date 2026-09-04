@@ -103,3 +103,58 @@ UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
        VendorId = CASE WHEN DocumentID = @docDecisionA THEN 777 ELSE 778 END,
        UpdateDate = @now, UpdateUserID = 5
  WHERE DocumentID IN (@docDecisionA, @docDecisionB);
+
+-- ---------------------------------------------------------------------------------------------------------
+-- A SECOND file (990002) with its own two requests, for the "Auth File Status" collection.
+-- Separate from 990001 on purpose: that collection drives the file status machine, and one of its scenarios
+-- is CancelledFile, which calls UnlinkAllRequestsFromFile - it would detach 990101 from 990001 and break the
+-- Auth Lifecycle assertions. The collections run in PARALLEL.
+-- 990105 carries an ImporterID; 990101-990104 leave it NULL, which is why FillAuthenticationRequestNames'
+-- importer block had never run (importerIds.Count was always 0).
+DECLARE @fileId2 int = 990002;
+DECLARE @docFileA int = 990105;
+DECLARE @docFileB int = 990106;
+
+IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationFileDetails WHERE ID = @fileId2)
+BEGIN
+    SET IDENTITY_INSERT CRM.CertificateOfOrigins_ImportAuthenticationFileDetails ON;
+    INSERT INTO CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
+        (ID, State, CreateDate, CreateUserID, UpdateDate, UpdateUserID, AuthenticationFileStatusID,
+         RequestCountryID, UserID, PostalAdress, DeliveryMethodID, EmailAdress, ReminderMethodID, UserNameIssuingLetter)
+    VALUES
+        (@fileId2, 1, @now, 5, @now, 5, 1, 32, 5, N'seed address 2', 1, N'seed2@example.com', 1, N'seed user 2');
+    SET IDENTITY_INSERT CRM.CertificateOfOrigins_ImportAuthenticationFileDetails OFF;
+END
+
+IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationRequest WHERE DocumentID = @docFileA)
+    INSERT INTO CRM.CertificateOfOrigins_ImportAuthenticationRequest
+        (DocumentID, CreateDate, CreateUserID, UpdateDate, UpdateUserID, AuthenticationFileID,
+         AuthenticationRequestDate, LeadDocumentID, DocumentIssuingDate, ImportCountryID, IssuingCountryID,
+         ItemDetailID, Number, IsOldIndication, OriginCountryID, PreferenceDocumentTypeID, Remarks,
+         RequestCircumstancesID, UserResponseID, ResponseNameEmail, ResponsePhoneNum, OrganizationUnitID, UserID,
+         VendorId, VendorName, ImporterID)
+    VALUES
+        (@docFileA, @now, 5, @now, 5, @fileId2, @now, 990205, @now, 32, 32,
+         5, 5, 0, 32, 1, N'seed file request A', 1, 5, N'seed@example.com', N'0500000000', 1, 5, 777, N'Seed Vendor', 279366);
+
+IF NOT EXISTS (SELECT 1 FROM CRM.CertificateOfOrigins_ImportAuthenticationRequest WHERE DocumentID = @docFileB)
+    INSERT INTO CRM.CertificateOfOrigins_ImportAuthenticationRequest
+        (DocumentID, CreateDate, CreateUserID, UpdateDate, UpdateUserID, AuthenticationFileID,
+         AuthenticationRequestDate, LeadDocumentID, DocumentIssuingDate, ImportCountryID, IssuingCountryID,
+         ItemDetailID, Number, IsOldIndication, OriginCountryID, PreferenceDocumentTypeID, Remarks,
+         RequestCircumstancesID, UserResponseID, ResponseNameEmail, ResponsePhoneNum, OrganizationUnitID, UserID,
+         VendorId, VendorName, ImporterID)
+    VALUES
+        (@docFileB, @now, 5, @now, 5, @fileId2, @now, 990206, @now, 32, 32,
+         6, 6, 0, 32, 1, N'seed file request B', 1, 5, N'seed@example.com', N'0500000000', 1, 5, 778, N'Seed Vendor 2', 279367);
+
+-- The status scenarios advance the file and may unlink its requests, so reset both every run.
+UPDATE CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
+   SET AuthenticationFileStatusID = 1, DeliveryMethodID = 1, ReminderMethodID = 1, LastDelivery = NULL,
+       UpdateDate = @now, UpdateUserID = 5
+ WHERE ID = @fileId2;
+
+UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
+   SET DecisionID = NULL, CollateralID = NULL, AuthenticationFileID = @fileId2,
+       UpdateDate = @now, UpdateUserID = 5
+ WHERE DocumentID IN (@docFileA, @docFileB);

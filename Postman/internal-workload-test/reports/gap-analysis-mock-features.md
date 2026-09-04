@@ -496,3 +496,53 @@ mid-run, and every collection failed with `Could not find stored procedure`. The
 measurement reported here. Anyone re-running needs the key on `CertificateOfOrigins` for the duration; a guard
 in `run.ps1` that reads the key at start and re-checks it at the end would turn this from a mystifying wall of
 500s into one clear message.
+
+---
+
+# Round 8 — the authentication-file status machine
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Auth File Status`
+
+`AuthenticationRequestBl.cs` was the last file under 70% branch, and one cluster was why: a single fixture with
+a single transition (2 → 5), one child with decision 3, and `userId == userResponseId`. Every other arm of a
+nine-value status enum and a nine-value decision enum had never been entered.
+
+| method | before | after |
+|---|---|---|
+| `ManageFileStatus` | 20/33, br 6/10 | **33/33**, br 10/10 |
+| `CheckStatusAndOpenTask` | 26/32, br 9/14 | **32/32**, br 14/14 |
+| `SendDecisionMessage` | 25/36, br 4/10 | **36/36**, br 8/10 |
+| `FillLeadDocumentRequestNames` | 5/9, br 1/10 | **9/9**, br 10/10 |
+| `FillAuthenticationRequestNames` | 27/43, br 30/42 | **41/43**, br 40/42 |
+| `HandleAuthenticationRequestDeliverySent` | 7/11 | **11/11** |
+| **`AuthenticationRequestBl.cs`** | **88.2% / 69.7%** | **94.9% / 85.0%** |
+
+| | round 7 | round 8 |
+|---|---|---|
+| Line (merged) | 93.4% | **94.9%** (4462/4704) |
+| Branch (pass 1) | 81.6% | **84.1%** (1265/1504) |
+| BL line / branch | 91.3% / 81.0% | **92.9% / 83.6%** |
+
+13 collections, 222 requests, 689 assertions, 0 failures. Green on the first run.
+
+## The seed did as much work as the collection
+
+Two of these were pure data problems, invisible from the request side:
+
+* `FillAuthenticationRequestNames`' importer block never ran because **no seeded request had an `ImporterID`** —
+  `importerIds` was always empty. 990105/990106 now carry one.
+* `FillLeadDocumentRequestNames` returned at its empty guard on every run because the stock fixture queries
+  lead-document `[1]`, which matches nothing. It now queries ids that exist.
+
+The new file 990002 is **dedicated** to this collection, for the same reason 990103/990104 were in round 4: one
+scenario is `CancelledFile`, which calls `UnlinkAllRequestsFromFile`, and it would detach the Auth Lifecycle
+collection's rows from 990001 while that collection is reading them in parallel.
+
+## Still open
+
+| file | line | branch |
+|---|---|---|
+| `MessageCrossField.cs` | 85.4% | 82.7% |
+| `MessageValidation.cs` | 87.0% | 74.4% |
+| `MessagePerReason.cs` | 88.4% | 89.4% |
+| `AuthenticationRequestBl.cs` — `GetEntityDocuments` | 25/32 | needs an entity whose documents are already requested / claimed by another lead document |

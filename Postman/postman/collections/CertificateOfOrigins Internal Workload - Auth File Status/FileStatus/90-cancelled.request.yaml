@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# CancelledFile(9) detaches every child request from the file (UnlinkAllRequestsFromFile). Deliberately LAST in the folder: it unlinks 990105/990106, and the seed re-links them on the next run.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 9,
+      "originalAuthenticationFileStatusId": 1,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990105, "authenticationFileId": 990002, "decisionId": 3, "originalRequestDecisionId": 1,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30090

@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/AuthenticationRequest/HandleDeliverySent"
+method: POST
+headers:
+  Content-Type: application/json
+# No related entities at all -> the first guard returns false. The stock fixture always sent one.
+body:
+  type: json
+  content: |-
+    { "relatedEntities": [] }
+order: 31000

@@ -1,0 +1,89 @@
+$kind: collection
+id: certificateoforigins-auth-file-status-v1
+name: CertificateOfOrigins Auth File Status
+description: >-
+  The authentication-FILE status machine (ManageFileStatus -> CheckStatusAndOpenTask -> SendDecisionMessage)
+  and the two guard arms of HandleAuthenticationRequestDeliverySent. AuthenticationRequestBl.cs was the last
+  file still under 70% branch coverage, and this cluster is why: one fixture, one status transition (2 -> 5),
+  one child with decision 3 and userId == userResponseId. Every other arm of a nine-value status enum and a
+  nine-value decision enum had never been entered.
+  REQUIRES the seed, which now also creates file 990002 with requests 990105 / 990106. That file is DEDICATED
+  to this collection: one scenario here is CancelledFile, which calls UnlinkAllRequestsFromFile, and it would
+  detach the Auth Lifecycle collection's rows from 990001 — the collections run in PARALLEL. The same seed also
+  gives 990105/990106 an ImporterID, which is what finally lets FillAuthenticationRequestNames' importer block
+  run: 990101-990104 leave it NULL, so importerIds was always empty.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('today', iso(Date.now()));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+
+      // A 404 here means the seed has not been applied to this database - say so plainly rather than letting the
+      // suite look merely red.
+      if (pm.response.code === 404) {
+          pm.test('SEED MISSING - run seed/seed_ImportAuthenticationRequests.sql', function () {
+              pm.expect.fail('file 990002 / requests 990105-990106 not found; the seed has not been applied');
+          });
+          return;
+      }
+
+      // ---- the file status machine ----
+      // SaveFile returns the re-read file graph. The status coming back is what proves the save landed; the arms
+      // themselves only raise events, so for those the cobertura delta is the proof and this is the contract.
+      var SENT_STATUS = {
+          '10-no-status-change': 1,
+          '20-reminder-sent':    3,
+          '30-received-answer':  5,
+          '40-clarification':    7,
+          '50-partly-child':     2,
+          '60-rejection-child':  6,
+          '90-cancelled':        9
+      };
+      if (SENT_STATUS[name] !== undefined && j) {
+          pm.test(name + ': the file came back at status ' + SENT_STATUS[name], function () {
+              pm.expect(j.id, 'id').to.eql(990002);
+              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(SENT_STATUS[name]);
+          });
+      }
+      if (name === '90-cancelled' && j) {
+          // CancelledFile is the one status with a visible DATA effect rather than an event: every child request
+          // is detached from the file. Anything else here would be a coverage-only claim.
+          pm.test('90-cancelled: the child requests were unlinked from the file', function () {
+              var kids = j.importAuthenticationRequests || j.requests || [];
+              pm.expect(kids, 'children still attached').to.be.an('array').that.is.empty;
+          });
+      }
+
+      // ---- delivery-sent guards ----
+      // The endpoint answers a bare boolean: false when it cannot find an AuthenticationRequestFile among the
+      // related entities. Both scenarios must be false, for two different reasons.
+      if (name === '10-no-related-entities' || name === '20-wrong-entity-type') {
+          pm.test(name + ': no authentication file found -> false', function () {
+              pm.expect(pm.response.text().trim().toLowerCase()).to.eql('false');
+          });
+      }
+
+      // ---- lead-document read ----
+      if (name === '10-by-lead-documents' && j) {
+          pm.test('10-by-lead-documents: the query matched, so the name fills actually ran', function () {
+              pm.expect(j, 'rows').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('10-by-lead-documents: FillLeadDocumentRequestNames resolved the lookup names', function () {
+              pm.expect(j[0].importCountryName, 'importCountryName (Country lookup)').to.be.a('string').and.not.empty;
+          });
+      }
+    language: text/javascript
