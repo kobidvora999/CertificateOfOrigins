@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+# CheckContainerIsoCode fires only when the RESOLVED PackingTypeId equals 379. The mock derives the id from the code as (sum of chars %% 1000) + 1, and "BOX-40" sums to 378 -> 379, so this is the one code that reaches the container branch. No containerIsoCode -> 14026376.
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "invoiceDetails": [
+        { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+          "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BOX-40" } ] }]
+      }
+    }
+order: 10400

@@ -1,0 +1,90 @@
+$kind: collection
+id: certificateoforigins-invoice-items-v1
+name: CertificateOfOrigins Invoice Items
+description: >-
+  The invoice / item half of the message engine (CertificateOfOriginsBl.MessageInvoice.cs) — the shape
+  validation and the per-item code resolution. It sat at 77.6% line / 67.6% branch for one reason: every
+  fixture in the repo sent exactly ONE well-formed invoice carrying exactly ONE well-formed item, so each
+  guard was only ever taken down its success side. `ValidateInvoiceShape` was 51.6%, and the two resolvers
+  that may legitimately receive no code at all had never received one.
+  Each request here malforms exactly ONE thing about that invoice and asserts the in-band code it must raise —
+  and the two scenarios where the correct answer is "nothing happens" (an omitted packing/measure code, an
+  ancient invoice date that is silently clamped) assert exactly that, because a validator that fired on those
+  too would otherwise look just as green.
+  No scenario sends a certificateId, so none of them takes the five-minute message lock; this collection is
+  freely re-runnable.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('tenYearsAgo', iso(now - 3650 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      var exList = (j && j.exceptions) ? j.exceptions : [];
+      var codes  = exList.map(function (e) { return e.exceptionType; });
+      var descr  = exList.map(function (e) { return e.exceptionDescription || ''; }).join(' | ');
+
+      var MUST = {
+          '10-no-invoices':          [2387],       // ValidateInvoiceShape, no invoices
+          '20-invoice-no-items':     [2387],       // ValidateInvoiceShape, no items
+          '30-item-no-marks':        [2387],       // ValidateInvoiceShape, missing MarksAndNumbers
+          '40-description-too-long': [14027343],   // CheckDescriptionLength
+          '50-container-no-iso':     [14026376],   // CheckContainerIsoCode
+          '60-customs-item-required':[14027172],   // CheckAndGetCustomsItem, mandatory + absent
+          '70-customs-item-short':   [14027169],   // CheckAndGetCustomsItem, under six digits
+          '80-criterion-missing':    [5013],       // CheckAndGetOriginCriterion, absent
+          '90-criterion-illegal':    [5014]        // CheckAndGetOriginCriterion, unresolvable
+      };
+      // MandatoryValue(2387) is raised by three different guards here and by other validators elsewhere, so the
+      // code alone would not say which one fired. The message carries the field name; assert that too.
+      var MUST_SAY = {
+          '10-no-invoices':      'InvoiceDetails',
+          '20-invoice-no-items': 'ItemDetails',
+          '30-item-no-marks':    'MarksAndNumbers'
+      };
+      // The two "correct answer is silence" cases.
+      var MUST_NOT = {
+          // An omitted packing / measurement code is legal - only an UNRESOLVABLE one is an error - so the
+          // shared TheValueInFieldNotExistsInSystem(650) must not appear.
+          '100-no-packing-no-measure': [650],
+          // An invoice older than five years is floor-clamped, not rejected. If this ever starts raising
+          // something, the clamp has turned into a validation and that is a behaviour change.
+          '110-invoice-date-ancient':  [650, 2387, 14027343]
+      };
+
+      if (MUST[name]) {
+          MUST[name].forEach(function (c) {
+              pm.test(name + ': raises exceptionType ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(c);
+              });
+          });
+      }
+      if (MUST_SAY[name]) {
+          pm.test(name + ': the 2387 names ' + MUST_SAY[name], function () {
+              pm.expect(descr).to.include(MUST_SAY[name]);
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': raises nothing - this input is legal', function () {
+              MUST_NOT[name].forEach(function (c) {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+              });
+          });
+      }
+    language: text/javascript

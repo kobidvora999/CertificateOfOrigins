@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+# MERCOSUR (type 3), not EURMED. IsCustomsItemMandatory and IsCriterionMandatory are NOT request fields - the
+# BL overwrites them server-side from the certificate type row (MessageValidation.cs:105-107), so the only way to
+# turn them on is to pick a type where the C-table says True. Type 3 is the one type with BOTH
+# (criterion=True, customsItem=True); EURMED has neither, which is why these arms had never run.
+# A criterion code absent from c_OriginCriterion for this type (it holds A, B and C for type 3) -> OriginCriteriaIllegal(5014). This is a DAL read, not a mock, so ZZ has to be genuinely absent.
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "customsHouse": "SITE01", "dateOfDeclaration": "{{twoDaysAgo}}",
+        "isDeclaredByManufacturer": true, "isDeclaredByExporter": true,
+        "invoiceDetails": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "ZZ", "measureType": "KG", "packageType": "BX" } ] }
+        ]
+      }
+    }
+order: 10800

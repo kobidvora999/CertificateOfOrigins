@@ -396,3 +396,61 @@ Consul `Main/CentralConfig` was pointed at **PreRulings** partway through this r
 session; a run collided with it and every collection failed with `Could not find stored procedure`. It was
 repointed for the measurement and restored to **PreRulings** — the value found, not the `Customers` of earlier
 rounds. Anyone re-running must set it to `CertificateOfOrigins` first.
+
+---
+
+# Round 6 — the invoice / item conversion
+
+Date: 2026-09-04 · collection `CertificateOfOrigins Internal Workload - Invoice Items`
+
+## Result
+
+| | before | after |
+|---|---|---|
+| `MessageInvoice.cs` line | 77.6% | **98.8%** (159/161) |
+| `MessageInvoice.cs` branch | 67.6% | **90.5%** (67/74) |
+| `ValidateInvoiceShape` + the static helpers | 16/31 | **31/31** |
+| `CheckAndGetCustomsItem` | 11/20, br 4/8 | **20/20**, br 8/8 |
+| `CheckAndGetOriginCriterion` | 9/15, br 4/6 | **15/15**, br 6/6 |
+| `ResolvePackingTypeId` / `ResolveMeasurementUnitId` | 11/13 each | **13/13** each |
+
+| | round 5 | round 6 |
+|---|---|---|
+| Line (merged) | 90.0% | **90.8%** (4269/4704) |
+| Branch (pass 1) | 76.4% | **77.5%** (1166/1504) |
+| BL line / branch | 85.0% / 73.0% | **88.0% / 76.6%** |
+
+11 collections, 186 requests, 577 assertions, 0 failures.
+
+One cause for the whole gap: every fixture in the repo sent exactly ONE well-formed invoice carrying exactly ONE
+well-formed item, so each guard was only ever taken down its success side. Eleven requests, each malforming
+exactly one thing, closed it.
+
+## Two things worth knowing
+
+### `IsCustomsItemMandatory` and `IsCriterionMandatory` are NOT request fields
+They look like request fields — they sit on `CertificateOfOriginAgentRequestDto` — but the BL **overwrites them
+server-side** from the certificate type's C-table row (`MessageValidation.cs:105-107`). Sending them in the body
+is a silent no-op, which is exactly how the first attempt failed. The only way to turn them on is to pick a type
+whose row says True:
+
+| type | criterion | customs item |
+|---|---|---|
+| 1 EURMED, 2 EUR1, 11 EUR1-ACC | False | False |
+| **3 MERCOSUR** | **True** | **True** |
+| 4 Columbia, 9 Vietnam | True | False |
+| 8 UAE, 10 Guatemala | False | True |
+
+Type 3 is the only one with both, so the three flag-dependent scenarios are MERCOSUR messages.
+
+### The container check needs one specific packing code
+`CheckContainerIsoCode` fires only when the RESOLVED `PackingTypeId` equals 379. `PackingTypeMockProxy` derives
+the id as `(sum of chars % 1000) + 1`, so the code has to sum to 378: `"BOX-40"` does (66+79+88+45+52+48). Any
+other code silently misses the branch.
+
+## Left in this file
+
+`ConvertInvoiceDetails` 15/17 — the `NonManipulation || certificate is null` early return. The NonManipulation
+fixture answers 200 and the line still never runs, so that flow evidently does not pass through
+`ConvertInvoiceDetails` at all; the guard looks like defensive code unreachable from the API. Two lines, recorded
+rather than chased.
