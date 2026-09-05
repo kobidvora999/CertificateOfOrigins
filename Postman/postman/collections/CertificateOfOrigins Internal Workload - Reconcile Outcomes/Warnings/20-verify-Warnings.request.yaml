@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
 method: GET
 # DeclarationMismatch (5), NOT Rejected (3). 3 would mean an Error slipped in and the errors arm ran instead.
 order: 12200

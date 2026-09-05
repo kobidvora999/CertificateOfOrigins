@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{wqEurmedGuid}}"
+url: "{{baseUrl}}/web/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{wqEurmedGuid}}"
 method: GET
 # Drives MapDateOfDeclarationField, PrintOutField and BuildHeaderFields' three optional rows. For EURMED, MapConsigneeField takes the EUR1/EURMED arm - the one the code itself notes is always false because result set 5 never returns an IsToPrint column - so the consignee rows come back absent, deliberately.
 order: 10020

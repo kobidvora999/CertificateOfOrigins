@@ -1,0 +1,186 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "CertificateOfOrigins community - CertificateOfOriginRequest",
+    "version": "1.0.0",
+    "description": "C14 Schema First contract for the community domain. Hand-written, derived from the legacy incoming-message service GetPC_MSG2280_2281_CertificateOfOriginRequest - a customs agent transmitting a certificate-of-origin request. That legacy name carries neither WEB nor FRM, so the C14 classification rule does not settle it; `community` (the customs-agent community) was a developer decision, 2026-09-05. The controller is written to match this document, and Test/SchemaContract/CommunityCertificateOfOriginRequestContractTests.cs fails the build if the two drift apart. Note the in-band error contract: field and cross-field failures come back as HTTP 200 with an `exceptions` array, not as a 4xx."
+  },
+  "paths": {
+    "/community/CertificateOfOrigins/Request": {
+      "post": {
+        "tags": [ "CertificateOfOrigins" ],
+        "summary": "An agent's certificate-of-origin request message.",
+        "description": "Synchronous: returns the feedback directly, mirroring the legacy *Sync contract rather than the one-way MSMQ callback.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginRequestMessageDto" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "The feedback for the transmitted request, including any in-band validation exceptions.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginRequestFeedbackResponseDto" } } }
+          },
+          "400": { "description": "Malformed request, or a requestReasonCode outside ERequestReason." }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CertificateOfOriginRequestMessageDto": {
+        "type": "object",
+        "properties": {
+          "customerId": { "type": "integer", "format": "int32" },
+          "agentRequest": { "$ref": "#/components/schemas/CertificateOfOriginAgentRequestDto" },
+          "certificateOfOrigin": { "$ref": "#/components/schemas/CertificateOfOriginMessageDto" },
+          "nonManipulationCertificate": { "$ref": "#/components/schemas/NonManipulationCertificateMessageDto" }
+        }
+      },
+      "CertificateOfOriginAgentRequestDto": {
+        "type": "object",
+        "description": "IsCertificateTypeCodeMandatory / IsCustomsItemMandatory / IsZipcodeMandatory are runtime-only: the BL overwrites them from the certificate type row, so a value sent by the agent is ignored.",
+        "properties": {
+          "internalApplication": { "type": "string", "nullable": true },
+          "certificateOfOriginTypeCode": { "type": "integer", "format": "int32" },
+          "requestReasonCode": { "type": "integer", "format": "int32" },
+          "certificateId": { "type": "string", "nullable": true },
+          "certificateIdToCancel": { "type": "string", "nullable": true },
+          "replacementReason": { "type": "string", "nullable": true },
+          "exportDeclarationNum": { "type": "string", "nullable": true },
+          "isCertificateTypeCodeMandatory": { "type": "boolean" },
+          "isCustomsItemMandatory": { "type": "boolean", "nullable": true },
+          "isZipcodeMandatory": { "type": "boolean" }
+        }
+      },
+      "CertificateOfOriginMessageDto": {
+        "type": "object",
+        "properties": {
+          "invoiceDetails": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginMessageInvoiceDetailDto" } },
+          "exporterId": { "type": "string", "nullable": true },
+          "exporterName": { "type": "string", "nullable": true },
+          "exporterAddress": { "type": "string", "nullable": true },
+          "exporterCountry": { "type": "string", "nullable": true },
+          "tradeAgreementCountry1": { "type": "string", "nullable": true },
+          "tradeAgreementCountry2": { "type": "string", "nullable": true },
+          "tradeAgreementGroupOfCountries": { "type": "integer", "format": "int32", "nullable": true },
+          "consigneeName": { "type": "string", "nullable": true },
+          "consigneeAddress": { "type": "string", "nullable": true },
+          "consigneeCountry": { "type": "string", "nullable": true },
+          "consigneeRemarks": { "type": "string", "nullable": true },
+          "isConsigneeForPrint": { "type": "boolean", "nullable": true },
+          "originCountry": { "type": "string", "nullable": true },
+          "originGroupOfCountries": { "type": "integer", "format": "int32", "nullable": true },
+          "destinationCountry": { "type": "string", "nullable": true },
+          "destinationGroupOfCountries": { "type": "integer", "format": "int32", "nullable": true },
+          "transport": { "type": "string", "nullable": true },
+          "portOfShipment": { "type": "string", "nullable": true },
+          "isCumulation": { "type": "boolean", "nullable": true },
+          "cumulationCountry": { "type": "string", "nullable": true },
+          "cumulationGroupOfCountries": { "type": "integer", "format": "int32", "nullable": true },
+          "placeOfManufacture": { "type": "integer", "format": "int32", "nullable": true },
+          "zipCodeOfManufacture": { "type": "integer", "format": "int32", "nullable": true },
+          "observations": { "type": "string", "nullable": true },
+          "isExportDecForPrint": { "type": "boolean", "nullable": true },
+          "customsHouse": { "type": "string", "nullable": true },
+          "issuingCountry": { "type": "string", "nullable": true },
+          "cityOfDeclaration": { "type": "integer", "format": "int32", "nullable": true },
+          "countryOfDeclaration": { "type": "string", "nullable": true },
+          "dateOfDeclaration": { "type": "string", "format": "date-time" },
+          "isDeclaredByManufacturer": { "type": "boolean", "nullable": true },
+          "isDeclaredByExporter": { "type": "boolean", "nullable": true },
+          "isAttachedList": { "type": "boolean", "nullable": true },
+          "inSufficentworkingInd": { "type": "boolean", "nullable": true },
+          "insufficentWorkingText": { "type": "string", "nullable": true }
+        }
+      },
+      "CertificateOfOriginMessageInvoiceDetailDto": {
+        "type": "object",
+        "properties": {
+          "itemDetails": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginMessageItemDetailDto" } },
+          "invoiceNum": { "type": "string", "nullable": true },
+          "invoiceDate": { "type": "string", "format": "date-time" },
+          "invoiceSum": { "type": "number", "format": "double", "nullable": true },
+          "currencyType": { "type": "string", "nullable": true },
+          "descriptionOfInvoice": { "type": "string", "nullable": true },
+          "isInvoicesForPrint": { "type": "boolean" }
+        }
+      },
+      "CertificateOfOriginMessageItemDetailDto": {
+        "type": "object",
+        "properties": {
+          "itemSerial": { "type": "integer", "format": "int32", "nullable": true },
+          "itemId": { "type": "string", "nullable": true },
+          "originCriterion": { "type": "string", "nullable": true },
+          "marksAndNumbers": { "type": "string", "nullable": true },
+          "packageQuantity": { "type": "integer", "format": "int32", "nullable": true },
+          "packageType": { "type": "string", "nullable": true },
+          "itemDescription": { "type": "string", "nullable": true },
+          "weight": { "type": "number", "format": "double" },
+          "measureType": { "type": "string", "nullable": true },
+          "containerIsoCode": { "type": "string", "nullable": true }
+        }
+      },
+      "NonManipulationCertificateMessageDto": {
+        "type": "object",
+        "properties": {
+          "exportDate": { "type": "string", "format": "date-time" },
+          "exportCountry": { "type": "string", "nullable": true },
+          "importBillOfLadingNum": { "type": "string", "nullable": true },
+          "exportPort": { "type": "string", "nullable": true },
+          "importDate": { "type": "string", "format": "date-time" },
+          "exportBillOfLadingNum": { "type": "string", "nullable": true },
+          "transitCountry": { "type": "string", "nullable": true },
+          "portOfEntrance": { "type": "string", "nullable": true },
+          "expectedExitDate": { "type": "string", "format": "date-time" },
+          "exitPort": { "type": "string", "nullable": true },
+          "goodsDescription": { "type": "string", "nullable": true },
+          "declaringCompany": { "type": "string", "nullable": true },
+          "declaringPerson": { "type": "string", "nullable": true },
+          "declaringPosition": { "type": "string", "nullable": true },
+          "manifestNum": { "type": "string", "nullable": true }
+        }
+      },
+      "CertificateOfOriginRequestFeedbackResponseDto": {
+        "type": "object",
+        "properties": {
+          "applicationId": { "type": "integer", "format": "int32" },
+          "feedback": { "$ref": "#/components/schemas/CertificateOfOriginRequestFeedbackDto" },
+          "exceptions": { "type": "array", "nullable": true, "items": { "$ref": "#/components/schemas/CertificateOfOriginExceptionDto" } },
+          "attachments": { "type": "array", "nullable": true, "items": { "$ref": "#/components/schemas/CertificateOfOriginMessageAttachmentDto" } }
+        }
+      },
+      "CertificateOfOriginRequestFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "internalApplication": { "type": "string", "nullable": true },
+          "certificateId": { "type": "string", "nullable": true },
+          "certificateOfOriginTypeCode": { "type": "integer", "format": "int32" },
+          "certificateOfOriginStatusCode": { "type": "integer", "format": "int32" },
+          "feedbackRemark": { "type": "string", "nullable": true },
+          "rejectCancelReason": { "type": "string", "nullable": true },
+          "queryUrl": { "type": "string", "nullable": true },
+          "requestReasonCode": { "type": "integer", "format": "int32" },
+          "issueDateIfReleased": { "type": "string", "format": "date-time", "nullable": true },
+          "issueDateIfNotReleased": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "CertificateOfOriginExceptionDto": {
+        "type": "object",
+        "properties": {
+          "exceptionLevel": { "type": "integer", "format": "int32", "nullable": true },
+          "englishDescription": { "type": "string", "nullable": true },
+          "exceptionDescription": { "type": "string", "nullable": true },
+          "exceptionType": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CertificateOfOriginMessageAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "documentTypeId": { "type": "integer", "format": "int32" },
+          "content": { "type": "string", "format": "byte", "nullable": true },
+          "fileName": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/EntityDocuments/999"
+url: "{{baseUrl}}/ui/AuthenticationRequest/EntityDocuments/999"
 method: GET
 headers:
   x-mock-feature--Documents.Empty: "true"

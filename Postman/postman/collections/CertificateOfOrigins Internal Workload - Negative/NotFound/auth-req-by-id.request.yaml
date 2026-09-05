@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/99999999"
+url: "{{baseUrl}}/ui/AuthenticationRequest/99999999"
 method: GET
 # Unknown authentication-request id -> 404.
 order: 10200

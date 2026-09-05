@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
 method: GET
 # Rejected (3) - both findings are Errors, so this one takes the errors arm.
 order: 14200

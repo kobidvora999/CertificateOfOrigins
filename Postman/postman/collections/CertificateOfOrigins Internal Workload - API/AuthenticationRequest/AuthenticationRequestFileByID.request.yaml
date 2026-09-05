@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/File/1"
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/1"
 method: GET
 headers:
   CC-USER-ID: "5"

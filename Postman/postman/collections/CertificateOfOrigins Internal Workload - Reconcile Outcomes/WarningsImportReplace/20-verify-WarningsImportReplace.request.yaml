@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
 method: GET
 # DeclarationMismatch (5) - the warnings arm again, this time through the import-replacement route.
 order: 13200

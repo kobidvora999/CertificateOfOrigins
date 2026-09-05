@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/Reconcile"
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
 method: POST
 headers:
   Content-Type: application/json

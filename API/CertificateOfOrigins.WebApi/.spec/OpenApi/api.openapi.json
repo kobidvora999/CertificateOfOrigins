@@ -1,0 +1,915 @@
+﻿{
+    "openapi":  "3.1.1",
+    "info":  {
+                 "title":  "CertificateOfOrigins api",
+                 "version":  "1.0.0",
+                 "description":  "C14 code-first contract for the api (external / service-to-service) domain. Exported from /openapi/v1.json of the running application, filtered to the api/ prefix, with components.schemas reduced to the transitive $ref closure of those paths. HttpQuery endpoints are absent by construction - ASP.NET does not emit them into the generated document."
+             },
+    "paths":  {
+                  "/api/CertificateOfOrigins/ID/{certificateNumber}":  {
+                                                                           "get":  {
+                                                                                       "tags":  [
+                                                                                                    "CertificateOfOrigins"
+                                                                                                ],
+                                                                                       "parameters":  [
+                                                                                                          {
+                                                                                                              "name":  "certificateNumber",
+                                                                                                              "in":  "path",
+                                                                                                              "required":  true,
+                                                                                                              "schema":  {
+                                                                                                                             "type":  "string"
+                                                                                                                         }
+                                                                                                          },
+                                                                                                          {
+                                                                                                              "name":  "X-API-Version",
+                                                                                                              "in":  "header",
+                                                                                                              "schema":  {
+                                                                                                                             "type":  "string"
+                                                                                                                         }
+                                                                                                          }
+                                                                                                      ],
+                                                                                       "responses":  {
+                                                                                                         "400":  {
+                                                                                                                     "description":  "Bad Request",
+                                                                                                                     "content":  {
+                                                                                                                                     "application/json":  {
+                                                                                                                                                              "schema":  {
+                                                                                                                                                                             "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                                         }
+                                                                                                                                                          }
+                                                                                                                                 }
+                                                                                                                 },
+                                                                                                         "404":  {
+                                                                                                                     "description":  "Not Found",
+                                                                                                                     "content":  {
+                                                                                                                                     "text/plain":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "type":  "string"
+                                                                                                                                                                   }
+                                                                                                                                                    },
+                                                                                                                                     "application/octet-stream":  {
+                                                                                                                                                                      "schema":  {
+                                                                                                                                                                                     "type":  "string"
+                                                                                                                                                                                 }
+                                                                                                                                                                  },
+                                                                                                                                     "application/json":  {
+
+                                                                                                                                                          }
+                                                                                                                                 }
+                                                                                                                 },
+                                                                                                         "200":  {
+                                                                                                                     "description":  "OK",
+                                                                                                                     "content":  {
+                                                                                                                                     "application/json":  {
+                                                                                                                                                              "schema":  {
+                                                                                                                                                                             "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                                                             "type":  [
+                                                                                                                                                                                          "integer",
+                                                                                                                                                                                          "string"
+                                                                                                                                                                                      ],
+                                                                                                                                                                             "format":  "int32"
+                                                                                                                                                                         }
+                                                                                                                                                          }
+                                                                                                                                 }
+                                                                                                                 }
+                                                                                                     }
+                                                                                   }
+                                                                       },
+                  "/api/CertificateOfOrigins/GoodsItemCerificateDTO":  {
+                                                                           "post":  {
+                                                                                        "tags":  [
+                                                                                                     "CertificateOfOrigins"
+                                                                                                 ],
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "X-API-Version",
+                                                                                                               "in":  "header",
+                                                                                                               "schema":  {
+                                                                                                                              "type":  "string"
+                                                                                                                          }
+                                                                                                           }
+                                                                                                       ],
+                                                                                        "requestBody":  {
+                                                                                                            "content":  {
+                                                                                                                            "application/json":  {
+                                                                                                                                                     "schema":  {
+                                                                                                                                                                    "type":  "array",
+                                                                                                                                                                    "items":  {
+                                                                                                                                                                                  "$ref":  "#/components/schemas/GoodsItemCerificateDto"
+                                                                                                                                                                              }
+                                                                                                                                                                }
+                                                                                                                                                 },
+                                                                                                                            "text/json":  {
+                                                                                                                                              "schema":  {
+                                                                                                                                                             "type":  "array",
+                                                                                                                                                             "items":  {
+                                                                                                                                                                           "$ref":  "#/components/schemas/GoodsItemCerificateDto"
+                                                                                                                                                                       }
+                                                                                                                                                         }
+                                                                                                                                          },
+                                                                                                                            "application/*+json":  {
+                                                                                                                                                       "schema":  {
+                                                                                                                                                                      "type":  "array",
+                                                                                                                                                                      "items":  {
+                                                                                                                                                                                    "$ref":  "#/components/schemas/GoodsItemCerificateDto"
+                                                                                                                                                                                }
+                                                                                                                                                                  }
+                                                                                                                                                   }
+                                                                                                                        },
+                                                                                                            "required":  true
+                                                                                                        },
+                                                                                        "responses":  {
+                                                                                                          "400":  {
+                                                                                                                      "description":  "Bad Request",
+                                                                                                                      "content":  {
+                                                                                                                                      "application/json":  {
+                                                                                                                                                               "schema":  {
+                                                                                                                                                                              "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                                          }
+                                                                                                                                                           }
+                                                                                                                                  }
+                                                                                                                  },
+                                                                                                          "404":  {
+                                                                                                                      "description":  "Not Found",
+                                                                                                                      "content":  {
+                                                                                                                                      "text/plain":  {
+                                                                                                                                                         "schema":  {
+                                                                                                                                                                        "type":  "string"
+                                                                                                                                                                    }
+                                                                                                                                                     },
+                                                                                                                                      "application/octet-stream":  {
+                                                                                                                                                                       "schema":  {
+                                                                                                                                                                                      "type":  "string"
+                                                                                                                                                                                  }
+                                                                                                                                                                   },
+                                                                                                                                      "application/json":  {
+
+                                                                                                                                                           }
+                                                                                                                                  }
+                                                                                                                  },
+                                                                                                          "200":  {
+                                                                                                                      "description":  "OK",
+                                                                                                                      "content":  {
+                                                                                                                                      "application/json":  {
+                                                                                                                                                               "schema":  {
+                                                                                                                                                                              "type":  "array",
+                                                                                                                                                                              "items":  {
+                                                                                                                                                                                            "$ref":  "#/components/schemas/GoodsItemCerificateDto"
+                                                                                                                                                                                        }
+                                                                                                                                                                          }
+                                                                                                                                                           }
+                                                                                                                                  }
+                                                                                                                  }
+                                                                                                      }
+                                                                                    }
+                                                                       },
+                  "/api/CertificateOfOrigins/Convert":  {
+                                                            "post":  {
+                                                                         "tags":  [
+                                                                                      "CertificateOfOrigins"
+                                                                                  ],
+                                                                         "parameters":  [
+                                                                                            {
+                                                                                                "name":  "X-API-Version",
+                                                                                                "in":  "header",
+                                                                                                "schema":  {
+                                                                                                               "type":  "string"
+                                                                                                           }
+                                                                                            }
+                                                                                        ],
+                                                                         "requestBody":  {
+                                                                                             "content":  {
+                                                                                                             "application/json":  {
+                                                                                                                                      "schema":  {
+                                                                                                                                                     "$ref":  "#/components/schemas/ConnectedEntityDto"
+                                                                                                                                                 }
+                                                                                                                                  },
+                                                                                                             "text/json":  {
+                                                                                                                               "schema":  {
+                                                                                                                                              "$ref":  "#/components/schemas/ConnectedEntityDto"
+                                                                                                                                          }
+                                                                                                                           },
+                                                                                                             "application/*+json":  {
+                                                                                                                                        "schema":  {
+                                                                                                                                                       "$ref":  "#/components/schemas/ConnectedEntityDto"
+                                                                                                                                                   }
+                                                                                                                                    }
+                                                                                                         },
+                                                                                             "required":  true
+                                                                                         },
+                                                                         "responses":  {
+                                                                                           "400":  {
+                                                                                                       "description":  "Bad Request",
+                                                                                                       "content":  {
+                                                                                                                       "application/json":  {
+                                                                                                                                                "schema":  {
+                                                                                                                                                               "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                           }
+                                                                                                                                            }
+                                                                                                                   }
+                                                                                                   },
+                                                                                           "404":  {
+                                                                                                       "description":  "Not Found",
+                                                                                                       "content":  {
+                                                                                                                       "text/plain":  {
+                                                                                                                                          "schema":  {
+                                                                                                                                                         "type":  "string"
+                                                                                                                                                     }
+                                                                                                                                      },
+                                                                                                                       "application/octet-stream":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "type":  "string"
+                                                                                                                                                                   }
+                                                                                                                                                    },
+                                                                                                                       "application/json":  {
+
+                                                                                                                                            }
+                                                                                                                   }
+                                                                                                   },
+                                                                                           "200":  {
+                                                                                                       "description":  "OK",
+                                                                                                       "content":  {
+                                                                                                                       "application/json":  {
+                                                                                                                                                "schema":  {
+                                                                                                                                                               "$ref":  "#/components/schemas/VirtualEntityDto"
+                                                                                                                                                           }
+                                                                                                                                            }
+                                                                                                                   }
+                                                                                                   }
+                                                                                       }
+                                                                     }
+                                                        },
+                  "/api/CertificateOfOrigins/SaveAttachments":  {
+                                                                    "post":  {
+                                                                                 "tags":  [
+                                                                                              "CertificateOfOrigins"
+                                                                                          ],
+                                                                                 "parameters":  [
+                                                                                                    {
+                                                                                                        "name":  "X-API-Version",
+                                                                                                        "in":  "header",
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "string"
+                                                                                                                   }
+                                                                                                    }
+                                                                                                ],
+                                                                                 "requestBody":  {
+                                                                                                     "content":  {
+                                                                                                                     "application/json":  {
+                                                                                                                                              "schema":  {
+                                                                                                                                                             "$ref":  "#/components/schemas/SaveCertificateAttachmentsArgsDto"
+                                                                                                                                                         }
+                                                                                                                                          },
+                                                                                                                     "text/json":  {
+                                                                                                                                       "schema":  {
+                                                                                                                                                      "$ref":  "#/components/schemas/SaveCertificateAttachmentsArgsDto"
+                                                                                                                                                  }
+                                                                                                                                   },
+                                                                                                                     "application/*+json":  {
+                                                                                                                                                "schema":  {
+                                                                                                                                                               "$ref":  "#/components/schemas/SaveCertificateAttachmentsArgsDto"
+                                                                                                                                                           }
+                                                                                                                                            }
+                                                                                                                 },
+                                                                                                     "required":  true
+                                                                                                 },
+                                                                                 "responses":  {
+                                                                                                   "400":  {
+                                                                                                               "description":  "Bad Request",
+                                                                                                               "content":  {
+                                                                                                                               "application/json":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                                   }
+                                                                                                                                                    }
+                                                                                                                           }
+                                                                                                           },
+                                                                                                   "404":  {
+                                                                                                               "description":  "Not Found",
+                                                                                                               "content":  {
+                                                                                                                               "text/plain":  {
+                                                                                                                                                  "schema":  {
+                                                                                                                                                                 "type":  "string"
+                                                                                                                                                             }
+                                                                                                                                              },
+                                                                                                                               "application/octet-stream":  {
+                                                                                                                                                                "schema":  {
+                                                                                                                                                                               "type":  "string"
+                                                                                                                                                                           }
+                                                                                                                                                            },
+                                                                                                                               "application/json":  {
+
+                                                                                                                                                    }
+                                                                                                                           }
+                                                                                                           },
+                                                                                                   "200":  {
+                                                                                                               "description":  "OK",
+                                                                                                               "content":  {
+                                                                                                                               "application/json":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "type":  "boolean"
+                                                                                                                                                                   }
+                                                                                                                                                    }
+                                                                                                                           }
+                                                                                                           }
+                                                                                               }
+                                                                             }
+                                                                },
+                  "/api/CertificateOfOrigins/Reconcile":  {
+                                                              "post":  {
+                                                                           "tags":  [
+                                                                                        "CertificateOfOrigins"
+                                                                                    ],
+                                                                           "parameters":  [
+                                                                                              {
+                                                                                                  "name":  "X-API-Version",
+                                                                                                  "in":  "header",
+                                                                                                  "schema":  {
+                                                                                                                 "type":  "string"
+                                                                                                             }
+                                                                                              }
+                                                                                          ],
+                                                                           "requestBody":  {
+                                                                                               "content":  {
+                                                                                                               "application/json":  {
+                                                                                                                                        "schema":  {
+                                                                                                                                                       "$ref":  "#/components/schemas/UpdateCertificateOfOriginsRequestDto"
+                                                                                                                                                   }
+                                                                                                                                    },
+                                                                                                               "text/json":  {
+                                                                                                                                 "schema":  {
+                                                                                                                                                "$ref":  "#/components/schemas/UpdateCertificateOfOriginsRequestDto"
+                                                                                                                                            }
+                                                                                                                             },
+                                                                                                               "application/*+json":  {
+                                                                                                                                          "schema":  {
+                                                                                                                                                         "$ref":  "#/components/schemas/UpdateCertificateOfOriginsRequestDto"
+                                                                                                                                                     }
+                                                                                                                                      }
+                                                                                                           },
+                                                                                               "required":  true
+                                                                                           },
+                                                                           "responses":  {
+                                                                                             "400":  {
+                                                                                                         "description":  "Bad Request",
+                                                                                                         "content":  {
+                                                                                                                         "application/json":  {
+                                                                                                                                                  "schema":  {
+                                                                                                                                                                 "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                             }
+                                                                                                                                              }
+                                                                                                                     }
+                                                                                                     },
+                                                                                             "404":  {
+                                                                                                         "description":  "Not Found",
+                                                                                                         "content":  {
+                                                                                                                         "text/plain":  {
+                                                                                                                                            "schema":  {
+                                                                                                                                                           "type":  "string"
+                                                                                                                                                       }
+                                                                                                                                        },
+                                                                                                                         "application/octet-stream":  {
+                                                                                                                                                          "schema":  {
+                                                                                                                                                                         "type":  "string"
+                                                                                                                                                                     }
+                                                                                                                                                      },
+                                                                                                                         "application/json":  {
+
+                                                                                                                                              }
+                                                                                                                     }
+                                                                                                     },
+                                                                                             "200":  {
+                                                                                                         "description":  "OK",
+                                                                                                         "content":  {
+                                                                                                                         "application/json":  {
+                                                                                                                                                  "schema":  {
+                                                                                                                                                                 "type":  "array",
+                                                                                                                                                                 "items":  {
+                                                                                                                                                                               "$ref":  "#/components/schemas/CertificateOfOriginExceptionDto"
+                                                                                                                                                                           }
+                                                                                                                                                             }
+                                                                                                                                              }
+                                                                                                                     }
+                                                                                                     }
+                                                                                         }
+                                                                       }
+                                                          },
+                  "/api/EventsResponse/HandleDeliverySent":  {
+                                                                 "post":  {
+                                                                              "tags":  [
+                                                                                           "EventsResponse"
+                                                                                       ],
+                                                                              "parameters":  [
+                                                                                                 {
+                                                                                                     "name":  "X-API-Version",
+                                                                                                     "in":  "header",
+                                                                                                     "schema":  {
+                                                                                                                    "type":  "string"
+                                                                                                                }
+                                                                                                 }
+                                                                                             ],
+                                                                              "requestBody":  {
+                                                                                                  "content":  {
+                                                                                                                  "application/json":  {
+                                                                                                                                           "schema":  {
+                                                                                                                                                          "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                                      }
+                                                                                                                                       },
+                                                                                                                  "text/json":  {
+                                                                                                                                    "schema":  {
+                                                                                                                                                   "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                               }
+                                                                                                                                },
+                                                                                                                  "application/*+json":  {
+                                                                                                                                             "schema":  {
+                                                                                                                                                            "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                                        }
+                                                                                                                                         }
+                                                                                                              },
+                                                                                                  "required":  true
+                                                                                              },
+                                                                              "responses":  {
+                                                                                                "400":  {
+                                                                                                            "description":  "Bad Request",
+                                                                                                            "content":  {
+                                                                                                                            "application/json":  {
+                                                                                                                                                     "schema":  {
+                                                                                                                                                                    "$ref":  "#/components/schemas/RestBadRequestResult"
+                                                                                                                                                                }
+                                                                                                                                                 }
+                                                                                                                        }
+                                                                                                        },
+                                                                                                "404":  {
+                                                                                                            "description":  "Not Found",
+                                                                                                            "content":  {
+                                                                                                                            "text/plain":  {
+                                                                                                                                               "schema":  {
+                                                                                                                                                              "type":  "string"
+                                                                                                                                                          }
+                                                                                                                                           },
+                                                                                                                            "application/octet-stream":  {
+                                                                                                                                                             "schema":  {
+                                                                                                                                                                            "type":  "string"
+                                                                                                                                                                        }
+                                                                                                                                                         },
+                                                                                                                            "application/json":  {
+
+                                                                                                                                                 }
+                                                                                                                        }
+                                                                                                        },
+                                                                                                "200":  {
+                                                                                                            "description":  "OK",
+                                                                                                            "content":  {
+                                                                                                                            "application/json":  {
+                                                                                                                                                     "schema":  {
+                                                                                                                                                                    "type":  "boolean"
+                                                                                                                                                                }
+                                                                                                                                                 }
+                                                                                                                        }
+                                                                                                        }
+                                                                                            }
+                                                                          }
+                                                             }
+              },
+    "components":  {
+                       "schemas":  {
+                                       "CertificateOfOriginExceptionDto":  {
+                                                                               "type":  "object",
+                                                                               "properties":  {
+                                                                                                  "exceptionLevel":  {
+                                                                                                                         "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                         "type":  [
+                                                                                                                                      "null",
+                                                                                                                                      "integer",
+                                                                                                                                      "string"
+                                                                                                                                  ],
+                                                                                                                         "format":  "int32"
+                                                                                                                     },
+                                                                                                  "englishDescription":  {
+                                                                                                                             "type":  [
+                                                                                                                                          "null",
+                                                                                                                                          "string"
+                                                                                                                                      ]
+                                                                                                                         },
+                                                                                                  "exceptionDescription":  {
+                                                                                                                               "type":  [
+                                                                                                                                            "null",
+                                                                                                                                            "string"
+                                                                                                                                        ]
+                                                                                                                           },
+                                                                                                  "exceptionType":  {
+                                                                                                                        "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                        "type":  [
+                                                                                                                                     "integer",
+                                                                                                                                     "string"
+                                                                                                                                 ],
+                                                                                                                        "format":  "int32"
+                                                                                                                    }
+                                                                                              }
+                                                                           },
+                                       "ConnectedEntityDto":  {
+                                                                  "type":  "object",
+                                                                  "properties":  {
+                                                                                     "entityIdKey1":  {
+                                                                                                          "type":  [
+                                                                                                                       "null",
+                                                                                                                       "string"
+                                                                                                                   ]
+                                                                                                      },
+                                                                                     "entityIdKey2":  {
+                                                                                                          "type":  [
+                                                                                                                       "null",
+                                                                                                                       "string"
+                                                                                                                   ]
+                                                                                                      },
+                                                                                     "entityIdKey3":  {
+                                                                                                          "type":  [
+                                                                                                                       "null",
+                                                                                                                       "string"
+                                                                                                                   ]
+                                                                                                      },
+                                                                                     "entityPath":  {
+                                                                                                        "type":  [
+                                                                                                                     "null",
+                                                                                                                     "string"
+                                                                                                                 ]
+                                                                                                    },
+                                                                                     "entityType":  {
+                                                                                                        "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                        "type":  [
+                                                                                                                     "integer",
+                                                                                                                     "string"
+                                                                                                                 ],
+                                                                                                        "format":  "int32"
+                                                                                                    },
+                                                                                     "entityIdExternalReferenceId":  {
+                                                                                                                         "type":  [
+                                                                                                                                      "null",
+                                                                                                                                      "string"
+                                                                                                                                  ]
+                                                                                                                     }
+                                                                                 }
+                                                              },
+                                       "ExportGoodsItemInfoDto":  {
+                                                                      "type":  "object",
+                                                                      "properties":  {
+                                                                                         "certificateOfOriginId":  {
+                                                                                                                       "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                       "type":  [
+                                                                                                                                    "integer",
+                                                                                                                                    "string"
+                                                                                                                                ],
+                                                                                                                       "format":  "int32"
+                                                                                                                   },
+                                                                                         "customsItemId":  {
+                                                                                                               "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                               "type":  [
+                                                                                                                            "integer",
+                                                                                                                            "string"
+                                                                                                                        ],
+                                                                                                               "format":  "int32"
+                                                                                                           },
+                                                                                         "originCountryId":  {
+                                                                                                                 "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                 "type":  [
+                                                                                                                              "integer",
+                                                                                                                              "string"
+                                                                                                                          ],
+                                                                                                                 "format":  "int32"
+                                                                                                             }
+                                                                                     }
+                                                                  },
+                                       "ExportInvoiceInfoDto":  {
+                                                                    "type":  "object",
+                                                                    "properties":  {
+                                                                                       "externalIdNum":  {
+                                                                                                             "type":  [
+                                                                                                                          "null",
+                                                                                                                          "string"
+                                                                                                                      ]
+                                                                                                         },
+                                                                                       "exportGoodsItemInfoList":  {
+                                                                                                                       "type":  "array",
+                                                                                                                       "items":  {
+                                                                                                                                     "$ref":  "#/components/schemas/ExportGoodsItemInfoDto"
+                                                                                                                                 }
+                                                                                                                   }
+                                                                                   }
+                                                                },
+                                       "GoodsItemCerificateDto":  {
+                                                                      "type":  "object",
+                                                                      "properties":  {
+                                                                                         "goodsItemId":  {
+                                                                                                             "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                             "type":  [
+                                                                                                                          "integer",
+                                                                                                                          "string"
+                                                                                                                      ],
+                                                                                                             "format":  "int32"
+                                                                                                         },
+                                                                                         "certificateNumber":  {
+                                                                                                                   "type":  [
+                                                                                                                                "null",
+                                                                                                                                "string"
+                                                                                                                            ]
+                                                                                                               },
+                                                                                         "certificateOfOriginId":  {
+                                                                                                                       "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                       "type":  [
+                                                                                                                                    "null",
+                                                                                                                                    "integer",
+                                                                                                                                    "string"
+                                                                                                                                ],
+                                                                                                                       "format":  "int32"
+                                                                                                                   }
+                                                                                     }
+                                                                  },
+                                       "RaiseEventArgsDto":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "relatedEntities":  {
+                                                                                                            "type":  "array",
+                                                                                                            "items":  {
+                                                                                                                          "$ref":  "#/components/schemas/VirtualEntityDto"
+                                                                                                                      }
+                                                                                                        }
+                                                                                }
+                                                             },
+                                       "RestBadRequestError":  {
+                                                                   "required":  [
+                                                                                    "field",
+                                                                                    "detail"
+                                                                                ],
+                                                                   "type":  "object",
+                                                                   "properties":  {
+                                                                                      "field":  {
+                                                                                                    "type":  "string"
+                                                                                                },
+                                                                                      "errorCode":  {
+                                                                                                        "type":  [
+                                                                                                                     "null",
+                                                                                                                     "string"
+                                                                                                                 ]
+                                                                                                    },
+                                                                                      "index":  {
+                                                                                                    "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                    "type":  [
+                                                                                                                 "null",
+                                                                                                                 "integer",
+                                                                                                                 "string"
+                                                                                                             ],
+                                                                                                    "format":  "int32"
+                                                                                                },
+                                                                                      "level":  {
+                                                                                                    "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                    "type":  [
+                                                                                                                 "null",
+                                                                                                                 "integer",
+                                                                                                                 "string"
+                                                                                                             ],
+                                                                                                    "format":  "uint8"
+                                                                                                },
+                                                                                      "detail":  {
+                                                                                                     "type":  "array",
+                                                                                                     "items":  {
+                                                                                                                   "type":  "string"
+                                                                                                               }
+                                                                                                 }
+                                                                                  }
+                                                               },
+                                       "RestBadRequestResult":  {
+                                                                    "type":  "object",
+                                                                    "properties":  {
+                                                                                       "type":  {
+                                                                                                    "type":  [
+                                                                                                                 "null",
+                                                                                                                 "string"
+                                                                                                             ]
+                                                                                                },
+                                                                                       "title":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                       "status":  {
+                                                                                                      "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                      "type":  [
+                                                                                                                   "null",
+                                                                                                                   "integer",
+                                                                                                                   "string"
+                                                                                                               ],
+                                                                                                      "format":  "int32"
+                                                                                                  },
+                                                                                       "traceId":  {
+                                                                                                       "type":  [
+                                                                                                                    "null",
+                                                                                                                    "string"
+                                                                                                                ]
+                                                                                                   },
+                                                                                       "detail":  {
+                                                                                                      "type":  [
+                                                                                                                   "null",
+                                                                                                                   "string"
+                                                                                                               ]
+                                                                                                  },
+                                                                                       "instance":  {
+                                                                                                        "type":  [
+                                                                                                                     "null",
+                                                                                                                     "string"
+                                                                                                                 ]
+                                                                                                    },
+                                                                                       "errors":  {
+                                                                                                      "type":  "array",
+                                                                                                      "items":  {
+                                                                                                                    "$ref":  "#/components/schemas/RestBadRequestError"
+                                                                                                                }
+                                                                                                  }
+                                                                                   }
+                                                                },
+                                       "SaveCertificateAttachmentsArgsDto":  {
+                                                                                 "type":  "object",
+                                                                                 "properties":  {
+                                                                                                    "certificatesTemplates":  {
+                                                                                                                                  "type":  "array",
+                                                                                                                                  "items":  {
+                                                                                                                                                "$ref":  "#/components/schemas/TemplateResultDto"
+                                                                                                                                            }
+                                                                                                                              },
+                                                                                                    "certificateNumber":  {
+                                                                                                                              "type":  [
+                                                                                                                                           "null",
+                                                                                                                                           "string"
+                                                                                                                                       ]
+                                                                                                                          },
+                                                                                                    "certificateId":  {
+                                                                                                                          "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                          "type":  [
+                                                                                                                                       "integer",
+                                                                                                                                       "string"
+                                                                                                                                   ],
+                                                                                                                          "format":  "int32"
+                                                                                                                      },
+                                                                                                    "certificateRequestReasonCode":  {
+                                                                                                                                         "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                         "type":  [
+                                                                                                                                                      "integer",
+                                                                                                                                                      "string"
+                                                                                                                                                  ],
+                                                                                                                                         "format":  "int32"
+                                                                                                                                     },
+                                                                                                    "certificateTypeId":  {
+                                                                                                                              "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                              "type":  [
+                                                                                                                                           "integer",
+                                                                                                                                           "string"
+                                                                                                                                       ],
+                                                                                                                              "format":  "int32"
+                                                                                                                          },
+                                                                                                    "additionalInfo":  {
+                                                                                                                           "type":  [
+                                                                                                                                        "null",
+                                                                                                                                        "string"
+                                                                                                                                    ]
+                                                                                                                       }
+                                                                                                }
+                                                                             },
+                                       "TemplateResultDto":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "id":  {
+                                                                                               "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                               "type":  [
+                                                                                                            "integer",
+                                                                                                            "string"
+                                                                                                        ],
+                                                                                               "format":  "int32"
+                                                                                           },
+                                                                                    "name":  {
+                                                                                                 "type":  [
+                                                                                                              "null",
+                                                                                                              "string"
+                                                                                                          ]
+                                                                                             },
+                                                                                    "content":  {
+                                                                                                    "type":  "string",
+                                                                                                    "format":  "byte"
+                                                                                                },
+                                                                                    "documentTypeId":  {
+                                                                                                           "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                           "type":  [
+                                                                                                                        "integer",
+                                                                                                                        "string"
+                                                                                                                    ],
+                                                                                                           "format":  "int32"
+                                                                                                       },
+                                                                                    "isPdfFormat":  {
+                                                                                                        "type":  "boolean"
+                                                                                                    }
+                                                                                }
+                                                             },
+                                       "UpdateCertificateOfOriginsRequestDto":  {
+                                                                                    "type":  "object",
+                                                                                    "properties":  {
+                                                                                                       "eventType":  {
+                                                                                                                         "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                         "type":  [
+                                                                                                                                      "integer",
+                                                                                                                                      "string"
+                                                                                                                                  ],
+                                                                                                                         "format":  "int32"
+                                                                                                                     },
+                                                                                                       "leadDocumentId":  {
+                                                                                                                              "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                              "type":  [
+                                                                                                                                           "integer",
+                                                                                                                                           "string"
+                                                                                                                                       ],
+                                                                                                                              "format":  "int32"
+                                                                                                                          },
+                                                                                                       "exportDeclarationNum":  {
+                                                                                                                                    "type":  [
+                                                                                                                                                 "null",
+                                                                                                                                                 "string"
+                                                                                                                                             ]
+                                                                                                                                },
+                                                                                                       "certificateOfOriginsIds":  {
+                                                                                                                                       "type":  "array",
+                                                                                                                                       "items":  {
+                                                                                                                                                     "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                                     "type":  [
+                                                                                                                                                                  "integer",
+                                                                                                                                                                  "string"
+                                                                                                                                                              ],
+                                                                                                                                                     "format":  "int32"
+                                                                                                                                                 }
+                                                                                                                                   },
+                                                                                                       "exporterCustomerId":  {
+                                                                                                                                  "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                  "type":  [
+                                                                                                                                               "null",
+                                                                                                                                               "integer",
+                                                                                                                                               "string"
+                                                                                                                                           ],
+                                                                                                                                  "format":  "int32"
+                                                                                                                              },
+                                                                                                       "destinationCountryId":  {
+                                                                                                                                    "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                    "type":  [
+                                                                                                                                                 "null",
+                                                                                                                                                 "integer",
+                                                                                                                                                 "string"
+                                                                                                                                             ],
+                                                                                                                                    "format":  "int32"
+                                                                                                                                },
+                                                                                                       "organizationUnitId":  {
+                                                                                                                                  "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                                                  "type":  [
+                                                                                                                                               "integer",
+                                                                                                                                               "string"
+                                                                                                                                           ],
+                                                                                                                                  "format":  "int32"
+                                                                                                                              },
+                                                                                                       "exportInvoiceInfoList":  {
+                                                                                                                                     "type":  "array",
+                                                                                                                                     "items":  {
+                                                                                                                                                   "$ref":  "#/components/schemas/ExportInvoiceInfoDto"
+                                                                                                                                               }
+                                                                                                                                 }
+                                                                                                   }
+                                                                                },
+                                       "VirtualEntityDto":  {
+                                                                "type":  "object",
+                                                                "properties":  {
+                                                                                   "id":  {
+                                                                                              "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                              "type":  [
+                                                                                                           "integer",
+                                                                                                           "string"
+                                                                                                       ],
+                                                                                              "format":  "int32"
+                                                                                          },
+                                                                                   "title":  {
+                                                                                                 "type":  [
+                                                                                                              "null",
+                                                                                                              "string"
+                                                                                                          ]
+                                                                                             },
+                                                                                   "entityType":  {
+                                                                                                      "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                      "type":  [
+                                                                                                                   "integer",
+                                                                                                                   "string"
+                                                                                                               ],
+                                                                                                      "format":  "int32"
+                                                                                                  },
+                                                                                   "customerId":  {
+                                                                                                      "pattern":  "^-?(?:0|[1-9]\\d*)$",
+                                                                                                      "type":  [
+                                                                                                                   "integer",
+                                                                                                                   "string"
+                                                                                                               ],
+                                                                                                      "format":  "int32"
+                                                                                                  }
+                                                                               }
+                                                            }
+                                   }
+                   }
+}

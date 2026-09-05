@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins"
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json

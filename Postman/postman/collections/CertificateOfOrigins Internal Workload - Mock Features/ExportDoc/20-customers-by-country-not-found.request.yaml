@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
 method: GET
 headers:
   x-mock-feature--Customers.NotFound: "true"

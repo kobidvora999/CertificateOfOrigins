@@ -38,7 +38,7 @@ Planar/                                              ← Scheduled jobs (BaseJob
 Postman/                                             ← Postman collection
 ```
 
-`{S}` = **CertificateOfOrigins** (this service). Projects live under `API/CustomsCloud.CRM.CertificateOfOrigins.{WebApi,BL,DAL,Model,Test}`.
+`{S}` = **CertificateOfOrigins** (this service). Projects live under `API/CertificateOfOrigins.{WebApi,BL,DAL,Model,Test}`.
 
 ## Migration context
 

@@ -1,0 +1,80 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "CertificateOfOrigins web - CertificateRequest",
+    "version": "1.0.0",
+    "description": "C14 Schema First contract for the web domain. Hand-written, derived from the legacy incoming-message service GetPC_Web_9096_CertificateRequest (the 'Web' in that name is what places this endpoint in the web domain). The controller is written to match this document, not the other way round, and Test/SchemaContract/WebCertificateRequestContractTests.cs fails the build if the two drift apart. Note the deliberate in-band error contract: an unknown guid or no matching certificate is HTTP 200 with exceptionDescription set, never a 404 - the public portal depends on that."
+  },
+  "paths": {
+    "/web/CertificateOfOrigins/RequestByGuid": {
+      "get": {
+        "tags": [ "CertificateOfOrigins" ],
+        "summary": "Certificate verification for the public portal.",
+        "description": "Located either by guid, or by certificate number together with its issuing date.",
+        "parameters": [
+          { "name": "certificateOfOriginGuid", "in": "query", "required": false, "schema": { "type": "string", "nullable": true } },
+          { "name": "certificateOfOriginNumber", "in": "query", "required": false, "schema": { "type": "string", "nullable": true } },
+          { "name": "issuingDate", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time", "nullable": true } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The web-query response. Carries exceptionDescription instead of an error status when nothing matched.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginsResponseDto" } } }
+          },
+          "400": { "description": "Malformed request." }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CertificateOfOriginsRequestDto": {
+        "type": "object",
+        "properties": {
+          "certificateOfOriginGuid": { "type": "string", "nullable": true },
+          "certificateOfOriginNumber": { "type": "string", "nullable": true },
+          "issuingDate": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "CertificateOfOriginsResponseDto": {
+        "type": "object",
+        "properties": {
+          "certificateNumber": { "type": "string", "nullable": true },
+          "queryUrl": { "type": "string", "nullable": true },
+          "documentId": { "type": "integer", "format": "int32" },
+          "certificateOfOriginDetails": { "type": "array", "items": { "$ref": "#/components/schemas/FieldDataDto" } },
+          "certificateOfOriginInvoiceDetails": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginWebInvoiceDetailDto" } },
+          "exceptionDescription": { "type": "string", "nullable": true }
+        }
+      },
+      "FieldDataDto": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "nullable": true },
+          "value": { "nullable": true }
+        }
+      },
+      "CertificateOfOriginWebInvoiceDetailDto": {
+        "type": "object",
+        "properties": {
+          "invoiceNumber": { "type": "string", "nullable": true },
+          "invoiceDate": { "type": "string", "format": "date-time" },
+          "invoiceAmount": { "type": "number", "format": "double" },
+          "currencyCode": { "type": "string", "nullable": true },
+          "invoiceGoodsDescription": { "type": "string", "nullable": true },
+          "certificateOfOriginItemDetails": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginWebItemDetailDto" } }
+        }
+      },
+      "CertificateOfOriginWebItemDetailDto": {
+        "type": "object",
+        "properties": {
+          "itemNumber": { "type": "string", "nullable": true },
+          "originCriterion": { "type": "string", "nullable": true },
+          "goodsDescription": { "type": "string", "nullable": true },
+          "grossWeight": { "type": "number", "format": "double" },
+          "measurementUnitType": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}

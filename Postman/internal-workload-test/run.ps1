@@ -18,7 +18,7 @@
   Extends the postman-coverage engine with parallel collection execution. Runs in the TEST environment.
 
 .EXAMPLE
-  ./run.ps1 -Project C:/Repos/PreRulings/API/CustomsCloud.CRM.PreRulings.WebApi/CustomsCloud.CRM.PreRulings.WebApi.csproj `
+  ./run.ps1 -Project C:/Repos/CertificateOfOrigins/API/CertificateOfOrigins.WebApi/CertificateOfOrigins.WebApi.csproj `
             -CollectionsDir C:/Repos/PreRulings/Postman/postman/collections -Prefix "PreRulings Internal Workload -" `
             -BaseUrl http://localhost:60942 -OutDir C:/Repos/PreRulings/Postman/internal-workload-test/reports
 #>
@@ -133,8 +133,9 @@ Info "scenario collections ($($Collections.Count)), parallelism $Parallel : $(($
 $runScript = {
     param($Col, $BaseUrl, $EnvFile, $Rep, $Out, $PostmanExe, $PostmanDir)
     $env:PATH = "$env:PATH;$PostmanDir"
-    # NOTE: migrated v3 collections are classified "multi-protocol" by the Postman CLI, which only supports the
-    # 'cli' reporter (the 'json' reporter aborts the run). Verdict/last-run.json is built from exit codes, so cli-only is fine.
+    # Only the "cli" reporter works for v3 multi-protocol collections — Postman CLI rejects "json" with
+    #: Reporter "json" is not supported for multi-protocol collections. The verdict below is built from the
+    # process exit code, not the JSON report, so dropping it costs nothing.
     $a = @("collection", "run", $Col, "--env-var", "base_URL=$BaseUrl", "-r", "cli")
     if ($EnvFile -ne '') { $a += @("-e", $EnvFile) }
     & $PostmanExe @a *>$Out
@@ -152,7 +153,7 @@ while ($queue.Count -gt 0 -or $running.Count -gt 0) {
         $out = Join-Path $OutDir ("postman-{0}.out.log" -f (Safe $label))
         Info "-> '$label'"
         $job = Start-Job -ScriptBlock $runScript -ArgumentList $col,$BaseUrl,$Environment,$rep,$out,$PostmanExe,$PostmanDir
-        $running[$job.Id] = @{ Label = $label; Job = $job }
+        $running[$job.Id] = @{ Label = $label; Job = $job; Out = $out }
     }
     Start-Sleep -Milliseconds 400
     foreach ($id in @($running.Keys)) {
@@ -163,8 +164,24 @@ while ($queue.Count -gt 0 -or $running.Count -gt 0) {
             Remove-Job $job -Force -ErrorAction SilentlyContinue
             $exitObj = $rcv | Where-Object { $_.PSObject.Properties.Name -contains 'Exit' } | Select-Object -Last 1
             $code = if ($exitObj) { [int]$exitObj.Exit } elseif ($job.State -eq 'Completed') { 0 } else { 1 }
-            if ($code -eq 0) { Info "[OK] '$label'" } else { Warn "[X] '$label' (exit $code)" }
-            $results += [pscustomobject]@{ Group = $label; Exit = $code }
+
+            # Scrape the CLI summary table so the verdict carries WHAT WAS ASSERTED, not just the exit code.
+            # A collection with zero assertions exits 0 and would otherwise be indistinguishable from a real
+            # pass — that is exactly how a run in which 31 of 38 requests returned 500 was reported as passed.
+            # repo-complete-check PHASE 5c reads these fields (see conventions-changelog C13).
+            $reqExec = $null; $asrExec = $null; $asrFail = $null
+            $outFile = $running[$id].Out
+            if (Test-Path $outFile) {
+                $txt = Get-Content $outFile -Raw -ErrorAction SilentlyContinue
+                if ($txt -match '\|\s*requests\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|')   { $reqExec = [int]$Matches[1] }
+                if ($txt -match '\|\s*assertions\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|') { $asrExec = [int]$Matches[1]; $asrFail = [int]$Matches[2] }
+            }
+            if ($code -eq 0 -and $asrExec -eq 0) {
+                Warn "[!] '$label' exited 0 but asserted NOTHING ($reqExec request(s)) - not a pass"
+            }
+            elseif ($code -eq 0) { Info "[OK] '$label' ($asrExec assertion(s) over $reqExec request(s))" }
+            else { Warn "[X] '$label' (exit $code)" }
+            $results += [pscustomobject]@{ Group = $label; Exit = $code; Requests = $reqExec; Assertions = $asrExec; AssertionsFailed = $asrFail }
             $running.Remove($id)
         }
     }
@@ -192,6 +209,12 @@ $verdict = [pscustomobject]@{
     failed       = $runFailed.Count
     failedGroups = @($runFailed.Group)
     cobertura    = $Cobertura
+    # Totals so a caller can tell a real pass from an empty one. assertionsExecuted = 0 with requests > 0 means
+    # the collection ran but checked nothing -> repo-complete-check PHASE 5c treats that as a RED blocker (C13).
+    requests           = (($results | Measure-Object -Property Requests   -Sum).Sum)
+    assertionsExecuted = (($results | Measure-Object -Property Assertions -Sum).Sum)
+    assertionsFailed   = (($results | Measure-Object -Property AssertionsFailed -Sum).Sum)
+    groupsWithNoAssertions = @($results | Where-Object { $_.Assertions -eq 0 } | ForEach-Object { $_.Group })
 }
 $verdict | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $OutDir "last-run.json") -Encoding utf8
 

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId=555"
+url: "{{baseUrl}}/ui/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId=555"
 method: GET
 queryParams:
   vendorId: "555"

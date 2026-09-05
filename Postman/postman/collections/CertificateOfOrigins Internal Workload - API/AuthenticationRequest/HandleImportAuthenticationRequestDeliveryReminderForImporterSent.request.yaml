@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryReminderForImporterSent"
+url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryReminderForImporterSent"
 method: POST
 headers:
   Content-Type: application/json

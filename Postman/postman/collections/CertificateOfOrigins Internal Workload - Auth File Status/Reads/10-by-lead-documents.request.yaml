@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/ByLeadDocumentIDs"
+url: "{{baseUrl}}/ui/AuthenticationRequest/ByLeadDocumentIDs"
 method: POST
 headers:
   Content-Type: application/json

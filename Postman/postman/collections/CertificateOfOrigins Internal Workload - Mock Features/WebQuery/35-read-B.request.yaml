@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/{{mfCertB}}"
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{mfCertB}}"
 method: GET
 # Rowversion for chain B.
 order: 60350

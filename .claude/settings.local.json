@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(printf '%s\\\\r\\\\n' '- C12 re-verified \\(2026-08-23\\): אין drift — הקומיטים שאחרי היישור \\(fcaab2f, 49169fe\\) נבדקו מול מתכוני ה-Detection של C4/C6/C10/C11/C12, 0 ממצאים. אין delta חדש ב-changelog \\(C12 הוא ה-entry האחרון\\).' >> .claude/conventions-state.md && tail -2 .claude/conventions-state.md && echo \"---\" && git diff --stat)",
+      "Bash(git checkout *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cd /c/Users/kobi_dv/.claude/skills && echo \"=== bl-rules.md: ICloudEntity/save section ===\" && grep -n \"ICloudEntity\" -B4 -A 30 _shared/bl-rules.md | head -80)",
+      "Read(//c/Users/kobi_dv/.claude/projects/C--Repos-CertificateOfOrigins/memory/**)",
+      "Bash(printf '%s\\\\n' '- [BaseBL is the default save path]\\(feedback_basebl-save-is-default.md\\) — התשתית מנצחת את כלל \"DAL writes\" של ה-repo')",
+      "Bash(find /c/Users/kobi_dv/.nuget/packages/customscloud.infrastructurecore.bl /c/Users/kobi_dv/.nuget/packages/customscloud.infrastructurecore.model -iname \"*.xml\" -o -iname \"*.dll\" 2>/dev/null | grep -i \"lib/\" | head -10)"
     ]
   }
 }

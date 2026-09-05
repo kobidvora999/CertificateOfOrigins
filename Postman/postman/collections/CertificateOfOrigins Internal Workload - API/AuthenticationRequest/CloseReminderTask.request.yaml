@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/CloseReminderTask"
+url: "{{baseUrl}}/ui/AuthenticationRequest/CloseReminderTask"
 method: POST
 headers:
   Content-Type: application/json

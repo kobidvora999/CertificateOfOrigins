@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/HandleDeliverySent"
+url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
 method: POST
 headers:
   Content-Type: application/json

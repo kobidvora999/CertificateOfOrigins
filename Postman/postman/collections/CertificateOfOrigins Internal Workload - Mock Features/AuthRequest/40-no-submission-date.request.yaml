@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/990101"
+url: "{{baseUrl}}/ui/AuthenticationRequest/990101"
 method: GET
 headers:
   x-mock-feature--DealFile.NoSubmissionDate: "true"

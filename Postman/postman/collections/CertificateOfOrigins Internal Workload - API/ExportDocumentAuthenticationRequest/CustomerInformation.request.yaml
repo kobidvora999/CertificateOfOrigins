@@ -1,4 +1,4 @@
 $kind: http-request
-url: "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformation/777"
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformation/777"
 method: GET
 order: 3000

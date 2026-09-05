@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/AuthenticationRequest/CreateNewFile"
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
 method: POST
 headers:
   Content-Type: application/json

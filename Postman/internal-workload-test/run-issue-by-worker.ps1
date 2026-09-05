@@ -26,7 +26,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Project        = "$PSScriptRoot/../../API/CustomsCloud.CRM.CertificateOfOrigins.WebApi/CustomsCloud.CRM.CertificateOfOrigins.WebApi.csproj",
+    [string] $Project        = "$PSScriptRoot/../../API/CertificateOfOrigins.WebApi/CertificateOfOrigins.WebApi.csproj",
     [string] $CollectionsDir = "$PSScriptRoot/../postman/collections",
     [string] $Collection     = "CertificateOfOrigins Param IssueByWorker",
     [string] $BaseUrl        = "http://localhost:9034",

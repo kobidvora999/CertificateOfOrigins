@@ -31,7 +31,7 @@
 לעדכן את ה-proxy שלו (verbs QUERY + routes חדשים). המיפוי המלא ישן→חדש הועבר למפתחת (Tamar) בנפרד.
 
 ## 4. DB — סקריפטים ו-ROLLOUT
-**סדר הרצה** (מ-`API/CustomsCloud.CRM.CertificateOfOrigins.WebApi/Scripts/`, לפי חותמת זמן):
+**סדר הרצה** (מ-`API/CertificateOfOrigins.WebApi/Scripts/`, לפי חותמת זמן):
 1. `API_20260715 - create schema.sql`
 2. `API_20260715 - create tables.sql`
 3. `API_20260715 - seed data.sql`

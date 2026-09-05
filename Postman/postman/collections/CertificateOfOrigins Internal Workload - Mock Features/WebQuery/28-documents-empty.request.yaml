@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{mfGuidA}}"
+url: "{{baseUrl}}/web/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{mfGuidA}}"
 method: GET
 headers:
   x-mock-feature--Documents.Empty: "true"
