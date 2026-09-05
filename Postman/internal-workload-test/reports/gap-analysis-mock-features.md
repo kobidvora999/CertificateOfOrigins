@@ -644,3 +644,38 @@ fall-through: every fixture supplies exactly one of each pair, which is the corr
 | `MessageValidation.cs` | 93.0% | 81.9% — `CheckIfCountryGroupIsInTradeAgreement`'s four switch arms (one country-group field each) |
 | `CertificateOfOriginsBl.cs` | 93.6% | 84.3% |
 | `MessageValidationMessages.cs` | 100% | 75% — a single argument-count branch in `BuildMessageException` |
+
+---
+
+# Round 11 — the country-group switch arms
+
+Date: 2026-09-05 · added to `CertificateOfOrigins Internal Workload - Field Validation` (`CountryGroups/`)
+
+`CheckIfCountryGroupIsInTradeAgreement` picks its message from a four-arm `DetailType` switch, and round 1 had
+reached only the DESTINATION arm. The other three each need a message of their own, because a country GROUP can
+never share a message with its country: `CheckCountryXorGroup` demands exactly one of each pair, so the group
+REPLACES the country rather than joining it.
+
+| arm | code | scenario |
+|---|---|---|
+| `TradeAgreementGroupOfCountries` | 4994 | second agreement party as a group |
+| `OriginGroupOfCountries` | 4999 | origin as a group |
+| `CumulationGroupOfCountries` | 5005 | cumulation as a group |
+| `DestinationGroupOfCountries` | 5002 | (round 1) |
+
+| | before | after |
+|---|---|---|
+| `CheckIfCountryGroupIsInTradeAgreement` | 19/23, br 6/14 | **22/23**, br **12/14** |
+| Line (merged) | 96.1% | **96.2%** (4525/4704) |
+| Branch (pass 1) | 86.0% | **86.4%** (1300/1504) |
+| BL line / branch | 94.6% / 85.6% | **94.7% / 86.1%** |
+
+15 collections, 244 requests, 755 assertions, 0 failures.
+
+## Environment: the Consul key was reset a third time, mid-pass
+
+Pass 1 completed cleanly and is the measurement above. The issue-by-worker pass that followed hit
+`Main/CentralConfig` back on **PreRulings** and failed; it was re-run after repointing and the merge is clean
+(`SendCertificateToIssueQueue` 25/25 confirms pass 2 contributed). This is the third time in this session that
+the key moved under a run — rounds 5, 7 and 11. It is worth a guard in `run.ps1` that reads the key at start and
+re-checks it at the end, so the failure names itself instead of appearing as a wall of 500s.

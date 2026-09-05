@@ -11,6 +11,9 @@ description: >-
   non-Israel id, so flipping one field per request is enough to reach each arm.
   Two of the fields (TransirCountry, ExportCountry) exist only on a NonManipulation certificate, which is why
   the second folder sends one.
+  The third folder covers the country-GROUP switch. `CheckIfCountryGroupIsInTradeAgreement` picks its message
+  from the same kind of DetailType switch, and a group can never share a message with its country — the
+  cross-field XOR rule demands exactly one of each pair — so each arm needs a message of its own.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -45,7 +48,14 @@ scripts:
           '10-transit-country-not-israel':     5018,     // ...                             -> TransirCountry
           '40-first-agreement-not-israel':     4992,     // CheckAgreementFirstCountry
           '50-city-unknown':                   14027394, // CheckCityOfDeclaration, unresolvable id
-          '20-export-country-israel':          5016      // CheckExportCountry, inverted for NonManipulation
+          '20-export-country-israel':          5016,     // CheckExportCountry, inverted for NonManipulation
+
+          // The three remaining arms of CheckIfCountryGroupIsInTradeAgreement's DetailType switch. Round 1
+          // reached the DESTINATION arm; each of the others needs its own message, because CheckCountryXorGroup
+          // demands exactly one of each (country, group) pair — a group REPLACES its country, it cannot join it.
+          '10-second-agreement-group':         4994,
+          '20-origin-group':                   4999,
+          '30-cumulation-group':               5005
       };
       // The two scenarios whose correct answer is silence. Without them the positives prove only that the
       // validators fire, not that they fire selectively.

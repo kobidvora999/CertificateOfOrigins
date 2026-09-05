@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--CustomsBook.NotInAgreement: "true"
+# The SECOND agreement party given as a group instead of a country -> GroupOfCountriesNotInAgreement(4994). CheckCountryXorGroup demands exactly one of each pair, so the group REPLACES tradeAgreementCountry2 rather than joining it.
+body:
+  type: json
+  content: |-
+    {
+      "customerId": 1,
+      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SITE01",
+        "tradeAgreementCountry1": "IL",
+        "tradeAgreementGroupOfCountries": 5,
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "invoiceDetails": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+              "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] } ]
+      }
+    }
+order: 42000
