@@ -599,3 +599,48 @@ validated by an EURMED/EUR1 message at all, so the second folder sends a NonMani
 | `MessagePerReason.cs` | 88.4% | 89.4% |
 | `MessageValidation.cs` — `CheckIfCountryGroupIsInTradeAgreement` | 19/23, br 6/14 | the four arms of its own DetailType switch, one country-group field each |
 | `MessageValidation.cs` — `<sync>` | 114/128, br 35/48 | the mandatory/blank-field guards in `BuildDetailsFromFields` |
+
+---
+
+# Round 10 — the cross-field rules
+
+Date: 2026-09-05 · collection `CertificateOfOrigins Internal Workload - Cross Field`
+
+| method | before | after |
+|---|---|---|
+| `CheckPlaceOfManufactureAndZipcode` | 19/27, br 12/16 | **27/27**, br 14/16 |
+| `CheckConditionalFields` | 32/35 | **35/35**, br 26/26 |
+| `CheckIfSiteExistAndCustomsHouse` | 22/25 | **25/25** |
+| `CheckDestinationCountry` | 6/9, br 1/2 | **9/9**, br 2/2 |
+| the shared `CheckCountryXorGroup` etc. | 49/62 | **60/62** |
+| **`MessageCrossField.cs`** | **85.4% / 82.7%** | **99.0% / 91.8%** |
+
+| | round 9 | round 10 |
+|---|---|---|
+| Line (merged) | 95.4% | **96.1%** (4522/4704) |
+| Branch (pass 1) | 85.2% | **86.0%** (1294/1504) |
+| BL line / branch | 93.7% / 84.8% | **94.6% / 85.6%** |
+
+15 collections, 241 requests, 746 assertions, 0 failures. Green on the first run.
+
+## Why these were the last ones left
+
+Cross-field rules are the hardest arms to reach by accident, and for two structural reasons:
+
+* **Several are guarded by three or four conditions that all have to line up at once.**
+  `PlaceOfManufactureAndZipcodeRequired` needs an Israel origin AND a missing place/zip pair AND a
+  zipcode-mandatory certificate type AND a destination outside the exempt list. A fixture satisfying three of
+  the four looks identical, from the outside, to one satisfying none.
+* **Two of them fire only when a field is ABSENT.** A fixture built the normal way — by copying a message that
+  works and changing one value — can never produce them, because it always carries every field.
+
+That is also why `CheckCountryXorGroup`, a helper shared by three different field pairs, had only ever run its
+fall-through: every fixture supplies exactly one of each pair, which is the correct case.
+
+## Remaining
+
+| file | line | branch |
+|---|---|---|
+| `MessageValidation.cs` | 93.0% | 81.9% — `CheckIfCountryGroupIsInTradeAgreement`'s four switch arms (one country-group field each) |
+| `CertificateOfOriginsBl.cs` | 93.6% | 84.3% |
+| `MessageValidationMessages.cs` | 100% | 75% — a single argument-count branch in `BuildMessageException` |
