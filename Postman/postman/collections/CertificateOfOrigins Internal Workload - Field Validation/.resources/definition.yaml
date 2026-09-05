@@ -1,0 +1,72 @@
+$kind: collection
+id: certificateoforigins-field-validation-v1
+name: CertificateOfOrigins Field Validation
+description: >-
+  The per-field validators in CertificateOfOriginsBl.MessageValidation.cs — the last file under 75% branch.
+  One habit explains almost all of it: every fixture in the repo sends `IL` for every country field and `1` for
+  the city, so the validators that exist precisely to reject a NON-Israel country, or a city that does not
+  resolve, were only ever driven down their happy side. `CheckIfCountryInSystemAndIsrael` sat at 2 of 12
+  branches with all four arms of its DetailType switch unentered.
+  The Country mock maps `IL` to 376 — the CountryIsrael parameter value — and every other code to a stable
+  non-Israel id, so flipping one field per request is enough to reach each arm.
+  Two of the fields (TransirCountry, ExportCountry) exist only on a NonManipulation certificate, which is why
+  the second folder sends one.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+
+      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+
+      // One flipped field per request, one code per flip. Each of the first four is a different arm of the same
+      // DetailType switch, which is why they are separate scenarios rather than one message with four bad fields.
+      var MUST = {
+          '10-exporter-country-not-israel':    4991,     // CheckIfCountryInSystemAndIsrael -> ExporterCountry
+          '20-issuing-country-not-israel':     5008,     // ...                             -> IssuingCountry
+          '30-declaration-country-not-israel': 5009,     // ...                             -> CountryOfDeclaration
+          '10-transit-country-not-israel':     5018,     // ...                             -> TransirCountry
+          '40-first-agreement-not-israel':     4992,     // CheckAgreementFirstCountry
+          '50-city-unknown':                   14027394, // CheckCityOfDeclaration, unresolvable id
+          '20-export-country-israel':          5016      // CheckExportCountry, inverted for NonManipulation
+      };
+      // The two scenarios whose correct answer is silence. Without them the positives prove only that the
+      // validators fire, not that they fire selectively.
+      var MUST_NOT = {
+          // EUR1 + a destination country in the exempt list: the place-of-manufacture value is CLEARED, not
+          // rejected. PlaceOfManufactureAndZipcodeRequired(5006) must not appear.
+          '60-place-of-manufacture-exempt': [5006],
+          // A non-Israel export country on a NonManipulation certificate is the CORRECT case.
+          '30-export-country-valid':        [5016]
+      };
+
+      if (MUST[name] !== undefined) {
+          pm.test(name + ': raises exceptionType ' + MUST[name], function () {
+              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MUST[name]);
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': raises nothing for this field - the input is legal', function () {
+              MUST_NOT[name].forEach(function (c) {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+              });
+          });
+      }
+    language: text/javascript

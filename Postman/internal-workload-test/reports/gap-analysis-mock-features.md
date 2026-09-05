@@ -546,3 +546,56 @@ collection's rows from 990001 while that collection is reading them in parallel.
 | `MessageValidation.cs` | 87.0% | 74.4% |
 | `MessagePerReason.cs` | 88.4% | 89.4% |
 | `AuthenticationRequestBl.cs` — `GetEntityDocuments` | 25/32 | needs an entity whose documents are already requested / claimed by another lead document |
+
+---
+
+# Round 9 — the per-field validators
+
+Date: 2026-09-05 · collection `CertificateOfOrigins Internal Workload - Field Validation`
+
+One habit explained almost the whole gap: **every fixture in the repo sends `IL` for every country field and
+`1` for the city.** The validators that exist precisely to reject a non-Israel country, or a city that does not
+resolve, were therefore only ever driven down their happy side.
+
+| method | before | after |
+|---|---|---|
+| `CheckIfCountryInSystemAndIsrael` | 8/19, br **2/12** | **18/19**, br 10/12 |
+| `CheckAgreementFirstCountry` | 11/14 | **14/14** |
+| `CheckIfExemptPlaceOfManufacture` | 5/12, br 1/6 | **12/12**, br 5/6 |
+| `CheckExportCountry` | 8/16, br 5/10 | 11/16, br 8/10 |
+| `CheckCityOfDeclaration` | 10/19 | 13/19 |
+| **`MessageValidation.cs`** | **87.0% / 74.4%** | **92.4% / 81.1%** |
+
+| | round 8 | round 9 |
+|---|---|---|
+| Line (merged) | 94.9% | **95.4%** (4488/4704) |
+| Branch (pass 1) | 84.1% | **85.2%** (1282/1504) |
+| BL line / branch | 92.9% / 83.6% | **93.7% / 84.8%** |
+
+14 collections, 231 requests, 716 assertions, 0 failures. Green on the first run.
+
+Nine requests, each flipping exactly ONE field. The four arms of `CheckIfCountryInSystemAndIsrael`'s DetailType
+switch are four separate scenarios rather than one message with four bad fields, because a single message
+carrying all of them would prove only that *something* fired.
+
+## Two things worth recording
+
+**The Country mock is arithmetic, not a country table.** `IL` maps to 376 — the `CountryIsrael` parameter value —
+and every other code to `(sum of chars % 1000) + 1`. That is what makes one-field-at-a-time flipping work, and
+it is also why `60-place-of-manufacture-exempt` sends the odd-looking destination code `zzzzzzG`: the exempt
+list (`CountriesExemptedFromSendingThePlaceOfManufacture`) holds `804`, so the code has to sum to 803, and
+122×6 + 71 does. It looks strange because it is arithmetic; the alternative was editing a parameter that other
+runs share.
+
+**Two fields exist only on a NonManipulation certificate.** `TransirCountry` and `ExportCountry` are never
+validated by an EURMED/EUR1 message at all, so the second folder sends a NonManipulation one — and
+`CheckExportCountry` is *inverted* there: the export country must NOT be Israel, so `IL` is the error case.
+
+## Still open
+
+| file | line | branch |
+|---|---|---|
+| `MessageCrossField.cs` | 85.4% | 82.7% |
+| `MessagePerReason.cs` | 88.4% | 89.4% |
+| `MessageValidation.cs` — `CheckIfCountryGroupIsInTradeAgreement` | 19/23, br 6/14 | the four arms of its own DetailType switch, one country-group field each |
+| `MessageValidation.cs` — `<sync>` | 114/128, br 35/48 | the mandatory/blank-field guards in `BuildDetailsFromFields` |
