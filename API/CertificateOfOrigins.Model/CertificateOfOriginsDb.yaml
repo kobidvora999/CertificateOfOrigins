@@ -33,6 +33,17 @@ stored procedures:
     method: query
     result type namespace: CertificateOfOrigins.Model.ModelDTOs
     result type: GetAuthenticationRequestByLeadDocumentResultDto
+  # The two reminder-scheduler SPs — read only by the Planar jobs, never by the REST surface.
+  - name: dbo.GetImportAuthenticationRequestsForReminderForImporterScheduler
+    function: GetImportAuthenticationRequestsForReminderForImporterScheduler
+    method: query
+    result type namespace: CertificateOfOrigins.Model.ModelDTOs
+    result type: ReminderForImporterSchedulerDto
+  - name: dbo.GetAuthenticationRequestsForScheduler
+    function: GetAuthenticationRequestsForScheduler
+    method: query
+    result type namespace: CertificateOfOrigins.Model.ModelDTOs
+    result type: AuthenticationRequestsForSchedulerDto
   - name: dbo.CheckIfExistsAdditionalRequestsForVendor
     function: CheckIfExistsAdditionalRequestsForVendor
     method: execute-scalar

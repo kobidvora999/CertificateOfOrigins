@@ -80,4 +80,31 @@ internal static class CertificateOfOriginsConsts
 
     // Legacy CertificateOfOriginsConsts.NavigationToVendorPathID — the fixed PathID whose navigation paths are returned.
     public const int NavigationToVendorPathId = 359;
+
+    // --- Reminder schedulers (the two Planar jobs) ---
+
+    // Every value below was a platform global param read inside the legacy SP via
+    // Infrastructure.ufn_General_GetGlobalParamValue(<id>). A service-owned SP may not call that UDF, so the BL
+    // reads the equivalent service parameter and passes it down. The legacy UDF id is noted per line so the pairing
+    // stays auditable.
+
+    // UDF 1534 — days since the importer letter before a reminder is due.
+    public const string DaysForReminderForImporterSchedulerParameter = "DaysForReminderForImporterScheduler";
+
+    // UDF 1600 — months before the supplier letter is chased (value 3).
+    public const string SchedulerFirstReminderParameter = "DaysForFirstReminderInAuthenticationRequest3";
+
+    // UDF 1148 — months before the 6-month reminder (value 6).
+    public const string SchedulerSecondReminderParameter = "DaysForFirstReminderInAuthenticationRequest1";
+
+    // UDF 1941 — months before a final decision is due on a supplier file (value 9).
+    public const string SchedulerFinalDecisionParameter = "MonthForFinalReminderInAuthenticationRequest";
+
+    // UDF 1149 — months before a final decision is due on a customs-house file (value 10).
+    public const string SchedulerFinalDecisionForCustomsHouseParameter = "DaysForFirstReminderInAuthenticationRequest2";
+
+    // UDF 1667 / 1668 — the export reminder windows, in months.
+    public const string SchedulerExportFirstReminderParameter = "DaysForFirstReminderInExportAuthenticationRequest1";
+
+    public const string SchedulerExportSecondReminderParameter = "DaysForSecondReminderInExportAuthenticationRequest2";
 }

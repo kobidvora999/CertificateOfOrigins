@@ -20,4 +20,17 @@ public enum ETaskType
 
     // The handle-rejected-authentication-request task.
     HandleRejectedAuthenticationRequest = 407,
+
+    // --- Reminder ladder (AuthenticationRequestReminder Planar job) ---
+    // Each EEventType rung pairs with one task type below; the job checks "is such a task already open" before
+    // raising, so these are queried as well as opened.
+    VendorReminderNotice3Months = 523,
+
+    SendImporterMsgFromVendorReference = 519,
+
+    ExportReminderNotice6Months = 353,
+
+    ExportReminderNotice10Months = 354,
+
+    FinalDecisionInCase = 520,
 }

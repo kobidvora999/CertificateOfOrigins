@@ -13,7 +13,7 @@ using System.Data;
 
 namespace CertificateOfOrigins.BL;
 
-public class AuthenticationRequestBl(
+public partial class AuthenticationRequestBl(
     IServiceProvider serviceProvider,
     IParametersUtil parametersUtil,
     ILookupUtil lookupUtil)

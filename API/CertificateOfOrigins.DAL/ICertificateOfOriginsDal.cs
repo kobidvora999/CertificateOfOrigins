@@ -16,6 +16,17 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(object? parameters);
 
+    // The two reminder schedulers (Planar jobs) — no REST endpoint reaches these.
+    Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler(int days);
+
+    Task<List<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler(
+        int firstReminder,
+        int secondReminder,
+        int finalDecision,
+        int finalDecisionForCustomsHouse,
+        int exportFirstReminder,
+        int exportSecondReminder);
+
     Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id);
 
     Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId);

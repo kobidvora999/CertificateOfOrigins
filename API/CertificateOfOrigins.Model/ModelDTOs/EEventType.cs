@@ -90,4 +90,26 @@ public enum EEventType
     CertificateOfOriginCertificateDeclarationHasWarnings = 2171,
 
     OpenTaskHandlingTheReplacementOfAnImportCertificate = 2172,
+
+    // --- Reminder schedulers (the two C17 Planar jobs) ---
+
+    // Raised per import-authentication request whose importer letter has gone unanswered past the reminder window;
+    // opens the SendReminderForImporter task. Source: ReminderForImporterScheduler.
+    NewReminderForImporterCreated = 1510,
+
+    // The reminder ladder raised by AuthenticationRequestReminder. Which member fires depends on the delivery method
+    // together with the IsImport / IsVendor / SendThreeMonthsReminder flags the scheduler SP returns per row.
+    ReminderNotice3Months = 1538,
+
+    ReminderNotice6Months = 1275,
+
+    ImporterReminderNotice6Months = 1907,
+
+    ExportReminderNotice6Months = 1305,
+
+    ReminderNotice10Months = 1276,
+
+    ExportReminderNotice10Months = 1306,
+
+    FinalDecisionInTheFile = 1908,
 }

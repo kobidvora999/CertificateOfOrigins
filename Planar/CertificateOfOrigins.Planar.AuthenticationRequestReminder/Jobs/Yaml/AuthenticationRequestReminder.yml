@@ -1,0 +1,18 @@
+# Planar job definition — deployed to the Planar server, not loaded by the console project itself.
+# Legacy equivalent: the BaseScheduleTask AuthenticationRequestReminder entry in the WCF service's task schedule.
+name: CertificateOfOrigins.AuthenticationRequestReminder
+group: CertificateOfOrigins
+description: Walks the authentication-request reminder ladder and opens the task matching each reminder window reached.
+author: CertificateOfOrigins migration
+jobType: Process
+durable: true
+properties:
+  path: CertificateOfOrigins.Planar.AuthenticationRequestReminder
+  filename: CertificateOfOrigins.Planar.AuthenticationRequestReminder.exe
+
+# Once daily. TODO(confirm): the legacy schedule lives in the WCF task table, not in source — confirm the intended
+# time with the business owner before enabling in a real environment.
+triggers:
+  - type: cron
+    name: daily
+    cronExpression: 0 0 5 ? * *

@@ -8,10 +8,12 @@
   <Folder Name="/API/Tests/">
     <Project Path="API/CertificateOfOrigins.Test/CertificateOfOrigins.Test.csproj" />
   </Folder>
-  <Folder Name="/Planars/" />
+  <Folder Name="/Planars/">
+    <Project Path="Planar/CertificateOfOrigins.Planar.AuthenticationRequestReminder/CertificateOfOrigins.Planar.AuthenticationRequestReminder.csproj" />
+    <Project Path="Planar/CertificateOfOrigins.Planar.ReminderForImporterScheduler/CertificateOfOrigins.Planar.ReminderForImporterScheduler.csproj" />
+  </Folder>
   <Folder Name="/Workers/" />
   <Folder Name="/Postman/">
-    <File Path="Postman/CertificateOfOrigins.postman_collection.json" />
     <Folder Name="/Postman/Environments/">
       <File Path="Postman/Environments/CertificateOfOrigins.Development.postman_environment.json" />
       <File Path="Postman/Environments/CertificateOfOrigins.PreProd.postman_environment.json" />

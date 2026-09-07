@@ -787,6 +787,37 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result.ToList();
     }
 
+    public async Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler(int days)
+    {
+        // dbo.GetImportAuthenticationRequestsForReminderForImporterScheduler — the reminder window arrives as a
+        // parameter because the legacy SP read it from the platform global-params UDF, which a service-owned SP
+        // may not call. The remaining "no open reminder task" filter runs in the BL (Tasks is another service).
+        var result = await ReadOnlyContext.GetImportAuthenticationRequestsForReminderForImporterScheduler(new { Days = days });
+        return result.ToList();
+    }
+
+    public async Task<List<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler(
+        int firstReminder,
+        int secondReminder,
+        int finalDecision,
+        int finalDecisionForCustomsHouse,
+        int exportFirstReminder,
+        int exportSecondReminder)
+    {
+        // dbo.GetAuthenticationRequestsForScheduler — same reason: the six month offsets were global params in the
+        // legacy SP and are now service parameters the BL reads and passes down.
+        var result = await ReadOnlyContext.GetAuthenticationRequestsForScheduler(new
+        {
+            FirstReminder = firstReminder,
+            SecondReminder = secondReminder,
+            FinalDecision = finalDecision,
+            FinalDecisionForCustomsHouse = finalDecisionForCustomsHouse,
+            ExportFirstReminder = exportFirstReminder,
+            ExportSecondReminder = exportSecondReminder,
+        });
+        return result.ToList();
+    }
+
     public async Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id)
     {
         // Single request by id + its three child collections (mirrors the legacy Single + 3x LoadProperty).

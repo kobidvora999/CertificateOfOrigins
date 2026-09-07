@@ -37,9 +37,6 @@ public partial class CertificateOfOriginsDbContext
         return result;
     }
 
-    // dbo.ExportDocumentAuthenticationRequestSearch — dynamic-SQL search; country/customer names are NULL from the
-    // SP (cross-service JOINs removed) and enriched in the BL. A search legitimately returns an empty set, so no
-    // row-count assertion is applied.
     // dbo.GetAuthenticationRequestByLeadDocumentID — import-authentication requests for a set of lead-document ids
     // passed as a Shared.IntArray TVP (@LeadDocumentIDs). Country/org-unit names are NULL from the SP (cross-service
     // JOINs removed) and enriched in the BL. A lookup by ids legitimately returns an empty set — no row assertion.
@@ -52,6 +49,37 @@ public partial class CertificateOfOriginsDbContext
             cancellationToken: cancellationToken,
             parameters: parameters);
         var result = await conn.QueryAsync<GetAuthenticationRequestByLeadDocumentResultDto>(cmd);
+        return result;
+    }
+
+    // dbo.GetImportAuthenticationRequestsForReminderForImporterScheduler — requests due an importer reminder.
+    // Takes @Days (the reminder window, from IParametersUtil). The legacy anti-join against the Tasks table is not
+    // here: Tasks is another service, so the BL filters each row through ITasksProxy. An empty set is the normal
+    // case on most days — no row assertion.
+    public async Task<IEnumerable<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetImportAuthenticationRequestsForReminderForImporterScheduler",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<ReminderForImporterSchedulerDto>(cmd);
+        return result;
+    }
+
+    // dbo.GetAuthenticationRequestsForScheduler — the reminder ladder (7 UNIONed windows). Takes the six month
+    // offsets that were global params in the legacy SP; the BL reads them from IParametersUtil. An empty set is the
+    // normal case — no row assertion.
+    public async Task<IEnumerable<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler(object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetAuthenticationRequestsForScheduler",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: parameters);
+        var result = await conn.QueryAsync<AuthenticationRequestsForSchedulerDto>(cmd);
         return result;
     }
 
