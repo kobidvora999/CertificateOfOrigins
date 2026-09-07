@@ -51,4 +51,15 @@ public class CollateralProxy(IHttpProxy httpProxy)
             .AddBody(requests);
         await ExecuteAsync(req);
     }
+
+    // Legacy: ICollateralServiceAdapter.DebitCreditCollateralRequest(DebitCreditFilter) — collects the guarantee on
+    // a rejected authentication answer.
+    public async Task DebitCreditCollateralRequest(DebitCreditCollateralRequestDto request)
+    {
+        var req = CreateRequestBuilder()
+            .UsePostMethod()
+            .WithResource("api/Collateral/DebitCreditCollateralRequest") // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .AddBody(request);
+        await ExecuteAsync(req);
+    }
 }

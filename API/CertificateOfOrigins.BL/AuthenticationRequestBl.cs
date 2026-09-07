@@ -1133,6 +1133,64 @@ public partial class AuthenticationRequestBl(
 
     // Legacy ManageImportAuthenticationFileStatus — only when the file status changed vs the load snapshot: open/close
     // the file tasks, handle the cancel/reminder/final transitions, then raise the file status-update event + message.
+    // Legacy ManageImportAuthenticationFileStatus, the collateral half of its switch. Both arms were missing from
+    // the migration until CHECK 2 found them (2026-09-07) — the guarantee attached to a verification file was
+    // neither released nor collected when the file reached its answer status.
+    //
+    // Note this is NOT the grant already present in ManageRequestStatus: that one is the per-request arm and it
+    // sends EntityTypeId = ImportAuthenticationRequest, while the file arm below sends AuthenticationRequestFile.
+    // Legacy issues both, on different statuses, with different entity types.
+    private async Task ApplyFileStatusCollateralOutcome(SaveAuthenticationRequestFileRequestDto request)
+    {
+        var isRightAnswer = request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.RightAuthenticationAnswer;
+        var isWrongAnswer = request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.WrongAuthenticationAnswer;
+        if (!isRightAnswer && !isWrongAnswer)
+        {
+            return;
+        }
+
+        // Legacy GetCollateralListForFile: the collateral ids of every child request, gathered per request.
+        var collateralProxy = Resolve<ICollateralProxy>();
+        var collateralIds = new List<int>();
+        foreach (var child in request.Requests)
+        {
+            var ids = await collateralProxy.GetCollateralRequestIdsByRelatedEntity(
+                (int)EEntityType.ImportAuthenticationRequest, child.DocumentId);
+            if (ids is { Count: > 0 })
+            {
+                collateralIds.AddRange(ids);
+            }
+        }
+
+        if (collateralIds.Count == 0)
+        {
+            return;
+        }
+
+        if (isRightAnswer)
+        {
+            // Answer accepted → release the guarantee. One call for the whole file.
+            await collateralProxy.GrantAllCollateralRequests(
+            [
+                new GrantCollateralRequestDto
+                {
+                    EntityId = request.Id,
+                    EntityTypeId = (int)EEntityType.AuthenticationRequestFile,
+                },
+            ]);
+            return;
+        }
+
+        // Answer rejected → collect the guarantee. Legacy calls once per collateral id, not once per file.
+        foreach (var collateralId in collateralIds)
+        {
+            await collateralProxy.DebitCreditCollateralRequest(new DebitCreditCollateralRequestDto
+            {
+                CollateralRequestId = collateralId,
+            });
+        }
+    }
+
     private async Task ManageFileStatus(SaveAuthenticationRequestFileRequestDto request)
     {
         if (request.AuthenticationFileStatusId == request.OriginalAuthenticationFileStatusId)
@@ -1143,6 +1201,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var userId = RequestMetadata.UserId ?? 0;
 
+        await ApplyFileStatusCollateralOutcome(request);
         await CheckStatusAndOpenTask(eventUtil, request, userId);
 
         if (request.AuthenticationFileStatusId != (int)EAuthenticationFileStatus.ClarificationRequired)

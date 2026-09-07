@@ -64,4 +64,15 @@ public class CollateralMockProxy(IProxyMockUtil mockUtil) : ICollateralProxy, IM
 
         return Task.CompletedTask;
     }
+
+    // The debit half of the pair; "Collateral.DebitFail" simulates a transport failure the same way.
+    public Task DebitCreditCollateralRequest(DebitCreditCollateralRequestDto request)
+    {
+        if (mockUtil.HasMockFeature("Collateral.DebitFail"))
+        {
+            throw new InvalidOperationException("Mock: Collateral DebitCreditCollateralRequest failed.");
+        }
+
+        return Task.CompletedTask;
+    }
 }

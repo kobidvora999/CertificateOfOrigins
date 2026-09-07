@@ -19,4 +19,9 @@ public interface ICollateralProxy
     // Legacy: ICollateralServiceAdapter.GrantAllCollateralRequests(list) — grants all collateral requests on the
     // entity (SaveAuthenticationRequestFile, on an Approval decision).
     Task GrantAllCollateralRequests(List<GrantCollateralRequestDto> requests);
+
+    // Legacy: ICollateralServiceAdapter.DebitCreditCollateralRequest(DebitCreditFilter) — the OTHER half of the
+    // pair above. Grant releases the guarantee when the authentication answer is accepted; this collects it when
+    // the answer is rejected (WrongAuthenticationAnswer). Legacy calls it once per collateral on the file.
+    Task DebitCreditCollateralRequest(DebitCreditCollateralRequestDto request);
 }
