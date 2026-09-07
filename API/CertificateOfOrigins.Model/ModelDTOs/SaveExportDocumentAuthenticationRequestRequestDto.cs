@@ -14,7 +14,11 @@ public class SaveExportDocumentAuthenticationRequestRequestDto
 
     public string Title { get; set; } = null!;
 
-    public int State { get; set; }
+    // Enabled(1) — same reasoning as SaveCertificateOfOriginRequestDto.State. This one is not currently broken
+    // (every caller happens to send it, and all 175 rows are State = 1), but the code path is identical: the BL
+    // copies State verbatim and the table carries no usable default once EF sends an explicit value. Defaulted
+    // here so the next caller that omits it does not silently write a Disabled row.
+    public int State { get; set; } = 1;
 
     public byte[]? TimeStamp { get; set; }
 

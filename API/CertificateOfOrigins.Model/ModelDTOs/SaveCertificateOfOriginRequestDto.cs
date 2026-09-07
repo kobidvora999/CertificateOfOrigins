@@ -14,7 +14,12 @@ public class SaveCertificateOfOriginRequestDto
 
     public string? Title { get; set; }
 
-    public int State { get; set; }
+    // Enabled(1) — NOT the CLR default. The column is NOT NULL with a DDL default of ((1)), but EF always sends an
+    // explicit value, so a 0 here reaches the row and the DDL default never applies. That mattered: the incoming
+    // message path builds this DTO without touching State, so every agent-created certificate was written
+    // State = 0 and the search SP (WHERE F.State = 1) could not see it. Found by CHECK 2 on 2026-09-07 with 29
+    // such rows already in the local DB. A caller that wants a different state (99 = soft-deleted) still sends it.
+    public int State { get; set; } = 1;
 
     public byte[]? TimeStamp { get; set; }
 
