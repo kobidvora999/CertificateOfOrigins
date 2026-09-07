@@ -41,10 +41,14 @@ public partial class AuthenticationRequestBl
         var due = new List<ReminderForImporterSchedulerDto>();
         foreach (var candidate in candidates)
         {
+            // isTaskInProgress: true is the contract-correct request, but the SP ignores it today (its status
+            // branches are commented out), so the result is filtered again here. Belt and braces on purpose:
+            // drop either half and the reminder breaks in one direction or the other.
             var reminderTasks = await tasksProxy.IsTaskExist(
                 candidate.DocumentId,
                 (int)EEntityType.ImportAuthenticationRequest,
-                [(int)ETaskType.SendReminderForImporter]);
+                [(int)ETaskType.SendReminderForImporter],
+                isTaskInProgress: true);
             if (reminderTasks?.Any(task => task.IsTaskInProgress) == true)
             {
                 continue;

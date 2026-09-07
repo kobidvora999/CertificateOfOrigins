@@ -833,10 +833,13 @@ public partial class AuthenticationRequestBl(
             case (int)EAuthenticationRequestDecision.NewAuthenticationRequest:
             {
                 // Open the SetDecisionBeforeAssociation task, unless the current user already handles the request or
-                // such a task already exists (legacy IsTaskExistsOnEntity → reuse IsTaskExist).
-                var setDecisionTasks = await tasksProxy.IsTaskExist(
-                    request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SetDecisionBeforeAssociation]);
-                if (!request.IsCurrentUserHandleRequest && (setDecisionTasks is null || setDecisionTasks.Count == 0))
+                // an OPEN such task already exists. Legacy used IsTaskExistsOnEntity, which pins
+                // IsTaskInProgress = true; the port had substituted IsTaskExist and counted rows, so a CLOSED task
+                // from an earlier cycle suppressed the event and the request was never re-assigned to a
+                // coordinator. Restored to the operation legacy actually called (CHECK 2, 2026-09-07).
+                var openSetDecisionTask = await tasksProxy.IsTaskExistsOnEntity(
+                    request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, (int)ETaskType.SetDecisionBeforeAssociation);
+                if (!request.IsCurrentUserHandleRequest && !openSetDecisionTask)
                 {
                     await RaiseNewRequestEvent(eventUtil, request);
                 }
