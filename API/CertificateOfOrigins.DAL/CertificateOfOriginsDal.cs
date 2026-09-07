@@ -788,14 +788,29 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             requests = requests.Where(ear => ear.DocumentId == filter.ExportAuthenticationDocumentId);
         }
 
+        // Legacy bound these two through
+        //     Value = string.IsNullOrWhiteSpace(x) ? DBNull.Value : x
+        // and the SP only added the clause "WHERE @param IS NOT NULL", so blank input applied NO filter. A bare
+        // != null check is not the same thing: a UI text box that has been typed into and cleared sends "", which
+        // then applies LIKE '%%' and silently drops every row whose column is NULL. Restored to the legacy test.
         var invoiceIdNum = filter.InvoiceIdNum;
-        if (invoiceIdNum != null)
+        if (!string.IsNullOrWhiteSpace(invoiceIdNum))
         {
-            requests = requests.Where(ear => ear.InvoiceNumbers != null && ear.InvoiceNumbers.Contains(invoiceIdNum));
+            // Legacy: CONTAINS(EAR.InvoiceNumbers, '<a> OR <b>') built by replacing commas with " OR ". Losing
+            // CONTAINS was accepted (no FTS catalog — REWIRE-PLAN); losing the comma split was not, and turned
+            // "1001,1002" into a search for that literal text. One trimmed term per comma, OR-ed, restores it.
+            var invoiceTerms = invoiceIdNum
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            if (invoiceTerms.Count > 0)
+            {
+                requests = requests.Where(ear =>
+                    ear.InvoiceNumbers != null && invoiceTerms.Any(term => ear.InvoiceNumbers.Contains(term)));
+            }
         }
 
         var mainDocumentTitle = filter.MainDocumentTitle;
-        if (mainDocumentTitle != null)
+        if (!string.IsNullOrWhiteSpace(mainDocumentTitle))
         {
             requests = requests.Where(ear => ear.MainDocumentTitle != null && ear.MainDocumentTitle.Contains(mainDocumentTitle));
         }

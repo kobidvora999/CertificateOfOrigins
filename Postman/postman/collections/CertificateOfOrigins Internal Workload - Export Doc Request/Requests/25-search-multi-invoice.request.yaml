@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/Search"
+method: QUERY
+headers:
+  Content-Type: application/json
+# Regression test for the multi-value invoice search. Legacy built CONTAINS(EAR.InvoiceNumbers, '<a> OR <b>') by
+# replacing commas with " OR "; the migration collapsed it to a single LIKE, so a comma-separated search became a
+# search for the literal text "a,b" and matched nothing. CHECK 2 found it on 2026-09-07 — no fixture had ever sent
+# invoiceIdNum at all, which is exactly why 755 passing assertions could not see it.
+#
+# The first term deliberately matches NOTHING. Only OR semantics can make this return the seeded row, so the
+# request fails if the comma split is ever lost again — which a single search term would not have caught.
+body:
+  type: json
+  content: |-
+    {
+      "invoiceIdNum": "NO-SUCH-INVOICE-ZZZ,EXPINV-MULTI"
+    }
+order: 12500

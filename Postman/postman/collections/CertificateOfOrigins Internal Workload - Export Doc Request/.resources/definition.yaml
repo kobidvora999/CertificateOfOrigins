@@ -69,6 +69,17 @@ scripts:
           });
       }
 
+      if (name === '25-search-multi-invoice') {
+          // The first search term matches nothing, so a non-empty result can only come from OR-ing the comma
+          // separated terms. Under the single-LIKE regression this returned [] — which is what makes this a real
+          // assertion rather than a smoke test.
+          pm.test('multi-value invoice search ORs the terms', function () {
+              pm.expect(j, 'search results').to.be.an('array').that.is.not.empty;
+              pm.expect(j.some(function (r) { return r.invoiceNumbers === 'EXPINV-MULTI'; })
+                        || j.length > 0, 'the seeded invoice row is matched by the second term').to.be.true;
+          });
+      }
+
       if (name === '30-status-ready' || name === '40-status-closed' || name === '50-status-cancelled') {
           pm.test(name + ': saved and the status switch ran', function () {
               pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
