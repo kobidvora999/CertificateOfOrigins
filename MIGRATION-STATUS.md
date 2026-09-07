@@ -8,6 +8,32 @@
 > `NavigationPath` + שירות-מקור שיחשוף `GET /lookup/NavigationPath` (בפנים — ראה INTERNAL_INTEGRATION.md).
 > מושמטת אחת בלבד: `TempSync` (stub מת בלגסי, NotImplementedException — לא נדרשת).
 
+> ## 🛑 פעולות פתוחות לפני merge / deploy (2026-09-07)
+>
+> שלושת אלה **אינם** נתפסים ע"י בילד או בדיקה, והם כבר על master. הועברו לכאן מקובץ חותמת הקונבנציות
+> שהוסר (מנגנון ה-`/repo-align` בוטל — הסקילים הם מקור האמת לקונבנציות עצמן).
+>
+> 1. **צרכנים חיצוניים חייבים לעדכן proxies.** כל ה-endpoints הנכנסים קיבלו קידומת דומיין
+>    (`ui/`, `api/`, `web/`, `community/`). כל שירות שקורא לכאן — ובפרט מסלול הפורטל הציבורי —
+>    יישבר עד שה-proxy שלו יתעדכן.
+> 2. **🛑 ‏`dbo.SchemaVersions` — בכל סביבה בנפרד, לפני העלאת גרסה.** שמות הפרויקטים שונו
+>    (`CustomsCloud.CRM.CertificateOfOrigins.*` → `CertificateOfOrigins.*`), והליגר של DbUp ממפתח לפי שם
+>    ה-assembly. בלי העדכון הבא, DbUp ינסה להריץ מחדש 49 סקריפטים שכבר רצו וייפול על
+>    `Error 2714: object already exists`:
+>    ```sql
+>    UPDATE dbo.SchemaVersions
+>    SET    ScriptName = REPLACE(ScriptName, 'CustomsCloud.CRM.CertificateOfOrigins.', 'CertificateOfOrigins.')
+>    WHERE  ScriptName LIKE 'CustomsCloud.CRM.CertificateOfOrigins.%';
+>    ```
+>    לבדוק ולנקות כפילויות אחרי ההחלפה. בוצע ב-DEV המקומי בלבד.
+> 3. **שני `REVIEW002` פתוחים** (צצים כ-warnings בבילד, ראה `tools/review-markers.ps1`): מיפוי שני
+>    מזהי ה-global-param הלגאסיים לפרמטרי השירות ב-scheduler, ולוחות הזמנים של שני ה-Planar jobs
+>    שאינם קיימים בקוד הלגאסי אלא בטבלת ה-tasks של WCF.
+>
+> **שני שינויי-התנהגות מכוונים** ב-Planar jobs (C17): ה-anti-join מול `Tasks_Task` עבר מה-SP לקריאת
+> `ITasksProxy` פר-שורה (אותה קבוצת שורות, עלות שונה); ולולאת ה-batch תופסת רשימת חריגות מסוננת, ולכן
+> חריגה מטיפוס שאינו ברשימה תפיל את ה-batch — בניגוד ללגאסי שהמשיך תמיד.
+
 > ## ⚠️ קרא קודם — עדכון סטטוס (2026-07-22)
 >
 > **הרפו אופס ל-scratch slate** (commit `5fce824` "Reset service to a clean scratch slate for from-scratch migration").
@@ -93,7 +119,10 @@
 | GetPC_MSG2280_2281_CertificateOfOriginRequest | ✅ הומרה | 2026-08-17. כל 4 החסמים העסקיים נסגרו: per-reason resolution+supersession · שמירת invoices/items · declaration-check+amendment · NonManipulation (מיפוי 15 שדות + CustomsHouse). אודיט פאריטי אדוורסרי מול הלגסי + אימות DB; תוקנו org-unit-0 באירועים ו-`EnrichAndValidateDetails` (תאריכים→short date · בוליאני→Yes/No · CustomsHouse→org-unit id+שם). פירוט: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) |
 | GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים דרך proxy ל-SystemTables (+mock) — אין להם lookup type בפלטפורמה. נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. חוסם שנותר: DocumentID (NULL — Docs חוצה-סכמה, TODO(blocking)). Rollout: אימות נתיבי endpoint של SystemTables (CurrencyTypesByIds, DataDictionaryFieldsByIds). |
 
-*(אין עדיין Incoming controller ברפו — מתודות Incoming שהומרו נחשפות דרך ה-controller של ה-BL הרלוונטי.)*
+*(מאז פיצול ה-controllers לפי דומיין-צרכן (2026-09-05), מתודות Incoming נחשפות תחת הדומיין שלהן —
+`Web/` ל-`GetCertificateRequestByGuid` ו-`Community/` ל-`GetPC_MSG2280_2281_CertificateOfOriginRequest` —
+ולא עוד דרך ה-controller של ה-BL בלבד. שם ה-class נשאר `{Bl}Controller` בכל דומיין; הדומיין הוא קידומת
+ה-route.)*
 
 ## מסלולי פתיחה (לפי סדר מומלץ)
 1. ~~**GetCertificateRequestByGuid**~~ — ✅ הומרה (2026-07-28).
