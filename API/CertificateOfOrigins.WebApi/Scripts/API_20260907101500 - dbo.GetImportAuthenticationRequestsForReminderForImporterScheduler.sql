@@ -15,9 +15,12 @@
 --     DocumentID / AuthenticationFileID / OrganizationUnitID - so they are returned as 0/NULL for shape parity
 --     rather than enriched through a proxy.
 --   * The OUTER APPLY on Infrastructure.Tasks_Task (task type 404 SendReminderForImporter, entity type 12384, any
---     status but closed) is removed - Tasks is another service. The BL applies the same filter per row through
---     ITasksProxy.IsTaskExist, which is how the sibling reminder job already does it. NOTE this changes one
---     set-based anti-join into N proxy calls; the legacy row set is unchanged, the cost profile is not.
+--     status but closed - TaskStatusID != 2) is removed - Tasks is another service. The BL re-applies it per row
+--     through ITasksProxy. NOTE this changes one set-based anti-join into N proxy calls.
+--     The row set is NOT identical to legacy, and an earlier version of this header wrongly claimed it was:
+--     usp_Tasks_IsTaskExist reports tasks of ANY status, so the BL filters on IsTaskInProgress (TaskStatusID IN
+--     (1,4)). Canceled(3) and Suspended(5) blocked the reminder in legacy and do not block it here. See the
+--     TODO(confirm) in AuthenticationRequestBl.Schedulers.cs.
 --   * Removed READ UNCOMMITTED.
 --   * InvoiceNumber, which the legacy SELECT returns but the legacy DTO does not carry, is dropped.
 CREATE OR ALTER PROCEDURE [dbo].[GetImportAuthenticationRequestsForReminderForImporterScheduler]

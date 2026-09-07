@@ -14,10 +14,20 @@ public partial class AuthenticationRequestBl
 {
     // Legacy AuthenticationRequestBL.GetImportAuthenticationRequestsForReminderForImporterScheduler.
     //
-    // The legacy SP did the "no open reminder task" check itself, with an OUTER APPLY onto Infrastructure.Tasks_Task.
-    // Tasks belongs to another service now, so the SP returns every row past the reminder window and the filter
-    // happens here through ITasksProxy — the same way the sibling scheduler's OpenTask has always done it.
-    // The row set is identical to legacy; the cost is not (one anti-join became one proxy call per candidate row).
+    // The legacy SP did the "no OPEN reminder task" check itself, with an OUTER APPLY onto Infrastructure.Tasks_Task
+    // filtered on `TaskStatusID != 2` — anything but Closed. Tasks belongs to another service now, so the SP returns
+    // every row past the reminder window and the filter happens here.
+    //
+    // 🛑 IsTaskExist does NOT mean "an open task exists". Infrastructure.usp_Tasks_IsTaskExist has every status
+    // filter commented out and returns IsTaskInProgress as a COMPUTED column (TaskStatusID IN (1,4)), so it reports
+    // CLOSED tasks too. Counting rows here — which is what this method did until 2026-09-07 — suppressed the
+    // reminder for any request that had ever had one, because the event below opens with CloseOld and therefore
+    // leaves exactly one closed task behind. Net effect: the reminder fired once per request and never again.
+    //
+    // Filtering on IsTaskInProgress restores the intent. It is not exact parity: legacy also treated Canceled(3)
+    // and Suspended(5) as blocking, and IsTaskInProgress covers only Open(1)/InProgress(4).
+    // TODO(confirm): exact parity needs the raw TaskStatusID (or a status filter) from the Tasks service; until
+    // then a Canceled or Suspended reminder task will not block a new reminder, where legacy would have.
     public async Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler()
     {
         var days = await parametersUtil.Get<int>(CertificateOfOriginsConsts.DaysForReminderForImporterSchedulerParameter);
@@ -31,11 +41,11 @@ public partial class AuthenticationRequestBl
         var due = new List<ReminderForImporterSchedulerDto>();
         foreach (var candidate in candidates)
         {
-            var openTasks = await tasksProxy.IsTaskExist(
+            var reminderTasks = await tasksProxy.IsTaskExist(
                 candidate.DocumentId,
                 (int)EEntityType.ImportAuthenticationRequest,
                 [(int)ETaskType.SendReminderForImporter]);
-            if (openTasks is { Count: > 0 })
+            if (reminderTasks?.Any(task => task.IsTaskInProgress) == true)
             {
                 continue;
             }
