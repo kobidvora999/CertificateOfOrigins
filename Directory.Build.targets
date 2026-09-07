@@ -1,0 +1,40 @@
+<Project>
+
+  <!--
+    C18 - surface every "needs human review" marker as a REAL build warning.
+
+    Sonar S1135 only sees `// TODO` in C#. Production values in .sql seeds, placeholders in Planar .yml and
+    CHANGE-ME hosts in Postman produced no build signal at all, which is exactly the kind of thing that ships
+    unreviewed. tools/review-markers.ps1 prints MSBuild's canonical diagnostic format, so Exec promotes each
+    hit to a first-class warning: counted in the summary, listed in the IDE Error List.
+
+    Each project scans ITS OWN directory so a marker is never reported twice. The WebApi project additionally
+    scans repo-level folders that belong to no project at all (Postman) - without that, the .yaml fixtures are
+    invisible, which was the whole point of the convention.
+  -->
+
+  <PropertyGroup>
+    <ReviewMarkersEnabled Condition="'$(ReviewMarkersEnabled)' == ''">true</ReviewMarkersEnabled>
+  </PropertyGroup>
+
+  <Target Name="ReviewMarkers"
+          AfterTargets="Build"
+          Condition="'$(ReviewMarkersEnabled)' == 'true' AND '$(TargetFramework)' != ''">
+
+    <!--
+      The TargetFramework condition above is load-bearing: without it the target also runs on the outer,
+      framework-less pass of any project referenced as a ProjectReference, and every marker is reported twice.
+    -->
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)tools\review-markers.ps1&quot; -Root &quot;$(MSBuildProjectDirectory)&quot;"
+          StandardOutputImportance="Low"
+          ContinueOnError="true" />
+
+    <!-- Repo-level folders owned by no project. Attached to WebApi so they are scanned exactly once. -->
+    <Exec Condition="'$(MSBuildProjectName)' == 'CertificateOfOrigins.WebApi'"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)tools\review-markers.ps1&quot; -Root &quot;$(MSBuildThisFileDirectory)Postman&quot;"
+          StandardOutputImportance="Low"
+          ContinueOnError="true" />
+
+  </Target>
+
+</Project>
