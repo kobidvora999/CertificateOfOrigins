@@ -135,6 +135,19 @@ public partial class AuthenticationRequestBl(
             ImporterId = request.ImporterId,
             LastDeliveryForImporter = request.LastDeliveryForImporter,
             InvoiceNumber = request.InvoiceNumber,
+
+            // Restored by CHECK 2 — these are exactly the columns SaveImportAuthenticationRequest writes, so the
+            // read has to return them or the client's round-trip erases them.
+            UserId = request.UserId,
+            UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            RequestCircumstancesId = request.RequestCircumstancesId,
+            Remarks = request.Remarks,
+            ResponsePhoneNum = request.ResponsePhoneNum,
+            DocumentNumber = request.DocumentNumber,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
         };
     }
 

@@ -355,8 +355,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId)
     {
         // GetAuthenticationRequestByID SP result-set #1 (main row), local table only — the legacy CRP.DealFile
-        // LEFT JOIN (LeadDocumentSubmissionDate) is dropped (cross-service, deferred). Projected to the needed
-        // columns (< 30) to stay under the platform column-count interceptor. Missing → null (404 in the BL).
+        // LEFT JOIN (LeadDocumentSubmissionDate) is dropped (cross-service, deferred). Missing → null (404 in the BL).
+        //
+        // Read in TWO passes on purpose. The platform MaxCountExceededInterceptor errors at >= 30 result columns,
+        // and the columns this method has to return no longer fit in one projection: 21 here plus the 10 restored
+        // by CHECK 2 (2026-09-07) is 31. The interceptor counts columns PER QUERY, so two projections of 21 and 10
+        // are both legal and the caller still gets one complete row.
+        //
+        // Splitting rather than dropping columns is deliberate. The save writes those 10, so a read that omitted
+        // them would make the natural GET → POST round-trip send nulls and ERASE them — strictly worse than the
+        // bug being fixed. Read and write must cover the same set; that invariant is what forces the second pass.
         var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .Select(r => new CertificateOfOriginsImportAuthenticationRequest
@@ -384,6 +392,43 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 InvoiceNumber = r.InvoiceNumber,
             })
             .FirstOrDefaultAsync();
+        if (result is null)
+        {
+            return null;
+        }
+
+        // Pass 2 — the coordinator-edited columns plus UserId/UserResponseId. Every one of these is in the save
+        // set-list, so they have to come back out.
+        var editable = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .Select(r => new
+            {
+                r.UserId,
+                r.UserResponseId,
+                r.DecisionCircumstences,
+                r.CirumstanceDetails,
+                r.RequestCircumstancesId,
+                r.Remarks,
+                r.ResponsePhoneNum,
+                r.DocumentNumber,
+                r.InvoiceGoodsItemTaxDifference,
+                r.AllInvoiceGoodsItemTaxDifference,
+            })
+            .FirstOrDefaultAsync();
+        if (editable is not null)
+        {
+            result.UserId = editable.UserId;
+            result.UserResponseId = editable.UserResponseId;
+            result.DecisionCircumstences = editable.DecisionCircumstences;
+            result.CirumstanceDetails = editable.CirumstanceDetails;
+            result.RequestCircumstancesId = editable.RequestCircumstancesId;
+            result.Remarks = editable.Remarks;
+            result.ResponsePhoneNum = editable.ResponsePhoneNum;
+            result.DocumentNumber = editable.DocumentNumber;
+            result.InvoiceGoodsItemTaxDifference = editable.InvoiceGoodsItemTaxDifference;
+            result.AllInvoiceGoodsItemTaxDifference = editable.AllInvoiceGoodsItemTaxDifference;
+        }
+
         return result;
     }
 
@@ -526,12 +571,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
     {
-        // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). The Save DTO carries
-        // only the round-trip editable fields (a subset of the entity's ~37 columns), so this updates exactly those
-        // columns + the update-audit stamp and leaves everything else (CreateDate/CreateUserId, ItemDetailID, the
-        // circumstance/remark columns, …) untouched — a genuine merge without fetching the full row (a tracked full-row
-        // fetch would also trip the 30-column read interceptor). DocumentID is a non-identity, externally-assigned key
-        // — this method only ever edits an existing request; no matching row → false (404 in the BL).
+        // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). Legacy did a full
+        // self-tracking-entity save, so an explicit set-list is only equivalent for columns nobody edits.
+        //
+        // ⚠️ The earlier version of this comment called the omission "a genuine merge" and listed the
+        // circumstance/remark columns among the ones safely left untouched. That was wrong and CHECK 2 caught it
+        // (2026-09-07): the coordinator's screen edits them, and DecisionCircumstences is MANDATORY when the
+        // decision changes — so the justification for a decision change was being discarded on every save. They are
+        // in the set-list now.
+        //
+        // Still deliberately not written here: CreateDate/CreateUserId (insert-only audit), ItemDetailId and
+        // OrganizationUnitTypeId (system-assigned, no screen edits them), and IsOldIndication (derived from
+        // DocumentIssuingDate and written by the file-save path, not by the coordinator).
+        //
+        // DocumentID is a non-identity, externally-assigned key — this method only ever edits an existing request;
+        // no matching row → false (404 in the BL).
         var now = DateTimeOffset.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
@@ -557,6 +611,20 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(r => r.InvoiceNumber, request.InvoiceNumber)
                 .SetProperty(r => r.UserId, request.UserId)
                 .SetProperty(r => r.UserResponseId, request.UserResponseId)
+                .SetProperty(r => r.DecisionCircumstences, request.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, request.CirumstanceDetails)
+
+                // Remarks and RequestCircumstancesID are NOT NULL in the DB (the latter with an FK to
+                // enum_Circumstances) even though the CLR model types are nullable. Writing an omitted value
+                // straight through threw "Cannot insert the value NULL into column 'Remarks'" — caught by the
+                // workload run, not by the compiler. The value-from-row overload keeps the stored value when the
+                // caller does not supply one, which is also closer to the legacy full-entity save.
+                .SetProperty(r => r.RequestCircumstancesId, r => request.RequestCircumstancesId ?? r.RequestCircumstancesId)
+                .SetProperty(r => r.Remarks, r => request.Remarks ?? r.Remarks)
+                .SetProperty(r => r.ResponsePhoneNum, request.ResponsePhoneNum)
+                .SetProperty(r => r.DocumentNumber, request.DocumentNumber)
+                .SetProperty(r => r.InvoiceGoodsItemTaxDifference, request.InvoiceGoodsItemTaxDifference)
+                .SetProperty(r => r.AllInvoiceGoodsItemTaxDifference, request.AllInvoiceGoodsItemTaxDifference)
                 .SetProperty(r => r.UpdateDate, now)
                 .SetProperty(r => r.UpdateUserId, userId));
 

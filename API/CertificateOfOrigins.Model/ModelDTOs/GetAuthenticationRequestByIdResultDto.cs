@@ -77,4 +77,30 @@ public class GetAuthenticationRequestByIdResultDto
 
     // True when the issuing country is configured as a supplier-delivery (vendor) country.
     public bool IsVendorByIssuingCountryId { get; set; }
+
+    // --- Restored 2026-09-07 (CHECK 2) ---
+    // The legacy operation returned the whole entity; this DTO had been trimmed to 21 of its 37 columns, so the
+    // coordinator screen lost the fields below and — worse — a GET → POST round-trip sent them back empty.
+    // UserId/UserResponseId are the sharpest case: SaveImportAuthenticationRequest REQUIRES them to address the
+    // central-decision message, and with the read not returning them the client posted 0, so the message went to
+    // user 0 and the rejection task was assigned to user 0.
+    public int UserId { get; set; }
+
+    public int UserResponseId { get; set; }
+
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }
+
+    public int RequestCircumstancesId { get; set; }
+
+    public string? Remarks { get; set; }
+
+    public string? ResponsePhoneNum { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
 }

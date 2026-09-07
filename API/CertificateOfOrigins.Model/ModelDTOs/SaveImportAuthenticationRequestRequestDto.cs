@@ -51,6 +51,35 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int UserResponseId { get; set; }
 
+    // --- Coordinator-edited columns (restored 2026-09-07, CHECK 2) ---
+    // The legacy save was a full self-tracking-entity write, so every column the coordinator's screen touches was
+    // persisted. The migration replaced it with an explicit ExecuteUpdateAsync set-list and these were left out,
+    // which meant the values were accepted by the API and silently discarded.
+    //
+    // DecisionCircumstences is the load-bearing one: the legacy entity validation makes it MANDATORY whenever the
+    // decision changes (CertificateOfOriginsImportAuthenticationRequest.ValidateField), so a coordinator who
+    // changed a decision and typed the required justification lost exactly that justification — the audit reason
+    // for the decision, gone.
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }   // legacy spelling, kept — it is the column name
+
+    // Nullable on purpose, unlike the column: RequestCircumstancesID is NOT NULL with an FK to
+    // enum_Circumstances, so "omitted" has to be distinguishable from 0 — writing 0 would break the FK. Null here
+    // means "leave the stored value alone" (see the merge in SaveImportAuthenticationRequest).
+    public int? RequestCircumstancesId { get; set; }
+
+    // Also NOT NULL in the DB despite the nullable CLR type. Null means "leave as-is", not "clear".
+    public string? Remarks { get; set; }
+
+    public string? ResponsePhoneNum { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+
     // Precomputed on load (GetAuthenticationRequestByID): whether the current user already handles the request — gates
     // the NewAuthenticationRequest event in the decision switch.
     public bool IsCurrentUserHandleRequest { get; set; }
