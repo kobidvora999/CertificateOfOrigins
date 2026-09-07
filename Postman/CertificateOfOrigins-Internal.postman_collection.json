@@ -1,0 +1,1071 @@
+{
+  "info": {
+    "name": "CertificateOfOrigins Internal Workload - API (live export)",
+    "description": "ייצוא v2.1 של האוסף החי (v3) — כל הבקשות שנוצרו בזמן אמת במהלך ההמרה. baseUrl=localhost:9034; ה-prerequest מוסיף x-mock-mode + CC-USER-ID.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AuthenticationRequest",
+      "item": [
+        {
+          "name": "AuthenticationRequestByFilter",
+          "request": {
+            "method": "QUERY",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/ByFilter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "ByFilter"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromRequestDate\": \"2000-01-01\",\n  \"toRequestDate\": \"2100-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "AuthenticationRequestByID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CC-USER-ID",
+                "value": "\"5\""
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/900500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "900500"
+              ]
+            }
+          }
+        },
+        {
+          "name": "AuthenticationRequestByLeadDocumentIDs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/ByLeadDocumentIDs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "ByLeadDocumentIDs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "AuthenticationRequestFileByID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CC-USER-ID",
+                "value": "\"5\""
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/File/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "File",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ChangeStatusAfterDeliverySent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/ChangeStatusAfterDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "ChangeStatusAfterDeliverySent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 999,\n  \"organizationUnitId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CheckIfExistsAdditionalRequestsForImporter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CheckIfExistsAdditionalRequestsForImporter?importerId=777&customerId=888&countryId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CheckIfExistsAdditionalRequestsForImporter"
+              ],
+              "query": [
+                {
+                  "key": "importerId",
+                  "value": "777"
+                },
+                {
+                  "key": "customerId",
+                  "value": "888"
+                },
+                {
+                  "key": "countryId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CheckIfExistsAdditionalRequestsForVendor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId=555",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CheckIfExistsAdditionalRequestsForVendor"
+              ],
+              "query": [
+                {
+                  "key": "vendorId",
+                  "value": "555"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CheckImporterOfImportAuthentication",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CheckImporterOfImportAuthentication?importerId=12345",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CheckImporterOfImportAuthentication"
+              ],
+              "query": [
+                {
+                  "key": "importerId",
+                  "value": "12345"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CloseReminderTask",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CloseReminderTask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CloseReminderTask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 999,\n  \"organizationUnitId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CreateNewAuthenticationFile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/CreateNewFile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "CreateNewFile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"documentId\": 900001,\n    \"organizationUnitIdNum\": 1,\n    \"issuingCountryIdNum\": 32,\n    \"customerId\": 123,\n    \"responseNameEmail\": \"test@example.com\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "EntityDocuments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/EntityDocuments/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "EntityDocuments",
+                "999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HandleAuthenticationRequestDeliverySent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleDeliverySent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleDeliverySent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relatedEntities\": [\n    {\n      \"id\": 1,\n      \"entityType\": 12385\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleImportDeliveryAndReminderForVendorSent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"deliveryMethodId\": 1,\n  \"isDelivery\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryForImporterSent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryForImporterSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleImportDeliveryForImporterSent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 900500,\n  \"organizationUnitId\": 1,\n  \"authenticationFileId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"deliveryMethodId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "HandleImportAuthenticationRequestDeliveryReminderForImporterSent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/HandleImportDeliveryReminderForImporterSent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "HandleImportDeliveryReminderForImporterSent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 900500,\n  \"organizationUnitId\": 1,\n  \"authenticationFileId\": 1,\n  \"authenticationFileStatusId\": 1,\n  \"deliveryMethodId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PathsForNavigationToVendor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/PathsForNavigationToVendor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "PathsForNavigationToVendor"
+              ]
+            }
+          }
+        },
+        {
+          "name": "SaveAuthenticationRequestFile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/SaveFile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "SaveFile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"authenticationFileStatusId\": 5,\n  \"originalAuthenticationFileStatusId\": 2,\n  \"notes\": null,\n  \"postalAdress\": \"gg\",\n  \"deliveryMethodId\": 1,\n  \"emailAdress\": null,\n  \"reminderMethodId\": 1,\n  \"requestCountryId\": 32,\n  \"userId\": 5,\n  \"userNameIssuingLetter\": \"ss\",\n  \"lastDelivery\": null,\n  \"importerContactingReasonId\": null,\n  \"firstProvideContactDate\": null,\n  \"organizationUnitId\": 1,\n  \"requests\": [\n    {\n      \"documentId\": 900500,\n      \"authenticationFileId\": 1,\n      \"decisionId\": 3,\n      \"originalRequestDecisionId\": 1,\n      \"documentIssuingDate\": \"2024-01-01T00:00:00+02:00\",\n      \"organizationUnitId\": 1,\n      \"userId\": 5,\n      \"userResponseId\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "SaveImportAuthenticationRequest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/AuthenticationRequest/SaveImport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "AuthenticationRequest",
+                "SaveImport"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": 900001,\n  \"authenticationFileId\": null,\n  \"authenticationRequestDate\": \"2024-01-01T00:00:00+02:00\",\n  \"collateralId\": null,\n  \"decisionId\": 3,\n  \"leadDocumentId\": 1,\n  \"documentIssuingDate\": \"2024-01-01T00:00:00+02:00\",\n  \"importCountryId\": 32,\n  \"issuingCountryId\": 32,\n  \"number\": 1,\n  \"originCountryId\": 32,\n  \"preferenceDocumentTypeId\": 1,\n  \"responseNameEmail\": \"test@test.gov.il\",\n  \"organizationUnitId\": 1,\n  \"vendorId\": 555,\n  \"vendorName\": null,\n  \"customerId\": null,\n  \"importerId\": null,\n  \"lastDeliveryForImporter\": null,\n  \"invoiceNumber\": null,\n  \"userId\": 5,\n  \"userResponseId\": 5,\n  \"isCurrentUserHandleRequest\": false,\n  \"collaterals\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CertificateOfOrigins",
+      "item": [
+        {
+          "name": "CertificateOfOriginByExternalIdExist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/ByExternalIdExist?certificateOfOriginExternalId=IL0000116895",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "ByExternalIdExist"
+              ],
+              "query": [
+                {
+                  "key": "certificateOfOriginExternalId",
+                  "value": "IL0000116895"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginById",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/ID/IL0000116895",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "ID",
+                "IL0000116895"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginRequest (Cancellation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 14,\n    \"certificateId\": \"IL0000116751\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginRequest (Create MERCOSUR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 1,\n    \"certificateOfOriginTypeCode\": 3,\n    \"exportDeclarationNum\": \"260146\"\n  },\n  \"certificateOfOrigin\": {\n    \"exporterId\": \"EXP1\",\n    \"exporterName\": \"Acme\",\n    \"exporterAddress\": \"1 Main St\",\n    \"exporterCountry\": \"IL\",\n    \"consigneeName\": \"Buyer\",\n    \"consigneeAddress\": \"2 St\",\n    \"consigneeCountry\": \"DE\",\n    \"originCountry\": \"IL\",\n    \"destinationCountry\": \"DE\",\n    \"customsHouse\": \"SITE01\",\n    \"dateOfDeclaration\": \"2026-08-12T00:00:00\",\n    \"isDeclaredByManufacturer\": true,\n    \"isDeclaredByExporter\": true,\n    \"invoiceDetails\": [\n      {\n        \"invoiceNum\": \"INV1\",\n        \"invoiceDate\": \"2026-08-01T00:00:00\",\n        \"descriptionOfInvoice\": \"goods\",\n        \"itemDetails\": [\n          {\n            \"itemId\": \"123456\",\n            \"marksAndNumbers\": \"M1\",\n            \"itemDescription\": \"widget\",\n            \"originCriterion\": \"A\",\n            \"measureType\": \"KG\",\n            \"packageType\": \"BX\"\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginRequest (Create NonManipulation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 1,\n    \"certificateOfOriginTypeCode\": 5,\n    \"exportDeclarationNum\": \"260146\"\n  },\n  \"certificateOfOrigin\": {\n    \"customsHouse\": \"SITE01\"\n  },\n  \"nonManipulationCertificate\": {\n    \"exportDate\": \"2026-08-10T00:00:00\",\n    \"exportCountry\": \"DE\",\n    \"importBillOfLadingNum\": \"IBL1\",\n    \"exportPort\": \"DEHAM\",\n    \"importDate\": \"2026-08-05T00:00:00\",\n    \"exportBillOfLadingNum\": \"EBL1\",\n    \"transitCountry\": \"IL\",\n    \"portOfEntrance\": \"ILHFA\",\n    \"expectedExitDate\": \"2026-09-01T00:00:00\",\n    \"exitPort\": \"ILASH\",\n    \"goodsDescription\": \"widgets\",\n    \"declaringCompany\": \"Acme\",\n    \"declaringPerson\": \"John\",\n    \"declaringPosition\": \"Manager\",\n    \"manifestNum\": \"MAN1\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginRequest (GetRequestStatus)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"agentRequest\": {\n    \"requestReasonCode\": 13,\n    \"certificateId\": \"IL0000116889\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CertificateOfOriginsByFilter",
+          "request": {
+            "method": "QUERY",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/ByFilter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "ByFilter"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificateNumber\": \"IL0000116895\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "CertificateRequestByGuid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid=3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "RequestByGuid"
+              ],
+              "query": [
+                {
+                  "key": "certificateOfOriginGuid",
+                  "value": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Convert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Convert"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityIdKey1\": \"IL0000116895\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GoodsItemCerificateDTO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/GoodsItemCerificateDTO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "GoodsItemCerificateDTO"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  { \"goodsItemId\": 1, \"certificateNumber\": \"IL0000116895\" },\n  { \"goodsItemId\": 2, \"certificateNumber\": \"ZZZ-NONE\" }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "LoadDataFromExportDeclaration",
+          "request": {
+            "method": "QUERY",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/LoadDataFromExportDeclaration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "LoadDataFromExportDeclaration"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leadDocumentId\": 12345,\n  \"requestReasonCode\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "SaveCertificateOfOrigin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 0,\n  \"typeId\": 2,\n  \"title\": \"בקשת תעודת מקור\",\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"customerId\": 777,\n  \"createCustomerId\": 777,\n  \"certificateNumber\": \"POSTMAN-COO-1\",\n  \"certificateOfOriginStatusId\": 2,\n  \"originalCertificateOfOriginStatusId\": 0,\n  \"requestReasonCode\": 1,\n  \"isLastVersion\": true,\n  \"versionNumber\": 1,\n  \"certificateOfOriginDetails\": [\n    {\n      \"certificateDetailsTypeCodeId\": 2,\n      \"value\": \"יצואן לדוגמה\"\n    },\n    {\n      \"certificateDetailsTypeCodeId\": 13,\n      \"value\": \"32\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "SaveCertificateOfOriginAttachments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "CC-USER-ID",
+                "value": "\"5\""
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/SaveAttachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "SaveAttachments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificatesTemplates\": [\n    {\n      \"id\": 1,\n      \"name\": \"certificate\",\n      \"content\": \"dGVzdA==\",\n      \"documentTypeId\": 329,\n      \"isPdfFormat\": true\n    }\n  ],\n  \"certificateNumber\": \"CN-9\",\n  \"certificateId\": 10,\n  \"certificateRequestReasonCode\": 1,\n  \"certificateTypeId\": 2,\n  \"additionalInfo\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "UpdateCertificateOfOrigins",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/CertificateOfOrigins/Reconcile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "CertificateOfOrigins",
+                "Reconcile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": 240,\n  \"leadDocumentId\": 111,\n  \"exportDeclarationNum\": \"26014696745456\",\n  \"certificateOfOriginsIds\": [\n    1\n  ],\n  \"organizationUnitId\": 1,\n  \"exportInvoiceInfoList\": [\n    {\n      \"externalIdNum\": \"INV1\",\n      \"exportGoodsItemInfoList\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ExportDocumentAuthenticationRequest",
+      "item": [
+        {
+          "name": "CustomerInformation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformation/777",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "CustomerInformation",
+                "777"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CustomerInformationByCountry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "CustomerInformationByCountry",
+                "32"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ExportDocumentAuthenticationRequestByID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ExportDocumentAuthenticationRequestSearch",
+          "request": {
+            "method": "QUERY",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest/Search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest",
+                "Search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "SaveExportDocumentAuthenticationRequest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ExportDocumentAuthenticationRequest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ExportDocumentAuthenticationRequest"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 0,\n  \"state\": 1,\n  \"organizationUnitId\": 1,\n  \"statusId\": 2,\n  \"originalStatusId\": 0,\n  \"title\": \"בקשת אימות מסמך יצוא\",\n  \"customerId\": 777,\n  \"typeId\": 1,\n  \"countryId\": 32,\n  \"authenticationRequestNotes\": \"\",\n  \"listOfAdditionalDocumentsIds\": [],\n  \"customsItems\": [],\n  \"leadDocuments\": [],\n  \"manufacturingAreas\": [],\n  \"authenticationDocumentTypeId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });",
+          "pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9034",
+      "type": "string"
+    }
+  ]
+}

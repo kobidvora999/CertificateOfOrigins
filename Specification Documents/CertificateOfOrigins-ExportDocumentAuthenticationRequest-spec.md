@@ -97,8 +97,8 @@
 ### ExportDocumentAuthenticationRequestSearch
 | שדה | ערך |
 |-----|-----|
-| **HTTP** | GET |
-| **נתיב** | `/ExportDocumentAuthenticationRequest/ExportDocumentAuthenticationRequestSearch` |
+| **HTTP** | QUERY |
+| **נתיב** | `/ExportDocumentAuthenticationRequest/Search` |
 | **תיאור** | חיפוש בקשות אימות מסמכי יצוא לפי מסנן (Internal WCF: `GetExportDocumentAuthenticationRequestSearch`) |
 
 **פרמטרים:**
@@ -113,8 +113,8 @@
 **מקבל:** מסנן חיפוש עם עד 12 קריטריונים אופציונליים
 
 **מבצע:**
-1. בונה פרמטרים ל-stored procedure מתוך שדות המסנן
-2. מריץ את השאילתה מול ה-DAL ומקבל את רשימת הבקשות התואמות
+1. מריץ שאילתת LINQ מול ה-DAL (`ReadOnlyContext`), מוסיף תנאי `Where` לכל שדה מסנן שאוכלס — נאמן 1:1 לפרוצדורה המקורית
+2. מקבל מה-DAL את רשימת הבקשות התואמות (כולל שמות סוג-מסמך וסטטוס דרך JOIN, וכותרת הצהרת-יצוא דרך תת-שאילתה)
 3. מעשיר כל בקשה בשם בית המכס הזר (`CustomerId`) ובשם מגיש הבקשה (`ExporterCustomerId`) — שניהם דרך שירות הלקוחות (Customers proxy)
 4. ממלא את שם המדינה (`CountryId`) דרך lookup משותף של Country, לפי המזהה הגולמי
 

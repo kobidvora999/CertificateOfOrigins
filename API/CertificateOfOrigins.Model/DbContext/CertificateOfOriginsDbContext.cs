@@ -32,6 +32,10 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<ExportDocumentAuthenticationRequest> ExportDocumentAuthenticationRequests { get; set; }
 
+    public virtual DbSet<PreferenceDocumentType> PreferenceDocumentTypes { get; set; }
+
+    public virtual DbSet<ExportAuthenticationRequestStatus> ExportAuthenticationRequestStatuses { get; set; }
+
     public virtual DbSet<CertificateOfOriginsImportAuthenticationRequest> CertificateOfOriginsImportAuthenticationRequests { get; set; }
 
     public virtual DbSet<CertificateOfOriginsImportAuthenticationFileDetails> CertificateOfOriginsImportAuthenticationFileDetails { get; set; }
