@@ -83,7 +83,7 @@
 | GetGoodsItemCerificateDTO | ✅ הומרה | |
 | SaveCertificateOfOriginAttachments | ✅ הומרה | |
 | TempSync | ⏭️ לא נדרש | stub מת (`NotImplementedException`) |
-| UpdateCetrificateOfOrigins | 🔴 חסומה | הודעות + template + DealFile — כל 5 הענפים |
+| UpdateCetrificateOfOrigins | 🟡 הומרה (5/5 ענפים) | dispatcher על EEventType מנתב את כל 5 האירועים: SubmissionSucceeded→רקונסיליאציה, Released+AssemblySharedRelease→DeclarationReleased (publish+QR+attachments), AmendmentCompleted→backfill+רקונסיליאציה, CancellationCommited→ביטול+event. נדחו ב-TODO: agent talk-back (SendMessageToAgent, כמו HandleCertificateReplacement) + feedback-על-publish (TODO(confirm), תואם לזרימת Save המומרת). טרם חשוף כ-endpoint |
 
 ## Internal — ICertificateOfOriginsInternalContract (26)
 

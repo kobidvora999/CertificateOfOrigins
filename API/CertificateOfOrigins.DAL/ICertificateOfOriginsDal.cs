@@ -107,6 +107,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId);
 
+    Task UpdateCertificateQrCode(int id, Guid? guid, byte[]? qrImage, int userId);
+
     Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId);
 
     Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids);

@@ -112,4 +112,19 @@ public enum EEventType
     ExportReminderNotice10Months = 1306,
 
     FinalDecisionInTheFile = 1908,
+
+    // Export-declaration → certificate DealFile reconciliation dispatcher (UpdateCertificateOfOrigins). The 5 event
+    // types the operation routes on, plus the cancellation event raised when a released certificate is cancelled.
+    // Values are the source of truth from the platform enum (MalamTeam...Environment.Enums.EEventType).
+    ExportDeclarationSubmissionSucceeded = 240,
+
+    ExportDeclarationAmendmentRequestCompleted = 334,
+
+    CancellationRequestCommited = 554,
+
+    ExportDeclarationReleased = 1423,
+
+    AssemblySharedReleaseAccepted = 1790,
+
+    ExportDeclarationConnectToCertificateOfOriginCanceled = 1910,
 }

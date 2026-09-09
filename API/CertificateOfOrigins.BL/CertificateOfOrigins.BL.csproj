@@ -6,6 +6,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="CertificateOfOrigins.Test" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="CustomsCloud.InfrastructureCore.BL" Version="1.10.68" />
 		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.41" />
 		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.58" />

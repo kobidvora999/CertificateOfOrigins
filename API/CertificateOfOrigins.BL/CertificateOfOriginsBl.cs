@@ -1331,8 +1331,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // has one value. RaiseCertificatePreferredAssessorEvent itself is still used by the declaration-match flow.
     }
 
-    // Legacy SendRequestFeedback — the certificate request-feedback EAI message to the creating customer.
-    // TODO(migration): the exact PC_NG_2281_MSG02 → SendMessageDto field mapping is deferred (message type + params).
+    // Legacy SendRequestFeedback — the certificate request-feedback message to the creating customer.
+    // 🛑 TODO(blocking): legacy delivered this as an EAI OUTGOING message (OutgoingMessageProxy →
+    // PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback) carrying the rendered certificate PDF as an Attachment. That
+    // outgoing-message channel is REMOVED from the platform (InfrastructureCore.Utils ≥ 1.10.105) with no replacement,
+    // so it was substituted with IMessageManagementProxy (a different, internal channel). Two gaps remain and need a
+    // platform/product decision, NOT a local fix: (1) SendMessageDto has no attachment field, so the rendered PDF is not
+    // delivered at all; (2) MessageTypeId is unmapped (0). Do not fabricate an attachment field until the outgoing-message
+    // channel returns or MessageManagement's attachment contract is confirmed.
     private async Task SendRequestFeedback(CertificateOfOrigin entity)
     {
         var messageManagementProxy = Resolve<IMessageManagementProxy>();
@@ -1434,8 +1440,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await queueUtil.SendMessage(message);
     }
 
-    // Legacy HandleCertificateReplacement — cancel the replaced import certificate + raise the replaced event.
-    // TODO(migration): the agent talk-back message (SendMessageToAgent) + the replaced-certificate lookup are deferred.
+    // Legacy HandleCertificateReplacement — cancel the replaced certificate + raise the replaced event scoped to the
+    // cancelled certificate's own identity / organization unit.
+    // TODO(migration): three resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
+    // talk-back: the new certificate's FeedbackRemark (legacy EMessages.UpdateExportDeclaration, params
+    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}); the cancelled certificate's RejectCancelReason
+    // (legacy EMessages.CertificateReplaced, param {entity.CertificateNumber} — currently left as the supersede reason
+    // from CancelPreviousCertificate); and SendMessageToAgent (legacy EMessages.UpdateExportDecForReplacement).
     private async Task HandleCertificateReplacement(CertificateOfOrigin entity, IEventUtil eventUtil)
     {
         if (entity.CertificateIdToCancel is null)
@@ -1443,12 +1454,22 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return;
         }
 
-        await DataLayer.CancelPreviousCertificate(entity.CertificateIdToCancel.Value, string.Empty, RequestMetadata.UserId ?? 0);
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, entity.CertificateIdToCancel.Value, entity.OrganizationUnitId, entity.CertificateNumber);
+        // Legacy fetched the replaced certificate and no-op'd when it was missing; its own org unit scopes the event.
+        var certificateToCancel = (await DataLayer.GetCertificatesByIds([entity.CertificateIdToCancel.Value])).FirstOrDefault();
+        if (certificateToCancel is null)
+        {
+            return;
+        }
+
+        await DataLayer.CancelPreviousCertificate(certificateToCancel.Id, string.Empty, RequestMetadata.UserId ?? 0);
+
+        // Scope the replaced event to the CANCELLED certificate's own organization unit (legacy VirtualEntity(certificateToCancel)),
+        // not the replacement certificate's — the two can differ on a cross-organization import-certificate replacement.
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, certificateToCancel.Id, certificateToCancel.OrganizationUnitId, entity.CertificateNumber);
     }
 
     // A certificate-scoped event (VirtualEntity(certificate)) with an optional AdditionalInfo.
-    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, int certificateId, int organizationUnitId, string? additionalInfo)
+    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, int certificateId, int organizationUnitId, string? additionalInfo, int? organizationUnitTypeId = null)
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
@@ -1464,6 +1485,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder = builder.WithOrganizationUnitId(organizationUnitId);
         }
 
+        // Legacy set the organization-unit TYPE (Export) on the reconciliation events' VirtualEntity — passed only by
+        // those callers (the declaration-mismatch event); other events leave it unset, as in the legacy.
+        if (organizationUnitTypeId.HasValue)
+        {
+            builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)organizationUnitTypeId.Value);
+        }
+
         if (!string.IsNullOrEmpty(additionalInfo))
         {
             builder = builder.WithAdditionalInfo(additionalInfo);
@@ -1472,18 +1500,41 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await eventUtil.RaiseEvent(builder.Build());
     }
 
-    // Internal WCF: UpdateCetrificateOfOrigins(dto) — the export-declaration → certificate reconciliation (a one-way
-    // DealFile event; the ExportDeclarationSubmissionSucceeded case). For each certificate to reconcile: backfill the
-    // declaration link; skip the gate for a non-Received / empty / status-query / cancellation request or a
-    // non-manipulation type; otherwise validate it against the declaration (scalar details + destination/origin
-    // country-groups + import-replacement trade-agreement + the full invoice / goods-item / customs-item 6-digit
-    // matching, both directions), then — unless it is a Draft — set DeclarationMatch / Rejected / DeclarationMismatch,
-    // raise the matching event (warnings assign the mismatch task to the assessor), re-print the draft, and append the
-    // error rows. Returns the reconciliation errors (the legacy contract is one-way/void; surfacing them is a developer
-    // decision).
+    // Internal WCF: UpdateCetrificateOfOrigins(dto) — a 5-way EEventType dispatcher over the DealFile export-declaration
+    // events (legacy InternalUpdateCetrificateOfOrigins's switch). Each event routes to its own handler; only the
+    // submission-succeeded case reconciles and returns errors, so the other branches return an empty list.
+    // Legacy opened with `if (!IsExportDeclarationActive) return;` — that parameter is obsolete and always true (the same
+    // developer decision that dropped the RaiseNewCertificateOfOriginCreated guard, 2026-08-23), so the gate is a no-op
+    // and is not reproduced. TODO(confirm): drop the gate for good, or reinstate it if the parameter can return false.
+    public async Task<List<CertificateOfOriginExceptionDto>> UpdateCertificateOfOrigins(UpdateCertificateOfOriginsRequestDto request)
+    {
+        switch (request.EventType)
+        {
+            case (int)EEventType.ExportDeclarationSubmissionSucceeded:
+                return await ReconcileCertificatesAgainstDeclaration(request);
+            case (int)EEventType.ExportDeclarationReleased:
+            case (int)EEventType.AssemblySharedReleaseAccepted:
+                return await DeclarationReleased(request);
+            case (int)EEventType.ExportDeclarationAmendmentRequestCompleted:
+                return await ExportDeclarationAmendmentSuccess(request);
+            case (int)EEventType.CancellationRequestCommited:
+                await ExportDeclarationCancellationRequestCommited(request);
+                return [];
+            default:
+                return [];
+        }
+    }
+
+    // ExportDeclarationSubmissionSucceeded case — the export-declaration → certificate reconciliation (a one-way
+    // DealFile event). For each certificate to reconcile: backfill the declaration link; skip the gate for a
+    // non-Received / empty / status-query / cancellation request or a non-manipulation type; otherwise validate it
+    // against the declaration (scalar details + destination/origin country-groups + import-replacement trade-agreement +
+    // the full invoice / goods-item / customs-item 6-digit matching, both directions), then — unless it is a Draft — set
+    // DeclarationMatch / Rejected / DeclarationMismatch, raise the matching event (warnings assign the mismatch task to
+    // the assessor), re-print the draft, and append the error rows. Returns the reconciliation errors.
     // TODO(migration): only the exception text + EMessages code + Error/Warning level source (ValidationMessages/resx,
     // legacy GetUIMessageWithEnglishAndLevel) is still deferred — the checks themselves are migrated.
-    public async Task<List<CertificateOfOriginExceptionDto>> UpdateCertificateOfOrigins(UpdateCertificateOfOriginsRequestDto request)
+    private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request)
     {
         var exceptions = new List<CertificateOfOriginExceptionDto>();
         if (request.CertificateOfOriginsIds.Count == 0)
@@ -1561,6 +1612,136 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return exceptions;
     }
 
+    // ExportDeclarationAmendmentRequestCompleted case (legacy ExportDeclarationAmendmentSuccess): the export
+    // declaration's amendment completed. Backfill the declaration link on any certificate that still has none, then
+    // reconcile exactly those freshly-linked certificates against the amended declaration.
+    private async Task<List<CertificateOfOriginExceptionDto>> ExportDeclarationAmendmentSuccess(UpdateCertificateOfOriginsRequestDto request)
+    {
+        var userId = RequestMetadata.UserId ?? 0;
+        var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
+        var backfilledIds = new List<int>();
+
+        foreach (var certificate in certificates)
+        {
+            if (string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
+            {
+                await DataLayer.UpdateCertificateDeclarationLink(certificate.Id, request.LeadDocumentId, request.ExportDeclarationNum, userId);
+                backfilledIds.Add(certificate.Id);
+            }
+        }
+
+        if (backfilledIds.Count == 0)
+        {
+            return [];
+        }
+
+        request.CertificateOfOriginsIds = backfilledIds;
+        return await ReconcileCertificatesAgainstDeclaration(request);
+    }
+
+    // ExportDeclarationReleased + AssemblySharedReleaseAccepted cases (legacy DeclarationReleased): the export
+    // declaration was released. Per certificate: backfill the declaration link (recording the freshly-linked ids); a
+    // PendingRelease certificate becomes Published — persist the status with the link, generate + upload its QR, and
+    // publish its attachments; a certificate-replacement request cancels the replaced certificate. Finally reconcile the
+    // freshly-linked certificates against the declaration.
+    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments;
+    // it is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
+    // confirm this is the intended behaviour for the release path too.
+    private async Task<List<CertificateOfOriginExceptionDto>> DeclarationReleased(UpdateCertificateOfOriginsRequestDto request)
+    {
+        var userId = RequestMetadata.UserId ?? 0;
+        var eventUtil = Resolve<IEventUtil>();
+        var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
+        var backfilledIds = new List<int>();
+
+        foreach (var certificate in certificates)
+        {
+            // Backfill the declaration link: take number + lead document when the certificate has none (recording the id
+            // so only the freshly-linked certificates are reconciled afterwards); otherwise take just the lead document
+            // when the number already matches the released declaration.
+            var linkChanged = false;
+            if (string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
+            {
+                certificate.ExportDeclarationNumber = request.ExportDeclarationNum;
+                certificate.LeadDocumentId = request.LeadDocumentId;
+                backfilledIds.Add(certificate.Id);
+                linkChanged = true;
+            }
+            else if (!certificate.LeadDocumentId.HasValue && certificate.ExportDeclarationNumber == request.ExportDeclarationNum)
+            {
+                certificate.LeadDocumentId = request.LeadDocumentId;
+                linkChanged = true;
+            }
+
+            if (certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.PendingRelease)
+            {
+                // Publish: persist the Published status together with the (possibly backfilled) declaration link, then
+                // generate + upload the QR and publish the attachments (issue-by-worker queue or inline template).
+                certificate.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Published;
+                await DataLayer.UpdateCertificateReconciliation(certificate.Id, certificate.CertificateOfOriginStatusId, certificate.ExportDeclarationNumber, certificate.LeadDocumentId, certificate.RejectCancelReason, userId);
+
+                var qrCodeToUpload = await CreateQrCodeIfNeeded(certificate);
+                if (qrCodeToUpload is not null)
+                {
+                    // CreateQrCodeIfNeeded stamped Guid + QrImage on the entity expecting a main upsert to persist them;
+                    // the release path has no upsert, so persist them explicitly before uploading the QR document (the
+                    // Guid is embedded in the QR query URL).
+                    await DataLayer.UpdateCertificateQrCode(certificate.Id, certificate.Guid, certificate.QrImage, userId);
+                    await UploadQrCodeDocument(certificate, qrCodeToUpload, userId);
+                }
+
+                await PublishAttachments(certificate, eventUtil, userId);
+            }
+            else if (linkChanged)
+            {
+                await DataLayer.UpdateCertificateDeclarationLink(certificate.Id, certificate.LeadDocumentId, certificate.ExportDeclarationNumber, userId);
+            }
+
+            if (certificate.RequestReasonCode == (int)ERequestReason.CertificateReplacement)
+            {
+                await HandleCertificateReplacement(certificate, eventUtil);
+            }
+        }
+
+        if (backfilledIds.Count == 0)
+        {
+            return [];
+        }
+
+        // Legacy passes a STRIPPED dto to the reconciliation on the release path (only declaration number + lead document
+        // + the freshly-linked ids — no ExportInvoiceInfoList / exporter / destination / org-unit). With no invoice info
+        // the reconciliation forces hasErrors, so the release-reconciled certificates take the Rejected branch. Reusing
+        // the full request would instead run real invoice matching and reach DeclarationMatch/Mismatch with different
+        // events — so strip it here, exactly like legacy (contrast ExportDeclarationAmendmentSuccess, which reuses the
+        // full request by design).
+        var reconcileRequest = new UpdateCertificateOfOriginsRequestDto
+        {
+            EventType = request.EventType,
+            ExportDeclarationNum = request.ExportDeclarationNum,
+            LeadDocumentId = request.LeadDocumentId,
+            CertificateOfOriginsIds = backfilledIds,
+        };
+        return await ReconcileCertificatesAgainstDeclaration(reconcileRequest);
+    }
+
+    // CancellationRequestCommited case (legacy ExportDeclarationCancellationRequestCommited): the export declaration's
+    // cancellation was committed — cancel every linked certificate (status → Cancelled with the canceled-declaration
+    // reason) and raise the close-open-task event.
+    // TODO(migration): the agent talk-back message (legacy servicesAdapter.SendMessageToAgent) is deferred — the same
+    // deferral as HandleCertificateReplacement, pending the agent-message proxy.
+    private async Task ExportDeclarationCancellationRequestCommited(UpdateCertificateOfOriginsRequestDto request)
+    {
+        var userId = RequestMetadata.UserId ?? 0;
+        var eventUtil = Resolve<IEventUtil>();
+        var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
+
+        foreach (var certificate in certificates)
+        {
+            await DataLayer.CancelCertificateFromMessage(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate.Id, certificate.OrganizationUnitId, null);
+        }
+    }
+
     // Legacy (non-Draft branch): set the matched / rejected / mismatch status and raise the matching event — warnings
     // additionally raise the import-replacement task and assign the mismatch task to the export-declaration assessor.
     // Returns the new status + reject reason.
@@ -1584,7 +1765,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (hasErrors)
         {
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate.Id, certificate.OrganizationUnitId, additionalInfo);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate.Id, certificate.OrganizationUnitId, additionalInfo, CertificateOfOriginsConsts.ExportOrganizationUnitType);
             return ((int)ECertificateOfOriginStatus.Rejected, CertificateOfOriginsConsts.ReconciliationMismatchReason);
         }
 
@@ -1641,6 +1822,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
         }
 
+        // Legacy RaiseTaskNewCertificateOfOriginCheck set the organization-unit TYPE (Export) on the event.
+        builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
+
         if (assessorUserId.HasValue)
         {
             builder = builder.WithTaskArguments(task => task.WithPreferredUserId(assessorUserId.Value));
@@ -1666,6 +1850,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
         }
+
+        // Legacy set the organization-unit TYPE (Export) on the warnings event's VirtualEntity.
+        builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
 
         if (!string.IsNullOrEmpty(additionalInfo))
         {

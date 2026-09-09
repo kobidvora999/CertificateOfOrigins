@@ -63,6 +63,10 @@ internal static class CertificateOfOriginsConsts
     // Legacy ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration — set on a rejected reconciliation.
     public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה לבין ההצהרה"; // TODO(migration): source from ValidationMessages/resx.
 
+    // Legacy EServerTerms.CanceledDeclaration — the reject/cancel reason stamped when an export declaration's
+    // cancellation is committed (ExportDeclarationCancellationRequestCommited).
+    public const string CanceledDeclarationReason = "ההצהרה בוטלה"; // TODO(migration): source the exact text from ValidationMessages/resx (EServerTerms.CanceledDeclaration).
+
     // The RabbitMQ exchange a published certificate is sent to for asynchronous issuing by a worker (same name as the legacy).
     public const string IssueCertificateOfOriginExchange = "IssueCertificateOfOrigin";
 

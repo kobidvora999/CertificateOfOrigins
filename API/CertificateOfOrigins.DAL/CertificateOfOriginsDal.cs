@@ -337,6 +337,22 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.UpdateUserId, userId));
     }
 
+    public async Task UpdateCertificateQrCode(int id, Guid? guid, byte[]? qrImage, int userId)
+    {
+        // DeclarationReleased (publish): persist the QR Guid + image stamped by CreateQrCodeIfNeeded. In the
+        // SaveCertificateOfOrigin flow these land with the main change-tracked upsert; the release path has no such
+        // upsert (the certificates are read no-tracking), so the freshly-generated Guid + image need their own write —
+        // the Guid is embedded in the QR's query URL, so losing it would orphan the published QR. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.Guid, guid)
+                .SetProperty(c => c.QrImage, qrImage)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
     public async Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId)
     {
         // SaveCertificateOfOrigin: when a new instance supersedes an existing certificate, cancel the old one
