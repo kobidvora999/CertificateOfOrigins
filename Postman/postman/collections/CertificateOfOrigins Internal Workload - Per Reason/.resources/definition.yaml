@@ -108,4 +108,23 @@ scripts:
               });
           });
       }
+
+      // Legacy returns the rendered document on the feedback for a Draft request, and for the three read/cancel
+      // reasons it returns none. The migration hard-coded attachments to null everywhere, so an agent asking for a
+      // draft got no document — invisible to 755 assertions because nothing had ever looked at the field.
+      // Restored 2026-09-07 (CHECK 2 blocker #6); asserted here on both sides so it cannot silently regress.
+      if (name === '65-draft-clean') {
+          pm.test('65: a Draft request carries the rendered attachment', function () {
+              pm.expect(j.attachments, 'attachments').to.be.an('array').that.is.not.empty;
+              pm.expect(j.attachments[0].fileName, 'fileName').to.be.a('string').and.not.empty;
+              pm.expect(j.attachments[0].documentTypeId, 'documentTypeId').to.be.a('number');
+          });
+      }
+      if (name === '20-empty-clean') {
+          // EmptyCertificate is one of the three reasons legacy explicitly excludes, so the absence here is a rule,
+          // not an accident — it is what stops the positive assertion above from passing on a blanket "always attach".
+          pm.test('20: EmptyCertificate carries no attachment', function () {
+              pm.expect(j.attachments == null || j.attachments.length === 0, 'attachments absent').to.be.true;
+          });
+      }
     language: text/javascript

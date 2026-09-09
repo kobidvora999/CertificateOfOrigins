@@ -226,13 +226,55 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             ApplicationId = certificate?.Id ?? 0,
             Feedback = feedback,
             Exceptions = requestExceptions.Count > 0 ? requestExceptions : null,
-
-            // Legacy: attachments are built (CreateAttachments → PrintCertificateOfOriginAndSaveAttachments) only for a
-            // freshly-published certificate. The read/cancel reason codes handled here never carry attachments; the
-            // attachment build belongs to the deferred create/save branch.
-            Attachments = null,
+            Attachments = certificate != null ? await BuildFeedbackAttachments(certificate) : null,
         };
         return response;
+    }
+
+    // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site:
+    //
+    //   Attachment = (reason == EmptyCertificate || reason == CertificateCancellation || reason == GetRequestStatus
+    //                 || (reason != Draft && status != Published)) ? null : CreateAttachments(certificate);
+    //
+    // i.e. the agent gets the rendered document back for a Draft request, or once the certificate reaches
+    // Published — and never for the three read/cancel reasons. The migration hard-coded null here, so an agent
+    // sending a Draft request got no document at all even though one had been rendered and stored. CHECK 2, 2026-09-07.
+    //
+    // Legacy renders at response-build time (CreateAttachments calls the render itself) rather than reusing an
+    // earlier render, and that is reproduced: the save path already re-uploads over the same document, so rendering
+    // here does not accumulate duplicates.
+    //
+    // ⚠️ Legacy could return up to THREE templates — the main one plus eurPage2Template (page 2 of an EUR
+    // certificate) and templateForView. The migrated render produces one. That gap is inside the renderer, not
+    // here; recorded as a separate finding rather than widened into this fix.
+    private async Task<List<CertificateOfOriginMessageAttachmentDto>?> BuildFeedbackAttachments(CertificateOfOrigin certificate)
+    {
+        var reason = certificate.RequestReasonCode;
+        var isReadOrCancelReason = reason == (int)ERequestReason.EmptyCertificate
+            || reason == (int)ERequestReason.CertificateCancellation
+            || reason == (int)ERequestReason.GetRequestStatus;
+        var isDraftOrPublished = reason == (int)ERequestReason.Draft
+            || certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published;
+        if (isReadOrCancelReason || !isDraftOrPublished)
+        {
+            return null;
+        }
+
+        var template = await PrintCertificateOfOriginAndSaveAttachments(certificate, string.Empty);
+        if (template is null)
+        {
+            return null;
+        }
+
+        return
+        [
+            new CertificateOfOriginMessageAttachmentDto
+            {
+                DocumentTypeId = template.DocumentTypeId,
+                Content = template.Content,
+                FileName = template.FileName,
+            },
+        ];
     }
 
     // Legacy CreateCertificateOfOriginRequestFeedback: echo the certificate identity/status + the public query URL.
@@ -1337,13 +1379,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // GenerateTemplate) and save it as an attachment on the certificate (GenerateTemplate → SaveCertificateOfOriginAttachments).
     // Shared by the publish flow (#33) and the reconciliation re-print (#34). Rendering is always delegated to SSRS
     // (developer decision — no per-type template switch / no local template files).
-    private async Task PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
+    // Returns the rendered template so the caller can put it on the message feedback (legacy returned
+    // List<TemplateResult> for exactly that reason — CreateAttachments mapped it onto the response). Null when
+    // nothing was rendered.
+    private async Task<TemplateResultDto?> PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
     {
         var commonServicesProxy = Resolve<ICommonServicesProxy>();
         var template = await commonServicesProxy.GenerateTemplate(certificate.TypeId, certificate.Id, additionalInfo);
         if (template is null)
         {
-            return;
+            return null;
         }
 
         var args = new SaveCertificateAttachmentsArgsDto
@@ -1356,6 +1401,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             AdditionalInfo = additionalInfo,
         };
         await SaveCertificateOfOriginAttachments(args);
+        return template;
     }
 
     // Legacy SendCertificateToIssueQueue — publish the certificate to the "IssueCertificateOfOrigin" RabbitMQ exchange

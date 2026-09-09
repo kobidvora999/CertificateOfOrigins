@@ -14,4 +14,9 @@ public class TemplateResultDto
     public int DocumentTypeId { get; set; }
 
     public bool IsPdfFormat { get; set; }
+
+    // Legacy TemplateResult.FileName — a computed property, not a stored one: Name + the extension implied by
+    // IsPdfFormat. It is what CreateAttachments put on the feedback's attachment, so it is reproduced here rather
+    // than reinvented at the call site.
+    public string FileName => IsPdfFormat ? $"{Name}.pdf" : $"{Name}.docx";
 }
