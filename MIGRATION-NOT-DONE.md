@@ -132,12 +132,32 @@
 
 ## Internal: LoadDataFromExportDeclaration — ✅ הומר (2026-07-05, branch `feature/migrate-load-data-from-export-declaration`)
 
-הומר במלואו: endpoint‏ `POST Internal/LoadDataFromExportDeclaration` המקבל `CertificateOfOriginDto` ומחזיר אותו
-מועשר (`IsDeclarationReleased`, `IsCargoExitedOfCustomsRegulation`, וכן
-`IsDeclarationReleasedAndNotRetrospectiveCertificate` — השדה שהלקוח הישן הציב מה-bool המוחזר).
+הומר במלואו: endpoint‏ `QUERY Ui/CertificateOfOrigins/LoadDataFromExportDeclaration` המקבל
+`LoadDataFromExportDeclarationRequestDto` (‏`LeadDocumentId` + `ExportDeclarationNumber` + `RequestReasonCode` בלבד)
+ומחזיר **`bool`** — הערך שהלקוח הישן הציב ב-`IsDeclarationReleasedAndNotRetrospectiveCertificate`.
+(התיאור הקודם כאן — "מקבל `CertificateOfOriginDto` ומחזיר אותו מועשר" — היה **שגוי/מיושן**, תוקן באודיט 2026-09-14.
+הלגסי אמנם חתם `IsDeclarationReleased`/`IsCargoExitedOfCustomsRegulation` על הישות ב-ref, אך החוזה אינו `ref`
+והקליינט קרא רק את ה-bool המוחזר — ולכן ההשמטה חסרת-השפעה, אומת מול הקליינט הלגאסי.)
 נוצרו `IExportDealFileProxy` + `ExportDealFileProxy` + `ExportDealFileMockProxy`; ה-**Mock רשום ב-DI**.
 `TODO(blocking)`: מעבר ל-proxy האמיתי + אימות שם ה-endpoint כשיוקם שירות ExportDealFile
 (הערך `CustomsMicroServices.ExportDealFile` קיים ב-enum ומקומפל).
+
+## Internal: SaveCertificateOfOrigin — 🟡 הומר, 3 חסמים פתוחים (אודיט נאמנות 2026-09-14)
+
+הזרימה מומרת בפועל (הסימון 🔴 הקודם ב-MIGRATION-STATUS היה מיושן). אודיט אדוורסרי מול הלגסי תיקן שניים
+(org-unit+reason באירוע ה-supersede; המרת code→ID ל-DestinationCountry/PortOfShipment בישות חדשה) והשאיר שלושה
+חסומים — **כולם מסומנים `TODO(blocking)` בקוד** ב-`CertificateOfOriginsBl.SaveCertificateOfOrigin` (בלוק הפרסום):
+
+1. **פידבק+צרופה על Publish לא נשלח.** לגסי `CreateAttacmentsAndSendFeedBackMessage` → `SendRequestFeedback(cert, attachments)`
+   (`CertificateOfOriginsBL.cs:397-418`) שלח ללקוח את התעודה המרונדרת. הערוץ (`OutgoingMessageProxy`, EAI) **הוסר
+   מהפלטפורמה** (InfrastructureCore.Utils ≥ 1.10.105) ואין תחליף — ראה `_shared/outgoing-message-pattern.md`.
+2. **אין פרסום-אוטומטי כשההצהרה כבר משוחררת.** לגסי `CheckCertificateOfOriginOnDeclarationReleased`
+   (`CertificateOfOriginsBL.cs:671-694`, נקרא מ-`CertificateOfOriginsInternalServicePartial.cs:61-64`) דרך
+   `CheckDeclarationStatus` ששואל את **ExportDealFile** — שירות שטרם הוקם (mock בלבד). אותה תלות חוסמת גם את
+   ה-repoint של lead-document ואירוע אי-התאמת-הכותרת בזרימת ההודעה הנכנסת.
+3. **אין guards אי-כפילות.** לגסי חסם פרסום/פידבק חוזרים עם `IsCreateAttachments` / `IsMessageSent`
+   (`CertificateOfOriginsBL.cs:381,424`). העמודות **אינן קיימות** בטבלת `.NET10` ולא בישות → נדרש שינוי סכימה
+   (DB + entity + seed) לפני שאפשר לשחזר את ההגנה. עד אז שמירה חוזרת בסטטוס Published מייצרת את התבנית מחדש.
 
 ## External: UpdateCetrificateOfOrigins — ✅ הומר (2026-07-07, branch `feature/migrate-update-cetrificate-of-origins`)
 

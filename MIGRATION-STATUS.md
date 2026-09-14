@@ -110,10 +110,10 @@
 | ChangeStatusAfterDeliverySent | ✅ הומרה | |
 | CheckImporterOfImportAuthentication | ✅ הומרה | |
 | LoadDataFromExportDeclaration | ✅ הומרה (2026-07-05) | Mock ב-DI; ‏TODO(blocking): מעבר ל-real כשיוקם ExportDealFile |
-| SaveCertificateOfOrigin | 🔴 חסומה | הכרעת מוצר (original-values) + הודעות + template |
-| SaveImportAuthenticationRequest | 🔴 חסומה | תשתית הודעות (Notifications) |
-| SaveAuthenticationRequestFile | 🔴 חסומה | תשתית הודעות + מנגנון delta + פערי ICollateralProxy |
-| SaveExportDocumentAuthenticationRequest | 🔴 חסומה | תשתית הודעות + AttachDocumentsToEntity + DisplayName |
+| SaveCertificateOfOrigin | 🟡 הומרה (אודיט 2026-09-14) | הזרימה מומרת בפועל (save/supersede/QR/אירועי-סטטוס/קישור-הצהרה) — השורה הקודמת 🔴 הייתה מיושנת. תוקנו באודיט: org-unit+reason באירוע supersede, ו-code→ID ל-DestinationCountry/PortOfShipment בישות חדשה. **3 חסמים מתועדים ב-TODO(blocking) בקוד:** פידבק+צרופה על Publish (ערוץ EAI הוסר מהפלטפורמה), פרסום-אוטומטי כשההצהרה כבר משוחררת (ExportDealFile טרם הוקם), guards אי-כפילות IsCreateAttachments/IsMessageSent (עמודות DB חסרות) |
+| SaveImportAuthenticationRequest | ✅ הומרה | אומת באודיט נאמנות (2026-09-14): 3 ענפי ה-switch + ChangeTempCollateralRequest + האירועים — נאמן ללגסי |
+| SaveAuthenticationRequestFile | ✅ הומרה | אומת באודיט (2026-09-14) — נאמן. ⚠️ ל-sign-off מוצר: קוד ה-collateral (grant/debit על סטטוס-קובץ) פעיל, בעוד שבלגסי המתודה הייתה **dead code** שלא רצה בפרודקשן (תיקון מכוון, `8d46e33`) |
+| SaveExportDocumentAuthenticationRequest | ✅ הומרה | אומת באודיט (2026-09-14): insert/update, 4 ענפי CheckStatus, מיזוג ילדים; החסמים הישנים (AttachDocumentsToEntity + DisplayName) נפתרו — נאמן |
 | GetPathsForNavigationToVendor | ✅ הומרה חלקית | 2026-08-20 (הוכרע Lookup): endpoint `GET AuthenticationRequest/PathsForNavigationToVendor` + BL + DTOs; מחזיר ViewPaths ריק עם `TODO(blocking)` עד הוספת טיפוס Lookup `NavigationPath` בפלטפורמה + endpoint מקור (בפנים) |
 
 ## Incoming — ICertificateOfOriginsIncomingMessageContract (2)

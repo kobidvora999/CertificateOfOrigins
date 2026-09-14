@@ -32,11 +32,18 @@ public enum ECertificateOfOriginType
     [Description("Panama")]
     Panama = 6,
 
-    [Display(Name = "SouthKorea", Description = "SouthKorea")]
-    [Description("SouthKorea")]
+    // Display/Description are the customer-facing type name used on the generated certificate document title +
+    // filename; they MUST mirror the CRM.CertificateOfOrigins_enum_CertificateOfOriginTypeCode.Name column (seed data).
+    // Id 7's Name is "Korea" in the table (NOT "SouthKorea") — the member identifier stays SouthKorea for code refs.
+    [Display(Name = "Korea", Description = "Korea")]
+    [Description("Korea")]
     SouthKorea = 7,
 
     [Display(Name = "UnitedArabEmirates", Description = "UnitedArabEmirates")]
     [Description("UnitedArabEmirates")]
     UnitedArabEmirates = 8,
+
+    [Display(Name = "Vietnam", Description = "Vietnam")]
+    [Description("Vietnam")]
+    Vietnam = 9,
 }

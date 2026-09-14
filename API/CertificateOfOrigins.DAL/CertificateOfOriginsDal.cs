@@ -94,7 +94,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
     {
         // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance
-        // supersedes). Projected to the columns the cancel-previous-version logic needs.
+        // supersedes). Projected to the columns the cancel-previous-version logic needs — including OrganizationUnitId +
+        // RejectCancelReason, which the UserCancelledCertificate supersede event is scoped to / carries (legacy raised it
+        // on certificateToCancel's own VirtualEntity with its RejectCancelReason as AdditionalInfo).
         var result = await ReadOnlyContext.CertificateOfOrigins
             .Where(c => c.CertificateNumber == certificateNumber)
             .OrderByDescending(c => c.Id)
@@ -103,6 +105,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 Id = c.Id,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 VersionNumber = c.VersionNumber,
+                OrganizationUnitId = c.OrganizationUnitId,
+                RejectCancelReason = c.RejectCancelReason,
             })
             .FirstOrDefaultAsync();
         return result;

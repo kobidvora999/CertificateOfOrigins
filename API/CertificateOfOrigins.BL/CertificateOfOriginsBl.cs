@@ -126,6 +126,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // amendment guard, the per-reason declaration check and the post-save reconciliation share a single fetch.
         var context = new MessageValidationContext();
 
+        // Legacy CheckRequestReasonCodeEnum (CertificateOfOriginsIncomingMessageServicePartial.cs:1384-1406): the request
+        // reason must be present (!= 0) and a known code. Accumulated in-band (not thrown), matching legacy — otherwise an
+        // unrecognised/zero reason falls through the switch default straight into the create branch instead of being
+        // rejected; the accumulated error blocks the save at the create branch's exception gate.
+        if (reasonCode == 0)
+        {
+            requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(agentRequest.RequestReasonCode)));
+        }
+        else if (!Enum.IsDefined(typeof(ERequestReason), reasonCode))
+        {
+            requestExceptions.Add(BuildMessageException(EMessageCode.RequestReasonNotExist));
+        }
+
         // Legacy (Inner method, before the branch): for every reason except GetRequestStatus, block the request when the
         // linked export declaration is in an amendment process. Accumulated in-band (not thrown); for the create branch
         // the accumulated error blocks the save at the exception gate.
@@ -920,9 +933,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // New instance (not a cancellation): supersede the latest existing certificate with the same number.
         var replacementOldId = 0;
         var previousCertificateId = 0;
+        var previousOrganizationUnitId = 0;
+        string? previousCancelReason = null;
         if (isNewInstance && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled)
         {
-            (replacementOldId, previousCertificateId) = await SupersedePreviousVersion(entity);
+            (replacementOldId, previousCertificateId, previousOrganizationUnitId, previousCancelReason) = await SupersedePreviousVersion(entity);
         }
 
         byte[]? qrCodeToUpload = null;
@@ -972,7 +987,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (previousCertificateId != 0)
         {
             await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity.Id, entity.OrganizationUnitId, null);
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previousCertificateId, entity.OrganizationUnitId, null);
+
+            // Legacy scoped this event to the CANCELLED certificate's own VirtualEntity (its org unit) with its reject
+            // reason as AdditionalInfo — not the new certificate's org unit / a null reason.
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previousCertificateId, previousOrganizationUnitId, previousCancelReason);
         }
 
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
@@ -991,6 +1009,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             await RaiseStatusEvents(entity, eventUtil);
         }
 
+        // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin, deferred pending platform/schema:
+        //  (#1) On Publish, legacy CreateAttacmentsAndSendFeedBackMessage sent the customer a request-feedback message
+        //       carrying the rendered certificate PDF (SendRequestFeedback(cert, attachments), CertificateOfOriginsBL.cs:397-418).
+        //       It is NOT sent here — the feedback gate below excludes Published, and the outgoing-message (EAI) channel
+        //       that carried the PDF was removed from the platform with no replacement (see SendRequestFeedback). Restore
+        //       when the channel returns.
+        //  (#3) Legacy guarded publish/feedback with IsCreateAttachments / IsMessageSent idempotency flags
+        //       (CertificateOfOriginsBL.cs:381,424); those columns do NOT exist on the .NET10 CertificateOfOrigin
+        //       table/entity, so a retried Published save re-issues the template + (once #1 is restored) re-sends feedback.
+        //       Needs the two columns (DB + entity + seed) to guard.
         if ((isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published) || isRemarksChanged)
         {
             await SendRequestFeedback(entity);
@@ -1005,6 +1033,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
         }
 
+        // TODO(blocking) (#2): legacy called CheckCertificateOfOriginOnDeclarationReleased here (via the service partial,
+        // CertificateOfOriginsInternalServicePartial.cs:61-64): a certificate saved to PendingRelease whose export
+        // declaration is ALREADY released auto-published (DeclarationReleased). Not migrated — it needs CheckDeclarationStatus,
+        // which queries the ExportDealFile service (not yet stood up; mock only). Wire when ExportDealFile is available
+        // (same dependency as the GetPC CheckDeclarationStatus reconciliation gap).
         return await GetCertificateOfOriginById(entity.Id);
     }
 
@@ -1088,27 +1121,30 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // cancelled; previousCertificateId — the previous version's id, 0 when there was none). The supersede events are
     // NOT raised here: ApplicationCorrected references the new certificate's id, which is only assigned by the save
     // that runs after this method — so the caller raises them post-save.
-    private async Task<(int ReplacementOldId, int PreviousCertificateId)> SupersedePreviousVersion(CertificateOfOrigin entity)
+    private async Task<(int ReplacementOldId, int PreviousCertificateId, int PreviousOrganizationUnitId, string? PreviousCancelReason)> SupersedePreviousVersion(CertificateOfOrigin entity)
     {
         var previous = await DataLayer.GetLatestCertificateByNumber(entity.CertificateNumber);
         if (previous is null)
         {
             entity.VersionNumber = 1;
             entity.IsLastVersion = true;
-            return (0, 0);
+            return (0, 0, 0, null);
         }
 
         // Legacy cancels the previous version + clears its IsLastVersion UNCONDITIONALLY; only the replacement-id link
         // is guarded by "not already cancelled". Guarding the whole cancel would leave an already-cancelled previous
         // still flagged IsLastVersion=true → two last-version rows for the number.
         // "\n<update received>" — the legacy appended EServerTerms.CertificateUpdateRecived.
+        // The resulting reason (prior + suffix) is also the UserCancelledCertificate event's AdditionalInfo, and the
+        // cancelled certificate's own OrganizationUnitId scopes that event (legacy VirtualEntity(certificateToCancel)).
+        var previousCancelReason = (previous.RejectCancelReason ?? string.Empty) + Environment.NewLine + CertificateOfOriginsConsts.CertificateUpdateReceived;
         await DataLayer.CancelPreviousCertificate(previous.Id, Environment.NewLine + CertificateOfOriginsConsts.CertificateUpdateReceived, RequestMetadata.UserId ?? 0);
 
         entity.VersionNumber = previous.VersionNumber + 1;
         entity.IsLastVersion = true;
 
         var replacementOldId = previous.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled ? previous.Id : 0;
-        return (replacementOldId, previous.Id);
+        return (replacementOldId, previous.Id, previous.OrganizationUnitId, previousCancelReason);
     }
 
     // Legacy CreateQRCodeIfNeededAndUpload (generation half) — on publish (and only when no QR path yet), generate the
@@ -1204,10 +1240,53 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // enrichment for country + city detail types (via ILookupUtil). Text fields pass through.
     // TODO(migration): country-group + international-site id→name have no ILookupUtil type — they need a SystemTables
     // proxy (rollout); the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
+    // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): a brand-new certificate's DestinationCountry /
+    // PortOfShipment details arrive from the SPA as an alpha-2 country code / locode; resolve them to the internal id
+    // (Country by alpha-2, InternationalSite by locode). Unresolved values are left as-is (an existing instance never
+    // reaches here, so no id is overwritten with a code).
+    private async Task ResolveNewInstanceDetailCodes(List<CertificateOfOriginDetails> details)
+    {
+        var countryProxy = Resolve<ICountryProxy>();
+        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
+        foreach (var detail in details)
+        {
+            if (string.IsNullOrEmpty(detail.Value))
+            {
+                continue;
+            }
+
+            if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.DestinationCountry)
+            {
+                var countries = await countryProxy.GetCountriesByAlphaCodes([detail.Value]);
+                if (countries?.FirstOrDefault()?.Id is int countryId)
+                {
+                    detail.Value = countryId.ToString(CultureInfo.InvariantCulture);
+                }
+            }
+            else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)
+            {
+                var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([detail.Value]);
+                if (sites?.FirstOrDefault()?.Id is int siteId)
+                {
+                    detail.Value = siteId.ToString(CultureInfo.InvariantCulture);
+                }
+            }
+        }
+    }
+
     private async Task EnrichAndValidateDetails(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details)
     {
         var customerProxy = Resolve<ICustomerProxy>();
         var customsBookProxy = Resolve<ICustomsBookProxy>();
+
+        // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): resolve a brand-new certificate's
+        // DestinationCountry / PortOfShipment codes to internal ids before the id-based enrichment below (an existing
+        // instance already carries ids). entity.Id == 0 is captured before the upsert assigns the real id.
+        if (entity.Id == 0)
+        {
+            await ResolveNewInstanceDetailCodes(details);
+        }
+
         foreach (var detail in details)
         {
             var value = detail.Value;

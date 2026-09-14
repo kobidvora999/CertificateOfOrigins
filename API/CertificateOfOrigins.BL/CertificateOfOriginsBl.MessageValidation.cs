@@ -100,11 +100,28 @@ public partial class CertificateOfOriginsBl
             return null;
         }
 
+        // Legacy CheckCertificateOfOriginTypeCodeEnum (CertificateOfOriginsIncomingMessageServicePartial.cs:1360-1382):
+        // the certificate type must be present (id != 0) and exist in the type table. Legacy threw immediately; here we
+        // accumulate the error and return early — which both surfaces it AND reproduces the legacy hard-stop. Without
+        // this, an unknown/zero type makes GetDetailsPerCertificate return an empty catalogue, silently skipping the
+        // entire field-validation engine for a malformed request.
+        if (certificateTypeId == 0)
+        {
+            requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(agentRequest.CertificateOfOriginTypeCode)));
+            return null;
+        }
+
         // The certificate type's mandatory flags (legacy GetCertificateTypeCode): criterion / customs-item / zipcode.
         var typeCode = await DataLayer.GetCertificateTypeCode(certificateTypeId);
-        agentRequest.IsCertificateTypeCodeMandatory = typeCode?.IsCriterionMandatory ?? false;
-        agentRequest.IsCustomsItemMandatory = typeCode?.IsCustomsItemMandatory;
-        agentRequest.IsZipcodeMandatory = typeCode?.IsZipcodeMandatory ?? false;
+        if (typeCode == null)
+        {
+            requestExceptions.Add(BuildMessageException(EMessageCode.CertificateTypeNotExist));
+            return null;
+        }
+
+        agentRequest.IsCertificateTypeCodeMandatory = typeCode.IsCriterionMandatory;
+        agentRequest.IsCustomsItemMandatory = typeCode.IsCustomsItemMandatory;
+        agentRequest.IsZipcodeMandatory = typeCode.IsZipcodeMandatory;
 
         // The certificate type's field catalogue (which fields are relevant + their constraint).
         var perCertificate = await DataLayer.GetDetailsPerCertificate(certificateTypeId);

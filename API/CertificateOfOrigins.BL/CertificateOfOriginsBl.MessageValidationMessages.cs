@@ -50,6 +50,7 @@ public partial class CertificateOfOriginsBl
         TransirCountryIllegal = 5018,
         ManifestIdMissing = 5019,
         RequestReasonNotExist = 5020,
+        CertificateTypeNotExist = 5022,
         CountryAndCountryGroup = 5040,
         ExitDateIllegal = 5095,
         AgentInUpdateDifferent = 11908,
@@ -113,6 +114,7 @@ public partial class CertificateOfOriginsBl
         [EMessageCode.TransirCountryIllegal] = "מדינת הביניים אינה יכולה להיות שונה מישראל",
         [EMessageCode.ManifestIdMissing] = "לא הוזן מספר מצהר או מספר הצהרה עבור תעודה מסוג non manipulation",
         [EMessageCode.RequestReasonNotExist] = "סיבת בקשה לא קיימת במערכת",
+        [EMessageCode.CertificateTypeNotExist] = "סוג תעודה לא קיים במערכת", // TODO(migration): confirm exact UIMessage text for code 5022 against the module's UIMessage export.
         [EMessageCode.CountryAndCountryGroup] = "אין לספק מדינה וקבוצת מדינות לאותו עניין",
         [EMessageCode.ExitDateIllegal] = "תאריך היציאה המשוער מישראל צריך להיות שווה או גדול מן התאריך הנוכחי, עד שלושה חודשים קדימה",
         [EMessageCode.AgentInUpdateDifferent] = "סוכן מכס במסר שונה מן הסוכן בבקשה {0} להנפקת תעודת מקור",
