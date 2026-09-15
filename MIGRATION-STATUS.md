@@ -95,7 +95,7 @@
 | GetAuthenticationRequestByFilter | ✅ הומרה | |
 | GetEntityDocuments | ✅ הומרה | |
 | CreateNewAuthenticationFile | ✅ הומרה | |
-| GetAuthenticationRequestFileByID | ✅ הומרה | |
+| GetAuthenticationRequestFileByID | ✅ הומרה | **תוקן באודיט 2026-09-15** (`1188096`): ה-projection של בקשות-הילדים החסיר את `UserId`/`UserResponseId` שחוזה ה-POST מחזיר חזרה ומעביר ל-`SendDecisionMessage` → סבב GET→עריכה→POST שלח 0 וניתב את הודעת ההחלטה/משימת הדחייה **למשתמש 0**. בנוסף `IsSendReminderForImporterTaskExists` נמדד בלי סינון סטטוס (הלגסי: `TaskStatusID != 2`) → נשאר `true` לנצח אחרי תזכורת שנסגרה; עבר לסינון על `IsTaskInProgress` (‏`TODO(confirm)`: פאריטי לא מדויק ב-Canceled(3)/Suspended(5)). שאר עמודות ה-SP הלגסי אינן מוקרנות בכוונה — אין להן צרכן ב-DTO, וכל עמודה עולה מקום מול מגבלת 30 העמודות (מתועד בקוד) |
 | GetAuthenticationRequestByID | ✅ הומרה | |
 | GetExportDocumentAuthenticationRequestSearch | ✅ הומרה | SP→LINQ (החלטת מפתח, נאמן ל-CROSS_ SP); שמירת row-membership של ה-INNER JOIN החוצי-שירות דרך 2 IS-NOT-NULL על ה-FK ה-nullable (CountryID/ExporterCustomerID). CustomerID לא-nullable (DB: NOT NULL) ולכן ה-INNER JOIN שלו לעולם לא מסנן null — ה-guard השלישי (2b670b5) הוסר כמיותר. אומת חי 7/7: LINQ==SP-equivalent |
 | GetExportDocumentAuthenticationRequestByID | ✅ הומרה | |
@@ -104,7 +104,7 @@
 | HandleImportAuthenticationRequestDeliveryForImporterSent | ✅ הומרה | |
 | HandleImportAuthenticationRequestDeliveryReminderForImporterSent | ✅ הומרה | |
 | HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent | ✅ הומרה | |
-| CheckIfExistsAdditionalRequestsForImporter | ✅ הומרה | ⚠️ חתימה שונתה (entity → 4 סקלרים) — בבדיקת פאריטי |
+| CheckIfExistsAdditionalRequestsForImporter | ✅ הומרה | ⚠️ חתימה שונתה (entity → 4 סקלרים) — **הפאריטי אומת ונסגר באודיט 2026-09-15**: הלגסי חילץ מהישות בדיוק את אותם 4 סקלרים, ומיפוי הפרמטרים ל-SP זהה; גופי ה-SP הושוו שורה-מול-שורה וזהים, למעט הפניית קריאת `@DaysForLastDelivery` מ-`General_enum_GlobalParam` לטבלת `Infrastructure.Parameters` המקומית (התאמת גבול מיקרו-שירות מתועדת) |
 | CheckIfExistsAdditionalRequestsForVendor | ✅ הומרה | |
 | HandleSendRemindDeliverNotification | ✅ הומרה | שם ה-BL שונה מהחוזה (CloseReminderTask) |
 | ChangeStatusAfterDeliverySent | ✅ הומרה | |
