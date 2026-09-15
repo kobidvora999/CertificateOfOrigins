@@ -527,6 +527,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // Projected to the needed columns (< 30 for the platform interceptor); the CRP.DealFile join +
         // Infrastructure.Tasks_Task OUTER APPLY are resolved in the BL via proxies (LeadDocumentSubmissionDate,
         // IsSendReminderForImporterTaskExists).
+        // UserId + UserResponseId are REQUIRED: SaveAuthenticationRequestFileChildDto round-trips them back and
+        // SaveAuthenticationRequestFile forwards them to SendDecisionMessage. While this read omitted them, a
+        // GET → edit → POST on the file screen posted 0 for both and routed the decision message / rejection task to
+        // user 0.
+        // The remaining legacy result-set columns (CirumstanceDetails, DecisionCircumstences, DocumentNumber,
+        // RequestCircumstancesID, ResponsePhoneNum, IsOldIndication, OrganizationUnitTypeID, Remarks, ItemDetailID,
+        // CreateUserID and the two *InvoiceGoodsItemTaxDifference fields) are deliberately NOT projected: nothing on
+        // AuthenticationFileRequestDto exposes them, and each costs headroom against the 30-column interceptor cap.
         var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
             .Select(r => new CertificateOfOriginsImportAuthenticationRequest
@@ -549,6 +557,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 ImporterId = r.ImporterId,
                 LastDeliveryForImporter = r.LastDeliveryForImporter,
                 InvoiceNumber = r.InvoiceNumber,
+                UserId = r.UserId,
+                UserResponseId = r.UserResponseId,
             })
             .ToListAsync();
         return result;
@@ -929,8 +939,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // .Include(...) + .ExcludeInterceptor("<hash>") with the full column set), we project to 29 columns and
         // drop 6 fields: State, CreateDate, CreateUserId, UpdateDate, UpdateUserId, OrganizationUnitId.
         // Verified 2026-08-18 still enforced on InfrastructureCore.DAL 1.10.53 (a 35-column probe threw
-        // DbInterceptionException "Result fields count (35) exceeded max eror level of 30"). Keep the workaround
-        // until the package exempts this module; re-test after any InfrastructureCore.DAL bump.
+        // DbInterceptionException "Result fields count (35) exceeded max eror level of 30").
+        // RE-TESTED 2026-09-15 on InfrastructureCore.DAL 1.10.58 (the newest version published on the feed) with the
+        // full 35-column read + .ExcludeInterceptor("j4XSVK6Fl8"): STILL FAILS at runtime. The tag is emitted into the
+        // SQL ("-- j4XSVK6Fl8") but the interceptor ignores it and throws anyway, so opting out per query does not work
+        // in this version. Keep the 29-column workaround; re-test after the next InfrastructureCore.DAL bump.
         var result = await ReadOnlyContext.ExportDocumentAuthenticationRequests
             .Where(r => r.Id == id)
             .Select(r => new ExportDocumentAuthenticationRequest
@@ -986,8 +999,10 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters)
     {
         // dbo.GetCertificateOfOriginDataForWebQuery — the public-portal certificate-verification query (5 result
-        // sets), composed in the DbContext extension. DocumentId is NULL from the SP (cross-service Docs JOIN
-        // removed) and is left unresolved in the BL (TODO(blocking)).
+        // sets), composed in the DbContext extension. DocumentId is NULL from the SP (the cross-service Docs JOIN was
+        // removed) and is resolved in the BL via IDocumentsProxy.GetDocumentsByEntity — it stays 0 only when no
+        // matching document exists. (Corrected 2026-09-15: this comment previously said it was "left unresolved in the
+        // BL (TODO(blocking))", which was stale — only the proxy's endpoint route is still a rollout TODO.)
         var result = await ReadOnlyContext.GetCertificateOfOriginDataForWebQuery(parameters);
         return result;
     }

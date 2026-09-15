@@ -41,6 +41,13 @@ public class AuthenticationFileRequestDto
 
     public string? InvoiceNumber { get; set; }
 
+    // The handling user + the responding user. Both are round-tripped by SaveAuthenticationRequestFileChildDto and
+    // forwarded to SendDecisionMessage on save, so this read MUST return them — otherwise a GET → edit → POST posts 0
+    // for both and the decision message / rejection task is routed to user 0.
+    public int UserId { get; set; }
+
+    public int UserResponseId { get; set; }
+
     // The lead document (Documents service), enriched with TypeName (DocumentType lookup).
     public DocumentDto? Document { get; set; }
 

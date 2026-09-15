@@ -281,6 +281,8 @@ public partial class AuthenticationRequestBl(
             ImporterId = request.ImporterId,
             LastDeliveryForImporter = request.LastDeliveryForImporter,
             InvoiceNumber = request.InvoiceNumber,
+            UserId = request.UserId,
+            UserResponseId = request.UserResponseId,
             Decisions = decisions,
             ItemDetails = allItemDetails
                 .Where(item => item.ImportAuthenticationRequestId == request.DocumentId)
@@ -312,10 +314,16 @@ public partial class AuthenticationRequestBl(
         // Lead-document submission date (DealFile service; legacy CRP.DealFile_LeadDocumentSubmissionData JOIN).
         requestDto.LeadDocumentSubmissionDate = await exportDealFileProxy.GetLeadDocumentSubmissionDate(request.LeadDocumentId);
 
-        // IsSendReminderForImporterTaskExists — an open SendReminderForImporter (404) task on the request (legacy
-        // Infrastructure.Tasks_Task OUTER APPLY).
-        var reminderTasks = await tasksProxy.IsTaskExist(request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SendReminderForImporter]);
-        requestDto.IsSendReminderForImporterTaskExists = reminderTasks is { Count: > 0 };
+        // IsSendReminderForImporterTaskExists — an OPEN SendReminderForImporter (404) task on the request. The legacy
+        // Infrastructure.Tasks_Task OUTER APPLY filtered `TaskStatusID != 2` (not closed); this read had dropped the
+        // status filter entirely, so the flag stayed true forever once any reminder task had ever existed.
+        // The Tasks SP ignores the isTaskInProgress parameter (its status branches are commented out) and returns every
+        // status, so the open-only filter must also be applied to the returned rows — the same pattern as
+        // AuthenticationRequestBl.Schedulers.
+        // TODO(confirm): not exact parity — IsTaskInProgress is TaskStatusID IN (1,4), while the legacy `!= 2` also
+        // counted Canceled(3) / Suspended(5) as existing.
+        var reminderTasks = await tasksProxy.IsTaskExist(request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SendReminderForImporter], isTaskInProgress: true);
+        requestDto.IsSendReminderForImporterTaskExists = reminderTasks?.Exists(task => task.IsTaskInProgress) == true;
 
         // Collaterals (Collateral service).
         var collaterals = await collateralProxy.GetCollateralRequest((int)EEntityType.ImportAuthenticationRequest, request.DocumentId);

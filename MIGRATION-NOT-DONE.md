@@ -3,9 +3,13 @@
 > ## ✅ עדכון סטטוס — ההמרה הושלמה (2026-08-17)
 >
 > מצאי אדוורסרי מלא הצליב את **3 חוזי ה-WCF** (36 אופרציות) מול ה-controllers + ה-BL על master:
-> **34/36 הומרו** (endpoint חי + BL לא-stub; אין `NotImplementedException`/`#error` בקוד). 2 האופרציות
-> שלא הומרו — **שתיהן בכוונה**: `TempSync` (stub מת בלגסי) ו-`GetPathsForNavigationToVendor`
-> (הוכרע 2026-08-17: לא רלוונטי ל-SPA).
+> **35/36 הומרו** (endpoint חי + BL לא-stub; אין `NotImplementedException`/`#error` בקוד). אופרציה **אחת בלבד**
+> לא הומרה, בכוונה: `TempSync` (stub מת בלגסי).
+>
+> **תוקן 2026-09-15 (אודיט נאמנות):** הניסוח הקודם כאן ספר 34/36 וטען ש-`GetPathsForNavigationToVendor` הושמטה
+> בכוונה — **זה לא נכון יותר**. היא הומרה חלקית ב-2026-08-20 (endpoint חי `GET AuthenticationRequest/PathsForNavigationToVendor`
+> + BL + DTOs), ומחזירה `ViewPaths` ריק עם `TODO(blocking)` עד שתתווסף טיפוס Lookup‏ `NavigationPath` בפלטפורמה.
+> ראה MIGRATION-STATUS.md — שם הרישום מדויק.
 >
 > **⚠️ הסעיפים הבאים במסמך זה מיושנים (STALE) — המתודות כבר הומרו על master** (endpoint חי + BL אמיתי;
 > החסמים שהם מציינים — תשתית Notifications, `ICollateralProxy`, `AttachDocumentsToEntity`, template — נפתרו
@@ -123,12 +127,17 @@
 **עוד לא-חוסם (מגבלת סביבה, לא קוד):** seed ל-Redis של `City`/`OrganizationUnit` (‏ILookupUtil) נדרש לבדיקת save מלאה
 מקומית (שם ה-org-unit ב-DisplayedValue נופל ל-id בסביבה לא-seeded).
 
-## Internal: GetPathsForNavigationToVendor — ⏭️ לא נדרש (הכרעת מוצר 2026-08-17: לא רלוונטי ל-SPA)
+## Internal: GetPathsForNavigationToVendor — 🟡 הומרה חלקית (2026-08-20) — הסעיף הישן להלן היה שגוי
 
 קורא את טבלת `NavigationPath` (T_1696) מ-DB התשתית (`InfrastructureConsts.InfrastructureORMMapping` —
 חיבור שונה מזה של המודול), PathID=359 — מנגנון ניווט התפריטים של הקליינט ה-WPF הישן.
-**הוכרע (2026-08-17): המנגנון אינו רלוונטי ב-SPA החדש → המתודה מושמטת בכוונה** (כמו TempSync). אין צורך
-בגישה חוצת-DB ל-NavigationPath ביעד. אם ייווצר צורך עתידי — יידרש proxy לשירות התשתית שחושף את הטבלה.
+
+**המצב בפועל (אומת באודיט 2026-09-15):** בניגוד לניסוח הקודם כאן ("מושמטת בכוונה, לא רלוונטי ל-SPA",
+הכרעת 2026-08-17) — ההכרעה **התהפכה ב-2026-08-20** והמתודה כן הומרה חלקית:
+`GET AuthenticationRequest/PathsForNavigationToVendor` ‏(`Ui/AuthenticationRequestController.cs`) + BL + DTOs.
+‏`PathId` מאוכלס (`NavigationToVendorPathId = 359`); **`ViewPaths` מוחזר תמיד ריק** תחת `TODO(blocking)` עד
+שהפלטפורמה תוסיף טיפוס Lookup‏ `NavigationPath` ושירות-מקור שיחשוף `GET /lookup/NavigationPath`. מיפוי השדות
+שהלגסי ביצע נשמר כקוד מוער לעתיד. **החלקיות היא בדיוק כפי שמתועד ב-MIGRATION-STATUS — אין פער נוסף.**
 
 ## Internal: LoadDataFromExportDeclaration — ✅ הומר (2026-07-05, branch `feature/migrate-load-data-from-export-declaration`)
 
