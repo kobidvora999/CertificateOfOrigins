@@ -216,3 +216,47 @@ CurrencyCode מומש דרך `ICurrencyTypeProxy` · נבדק חי end-to-end (G
 (1) **DocumentID** מוחזר NULL/0 (ה-JOIN ל-Infrastructure.Docs_* הוסר מה-SP) — לפתור דרך שירות Documents.
 (2) **אימות נתיבי endpoint ב-SystemTables לפני rollout:** `CurrencyType/CurrencyTypesByIds` ו-
 `DataDictionaryField/DataDictionaryFieldsByIds` (נכתבו כ-best-guess).
+
+## חוצה-מתודות: פריטים פתוחים מאודיט הנאמנות (2026-09-14/15)
+
+האודיט האדוורסרי כיסה 29 אופרציות מ-3 החוזים. רוב הפערים תוקנו (ראה MIGRATION-STATUS); אלה נשארו פתוחים
+ואינם תלויים בנו:
+
+### 🛑 מגבלת 30 עמודות ב-`MaxCountExceededInterceptor` — ממתין לנוגט
+
+‏`dbo.GetExportDocumentAuthenticationRequestById` מקרין **29 מתוך 35 עמודות** ומשמיט את
+`State`, `CreateDate`, `CreateUserId`, `UpdateDate`, `UpdateUserId`, `OrganizationUnitId` — כי ה-interceptor של
+הפלטפורמה זורק על 30+ עמודות בתוצאה. בגלל זה גם נתיב ה-update ב-BL קורא מחדש ומשחזר `State`/`OrganizationUnitId`
+לפני שמירה, כדי לא לאפס אותן.
+
+**נבדק 2026-09-15 על `InfrastructureCore.DAL` 1.10.58** (הגרסה החדשה ביותר שפורסמה ל-feed) עם קריאה מלאה של
+35 עמודות + ‏`.ExcludeInterceptor("j4XSVK6Fl8")`: **עדיין נכשל בזמן ריצה** —
+`DbInterceptionException: Result fields count (35) exceeded max eror level of 30 with query -- j4XSVK6Fl8`.
+ה-tag אכן נכנס ל-SQL, כלומר ה-API עובד — אבל ה-interceptor מתעלם ממנו. ⚠️ הקומפילציה עוברת, אז **חובה לאמת
+בזמן ריצה** (‏`GET ui/ExportDocumentAuthenticationRequest/{id}`) ולא להסתפק ב-build.
+
+**מה חוסם:** פרסום גרסת DAL חדשה שמכבדת את ה-exclusion (או רישום המודול ב-`InterceptorList` של הפלטפורמה).
+**כשזה יקרה:** להחליף את ה-projection ב-`.Include(...)` + `.ExcludeInterceptor("j4XSVK6Fl8")`, לאמת בריצה,
+ואז להחליט אם לחשוף את 6 השדות ב-`GetExportDocumentAuthenticationRequestByIdResultDto` (כרגע אינם בחוזה).
+
+### ⚠️ "Pattern A" — סינון סטטוס משימה (`TODO(confirm)` בקוד)
+
+הלגסי סינן משימות ב-`TaskStatusID != 2` (כל מה שאינו סגור). ב-.NET 10 אין סינון בצד ה-SP
+(ענפי הסטטוס ב-`usp_Tasks_IsTaskExist` מוערים), ולכן מסננים בצד שלנו על `IsTaskInProgress` — שהוא
+`TaskStatusID IN (1,4)`. **הפער שנותר:** משימות ב-Canceled(3)/Suspended(5) נחשבו "קיימות" בלגסי ואינן נחשבות
+אצלנו. מופעים: `GetAuthenticationRequestFileByID`, `GetAuthenticationRequestByID`, `IsCurrentUserHandleFile`,
+ושני ה-Planar jobs.
+
+### ⚠️ `SaveAuthenticationRequestFile` — שינוי התנהגות שדורש אישור מוצר
+
+קוד ה-collateral (‏grant על RightAuthenticationAnswer / debit על WrongAuthenticationAnswer) **פעיל** ב-.NET 10,
+בעוד שבלגסי המתודה שמכילה אותו (`CheckStatus`) הייתה **dead code** שלא נקראה מאף מקום — כלומר פרודקשן מעולם לא
+הפעיל את ה-side-effect הזה מול שירות ה-Collateral. זה תוקן במכוון (`8d46e33`, "Restore the file-level collateral
+outcome"), אך מדובר בשינוי מול ההתנהגות בפועל — ראוי ל-sign-off מפורש.
+
+### ⚠️ `HandleAuthenticationRequestDeliverySent` — סטייה לא-מוכחת
+
+הלגסי איתר את הישות הקשורה לפי `EntityType` **או** `TypeID` (שני שדות נפרדים ולא-מסונכרנים על `IEntity`).
+המומר בודק `EntityType` בלבד, ול-`VirtualEntityDto` אין `TypeId` כלל. אם שירות ה-Events מאכלס רק `TypeID`,
+ההתאמה תיכשל בשקט והמתודה תחזיר `false` היכן שהלגסי החזיר `true`. לא ניתן להוכיח מהרפו — המפיק חיצוני;
+דורש בדיקה מול חוזה שירות ה-Events.
