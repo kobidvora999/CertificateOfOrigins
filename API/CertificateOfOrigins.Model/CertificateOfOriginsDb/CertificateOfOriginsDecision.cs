@@ -29,4 +29,14 @@ public class CertificateOfOriginsDecision
 
     [Column("StartDate")]
     public DateTimeOffset? StartDate { get; set; }
+
+    // Audience flags — which screen's decision dropdown the value belongs to. The legacy WPF client filters on them
+    // (AuthenticationRequestFilePresenter: Decisions.Where(d => d.IsForClaliMakorWorker); ImportProcessFormPresenter:
+    // Decisions.Where(d => d.IsForCoordinator)). Onboarded for CR 194221 so an API consumer can filter the same way —
+    // the file-status lookup already exposes its own IsAutomatic flag.
+    [Column("IsForCoordinator")]
+    public bool IsForCoordinator { get; set; }
+
+    [Column("IsForClaliMakorWorker")]
+    public bool IsForClaliMakorWorker { get; set; }
 }

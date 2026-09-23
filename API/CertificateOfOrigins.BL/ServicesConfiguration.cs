@@ -108,6 +108,11 @@ public class ServicesConfiguration : IServicesConfiguration
         // RabbitMQ exchange) — resolved lazily via IQueueUtil.
         services.AddQueueUtil();
 
+        // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs);
+        // ITemplateUtil. Note this is a different path from the SSRS certificate rendering, which stays on
+        // ICommonServicesProxy.GenerateTemplate.
+        services.AddTemplateUtil();
+
         // Optional per-certificate distributed lock for GetPC_MSG2280_2281 (was LockFactory.GetLock) — gated at runtime
         // by the IsNeedToLockCertificateOfOrigin parameter; ILockUtil.
         services.AddLockServices();

@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# CR 194221 - AdministrativeClosure(10) at BOTH levels in one request: the file status, and the child request's
+# decision. The status arm must behave exactly like RightAuthenticationAnswer(6) "תיק תקין" - it grants the
+# collaterals and is in openTaskStatuses - while the decision arm must NOT grant (that stays Approval-only).
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 10,
+      "originalAuthenticationFileStatusId": 1,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990105, "authenticationFileId": 990002, "decisionId": 10, "originalRequestDecisionId": 1,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30060

@@ -124,4 +124,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId);
 
     Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts);
+
+    // CR 194221 — the template's data row (dbo.GetTemplateData). T is the template's Result DTO, chosen by the BL
+    // from the template id; null when the id is unregistered or the entity has no data.
+    Task<T?> GetTemplateData<T>(int templateId, int entityId);
 }

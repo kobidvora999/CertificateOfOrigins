@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/1/-1"
+method: GET
+headers:
+  CC-USER-ID: "5"
+# CR 194221 - template 1 (SouthKoreaOriginVerificationLetter) is registered, but no authentication file has id -1,
+# so dbo.GetTemplateData returns no rows and the BL must apply the repo not-found contract -> 404. Like the
+# unknown-id case this never reaches the Templates microservice, which keeps it deterministic locally.
+#
+# There is deliberately NO happy-path request here: a successful render calls ITemplateUtil, which is platform
+# infrastructure rather than a proxy, so the collection-wide 'x-mock-mode' header does NOT stub it and the run
+# would depend on a live Templates service. Add one once Templates is reachable from the test environment.
+order: 10010

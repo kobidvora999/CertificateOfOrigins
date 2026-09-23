@@ -64,3 +64,10 @@ stored procedures:
     method: query
     result type namespace: CertificateOfOrigins.Model.ModelDTOs
     result type: CertificateOfOriginWebQueryDto
+  # CR 194221 — the service-wide template-data SP. Its result type varies per template, so
+  # DbContextExtension.GetTemplateData is hand-written as a generic (the generated single-type path does not apply).
+  - name: dbo.GetTemplateData
+    function: GetTemplateData
+    method: query
+    result type namespace: CertificateOfOrigins.Model.ModelDTOs
+    result type: object

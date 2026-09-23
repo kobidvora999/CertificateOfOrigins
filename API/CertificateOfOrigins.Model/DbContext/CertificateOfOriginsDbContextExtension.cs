@@ -225,4 +225,20 @@ public partial class CertificateOfOriginsDbContext
 
         return certificate;
     }
+
+    // dbo.GetTemplateData — the service-wide template-data procedure (CR 194221). Hand-written rather than generated
+    // because the result type varies per template: the procedure branches on @TemplateID and each branch returns that
+    // template's own column set, so the caller supplies T. An unregistered template id or a missing entity returns no
+    // rows, which the BL turns into a 404.
+    public async Task<IEnumerable<T>> GetTemplateData<T>(int templateId, int entityId, CancellationToken cancellationToken = default)
+    {
+        var conn = Database.GetDbConnection();
+        var cmd = new CommandDefinition(
+            commandText: "dbo.GetTemplateData",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken,
+            parameters: new { TemplateID = templateId, EntityID = entityId });
+        var result = await conn.QueryAsync<T>(cmd);
+        return result;
+    }
 }

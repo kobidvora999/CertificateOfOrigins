@@ -480,6 +480,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 EnglishName = d.EnglishName,
                 Enumeration = d.Enumeration,
                 StartDate = d.StartDate,
+                IsForCoordinator = d.IsForCoordinator,
+                IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
             .ToListAsync();
         return result;
@@ -1164,5 +1166,12 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         parameters.Add("@CountryID", countryId, DbType.Int32);
         var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForImporter(parameters);
         return result;
+    }
+
+    // CR 194221 — dbo.GetTemplateData. A read, so ReadOnlyContext per the repo convention.
+    public async Task<T?> GetTemplateData<T>(int templateId, int entityId)
+    {
+        var result = await ReadOnlyContext.GetTemplateData<T>(templateId, entityId);
+        return result.FirstOrDefault();
     }
 }

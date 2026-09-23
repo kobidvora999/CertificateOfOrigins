@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/99/990002"
+method: GET
+headers:
+  CC-USER-ID: "5"
+# CR 194221 - the template-render surface the distribution ("דיוור") flow calls in step 4.
+# 99 is not a registered template, so GetTemplateMeta must reject it before any data is fetched and before the
+# Templates microservice is contacted -> 404.
+order: 10000

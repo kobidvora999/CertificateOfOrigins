@@ -58,6 +58,8 @@ public partial class AuthenticationRequestBl(
                 EnglishName = d.EnglishName,
                 Enumeration = d.Enumeration,
                 StartDate = d.StartDate,
+                IsForCoordinator = d.IsForCoordinator,
+                IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
             .ToList();
 
@@ -177,6 +179,8 @@ public partial class AuthenticationRequestBl(
                 EnglishName = decision.EnglishName,
                 Enumeration = decision.Enumeration,
                 StartDate = decision.StartDate,
+                IsForCoordinator = decision.IsForCoordinator,
+                IsForClaliMakorWorker = decision.IsForClaliMakorWorker,
             })
             .ToList();
         var fileStatuses = (await DataLayer.GetAllFileStatuses())
@@ -989,6 +993,7 @@ public partial class AuthenticationRequestBl(
             case (int)EAuthenticationRequestDecision.Approval:
             case (int)EAuthenticationRequestDecision.Partly:
             case (int)EAuthenticationRequestDecision.DemandAnotherClarification:
+            case (int)EAuthenticationRequestDecision.AdministrativeClosure:
             {
                 var decisionName = await GetDecisionName(decisionId ?? 0);
                 message.MessageParameters = [decisionName, documentId.ToString()];
@@ -1163,7 +1168,9 @@ public partial class AuthenticationRequestBl(
     // Legacy issues both, on different statuses, with different entity types.
     private async Task ApplyFileStatusCollateralOutcome(SaveAuthenticationRequestFileRequestDto request)
     {
-        var isRightAnswer = request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.RightAuthenticationAnswer;
+        // CR 194221: AdministrativeClosure releases the collaterals exactly like RightAuthenticationAnswer ("תיק תקין").
+        var isRightAnswer = request.AuthenticationFileStatusId is (int)EAuthenticationFileStatus.RightAuthenticationAnswer
+            or (int)EAuthenticationFileStatus.AdministrativeClosure;
         var isWrongAnswer = request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.WrongAuthenticationAnswer;
         if (!isRightAnswer && !isWrongAnswer)
         {
@@ -1267,6 +1274,9 @@ public partial class AuthenticationRequestBl(
             (int)EAuthenticationFileStatus.RightAuthenticationAnswer,
             (int)EAuthenticationFileStatus.ClarificationRequired,
             (int)EAuthenticationFileStatus.WrongAuthenticationAnswer,
+
+            // CR 194221 — an administratively closed file opens the handling task like "תיק תקין" does.
+            (int)EAuthenticationFileStatus.AdministrativeClosure,
         };
         if (openTaskStatuses.Contains(request.AuthenticationFileStatusId)
             || request.Requests.Any(c => c.DecisionId == (int)EAuthenticationRequestDecision.Partly))

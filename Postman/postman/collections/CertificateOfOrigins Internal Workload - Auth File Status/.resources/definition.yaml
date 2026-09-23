@@ -51,6 +51,7 @@ scripts:
           '40-clarification':    7,
           '50-partly-child':     2,
           '60-rejection-child':  6,
+          '70-administrative-closure': 10,
           '90-cancelled':        9
       };
       if (SENT_STATUS[name] !== undefined && j) {
@@ -65,6 +66,22 @@ scripts:
           pm.test('90-cancelled: the child requests were unlinked from the file', function () {
               var kids = j.importAuthenticationRequests || j.requests || [];
               pm.expect(kids, 'children still attached').to.be.an('array').that.is.empty;
+          });
+      }
+
+      if (name === '70-administrative-closure' && j) {
+          // CR 194221. SENT_STATUS above already proves the file reached status 10; this proves the OTHER half of
+          // the change - the request-level decision - actually persisted, which is a data effect rather than an
+          // event and so is assertable. The collateral grant and the opened task are events, so the coverage
+          // delta is their only proof.
+          pm.test('70-administrative-closure: the child request kept decision 10', function () {
+              var kids = j.importAuthenticationRequests || j.requests || [];
+              pm.expect(kids, 'children').to.be.an('array').that.is.not.empty;
+              // File 990002 has TWO children (990105 + 990106) and the read does not promise an order, so match
+              // the one this request actually decided rather than indexing blindly.
+              var target = kids.filter(function (k) { return k.documentId === 990105; })[0];
+              pm.expect(target, 'request 990105 in the response').to.not.be.undefined;
+              pm.expect(target.decisionId, 'decisionId').to.eql(10);
           });
       }
 

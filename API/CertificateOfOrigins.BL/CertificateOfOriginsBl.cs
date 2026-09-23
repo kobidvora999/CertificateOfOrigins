@@ -1884,8 +1884,20 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy RaiseTaskNewCertificateOfOriginCheck: raise the given certificate event, preferring the export-declaration
     // assessor for the opened task (legacy EventTaskArguments.PreferredUserID; the assessor OrganizationUnitId source is
     // the certificate's). Used by the reconciler match event and the new-certificate-created event.
-    // TODO(migration): the "additional certificates on this declaration" task message
-    // (EMessages.AdditionalCertificatesToExportDeclaration + GetCertificateOfOriginByDeclaration) is deferred (resx).
+    //
+    // CR 194221: the event's AdditionalInfo lands in {2} of the task-type title pattern, so it is what renders the
+    // request reason in the task name "טיפול בבקשה להנפקת תעודת מקור - (סיבת בקשה)" (Tasks_enum_TaskType 181,
+    // PC_Tsk01_NewCertificateOfOriginCheck). Both events wired to open that task (599 NewCertificateOfOriginCreated
+    // and 642 CertificateMatchDeclaration) ran through this same legacy method, so placing the value here covers
+    // both. 642 is the only one that actually fires: legacy RaiseNewCertificateOfOriginCreatedEvent raises 599 only
+    // when the "IsExportDeclarationActive" parameter is FALSE, and that parameter is always TRUE (confirmed with the
+    // analyst, 2026-09-23) — so 599 is unreachable in the legacy too, not just here. See RaiseStatusEvents.
+    //
+    // 🛑 TODO(blocking): {2} has TWO claimants. The legacy put the "additional certificates on this declaration"
+    // message (EMessages.AdditionalCertificatesToExportDeclaration + GetCertificateOfOriginByDeclaration) in
+    // AdditionalInfo; that message is still deferred (resx) and therefore never written, which is why the slot was
+    // free to take. Whoever restores it MUST reconcile the two — replace, or concatenate — rather than simply
+    // reinstating the legacy assignment and silently dropping the request reason from the task name.
     private async Task RaiseCertificatePreferredAssessorEvent(CertificateOfOrigin certificate, IEventUtil eventUtil, int eventTypeId)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
@@ -1909,7 +1921,31 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder = builder.WithTaskArguments(task => task.WithPreferredUserId(assessorUserId.Value));
         }
 
+        // CR 194221 — the request reason, rendered into {2} of the task title.
+        var requestReasonName = GetRequestReasonName(certificate.RequestReasonCode);
+        if (!string.IsNullOrEmpty(requestReasonName))
+        {
+            builder = builder.WithAdditionalInfo(requestReasonName);
+        }
+
         await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    // The request-reason display name — taken from the ERequestReason [Display(Name)] attribute (the Hebrew names of
+    // CRM.CertificateOfOrigins_enum_RequestReasonCode), mirroring GetCertificateTypeName. An unmapped code yields an
+    // empty string rather than a bare number, so the task name degrades to the plain title instead of showing "(17)".
+    private static string GetRequestReasonName(int requestReasonCode)
+    {
+        if (!Enum.IsDefined(typeof(ERequestReason), requestReasonCode))
+        {
+            return string.Empty;
+        }
+
+        var requestReason = (ERequestReason)requestReasonCode;
+        var memberName = requestReason.ToString();
+        var member = typeof(ERequestReason).GetMember(memberName).FirstOrDefault();
+        var display = member?.GetCustomAttribute<DisplayAttribute>();
+        return display?.Name ?? memberName;
     }
 
     // Legacy warnings branch: raise CertificateOfOriginCertificateDeclarationHasWarnings, assigning the mismatch task to
