@@ -32,13 +32,13 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
 
     // Legacy: CRP.DealFile_LeadDocumentSubmissionData.SubmitDate (LEFT JOIN by LeadDocumentID) — the lead document's
     // submission date from the DealFile service.
-    public async Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId)
+    public async Task<DateTime?> GetLeadDocumentSubmissionDate(int leadDocumentId)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/ExportDealFile/LeadDocumentSubmissionDate/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
         var response = await ExecuteAsync(req);
-        return await response.GetResult<DateTimeOffset?>();
+        return await response.GetResult<DateTime?>();
     }
 
     public async Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(int oldCertificateOfOriginId, int newCertificateOfOriginId)

@@ -7,17 +7,17 @@ public class AuthenticationFileRequestDto
 {
     public int DocumentId { get; set; }
 
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     public int? AuthenticationFileId { get; set; }
 
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     public int? DecisionId { get; set; }
 
     public int LeadDocumentId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int ImportCountryId { get; set; }
 
@@ -37,7 +37,7 @@ public class AuthenticationFileRequestDto
 
     public int? ImporterId { get; set; }
 
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     public string? InvoiceNumber { get; set; }
 
@@ -61,7 +61,7 @@ public class AuthenticationFileRequestDto
     public List<CollateralRequestDto> Collaterals { get; set; } = [];
 
     // Lead-document submission date (DealFile service; legacy CRP.DealFile_LeadDocumentSubmissionData JOIN).
-    public DateTimeOffset? LeadDocumentSubmissionDate { get; set; }
+    public DateTime? LeadDocumentSubmissionDate { get; set; }
 
     // True when an open SendReminderForImporter (404) task exists for this request (legacy OUTER APPLY on Tasks_Task).
     public bool IsSendReminderForImporterTaskExists { get; set; }

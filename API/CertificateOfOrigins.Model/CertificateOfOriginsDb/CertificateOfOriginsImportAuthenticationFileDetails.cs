@@ -62,11 +62,11 @@ public partial class CertificateOfOriginsImportAuthenticationFileDetails
     public string? UserNameIssuingLetter { get; set; }
 
     [Column("LastDelivery")]
-    public DateTimeOffset? LastDelivery { get; set; }
+    public DateTime? LastDelivery { get; set; }
 
     [Column("ImporterContactingReasonID")]
     public int? ImporterContactingReasonId { get; set; }
 
     [Column("FirstProvideContactDate")]
-    public DateTimeOffset? FirstProvideContactDate { get; set; }
+    public DateTime? FirstProvideContactDate { get; set; }
 }

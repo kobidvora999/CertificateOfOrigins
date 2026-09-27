@@ -10,7 +10,7 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int? AuthenticationFileId { get; set; }
 
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     public int? CollateralId { get; set; }
 
@@ -18,7 +18,7 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int LeadDocumentId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int ImportCountryId { get; set; }
 
@@ -42,7 +42,7 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int? ImporterId { get; set; }
 
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     public string? InvoiceNumber { get; set; }
 

@@ -618,7 +618,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         //
         // DocumentID is a non-identity, externally-assigned key — this method only ever edits an existing request;
         // no matching row → false (404 in the BL).
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
             .ExecuteUpdateAsync(setters => setters
@@ -1036,8 +1036,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
         // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
         // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
-        var now = DateTimeOffset.Now;
-        var today = new DateTimeOffset(now.Date, now.Offset);
+        var now = DateTime.Now;
+        var today = now.Date;
 
         await Context.CertificateOfOriginsImportAuthenticationFileDetails
             .Where(f => f.Id == fileId)
@@ -1045,7 +1045,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
                 .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
                 .SetProperty(f => f.LastDelivery, today)
-                .SetProperty(f => f.UpdateDate, today.DateTime));
+                .SetProperty(f => f.UpdateDate, today));
 
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
@@ -1059,7 +1059,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
         // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
         // which — matching the legacy loop — overrides this request's UpdateDate to "now".) Set-based, no row loaded.
-        var today = new DateTimeOffset(DateTimeOffset.Now.Date, DateTimeOffset.Now.Offset);
+        var today = DateTime.Today;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .ExecuteUpdateAsync(s => s
@@ -1073,7 +1073,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile step 1 (UpdateAndSaveImportAuthenticationRequest): stamp each child request's
         // decision + the recomputed IsOldIndication flag + update-audit. Set-based, no row loaded.
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .ExecuteUpdateAsync(s => s
@@ -1087,7 +1087,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile step 4: persist the file's editable scalar columns + update-audit. Set-based
         // (the repo write convention) — CreateDate/CreateUserId/State/TimeStamp are left untouched. Missing row → false.
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationFileDetails
             .Where(f => f.Id == file.Id)
             .ExecuteUpdateAsync(s => s
@@ -1103,7 +1103,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.LastDelivery, file.LastDelivery)
                 .SetProperty(f => f.ImporterContactingReasonId, file.ImporterContactingReasonId)
                 .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
-                .SetProperty(f => f.UpdateDate, now.DateTime)
+                .SetProperty(f => f.UpdateDate, now)
                 .SetProperty(f => f.UpdateUserId, userId));
         return affected > 0;
     }
@@ -1112,7 +1112,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile / CheckStatusAndOpenTask CancelledFile branch: detach every child request from
         // the cancelled file (AuthenticationFileID → null) + stamp update-audit. Set-based.
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
             .ExecuteUpdateAsync(s => s

@@ -205,11 +205,7 @@ public partial class AuthenticationRequestBl(
         {
             Id = file.Id,
             State = file.State,
-
-            // The entity maps CreateDate as DateTime (ICloudEntity); the DTO exposes DateTimeOffset. Build it with a
-            // ZERO offset to match what the DbContext DateTimeOffset value converter produced before C12 — an implicit
-            // DateTime→DateTimeOffset conversion would stamp the LOCAL offset and shift the instant on the wire.
-            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
+            CreateDate = file.CreateDate,
             AuthenticationFileStatusId = file.AuthenticationFileStatusId,
             Notes = file.Notes,
             PostalAdress = file.PostalAdress,
@@ -450,9 +446,7 @@ public partial class AuthenticationRequestBl(
             DeliveryMethodId = file.DeliveryMethodId,
             ReminderMethodId = file.ReminderMethodId,
             EmailAdress = file.EmailAdress,
-
-            // Zero offset — see the note at CreateDate in MapToFileResultDto above (ICloudEntity DateTime → DTO DateTimeOffset).
-            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
+            CreateDate = file.CreateDate,
         };
     }
 
@@ -1058,7 +1052,7 @@ public partial class AuthenticationRequestBl(
         var userId = RequestMetadata.UserId ?? 0;
 
         // 1. Persist every child request's decision + recomputed IsOldIndication (3+ years since issuing).
-        var threeYearsAgo = DateTimeOffset.Now.AddYears(-3);
+        var threeYearsAgo = DateTime.Now.AddYears(-3);
         foreach (var child in request.Requests)
         {
             var isOldIndication = child.DocumentIssuingDate <= threeYearsAgo;

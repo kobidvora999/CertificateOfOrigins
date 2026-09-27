@@ -29,10 +29,10 @@ public class CertificateOfOriginsAuthenticationFileStatus
     public string? Enumeration { get; set; }
 
     [Column("StartDate")]
-    public DateTimeOffset? StartDate { get; set; }
+    public DateTime? StartDate { get; set; }
 
     [Column("EndDate")]
-    public DateTimeOffset? EndDate { get; set; }
+    public DateTime? EndDate { get; set; }
 
     [Column("IsAutomatic")]
     public bool IsAutomatic { get; set; }

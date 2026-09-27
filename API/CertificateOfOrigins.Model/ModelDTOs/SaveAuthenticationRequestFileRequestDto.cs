@@ -32,11 +32,11 @@ public class SaveAuthenticationRequestFileRequestDto
 
     public string? UserNameIssuingLetter { get; set; }
 
-    public DateTimeOffset? LastDelivery { get; set; }
+    public DateTime? LastDelivery { get; set; }
 
     public int? ImporterContactingReasonId { get; set; }
 
-    public DateTimeOffset? FirstProvideContactDate { get; set; }
+    public DateTime? FirstProvideContactDate { get; set; }
 
     // Transient (the file entity has no OrganizationUnit column) — supplied by the client for the file-level events.
     public int OrganizationUnitId { get; set; }
@@ -56,7 +56,7 @@ public class SaveAuthenticationRequestFileChildDto
     // The decision as loaded — used to detect which requests changed (drives the per-request events/message).
     public int? OriginalRequestDecisionId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int OrganizationUnitId { get; set; }
 
