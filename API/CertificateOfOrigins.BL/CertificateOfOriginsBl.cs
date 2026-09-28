@@ -167,6 +167,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     }
                 }
 
+                AddOpenCustomsEmployeeTaskException(certificateToResponse, requestExceptions);
+
                 // Legacy: the exception gate (throw _requestExceptions) runs BEFORE the reason switch, so the cancel is
                 // performed only when NOTHING accumulated — an amendment-linkage error, a not-found, or an associated
                 // declaration all block it. Only cancel when the request is clean.
