@@ -3,11 +3,8 @@ id: certificateoforigins-save-import-decisions-v1
 name: CertificateOfOrigins Save Import Decisions
 description: >-
   Every arm of SaveImportAuthenticationRequest's decision switch (AuthenticationRequestBl.cs:817).
-  The stock fixture pointed at documentId 900001, which does not exist: the set-based update affects 0 rows,
-  the BL throws RestNotFoundException, and the whole tail of the method - the VendorId 0 -> null
-  normalisation, the AuthenticationNeedless rejection event, the save and the re-read - was unreachable. Only
-  one of the four switch paths ever ran, and RaiseNewRequestEvent sat at 0/14.
-  These scenarios drive SEEDED rows instead, so the save succeeds and the method runs to the end.
+  Scenarios 10-70 drive SEEDED rows through the update path; 80 inserts a brand-new request (a fresh DocumentID
+  per run) - the path the legacy popup created requests through (Repository.Save upsert).
   REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql, which now also
   creates 990103 / 990104. Those two are DEDICATED to this collection and deliberately separate from
   990101 / 990102: this save is a set-based UPDATE that writes AuthenticationFileID, DecisionID and VendorID,
@@ -21,23 +18,33 @@ scripts:
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       pm.collectionVariables.set('today', iso(Date.now()));
+      // 80 inserts a brand-new request, so it needs a DocumentID no earlier run has used (DocumentID is caller-assigned,
+      // not an identity). A reused id would fall into the update path and prove nothing about the insert.
+      if (pm.info.requestName === '80-new-request-insert') {
+          pm.collectionVariables.set('newDocId', 800000000 + (Date.now() % 100000000));
+      }
     language: text/javascript
   - type: http:afterResponse
     code: |-
       var name = pm.info.requestName;
       var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
 
-      // 80-missing-row is the one scenario whose 4xx IS the branch - the rest must reach the tail and come back
-      // with the re-read graph.
-      var expected = (name === '80-missing-row') ? 404 : 200;
+      // Every scenario must reach the tail and come back with the re-read graph.
+      var expected = 200;
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
       pm.test(name + ': status is ' + expected, function () { pm.response.to.have.status(expected); });
 
-      if (name === '80-missing-row') {
-          pm.test('80: a missing request row is a 404, not a silent no-op 200', function () {
-              pm.expect(pm.response.code).to.eql(404);
+      if (name === '80-new-request-insert') {
+          // Legacy Repository.Save was an upsert: the coordinator's "new authentication request" popup saves a
+          // request that does not exist yet through this operation. The re-read returning the fresh DocumentID is
+          // the proof the row was INSERTED (before the fix this was a 404).
+          pm.test('80: a new request is inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(Number(pm.collectionVariables.get('newDocId')));
+              pm.expect(j.decisionId, 'decisionId').to.eql(1);
+              pm.expect(j.vendorId, 'vendorId').to.eql(777);
           });
           return;
       }

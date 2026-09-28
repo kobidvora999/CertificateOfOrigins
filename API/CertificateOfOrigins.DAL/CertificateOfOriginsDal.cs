@@ -616,8 +616,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // OrganizationUnitTypeId (system-assigned, no screen edits them), and IsOldIndication (derived from
         // DocumentIssuingDate and written by the file-save path, not by the coordinator).
         //
-        // DocumentID is a non-identity, externally-assigned key — this method only ever edits an existing request;
-        // no matching row → false (404 in the BL).
+        // DocumentID is a non-identity, externally-assigned key. This method edits an existing request only; no
+        // matching row → false, and the BL inserts through AddImportAuthenticationRequest instead.
         var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
@@ -661,6 +661,61 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(r => r.UpdateUserId, userId));
 
         return affected > 0;
+    }
+
+    public async Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    {
+        // SaveImportAuthenticationRequest for a NEW request (legacy Repository.Save of an IsNewInstance entity — the
+        // coordinator's popup creates requests through that operation). DocumentID is the caller-assigned key and is
+        // written as sent. The entity is not an ICloudEntity (its key is DocumentID, not Id), so the audit columns are
+        // stamped here, as the update above does.
+        //
+        // NOT NULL columns the popup does not send: RequestCircumstancesID = 1 (the value InitNewImportProcess sets),
+        // Remarks = empty, ItemDetailID = 0 and IsOldIndication = false (the legacy entity's CLR defaults).
+        var now = DateTime.Now;
+        var entity = new CertificateOfOriginsImportAuthenticationRequest
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = now,
+            CreateUserId = userId,
+            UpdateDate = now,
+            UpdateUserId = userId,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            ResponsePhoneNum = request.ResponsePhoneNum,
+            OrganizationUnitId = request.OrganizationUnitId,
+            OrganizationUnitTypeId = request.OrganizationUnitTypeId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+            UserId = request.UserId,
+            UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            RequestCircumstancesId = request.RequestCircumstancesId ?? 1,
+            Remarks = request.Remarks ?? string.Empty,
+            DocumentNumber = request.DocumentNumber,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
+            ItemDetailId = 0,
+            IsOldIndication = false,
+        };
+        Context.CertificateOfOriginsImportAuthenticationRequests.Add(entity);
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
 
     // The GetById read projection omits State + OrganizationUnitId (29-column interceptor limit), so a round-tripped

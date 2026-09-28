@@ -4,12 +4,13 @@ method: POST
 headers:
   Content-Type: application/json
   x-mock-feature--Tasks.Empty: "true"
-# documentId 900001 does not exist -> the set-based update affects 0 rows -> RestNotFoundException. This is what the STOCK fixture did on every run, which is why the whole tail of the method (VendorId normalisation, the save, the re-read) was unreachable.
+# A brand-new request (fresh documentId per run, set in the collection pre-request script): the update affects 0 rows,
+# so the BL inserts it - legacy Repository.Save upsert, the path the coordinator's "new request" popup used.
 body:
   type: json
   content: |-
     {
-      "documentId": 900001,
+      "documentId": {{newDocId}},
       "authenticationFileId": null,
       "authenticationRequestDate": "{{today}}",
       "collateralId": null,

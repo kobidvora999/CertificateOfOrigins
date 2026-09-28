@@ -829,8 +829,9 @@ public partial class AuthenticationRequestBl(
     // all collaterals are pushed to permanent (Collateral service) — collaterals are NOT a local child table; (2) the
     // decision switch raises the matching events (Tasks-service task checks reuse IsTaskExist) and, on a central
     // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
-    // additionally raises a rejection event assigning the opened task to the responder. The persist is a set-based
-    // update on the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404.
+    // additionally raises a rejection event assigning the opened task to the responder. The persist is an upsert like
+    // the legacy Repository.Save: a set-based update on the existing row, or an insert when the request is new (the
+    // entity has no child collection — ItemDetailID is a scalar).
     // Returns the fully re-read request graph via GetAuthenticationRequestByID — consistent with the sibling
     // SaveAuthenticationRequestFile (both saves return the same shape as their GetById read).
     public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
@@ -922,12 +923,16 @@ public partial class AuthenticationRequestBl(
             await eventUtil.RaiseEvent(rejectedEvent);
         }
 
-        // Persist (set-based update) — 404 if the request row is gone.
+        // Persist. Legacy saved through Repository.Save, an upsert: the coordinator's "new authentication request" popup
+        // (ImportProcessFormPresenter.InitNewImportProcess) builds the request client-side — IsNewInstance = true,
+        // DecisionID = 1 — and saves it through this same operation. So an existing row is updated in place and a
+        // missing one is inserted; a missing row is not an error.
         var userId = RequestMetadata.UserId ?? 0;
-        var saved = await DataLayer.SaveImportAuthenticationRequest(request, userId);
-        if (!saved)
+        var updated = await DataLayer.SaveImportAuthenticationRequest(request, userId);
+        if (!updated)
         {
-            throw new RestNotFoundException();
+            await DataLayer.AddImportAuthenticationRequest(request, userId);
+            await SaveChangesAsync();
         }
 
         // Return the fully re-read request graph (consistent with the sibling SaveAuthenticationRequestFile — the SPA

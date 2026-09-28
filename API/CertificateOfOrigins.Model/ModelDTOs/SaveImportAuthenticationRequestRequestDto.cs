@@ -3,7 +3,8 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // Request for SaveImportAuthenticationRequest — the import authentication request as edited by the SPA (the legacy
 // passed the full CertificateOfOriginsImportAuthenticationRequest entity). Carries the round-trip editable fields
 // (mirroring GetAuthenticationRequestByIdResultDto) plus the messaging users and the collaterals. The DAL applies
-// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here.
+// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here — or, for a
+// new request (DocumentId not yet stored), inserts it.
 public class SaveImportAuthenticationRequestRequestDto
 {
     public int DocumentId { get; set; }
@@ -79,6 +80,10 @@ public class SaveImportAuthenticationRequestRequestDto
     public decimal? InvoiceGoodsItemTaxDifference { get; set; }
 
     public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+
+    // Written on insert only (a new request). The legacy popup set it from the creating user's
+    // FormalOrganizationUnitTypeID (ImportProcessFormPresenter.InitNewImportProcess); an update leaves it alone.
+    public int? OrganizationUnitTypeId { get; set; }
 
     // Precomputed on load (GetAuthenticationRequestByID): whether the current user already handles the request — gates
     // the NewAuthenticationRequest event in the decision switch.
