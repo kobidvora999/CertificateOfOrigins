@@ -610,7 +610,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    public async Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
     {
         // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). Legacy did a full
         // self-tracking-entity save, so an explicit set-list is only equivalent for columns nobody edits.
@@ -626,7 +626,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // DocumentIssuingDate and written by the file-save path, not by the coordinator).
         //
         // DocumentID is a non-identity, externally-assigned key. This method edits an existing request only; no
-        // matching row → false, and the BL inserts through AddImportAuthenticationRequest instead.
+        // matching row → false (404 in the BL). A new request is inserted by AddImportAuthenticationRequest, chosen by
+        // the caller's IsNewInstance — never by this method's result.
         var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
@@ -674,9 +675,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
     {
-        // SaveImportAuthenticationRequest for a NEW request (legacy Repository.Save of an IsNewInstance entity — the
-        // coordinator's popup creates requests through that operation). DocumentID is the caller-assigned key and is
-        // written as sent. The entity is not an ICloudEntity (its key is DocumentID, not Id), so the audit columns are
+        // SaveImportAuthenticationRequest when the caller sends IsNewInstance = true (legacy Repository.Save of an
+        // IsNewInstance entity — the coordinator's popup creates requests through that operation). DocumentID is the
+        // caller-assigned key and is written as sent. The entity is not an ICloudEntity (its key is DocumentID, not Id), so the audit columns are
         // stamped here, as the update above does.
         //
         // NOT NULL columns the popup does not send: RequestCircumstancesID = 1 (the value InitNewImportProcess sets),

@@ -3,11 +3,16 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // Request for SaveImportAuthenticationRequest — the import authentication request as edited by the SPA (the legacy
 // passed the full CertificateOfOriginsImportAuthenticationRequest entity). Carries the round-trip editable fields
 // (mirroring GetAuthenticationRequestByIdResultDto) plus the messaging users and the collaterals. The DAL applies
-// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here — or, for a
-// new request (DocumentId not yet stored), inserts it.
+// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here — or, when
+// IsNewInstance is true, inserts it.
 public class SaveImportAuthenticationRequestRequestDto
 {
     public int DocumentId { get; set; }
+
+    // True when this save creates the request (legacy entity IsNewInstance — set by the coordinator's "new
+    // authentication request" popup). DocumentId is caller-assigned and non-zero for a new request too, so it cannot
+    // tell new from existing; this flag does. False → the request must already exist (404 otherwise).
+    public bool IsNewInstance { get; set; }
 
     public int? AuthenticationFileId { get; set; }
 

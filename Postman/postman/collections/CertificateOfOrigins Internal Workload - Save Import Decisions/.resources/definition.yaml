@@ -3,8 +3,8 @@ id: certificateoforigins-save-import-decisions-v1
 name: CertificateOfOrigins Save Import Decisions
 description: >-
   Every arm of SaveImportAuthenticationRequest's decision switch (AuthenticationRequestBl.cs:817).
-  Scenarios 10-70 drive SEEDED rows through the update path; 80 inserts a brand-new request (a fresh DocumentID
-  per run) - the path the legacy popup created requests through (Repository.Save upsert).
+  Scenarios 10-70 drive SEEDED rows through the update path; 80 inserts a brand-new request (isNewInstance = true,
+  a fresh DocumentID per run) - the path the legacy popup created requests through.
   REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql, which now also
   creates 990103 / 990104. Those two are DEDICATED to this collection and deliberately separate from
   990101 / 990102: this save is a set-based UPDATE that writes AuthenticationFileID, DecisionID and VendorID,
@@ -37,9 +37,8 @@ scripts:
       pm.test(name + ': status is ' + expected, function () { pm.response.to.have.status(expected); });
 
       if (name === '80-new-request-insert') {
-          // Legacy Repository.Save was an upsert: the coordinator's "new authentication request" popup saves a
-          // request that does not exist yet through this operation. The re-read returning the fresh DocumentID is
-          // the proof the row was INSERTED (before the fix this was a 404).
+          // isNewInstance = true: the coordinator's "new authentication request" popup creates the request through
+          // this operation. The re-read returning the fresh DocumentID is the proof the row was INSERTED.
           pm.test('80: a new request is inserted and read back', function () {
               pm.expect(j, 'body').to.be.an('object');
               pm.expect(j.documentId, 'documentId').to.eql(Number(pm.collectionVariables.get('newDocId')));

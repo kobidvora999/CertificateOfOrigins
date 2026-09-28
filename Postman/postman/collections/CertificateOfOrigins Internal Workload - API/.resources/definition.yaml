@@ -64,6 +64,7 @@ scripts:
           'CertificateOfOriginID': 404,
           'AuthenticationRequestByID': 404,
           'AuthenticationRequestFileByID': 404,
+          'SaveImportAuthenticationRequest': 404,
           'SaveAuthenticationRequestFile': 404,
           // CR 194221 — both template cases assert the not-found contract on purpose: one for an unregistered
           // template id, one for an entity that does not exist. Neither reaches the Templates microservice.

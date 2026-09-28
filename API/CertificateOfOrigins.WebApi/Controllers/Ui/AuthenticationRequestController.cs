@@ -170,8 +170,8 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
     // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
-    // upserts the request row (update if it exists, insert if it is new — legacy Repository.Save). A state-changing
-    // write with a body → POST.
+    // inserts the request when the caller sends IsNewInstance, otherwise updates it (missing row → 404). A
+    // state-changing write with a body → POST.
     // Returns the fully re-read request graph (same shape as GetAuthenticationRequestByID).
     [HttpPost("SaveImport")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]

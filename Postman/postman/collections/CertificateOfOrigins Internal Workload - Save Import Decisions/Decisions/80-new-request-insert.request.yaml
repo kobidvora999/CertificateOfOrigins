@@ -4,13 +4,15 @@ method: POST
 headers:
   Content-Type: application/json
   x-mock-feature--Tasks.Empty: "true"
-# A brand-new request (fresh documentId per run, set in the collection pre-request script): the update affects 0 rows,
-# so the BL inserts it - legacy Repository.Save upsert, the path the coordinator's "new request" popup used.
+# A brand-new request: isNewInstance = true, as the legacy "new request" popup sent it (fresh documentId per run, set
+# in the collection pre-request script). The BL inserts because the CALLER says it is new - never because an update
+# found no row.
 body:
   type: json
   content: |-
     {
       "documentId": {{newDocId}},
+      "isNewInstance": true,
       "authenticationFileId": null,
       "authenticationRequestDate": "{{today}}",
       "collateralId": null,

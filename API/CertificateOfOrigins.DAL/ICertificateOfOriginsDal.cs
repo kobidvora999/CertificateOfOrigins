@@ -75,7 +75,7 @@ public interface ICertificateOfOriginsDal : IBaseDal
         List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
         List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas);
 
-    Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+    Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
 
     Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
 

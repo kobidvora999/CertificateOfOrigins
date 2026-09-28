@@ -837,9 +837,10 @@ public partial class AuthenticationRequestBl(
     // all collaterals are pushed to permanent (Collateral service) — collaterals are NOT a local child table; (2) the
     // decision switch raises the matching events (Tasks-service task checks reuse IsTaskExist) and, on a central
     // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
-    // additionally raises a rejection event assigning the opened task to the responder. The persist is an upsert like
-    // the legacy Repository.Save: a set-based update on the existing row, or an insert when the request is new (the
-    // entity has no child collection — ItemDetailID is a scalar).
+    // additionally raises a rejection event assigning the opened task to the responder. The persist follows the
+    // caller's IsNewInstance (legacy Repository.Save of an IsNewInstance entity): insert a new request, or a set-based
+    // update of the existing row — 404 when that row is missing (the entity has no child collection — ItemDetailID is
+    // a scalar).
     // Returns the fully re-read request graph via GetAuthenticationRequestByID — consistent with the sibling
     // SaveAuthenticationRequestFile (both saves return the same shape as their GetById read).
     public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
@@ -931,16 +932,24 @@ public partial class AuthenticationRequestBl(
             await eventUtil.RaiseEvent(rejectedEvent);
         }
 
-        // Persist. Legacy saved through Repository.Save, an upsert: the coordinator's "new authentication request" popup
-        // (ImportProcessFormPresenter.InitNewImportProcess) builds the request client-side — IsNewInstance = true,
-        // DecisionID = 1 — and saves it through this same operation. So an existing row is updated in place and a
-        // missing one is inserted; a missing row is not an error.
+        // Persist. The caller says which it is — never the database. The coordinator's "new authentication request"
+        // popup (legacy ImportProcessFormPresenter.InitNewImportProcess) sends IsNewInstance = true and saves through
+        // this same operation; every other save edits an existing request. The key cannot decide it: DocumentID is
+        // caller-assigned (the document's id), so a new request never arrives with 0. An update that matches no row
+        // is a 404 — a stale or wrong id must never turn into a new request.
         var userId = RequestMetadata.UserId ?? 0;
-        var updated = await DataLayer.SaveImportAuthenticationRequest(request, userId);
-        if (!updated)
+        if (request.IsNewInstance)
         {
             await DataLayer.AddImportAuthenticationRequest(request, userId);
             await SaveChangesAsync();
+        }
+        else
+        {
+            var updated = await DataLayer.UpdateImportAuthenticationRequest(request, userId);
+            if (!updated)
+            {
+                throw new RestNotFoundException();
+            }
         }
 
         // Return the fully re-read request graph (consistent with the sibling SaveAuthenticationRequestFile — the SPA
