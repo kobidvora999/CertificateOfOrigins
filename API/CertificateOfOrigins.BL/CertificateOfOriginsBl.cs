@@ -2034,17 +2034,24 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return BuildReconciliationResult(builder, false);
         }
 
+        // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
+        // decision, 2026-09-28): legacy ValidateExportDeclarationInfoForPCIsMatch collected the detail and
+        // import-replacement findings in a local list and handed them to the result (PassGroupdExceptionListToEntity)
+        // only inside its invoice block, so without invoice rows they were dropped. IsLinkedToImportDeclaration is read
+        // only on the warnings path, which a finding-free result never reaches.
+        var invoices = await DataLayer.GetCertificateInvoiceDetailsByCertificateIds([certificate.Id]);
+        if (invoices.Count == 0)
+        {
+            return BuildReconciliationResult(builder, false);
+        }
+
         await ValidateCertificateDetails(request, certificate, details, builder);
         var isLinkedToImportDeclaration = await ValidateImportReplacement(request, certificate, builder);
 
         // Invoice / goods-item / customs-item matching (the declaration already carries invoices — checked above).
-        var invoices = await DataLayer.GetCertificateInvoiceDetailsByCertificateIds([certificate.Id]);
-        if (invoices.Count > 0)
-        {
-            var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
-            var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
-            await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
-        }
+        var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
+        var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
+        await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
 
         return BuildReconciliationResult(builder, isLinkedToImportDeclaration);
     }
