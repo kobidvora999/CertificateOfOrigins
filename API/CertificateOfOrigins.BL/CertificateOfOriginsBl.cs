@@ -1648,17 +1648,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             // When the certificate has no declaration number, take both the number and the lead-document from the
             // request. When it already has a number, take the request's lead-document only when that number equals the
             // request's number, so a certificate is never linked to a different declaration's lead document.
-            var exportDeclarationNumber = certificate.ExportDeclarationNumber;
-            var leadDocumentId = certificate.LeadDocumentId;
-            if (string.IsNullOrEmpty(exportDeclarationNumber))
+            if (string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
             {
-                exportDeclarationNumber = request.ExportDeclarationNum;
-                leadDocumentId = request.LeadDocumentId;
+                certificate.ExportDeclarationNumber = request.ExportDeclarationNum;
+                certificate.LeadDocumentId = request.LeadDocumentId;
             }
 
-            if (!leadDocumentId.HasValue && exportDeclarationNumber == request.ExportDeclarationNum)
+            if (!certificate.LeadDocumentId.HasValue && certificate.ExportDeclarationNumber == request.ExportDeclarationNum)
             {
-                leadDocumentId = request.LeadDocumentId;
+                certificate.LeadDocumentId = request.LeadDocumentId;
             }
 
             // Legacy gate: reconcile only a still-Received certificate that is not an empty / status-query / cancellation
@@ -1667,7 +1665,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 || certificate.RequestReasonCode is (int)ERequestReason.EmptyCertificate or (int)ERequestReason.GetRequestStatus or (int)ERequestReason.CertificateCancellation
                 || certificate.TypeId == (int)ECertificateOfOriginType.NonManipulation)
             {
-                await DataLayer.UpdateCertificateReconciliation(certificate.Id, certificate.CertificateOfOriginStatusId, exportDeclarationNumber, leadDocumentId, certificate.RejectCancelReason, userId);
+                await DataLayer.UpdateCertificateReconciliation(certificate.Id, certificate.CertificateOfOriginStatusId, certificate.ExportDeclarationNumber, certificate.LeadDocumentId, certificate.RejectCancelReason, userId);
                 continue;
             }
 
@@ -1689,7 +1687,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             // PrintCertificateOfOriginAndSaveAttachments(item, IsDraft)).
             await PrintCertificateOfOriginAndSaveAttachments(certificate, CertificateOfOriginsConsts.IsDraftSentinel);
 
-            await DataLayer.UpdateCertificateReconciliation(certificate.Id, newStatus, exportDeclarationNumber, leadDocumentId, rejectReason, userId);
+            await DataLayer.UpdateCertificateReconciliation(certificate.Id, newStatus, certificate.ExportDeclarationNumber, certificate.LeadDocumentId, rejectReason, userId);
 
             if (certificateExceptions.Count > 0)
             {

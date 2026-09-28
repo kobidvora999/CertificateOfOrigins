@@ -128,6 +128,31 @@ public class UpdateCertificateOfOriginsDispatchTests
             Is.True, "with the stripped (invoice-less) request the reconciliation forces Rejected");
     }
 
+    // --- Branch 1: ExportDeclarationSubmissionSucceeded (legacy UpdateCertrificateOfOrigins, 490-526) — B-H1 ---
+    // A certificate reconciled for the first time has no declaration link in the DB. Legacy backfilled the link on the
+    // certificate itself, so the assessor lookup of the match event (RaiseTaskNewCertificateOfOriginCheck) used the
+    // request's lead document. The lookup must see the backfilled link, not the stored (empty) one.
+    [Test]
+    public async Task FirstReconciliationLooksUpTheAssessorByTheBackfilledLeadDocument()
+    {
+        var certs = new[]
+        {
+            Cert(61, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null),
+        };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [61], "SUB-DEC");
+        request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
+
+        var cap = await RunDispatchAsync(request, certs);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.RaisedEventTypes, Does.Contain((int)EEventType.CertificateOfOriginCertificateMatchDeclaration),
+                "the certificate matches the declaration");
+            Assert.That(cap.AssessorLookupLeadDocumentIds, Is.EqualTo(new[] { request.LeadDocumentId }),
+                "the assessor is looked up by the lead document backfilled from the request");
+        });
+    }
+
     // ------------------------------------------------------------------------------------------------------------------
 
     private static CertificateOfOrigin Cert(
@@ -275,7 +300,16 @@ public class UpdateCertificateOfOriginsDispatchTests
         services.AddSingleton(Fake<IOrganizationUnitProxy>());
         services.AddSingleton(Fake<IMessageManagementProxy>());
         services.AddSingleton(Fake<ICountryGroupProxy>());
-        services.AddSingleton(Fake<ITasksProxy>());
+        services.AddSingleton(Fake<ITasksProxy>((method, args) =>
+        {
+            if (method.Name == nameof(ITasksProxy.GetLatestUserHandlingEntityTasksWithTaskUnification))
+            {
+                cap.AssessorLookupLeadDocumentIds.Add(((LatestUserHandlingEntityTasksFilterDto)args![0]!).EntityId);
+                return Task.FromResult<int?>(321);
+            }
+
+            return null;
+        }));
         services.AddSingleton(Fake<ILockUtil>());
         services.AddSingleton(Fake<ICountryProxy>());
         services.AddSingleton(Fake<ISiteProxy>());
@@ -297,6 +331,7 @@ public class UpdateCertificateOfOriginsDispatchTests
         public List<(int Id, int StatusId)> Reconciliations { get; } = [];
         public List<(int Id, Guid? Guid, byte[]? Image)> QrWrites { get; } = [];
         public List<int> RaisedEventTypes { get; } = [];
+        public List<int> AssessorLookupLeadDocumentIds { get; } = [];
     }
 
     private sealed class FakeDocumentResponse : IDocumentResponse
