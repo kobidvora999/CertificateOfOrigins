@@ -3,7 +3,7 @@ url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
 method: POST
 headers:
   Content-Type: application/json
-# Everything matches: destination 32, exporter 888, same declaration number. ApplyReconciliationOutcome takes its FIRST arm -> RaiseCertificatePreferredAssessorEvent + ResolveAssessorUserId, both 0% until now. leadDocumentId 111 on the certificate is what makes ResolveAssessorUserId go past its null guard.
+# Everything matches: destination AR (a new certificate's destination arrives as an alpha-2 code and is resolved to its id - 148 under the Country mock), exporter 888, same declaration number. ApplyReconciliationOutcome takes its FIRST arm -> RaiseCertificatePreferredAssessorEvent + ResolveAssessorUserId, both 0% until now. leadDocumentId 111 on the certificate is what makes ResolveAssessorUserId go past its null guard.
 body:
   type: json
   content: |-
@@ -13,7 +13,7 @@ body:
       "exportDeclarationNum": "260146",
       "certificateOfOriginsIds": [ {{certId}} ],
       "exporterCustomerId": 888,
-      "destinationCountryId": 32,
+      "destinationCountryId": 148,
       "organizationUnitId": 1,
       "exportInvoiceInfoList": [
         { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }

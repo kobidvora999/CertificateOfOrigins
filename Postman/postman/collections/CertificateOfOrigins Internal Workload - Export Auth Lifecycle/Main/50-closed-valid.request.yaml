@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X5: closed valid (6) - terminal, raises AfterClosing (1617).
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 1500

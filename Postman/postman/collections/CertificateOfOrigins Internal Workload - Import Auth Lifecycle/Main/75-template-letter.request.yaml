@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/1/{{fileId}}"
+method: GET
+# The South-Korea origin-verification letter of THIS file (template 1; entityId = the import authentication file). BLOCKED while the Templates service and template file are not available (INTERNAL_INTEGRATION.md section 4): skipped visibly unless it answers 200 + %PDF.
+order: 1750

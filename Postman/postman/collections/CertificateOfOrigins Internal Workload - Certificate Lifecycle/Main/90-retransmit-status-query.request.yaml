@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+method: POST
+headers:
+  Content-Type: application/json
+# C13 on the same certificate id, seconds after 80. BLOCKED on a platform defect: InfrastructureCore.Lock RedisLockUtil takes the lock in Redis DB 2 but SafeReleaseAsync looks in DB 0, so the lease is never released and any retransmission within 5 minutes answers 400 locked. Skipped (visible) while that holds; asserts the Cancelled status once it is fixed.
+body:
+  type: json
+  content: |-
+    { "customerId": 1, "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1, "certificateId": "{{certNumber}}" } }
+order: 1900

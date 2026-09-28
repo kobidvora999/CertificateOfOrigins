@@ -1,0 +1,189 @@
+$kind: collection
+id: certificateoforigins-certificate-lifecycle-v1
+name: CertificateOfOrigins Certificate Lifecycle
+description: >-
+  The certificate of origin end-to-end, on a certificate THIS run creates (lifecycle-map.md section 1).
+  Main: agent message -> Received (2) -> export declaration submitted, reconciled clean -> DeclarationMatch (6)
+  -> worker approves -> PendingRelease (7) -> declaration released -> Published (8) -> every read of the published
+  certificate (web verification by Guid, id by number, existence, goods items, declaration link, attachments) ->
+  agent cancels by message -> Cancelled (4). Every step uses the id / number / Guid / timeStamp captured from the
+  step before it, and every transition is proven by reading the certificate back and asserting its status.
+  Reject: Received -> worker rejects -> Rejected (3). StatusQuery: Received -> agent status query (feedback only).
+  Captured values are collection variables only - never put them in an environment file (environment scope
+  overrides collection scope and would shadow every capture).
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Dates that take part in validation are relative (the exporter-declaration rule allows today..-5 days).
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+
+      // Status saves send the full certificate read by the step before, with the new status and the ORIGINAL status
+      // it had - the BL runs the status side effects only when the two differ.
+      var withStatus = function (varName, status, extra) {
+          var dto = JSON.parse(pm.collectionVariables.get(varName) || '{}');
+          dto.originalCertificateOfOriginStatusId = dto.certificateOfOriginStatusId;
+          dto.certificateOfOriginStatusId = status;
+          Object.keys(extra || {}).forEach(function (k) { dto[k] = extra[k]; });
+          return JSON.stringify(dto);
+      };
+      var name = pm.info.requestName;
+      if (name === '40-approve') {
+          pm.collectionVariables.set('approveBody', withStatus('certDto', 7));
+      }
+      if (name === '20-reject') {
+          pm.collectionVariables.set('rejectBody', withStatus('rejCertDto', 3, { rejectCancelReason: 'PM lifecycle reject' }));
+      }
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      var certId = Number(pm.collectionVariables.get('certId'));
+
+      pm.test(name + ': no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+
+      // ---- the one BLOCKED step: shown as skipped, never failing the run, until the platform lock is fixed ----
+      if (name === '90-retransmit-status-query') {
+          var locked = pm.response.code === 400 && pm.response.text().indexOf('locked') >= 0;
+          (locked ? pm.test.skip : pm.test)(
+              'BLOCKED (InfrastructureCore.Lock releases in Redis DB 0, locks in DB 2): a retransmitted certificate id is answered',
+              function () {
+                  pm.response.to.have.status(200);
+                  pm.expect((j.feedback || {}).certificateOfOriginStatusCode, 'status of the cancelled certificate').to.eql(4);
+              });
+          return;
+      }
+
+      pm.test(name + ': status 200', function () { pm.response.to.have.status(200); });
+
+      // ---- captures first, so an assertion failure cannot break the chain ----
+      var CREATE = { '00-create-received': ['certId', 'certNumber'], '00-reject-create': ['rejCertId', null],
+                     '00-sq-create': [null, 'sqCertNumber'] };
+      if (CREATE[name] && j) {
+          if (CREATE[name][0]) { pm.collectionVariables.set(CREATE[name][0], j.applicationId); }
+          if (CREATE[name][1]) { pm.collectionVariables.set(CREATE[name][1], (j.feedback || {}).certificateId); }
+      }
+      var READ = { '30-read-match': 'certDto', '10-reject-read': 'rejCertDto' };
+      if (READ[name] && j) { pm.collectionVariables.set(READ[name], JSON.stringify(j)); }
+      if (name === '60-read-published' && j) { pm.collectionVariables.set('certGuid', j.guid); }
+
+      // ---- creation: the message was accepted and the certificate starts at Received ----
+      if (CREATE[name]) {
+          pm.test(name + ': accepted with no in-band exceptions', function () {
+              pm.expect(j.exceptions || [], 'exceptions').to.be.an('array').that.is.empty;
+          });
+          pm.test(name + ': created at Received (2) with a generated number', function () {
+              pm.expect(j.applicationId, 'applicationId').to.be.a('number').and.above(0);
+              pm.expect(j.feedback.certificateOfOriginStatusCode, 'feedback status').to.eql(2);
+              pm.expect(j.feedback.certificateId, 'certificate number').to.match(/^IL\d{10}$/);
+          });
+      }
+
+      // ---- every read-back proves the state the previous transition left ----
+      var EXPECTED_STATUS = { '10-read-received': 2, '30-read-match': 6, '60-read-published': 8,
+                              '85-read-cancelled': 4, '10-reject-read': 2, '30-reject-read-rejected': 3 };
+      if (EXPECTED_STATUS[name] !== undefined && j) {
+          pm.test(name + ': certificate is at status ' + EXPECTED_STATUS[name], function () {
+              pm.expect(j.certificateOfOriginStatusId, 'certificateOfOriginStatusId').to.eql(EXPECTED_STATUS[name]);
+          });
+      }
+      if (name === '10-read-received') {
+          pm.test('10: destination and exporter resolved to the ids the reconcile sends', function () {
+              var byType = {}; (j.certificateOfOriginDetails || []).forEach(function (d) { byType[d.certificateDetailsTypeCodeId] = d.value; });
+              pm.expect(byType[15], 'destination country (15)').to.eql('138');
+              pm.expect(byType[1], 'exporter id (1)').to.eql('777');
+          });
+      }
+      if (name === '30-read-match') {
+          pm.test('30: the reconcile backfilled the declaration link', function () {
+              pm.expect(j.leadDocumentId, 'leadDocumentId').to.eql(111);
+              pm.expect(j.exportDeclarationNumber, 'exportDeclarationNumber').to.eql('260146');
+          });
+      }
+      if (name === '20-reconcile-match' || name === '50-release') {
+          pm.test(name + ': no reconciliation findings', function () {
+              pm.expect(j, 'findings').to.be.an('array').that.is.empty;
+          });
+      }
+      if (name === '40-approve') {
+          pm.test('40: saved at PendingRelease (7), approved by the acting user', function () {
+              pm.expect(j.id, 'id').to.eql(certId);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(7);
+              pm.expect(j.approveUserId, 'approveUserId').to.eql(5);
+          });
+      }
+      if (name === '60-read-published') {
+          pm.test('60: the publish step stamped Guid and issuing date', function () {
+              pm.expect(j.guid, 'guid').to.be.a('string').and.not.empty;
+              pm.expect(j.issuingDate, 'issuingDate').to.be.a('string').and.not.empty;
+          });
+      }
+
+      // ---- reads of the published certificate ----
+      var certNumber = pm.collectionVariables.get('certNumber');
+      if (name === '70-web-query-by-guid') {
+          pm.test('70: the web verification resolves THIS certificate by its Guid', function () {
+              pm.expect(j.certificateNumber, 'certificateNumber').to.eql(certNumber);
+              pm.expect(j.queryUrl, 'queryUrl').to.contain(pm.collectionVariables.get('certGuid'));
+              pm.expect(j.certificateOfOriginDetails, 'details').to.be.an('array').that.is.not.empty;
+          });
+      }
+      if (name === '71-id-by-number') {
+          pm.test('71: the number resolves to this certificate id', function () { pm.expect(j).to.eql(certId); });
+      }
+      if (name === '72-by-external-id') {
+          pm.test('72: exists, as this certificate, Published', function () {
+              pm.expect(j.id, 'id').to.eql(certId);
+              pm.expect(j.certificateNumber, 'certificateNumber').to.eql(certNumber);
+              pm.expect(j.name, 'status name').to.eql('מאושרת לפרסום באינטרנט');
+          });
+      }
+      if (name === '73-goods-items') {
+          pm.test('73: the goods item is linked to this certificate', function () {
+              pm.expect(j, 'rows').to.be.an('array').with.lengthOf(1);
+              pm.expect(j[0].certificateOfOriginId, 'certificateOfOriginId').to.eql(certId);
+          });
+      }
+      if (name === '74-load-from-declaration' || name === '75-save-attachments') {
+          pm.test(name + ': answered true', function () { pm.expect(j).to.eql(true); });
+      }
+
+      // ---- cancellation by message ----
+      if (name === '80-cancel-by-message') {
+          pm.test('80: the cancel message was accepted with no in-band exceptions', function () {
+              pm.expect(j.exceptions || [], 'exceptions').to.be.an('array').that.is.empty;
+              pm.expect(j.applicationId, 'applicationId').to.eql(certId);
+          });
+      }
+      if (name === '85-read-cancelled') {
+          pm.test('85: the reason records the by-message cancellation', function () {
+              pm.expect(j.rejectCancelReason, 'rejectCancelReason').to.contain('התקבלה בקשה לביטול תעודה במסר');
+          });
+      }
+
+      // ---- alternative endings ----
+      if (name === '20-reject') {
+          pm.test('20: saved at Rejected (3) with the worker reason', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('rejCertId')));
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(3);
+              pm.expect(j.rejectCancelReason, 'reason').to.eql('PM lifecycle reject');
+          });
+      }
+      if (name === '10-sq-status-query') {
+          pm.test('10-sq: the query answers the status of the certificate it names', function () {
+              pm.expect(j.exceptions || [], 'exceptions').to.be.an('array').that.is.empty;
+              pm.expect(j.feedback.certificateId, 'certificateId').to.eql(pm.collectionVariables.get('sqCertNumber'));
+              pm.expect(j.feedback.certificateOfOriginStatusCode, 'status').to.eql(2);
+          });
+      }
+    language: text/javascript

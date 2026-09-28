@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# Guard: a request already in a file cannot open another one -> 400 FileExistForRequest naming the file.
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": {{docA}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 888,
+        "responseNameEmail": "flow@example.com"
+      }
+    ]
+order: 1110

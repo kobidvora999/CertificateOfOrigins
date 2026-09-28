@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/SaveAttachments"
+method: POST
+headers:
+  Content-Type: application/json
+# Replace the attachments of THIS certificate.
+body:
+  type: json
+  content: |-
+    { "certificatesTemplates": [], "certificateNumber": "{{certNumber}}", "certificateId": {{certId}}, "certificateRequestReasonCode": 1, "certificateTypeId": 1 }
+order: 1750

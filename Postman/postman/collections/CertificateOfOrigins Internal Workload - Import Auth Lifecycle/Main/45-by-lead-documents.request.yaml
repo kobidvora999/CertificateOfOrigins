@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/ByLeadDocumentIDs"
+method: POST
+headers:
+  Content-Type: application/json
+# Both requests, by their lead documents, carry the file and its current status (3).
+body:
+  type: json
+  content: |-
+    [ {{docA}}, {{docB}} ]
+order: 1450

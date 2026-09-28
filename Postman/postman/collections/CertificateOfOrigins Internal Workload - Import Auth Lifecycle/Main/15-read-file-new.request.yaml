@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: GET
+# The new file: status 1 with both requests as children.
+order: 1150

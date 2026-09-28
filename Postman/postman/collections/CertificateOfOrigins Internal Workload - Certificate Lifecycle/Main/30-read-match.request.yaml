@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+method: GET
+# State after C6: DeclarationMatch (6), and the declaration link (lead document 111) was backfilled onto the certificate.
+order: 1300

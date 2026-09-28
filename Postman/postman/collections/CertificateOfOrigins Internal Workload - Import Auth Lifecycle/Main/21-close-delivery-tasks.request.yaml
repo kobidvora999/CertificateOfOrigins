@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/ChangeStatusAfterDeliverySent"
+method: POST
+headers:
+  Content-Type: application/json
+# F6: after the send the screen closes the file tasks (event 1525).
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "organizationUnitId": {{fileOrg}}
+    }
+order: 1210

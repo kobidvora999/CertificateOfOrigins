@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CheckImporterOfImportAuthentication?importerId={{importerId}}"
+method: GET
+# The importer of the requests resolves.
+order: 1070

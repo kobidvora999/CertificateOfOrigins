@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/LoadDataFromExportDeclaration"
+method: QUERY
+headers:
+  Content-Type: application/json
+# The declaration this certificate is linked to (lead document 111) is found.
+body:
+  type: json
+  content: |-
+    { "leadDocumentId": 111, "exportDeclarationNumber": "260146", "requestReasonCode": 1 }
+order: 1740

@@ -1,0 +1,241 @@
+$kind: collection
+id: certificateoforigins-import-auth-lifecycle-v1
+name: CertificateOfOrigins Import Auth Lifecycle
+description: >-
+  The import authentication process end-to-end, on requests and a file THIS run creates (lifecycle-map.md
+  section 2). Main: two new requests -> a new file (1) -> letter to the vendor (2) -> tasks closed -> reminder to the
+  vendor (3) -> reminder task closed -> letter to the importer (request decision 8) -> reminder to the importer (9)
+  -> delivery-sent event -> every read of the file and its requests -> the vendor answers (file 5, request A approved,
+  request B rejected) -> the file is closed valid (6) -> the verification letter template of the file.
+  CancelAndRefile: a file is cancelled (9), its request is unlinked and opens a new file.
+  The delivery endpoints compute the next state from the state SENT, not the stored one, so every delivery step sends
+  the state the previous step returned (fileStatus / fileDm). SaveFile bodies are the file as the preceding read
+  returned it, with the new statuses and the ORIGINAL ones - the way the file screen saves. The read DTO carries no
+  organizationUnitId, so the save adds the file's org unit captured at creation (see gap-analysis: a pure
+  read-then-save round trip answers 500 and leaves the child decisions half-saved).
+  DocumentIDs and the importer id are minted per run: DocumentID = 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k,
+  SLOT 6 (API 1, Auth File Status 2, Auth Lifecycle 3, Save Import Decisions 4, Mock Features 5).
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('today', iso(Date.now()));
+
+      var name = pm.info.requestName;
+      var SLOT = 6, FIRST = '01-create-request-a';
+      if (name === FIRST || !pm.collectionVariables.get('docBase')) {
+          var ms = Date.now() % 1000000;
+          pm.collectionVariables.set('docBase', 800000000 + ms * 100 + SLOT * 10);
+          pm.collectionVariables.set('importerId', 6000000 + ms);
+          ['fileId', 'refileId', 'fileStatus', 'fileDm', 'fileOrg', 'fileDto'].forEach(function (k) { pm.collectionVariables.unset(k); });
+      }
+      var docBase = Number(pm.collectionVariables.get('docBase'));
+      pm.collectionVariables.set('docA', docBase + 1);
+      pm.collectionVariables.set('docB', docBase + 2);
+      pm.collectionVariables.set('docC', docBase + 3);
+
+      // SaveFile body: the file the previous read returned, new file status + per-request decisions, and the ORIGINAL
+      // values, so the BL sees the changes and runs their side effects.
+      var SAVE = {
+          '55-answer-received': { status: 5, decisions: { docA: 3, docB: 2 } },
+          '65-file-valid': { status: 6, decisions: {} },
+          '04-refile-cancel': { status: 9, decisions: {} }
+      };
+      if (SAVE[name]) {
+          var f = JSON.parse(pm.collectionVariables.get('fileDto') || '{}');
+          var byDoc = {};
+          Object.keys(SAVE[name].decisions).forEach(function (k) { byDoc[pm.collectionVariables.get(k)] = SAVE[name].decisions[k]; });
+          f.organizationUnitId = Number(pm.collectionVariables.get('fileOrg'));
+          f.originalAuthenticationFileStatusId = f.authenticationFileStatusId;
+          f.authenticationFileStatusId = SAVE[name].status;
+          f.requests = (f.requests || []).map(function (k) {
+              k.originalRequestDecisionId = k.decisionId;
+              if (byDoc[k.documentId] !== undefined) { k.decisionId = byDoc[k.documentId]; }
+              return k;
+          });
+          pm.collectionVariables.set('saveFileBody', JSON.stringify(f));
+      }
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      var docA = Number(pm.collectionVariables.get('docA'));
+      var docB = Number(pm.collectionVariables.get('docB'));
+      var docC = Number(pm.collectionVariables.get('docC'));
+      var kids = function (f) { return (f && (f.requests || f.importAuthenticationRequests)) || []; };
+      var decisionOf = function (f, doc) { var k = kids(f).filter(function (r) { return r.documentId === doc; })[0]; return k && k.decisionId; };
+
+      // ---- the one BLOCKED step ----
+      if (name === '75-template-letter') {
+          var pdf = pm.response.code === 200 && pm.response.text().indexOf('%PDF') === 0;
+          (pdf ? pm.test : pm.test.skip)('BLOCKED (Templates service / template file not available): the letter of this file renders as a PDF', function () {
+              pm.response.to.have.status(200);
+              pm.expect(pm.response.text().slice(0, 4)).to.eql('%PDF');
+          });
+          return;
+      }
+
+      pm.test(name + ': no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+
+      if (name === '11-create-file-again') {
+          pm.test('11: a request already in a file is refused with 400 naming that file', function () {
+              pm.response.to.have.status(400);
+              pm.expect(pm.response.text()).to.contain(String(pm.collectionVariables.get('fileId')));
+          });
+          return;
+      }
+      pm.test(name + ': status 200', function () { pm.response.to.have.status(200); });
+
+      // ---- captures first, so an assertion failure cannot break the chain ----
+      if (name === '10-create-file' && j) {
+          pm.collectionVariables.set('fileId', j.id);
+          pm.collectionVariables.set('fileOrg', j.organizationUnitId);
+      }
+      if (name === '02-refile-first-file' && j) {
+          pm.collectionVariables.set('refileId', j.id);
+          pm.collectionVariables.set('fileOrg', j.organizationUnitId);
+      }
+      if ((name === '10-create-file' || name === '20-vendor-delivery' || name === '25-vendor-reminder') && j) {
+          pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId);
+          pm.collectionVariables.set('fileDm', j.deliveryMethodId);
+      }
+      if ((name === '50-read-file-before-answer' || name === '60-read-file-answered' || name === '03-refile-read-file') && j) {
+          pm.collectionVariables.set('fileDto', JSON.stringify(j));
+      }
+      var fileId = Number(pm.collectionVariables.get('fileId'));
+
+      // ---- requests ----
+      var CREATED = { '01-create-request-a': docA, '02-create-request-b': docB, '01-refile-create-request': docC };
+      if (CREATED[name] !== undefined) {
+          pm.test(name + ': inserted at decision 1, in no file', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(CREATED[name]);
+              pm.expect(j.decisionId, 'decisionId').to.eql(1);
+              pm.expect(j.authenticationFileId, 'authenticationFileId').to.be.oneOf([null, undefined]);
+          });
+      }
+      var REQUEST_DECISION = { '05-read-request-a': 1, '31-read-request-a-letter': 8, '36-read-request-a-reminder': 9 };
+      if (REQUEST_DECISION[name] !== undefined) {
+          pm.test(name + ': request A is at decision ' + REQUEST_DECISION[name], function () {
+              pm.expect(j.documentId, 'documentId').to.eql(docA);
+              pm.expect(j.decisionId, 'decisionId').to.eql(REQUEST_DECISION[name]);
+          });
+      }
+      if (name === '31-read-request-a-letter') {
+          pm.test('31: the importer letter date was recorded', function () {
+              pm.expect(j.lastDeliveryForImporter, 'lastDeliveryForImporter').to.be.a('string').and.not.empty;
+              pm.expect(j.authenticationFileId, 'authenticationFileId').to.eql(fileId);
+          });
+      }
+      var BOOL = { '06-vendor-has-requests': true, '08-importer-no-recent-letter': false, '32-importer-recent-letter': true,
+                   '21-close-delivery-tasks': true, '26-close-reminder-task': true, '40-delivery-sent-event': true };
+      if (BOOL[name] !== undefined) {
+          pm.test(name + ': answered ' + BOOL[name], function () { pm.expect(j).to.eql(BOOL[name]); });
+      }
+      if (name === '07-importer-check') {
+          pm.test('07: resolves the importer of this run', function () { pm.expect(j).to.eql(Number(pm.collectionVariables.get('importerId'))); });
+      }
+
+      // ---- file creation and the delivery status machine ----
+      if (name === '10-create-file' || name === '02-refile-first-file' || name === '06-refile-new-file') {
+          pm.test(name + ': a new file at WaitingForSendingLetter (1), delivery WasNotSend (1)', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.above(0);
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(1);
+              pm.expect(j.deliveryMethodId, 'delivery').to.eql(1);
+          });
+      }
+      if (name === '06-refile-new-file') {
+          pm.test('06: a different file from the cancelled one', function () {
+              pm.expect(j.id).to.not.eql(Number(pm.collectionVariables.get('refileId')));
+          });
+      }
+      var DELIVERY = { '20-vendor-delivery': [2, 2], '25-vendor-reminder': [3, 2] };
+      if (DELIVERY[name]) {
+          pm.test(name + ': file moved to status ' + DELIVERY[name][0] + ', delivery ' + DELIVERY[name][1], function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(DELIVERY[name][0]);
+              pm.expect(j.deliveryMethodId, 'delivery').to.eql(DELIVERY[name][1]);
+          });
+      }
+      var IMPORTER = { '30-importer-letter': 8, '35-importer-reminder': 9 };
+      if (IMPORTER[name]) {
+          pm.test(name + ': request A decision ' + IMPORTER[name] + ', file state unchanged (3, 2)', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(docA);
+              pm.expect(j.decisionId, 'decisionId').to.eql(IMPORTER[name]);
+              pm.expect(j.authenticationFileStatusId, 'file status').to.eql(3);
+              pm.expect(j.deliveryMethodId, 'delivery').to.eql(2);
+          });
+      }
+
+      // ---- file reads and the decisions of the file screen ----
+      if (name === '15-read-file-new') {
+          pm.test('15: the file at status 1 holds both requests at decision 1', function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(1);
+              pm.expect(decisionOf(j, docA), 'A').to.eql(1);
+              pm.expect(decisionOf(j, docB), 'B').to.eql(1);
+          });
+      }
+      if (name === '50-read-file-before-answer') {
+          pm.test('50: file at 3, A at 9 (importer reminder), B at 1', function () {
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(3);
+              pm.expect(decisionOf(j, docA), 'A').to.eql(9);
+              pm.expect(decisionOf(j, docB), 'B').to.eql(1);
+          });
+      }
+      if (name === '55-answer-received' || name === '60-read-file-answered') {
+          pm.test(name + ': file 5, A approved (3), B rejected (2)', function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(5);
+              pm.expect(decisionOf(j, docA), 'A').to.eql(3);
+              pm.expect(decisionOf(j, docB), 'B').to.eql(2);
+          });
+      }
+      if (name === '65-file-valid' || name === '70-read-file-valid') {
+          pm.test(name + ': file closed valid (6), decisions kept', function () {
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(6);
+              pm.expect(decisionOf(j, docA), 'A').to.eql(3);
+              pm.expect(decisionOf(j, docB), 'B').to.eql(2);
+          });
+      }
+      if (name === '45-by-lead-documents') {
+          pm.test('45: both requests, in this file, at file status 3', function () {
+              pm.expect(j.map(function (r) { return r.documentId; }).sort(), 'documents').to.eql([docA, docB].sort());
+              j.forEach(function (r) {
+                  pm.expect(r.authenticationFileId, 'authenticationFileId').to.eql(fileId);
+                  pm.expect(r.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(3);
+              });
+          });
+      }
+      if (name === '46-entity-documents') {
+          pm.test('46: the lead document has documents', function () { pm.expect(j).to.be.an('array').that.is.not.empty; });
+      }
+      if (name === '47-navigation-paths') {
+          pm.test('47: answers the navigation shape', function () {
+              pm.expect(j).to.be.an('object').that.has.property('viewPaths');
+          });
+      }
+
+      // ---- cancel and refile ----
+      if (name === '03-refile-read-file') {
+          pm.test('03: the file holds request C', function () { pm.expect(decisionOf(j, docC), 'C').to.eql(1); });
+      }
+      if (name === '04-refile-cancel') {
+          pm.test('04: file cancelled (9) and its request unlinked', function () {
+              pm.expect(j.authenticationFileStatusId, 'status').to.eql(9);
+              pm.expect(kids(j), 'children').to.be.an('array').that.is.empty;
+          });
+      }
+      if (name === '05-refile-read-request') {
+          pm.test('05: request C is in no file', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(docC);
+              pm.expect(j.authenticationFileId, 'authenticationFileId').to.be.oneOf([null, undefined]);
+          });
+      }
+    language: text/javascript

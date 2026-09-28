@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
+method: POST
+headers:
+  Content-Type: application/json
+# F8: the delivery-sent event names THIS file as a related AuthenticationRequestFile (12385) -> true.
+body:
+  type: json
+  content: |-
+    {
+      "relatedEntities": [
+        {
+          "id": {{fileId}},
+          "entityType": 12385
+        }
+      ]
+    }
+order: 1400

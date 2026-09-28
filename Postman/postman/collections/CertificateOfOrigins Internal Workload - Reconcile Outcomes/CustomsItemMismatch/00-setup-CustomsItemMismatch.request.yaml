@@ -18,7 +18,7 @@ body:
       "exportDeclarationNumber": "260146",
       "isLastVersion": true, "versionNumber": 1,
       "certificateOfOriginDetails": [
-        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 15, "value": "AR" },
         { "certificateDetailsTypeCodeId": 1,  "value": "888" }
         ,{ "certificateDetailsTypeCodeId": 13, "value": "32" }
       ],

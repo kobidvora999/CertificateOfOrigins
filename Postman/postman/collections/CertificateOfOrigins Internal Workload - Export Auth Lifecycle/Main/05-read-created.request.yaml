@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/{{expId}}"
+method: GET
+# Read back: status 1 and the three child rows.
+order: 1050
