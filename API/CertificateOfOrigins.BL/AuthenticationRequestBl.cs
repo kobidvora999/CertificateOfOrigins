@@ -1081,9 +1081,7 @@ public partial class AuthenticationRequestBl(
         var threeYearsAgo = DateTime.Now.AddYears(-3);
         foreach (var child in request.Requests)
         {
-            // No issuing date sent → the stored date is kept, so the stored flag stays too (null).
-            bool? isOldIndication = child.DocumentIssuingDate == default ? null : child.DocumentIssuingDate <= threeYearsAgo;
-            await DataLayer.UpdateFileChildRequest(child, isOldIndication, userId);
+            await DataLayer.UpdateFileChildRequest(child, child.DocumentIssuingDate <= threeYearsAgo, userId);
         }
 
         // 2. Per changed child: events + decision message (+ grant collaterals on approval).

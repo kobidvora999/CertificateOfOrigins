@@ -33,8 +33,8 @@ public class UpdateCertificateOfOriginsDispatchTests
     {
         var certs = new[]
         {
-            Cert(id: 11, status: (int)ECertificateOfOriginStatus.Published),
-            Cert(id: 22, status: (int)ECertificateOfOriginStatus.Published),
+            Cert(11, (int)ECertificateOfOriginStatus.Published),
+            Cert(22, (int)ECertificateOfOriginStatus.Published),
         };
         var request = Request((int)EEventType.CancellationRequestCommited, [11, 22]);
 
@@ -64,11 +64,11 @@ public class UpdateCertificateOfOriginsDispatchTests
         {
             // Empty declaration → backfilled. Non-Received so the follow-up reconciliation is gate-skipped (keeps the
             // test focused on the backfill selection).
-            Cert(id: 31, status: (int)ECertificateOfOriginStatus.Cancelled, exportDeclarationNumber: null),
+            Cert(31, (int)ECertificateOfOriginStatus.Cancelled, (int)ERequestReason.NewCertificate, 1, null),
             // Already linked → NOT backfilled.
-            Cert(id: 32, status: (int)ECertificateOfOriginStatus.Cancelled, exportDeclarationNumber: "EXISTING-DEC"),
+            Cert(32, (int)ECertificateOfOriginStatus.Cancelled, (int)ERequestReason.NewCertificate, 1, "EXISTING-DEC"),
         };
-        var request = Request((int)EEventType.ExportDeclarationAmendmentRequestCompleted, [31, 32], exportDeclarationNum: "NEW-DEC");
+        var request = Request((int)EEventType.ExportDeclarationAmendmentRequestCompleted, [31, 32], "NEW-DEC");
 
         var cap = await RunDispatchAsync(request, certs);
 
@@ -88,9 +88,9 @@ public class UpdateCertificateOfOriginsDispatchTests
     {
         var certs = new[]
         {
-            Cert(id: 41, status: (int)ECertificateOfOriginStatus.PendingRelease, exportDeclarationNumber: null, qrCodePath: null),
+            Cert(41, (int)ECertificateOfOriginStatus.PendingRelease, (int)ERequestReason.NewCertificate, 1, null, null),
         };
-        var request = Request((int)EEventType.ExportDeclarationReleased, [41], exportDeclarationNum: "REL-DEC");
+        var request = Request((int)EEventType.ExportDeclarationReleased, [41], "REL-DEC");
 
         var cap = await RunDispatchAsync(request, certs);
 
@@ -114,13 +114,12 @@ public class UpdateCertificateOfOriginsDispatchTests
         var certs = new[]
         {
             // Received + a reconcilable reason/type + empty declaration → backfilled AND passes the reconciliation gate.
-            Cert(id: 51, status: (int)ECertificateOfOriginStatus.Received,
-                reason: (int)ERequestReason.NewCertificate, typeId: 1, exportDeclarationNumber: null),
+            Cert(51, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null),
         };
         // The incoming event DOES carry invoice info; the release path must STRIP it before reconciling. If the strip
         // regresses (the full request is reused), the reconciliation would run real matching on faked-empty data and
         // reach DeclarationMatch instead — so asserting Rejected here catches that regression.
-        var request = Request((int)EEventType.ExportDeclarationReleased, [51], exportDeclarationNum: "REL-DEC");
+        var request = Request((int)EEventType.ExportDeclarationReleased, [51], "REL-DEC");
         request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
 
         var cap = await RunDispatchAsync(request, certs);

@@ -79,7 +79,7 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
 
-    Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool? isOldIndication, int userId);
+    Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId);
 
     Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId);
 

@@ -37,9 +37,9 @@ public class SaveCertificateOfOriginQrCodeTests
     [Test]
     public async Task NewCertificatePublishedInOneSaveLinksQrDocumentToSavedIdNotZero()
     {
-        var request = NewPublishedRequest(id: 0, originalStatusId: 0);
+        var request = NewPublishedRequest(0, 0);
 
-        var captures = await RunSaveAsync(request, seedExistingId: null);
+        var captures = await RunSaveAsync(request, null);
 
         // The id is assigned by the real save (EF identity), not injected by a fake — so read it back from the
         // certificate the BL re-fetched after saving.
@@ -81,9 +81,9 @@ public class SaveCertificateOfOriginQrCodeTests
         const int existingId = 55;
         // An update (Id != 0) publishing with an empty QrCodePath still generates + uploads the QR; the document must be
         // linked to the existing id and QrCodePath persisted (the fix keeps the update path working too).
-        var request = NewPublishedRequest(id: existingId, originalStatusId: (int)ECertificateOfOriginStatus.Published);
+        var request = NewPublishedRequest(existingId, (int)ECertificateOfOriginStatus.Published);
 
-        var captures = await RunSaveAsync(request, seedExistingId: existingId);
+        var captures = await RunSaveAsync(request, existingId);
 
         Assert.Multiple(() =>
         {

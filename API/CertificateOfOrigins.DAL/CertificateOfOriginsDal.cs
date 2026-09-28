@@ -683,7 +683,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // NOT NULL columns the popup does not send: RequestCircumstancesID = 1 (the value InitNewImportProcess sets),
         // Remarks = empty, ItemDetailID = 0 and IsOldIndication = false (the legacy entity's CLR defaults).
         var now = DateTime.Now;
-        var entity = new CertificateOfOriginsImportAuthenticationRequest
+        Context.CertificateOfOriginsImportAuthenticationRequests.Add(new CertificateOfOriginsImportAuthenticationRequest
         {
             DocumentId = request.DocumentId,
             CreateDate = now,
@@ -722,8 +722,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
             ItemDetailId = 0,
             IsOldIndication = false,
-        };
-        Context.CertificateOfOriginsImportAuthenticationRequests.Add(entity);
+        });
 
         // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
@@ -1141,7 +1140,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
-    public async Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool? isOldIndication, int userId)
+    public async Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId)
     {
         // SaveAuthenticationRequestFile step 1 (legacy UpdateAndSaveImportAuthenticationRequest): per child request,
         // Repository.Save of the client-modified entity + the server-recomputed IsOldIndication. The legacy screen can
@@ -1150,15 +1149,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // are written here. The fields that screen shows read-only are not.
         //
         // A null from the caller keeps the stored value (value-from-row overload), so a caller sending only the base
-        // fields does not wipe the rest. DocumentIssuingDate is non-nullable on the DTO; its default (not sent) keeps the
-        // stored date too — writing 0001-01-01 would fail against a datetime column. Set-based, no row loaded.
+        // fields does not wipe the rest. DocumentIssuingDate is part of the base contract (the file read returns it and
+        // IsOldIndication is computed from it), so it is written as sent. Set-based, no row loaded.
         var now = DateTime.Now;
-        DateTime? documentIssuingDate = child.DocumentIssuingDate == default ? null : child.DocumentIssuingDate;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == child.DocumentId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.DecisionId, child.DecisionId)
-                .SetProperty(r => r.IsOldIndication, r => isOldIndication ?? r.IsOldIndication)
+                .SetProperty(r => r.IsOldIndication, isOldIndication)
                 .SetProperty(r => r.DecisionCircumstences, r => child.DecisionCircumstences ?? r.DecisionCircumstences)
                 .SetProperty(r => r.CirumstanceDetails, r => child.CirumstanceDetails ?? r.CirumstanceDetails)
                 .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
@@ -1171,7 +1169,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(r => r.OriginCountryId, r => child.OriginCountryId ?? r.OriginCountryId)
                 .SetProperty(r => r.IssuingCountryId, r => child.IssuingCountryId ?? r.IssuingCountryId)
                 .SetProperty(r => r.PreferenceDocumentTypeId, r => child.PreferenceDocumentTypeId ?? r.PreferenceDocumentTypeId)
-                .SetProperty(r => r.DocumentIssuingDate, r => documentIssuingDate ?? r.DocumentIssuingDate)
+                .SetProperty(r => r.DocumentIssuingDate, child.DocumentIssuingDate)
                 .SetProperty(r => r.UpdateDate, now)
                 .SetProperty(r => r.UpdateUserId, userId));
     }
