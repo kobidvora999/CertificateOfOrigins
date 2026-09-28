@@ -1096,11 +1096,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId)
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, bool stampFirstContactDate = false)
     {
         // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
         // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
         // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
+        //
+        // stampFirstContactDate: the first vendor/customs-house delivery also records FirstProvideContactDate = today,
+        // only while it is still empty. Legacy set it client-side (OnRequestDeliverNotificationCommand, "if null →
+        // Today") and the full-entity save persisted it; the reminder-ladder SP measures every rung from
+        // ISNULL(FirstProvideContactDate, LastDelivery), so without it the ladder restarts on each reminder.
         var now = DateTime.Now;
         var today = now.Date;
 
@@ -1110,6 +1115,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
                 .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
                 .SetProperty(f => f.LastDelivery, today)
+                .SetProperty(f => f.FirstProvideContactDate,
+                    f => stampFirstContactDate && f.FirstProvideContactDate == null ? today : f.FirstProvideContactDate)
                 .SetProperty(f => f.UpdateDate, today));
 
         await Context.CertificateOfOriginsImportAuthenticationRequests

@@ -507,7 +507,9 @@ public partial class AuthenticationRequestBl(
             : (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend;
         var (status, deliveryMethod) = AdvanceDeliveryStatus(initialStatus, request.DeliveryMethodId);
 
-        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod);
+        // A delivery (not a reminder) records the first-contact date if the file has none yet — legacy set it on the
+        // "send notification" button (OnRequestDeliverNotificationCommand); the reminder button never touched it.
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, request.IsDelivery);
 
         return new HandleDeliveryAndReminderForVendorSentResultDto
         {
@@ -553,6 +555,7 @@ public partial class AuthenticationRequestBl(
         var (status, deliveryMethod) = AdvanceDeliveryStatus(request.AuthenticationFileStatusId, request.DeliveryMethodId);
         if (request.AuthenticationFileId.HasValue)
         {
+            // Importer letters never set the first-contact date (legacy: only the vendor/customs-house send did).
             await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod);
         }
 
