@@ -1388,7 +1388,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             (int)ECertificateOfOriginStatus.Rejected => (int)EEventType.CertificateOfOriginUserDeniedCertificate,
             (int)ECertificateOfOriginStatus.Cancelled => (int)EEventType.CertificateOfOriginUserCancelledCertificate,
             (int)ECertificateOfOriginStatus.PendingRelease => (int)EEventType.CertificateOfOriginUserApprovedCertificate,
-            (int)ECertificateOfOriginStatus.DeclarationMatch => (int)EEventType.CertificateOfOriginCertificateMatchDeclaration,
+
+            // Legacy RaiseEventCertificateOfOriginCertificateMatchDeclaration (CR 156814): the reasons that need no
+            // assessor task raise the "without task" variant.
+            (int)ECertificateOfOriginStatus.DeclarationMatch => entity.RequestReasonCode is (int)ERequestReason.EmptyCertificate
+                    or (int)ERequestReason.Draft or (int)ERequestReason.GetRequestStatus or (int)ERequestReason.CertificateCancellation
+                ? (int)EEventType.CertificateMatchDeclarationWithoutTask
+                : (int)EEventType.CertificateOfOriginCertificateMatchDeclaration,
             (int)ECertificateOfOriginStatus.DeclarationMismatch => (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch,
             _ => null,
         };
@@ -1399,7 +1405,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             var additionalInfo = entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.Rejected or (int)ECertificateOfOriginStatus.Cancelled
                 ? entity.RejectCancelReason
                 : null;
-            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo);
+
+            // Legacy set the Export organization-unit type on the match and mismatch events' VirtualEntity.
+            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo,
+                entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.DeclarationMatch or (int)ECertificateOfOriginStatus.DeclarationMismatch
+                    ? CertificateOfOriginsConsts.ExportOrganizationUnitType
+                    : null);
         }
 
         // Legacy RaiseNewCertificateOfOriginCreatedEvent removed (developer decision 2026-08-23). It raised the
@@ -1564,8 +1575,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder = builder.WithOrganizationUnitId(organizationUnitId);
         }
 
-        // Legacy set the organization-unit TYPE (Export) on the reconciliation events' VirtualEntity — passed only by
-        // those callers (the declaration-mismatch event); other events leave it unset, as in the legacy.
+        // Legacy set the organization-unit TYPE (Export) on the declaration match/mismatch events' VirtualEntity — passed
+        // only by those callers (the save's status events and the reconciliation mismatch); other events leave it unset.
         if (organizationUnitTypeId.HasValue)
         {
             builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)organizationUnitTypeId.Value);
