@@ -48,6 +48,24 @@ public class AuthenticationFileRequestDto
 
     public int UserResponseId { get; set; }
 
+    // --- What the legacy file screen shows for the selected request (AuthenticationRequestFileGeneralView +
+    // FileRequestDocumentEditView). The first four are editable there; the rest are read-only on that screen. ---
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }   // legacy spelling, kept — it is the column name
+
+    public string? Remarks { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public int RequestCircumstancesId { get; set; }
+
+    public bool IsOldIndication { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+
     // The lead document (Documents service), enriched with TypeName (DocumentType lookup).
     public DocumentDto? Document { get; set; }
 

@@ -52,6 +52,7 @@ scripts:
           '50-partly-child':     2,
           '60-rejection-child':  6,
           '70-administrative-closure': 10,
+          '80-child-edits':      10,
           '90-cancelled':        9
       };
       if (SENT_STATUS[name] !== undefined && j) {
@@ -82,6 +83,31 @@ scripts:
               var target = kids.filter(function (k) { return k.documentId === 990105; })[0];
               pm.expect(target, 'request 990105 in the response').to.not.be.undefined;
               pm.expect(target.decisionId, 'decisionId').to.eql(10);
+          });
+      }
+
+      if (name === '80-child-edits' && j) {
+          // The re-read is the proof the child write landed: legacy saved the whole client-modified request
+          // (Repository.Save), the migration had kept only DecisionID + IsOldIndication.
+          var kids80 = j.importAuthenticationRequests || j.requests || [];
+          var byId = function (id) { return kids80.filter(function (k) { return k.documentId === id; })[0]; };
+          pm.test('80-child-edits: the coordinator edits on 990105 were saved and read back', function () {
+              var a = byId(990105);
+              pm.expect(a, 'request 990105 in the response').to.not.be.undefined;
+              pm.expect(a.decisionCircumstences, 'decisionCircumstences').to.eql('PM circumstances 80');
+              pm.expect(a.cirumstanceDetails, 'cirumstanceDetails').to.eql('PM details 80');
+              pm.expect(a.remarks, 'remarks').to.eql('PM remarks 80');
+              pm.expect(a.documentNumber, 'documentNumber').to.eql('DN-80');
+              pm.expect(a.vendorId, 'vendorId').to.eql(779);
+              pm.expect(a.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(4);
+          });
+          pm.test('80-child-edits: fields 990106 did not send kept their stored values', function () {
+              var b = byId(990106);
+              pm.expect(b, 'request 990106 in the response').to.not.be.undefined;
+              pm.expect(b.vendorId, 'vendorId').to.eql(778);
+              pm.expect(b.importerId, 'importerId').to.eql(279367);
+              pm.expect(b.remarks, 'remarks').to.eql('seed file request B');
+              pm.expect(b.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(1);
           });
       }
 

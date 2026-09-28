@@ -158,3 +158,12 @@ UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
    SET DecisionID = NULL, CollateralID = NULL, AuthenticationFileID = @fileId2,
        UpdateDate = @now, UpdateUserID = 5
  WHERE DocumentID IN (@docFileA, @docFileB);
+
+-- 80-child-edits writes the coordinator-editable child fields; put them back to the values inserted above.
+UPDATE CRM.CertificateOfOrigins_ImportAuthenticationRequest
+   SET DecisionCircumstences = NULL, CirumstanceDetails = NULL, DocumentNumber = NULL,
+       Remarks = CASE DocumentID WHEN @docFileA THEN N'seed file request A' ELSE N'seed file request B' END,
+       VendorId = CASE DocumentID WHEN @docFileA THEN 777 ELSE 778 END,
+       ImporterID = CASE DocumentID WHEN @docFileA THEN 279366 ELSE 279367 END,
+       PreferenceDocumentTypeID = 1
+ WHERE DocumentID IN (@docFileA, @docFileB);

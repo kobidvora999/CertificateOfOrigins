@@ -283,6 +283,14 @@ public partial class AuthenticationRequestBl(
             InvoiceNumber = request.InvoiceNumber,
             UserId = request.UserId,
             UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            Remarks = request.Remarks,
+            DocumentNumber = request.DocumentNumber,
+            RequestCircumstancesId = request.RequestCircumstancesId,
+            IsOldIndication = request.IsOldIndication,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
             Decisions = decisions,
             ItemDetails = allItemDetails
                 .Where(item => item.ImportAuthenticationRequestId == request.DocumentId)
@@ -1056,12 +1064,14 @@ public partial class AuthenticationRequestBl(
     {
         var userId = RequestMetadata.UserId ?? 0;
 
-        // 1. Persist every child request's decision + recomputed IsOldIndication (3+ years since issuing).
+        // 1. Persist every child request's screen edits + the recomputed IsOldIndication (3+ years since issuing) —
+        //    legacy UpdateAndSaveImportAuthenticationRequest, a full Repository.Save per child.
         var threeYearsAgo = DateTime.Now.AddYears(-3);
         foreach (var child in request.Requests)
         {
-            var isOldIndication = child.DocumentIssuingDate <= threeYearsAgo;
-            await DataLayer.UpdateImportRequestDecision(child.DocumentId, child.DecisionId, isOldIndication, userId);
+            // No issuing date sent → the stored date is kept, so the stored flag stays too (null).
+            bool? isOldIndication = child.DocumentIssuingDate == default ? null : child.DocumentIssuingDate <= threeYearsAgo;
+            await DataLayer.UpdateFileChildRequest(child, isOldIndication, userId);
         }
 
         // 2. Per changed child: events + decision message (+ grant collaterals on approval).

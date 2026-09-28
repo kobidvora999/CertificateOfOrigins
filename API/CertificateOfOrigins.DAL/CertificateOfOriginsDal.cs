@@ -533,10 +533,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // SaveAuthenticationRequestFile forwards them to SendDecisionMessage. While this read omitted them, a
         // GET → edit → POST on the file screen posted 0 for both and routed the decision message / rejection task to
         // user 0.
-        // The remaining legacy result-set columns (CirumstanceDetails, DecisionCircumstences, DocumentNumber,
-        // RequestCircumstancesID, ResponsePhoneNum, IsOldIndication, OrganizationUnitTypeID, Remarks, ItemDetailID,
-        // CreateUserID and the two *InvoiceGoodsItemTaxDifference fields) are deliberately NOT projected: nothing on
-        // AuthenticationFileRequestDto exposes them, and each costs headroom against the 30-column interceptor cap.
+        // The last eight (CirumstanceDetails … AllInvoiceGoodsItemTaxDifference) are what the legacy file screen shows
+        // for the selected request: the coordinator edits the circumstances/remarks and sees the rest read-only.
+        // Without them a GET → edit → POST could not round-trip those values. 28 columns — under the platform
+        // interceptor's 30-column cap. Still not projected: ResponsePhoneNum, OrganizationUnitTypeID, ItemDetailID,
+        // CreateUserID (not on the file screen).
         var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
             .Select(r => new CertificateOfOriginsImportAuthenticationRequest
@@ -561,6 +562,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 InvoiceNumber = r.InvoiceNumber,
                 UserId = r.UserId,
                 UserResponseId = r.UserResponseId,
+                CirumstanceDetails = r.CirumstanceDetails,
+                DecisionCircumstences = r.DecisionCircumstences,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                Remarks = r.Remarks,
+                DocumentNumber = r.DocumentNumber,
+                IsOldIndication = r.IsOldIndication,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference,
             })
             .ToListAsync();
         return result;
@@ -1124,16 +1133,37 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
-    public async Task UpdateImportRequestDecision(int documentId, int? decisionId, bool isOldIndication, int userId)
+    public async Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool? isOldIndication, int userId)
     {
-        // SaveAuthenticationRequestFile step 1 (UpdateAndSaveImportAuthenticationRequest): stamp each child request's
-        // decision + the recomputed IsOldIndication flag + update-audit. Set-based, no row loaded.
+        // SaveAuthenticationRequestFile step 1 (legacy UpdateAndSaveImportAuthenticationRequest): per child request,
+        // Repository.Save of the client-modified entity + the server-recomputed IsOldIndication. The legacy screen can
+        // change the decision, the circumstances/remarks, the vendor / foreign customs house / importer, the countries,
+        // the preference-document type and issuing date, and clears InvoiceNumber or DocumentNumber in code — so those
+        // are written here. The fields that screen shows read-only are not.
+        //
+        // A null from the caller keeps the stored value (value-from-row overload), so a caller sending only the base
+        // fields does not wipe the rest. DocumentIssuingDate is non-nullable on the DTO; its default (not sent) keeps the
+        // stored date too — writing 0001-01-01 would fail against a datetime column. Set-based, no row loaded.
         var now = DateTime.Now;
+        DateTime? documentIssuingDate = child.DocumentIssuingDate == default ? null : child.DocumentIssuingDate;
         await Context.CertificateOfOriginsImportAuthenticationRequests
-            .Where(r => r.DocumentId == documentId)
+            .Where(r => r.DocumentId == child.DocumentId)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.DecisionId, decisionId)
-                .SetProperty(r => r.IsOldIndication, isOldIndication)
+                .SetProperty(r => r.DecisionId, child.DecisionId)
+                .SetProperty(r => r.IsOldIndication, r => isOldIndication ?? r.IsOldIndication)
+                .SetProperty(r => r.DecisionCircumstences, r => child.DecisionCircumstences ?? r.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, r => child.CirumstanceDetails ?? r.CirumstanceDetails)
+                .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
+                .SetProperty(r => r.DocumentNumber, r => child.DocumentNumber ?? r.DocumentNumber)
+                .SetProperty(r => r.InvoiceNumber, r => child.InvoiceNumber ?? r.InvoiceNumber)
+                .SetProperty(r => r.VendorId, r => child.VendorId ?? r.VendorId)
+                .SetProperty(r => r.CustomerId, r => child.CustomerId ?? r.CustomerId)
+                .SetProperty(r => r.ImporterId, r => child.ImporterId ?? r.ImporterId)
+                .SetProperty(r => r.ImportCountryId, r => child.ImportCountryId ?? r.ImportCountryId)
+                .SetProperty(r => r.OriginCountryId, r => child.OriginCountryId ?? r.OriginCountryId)
+                .SetProperty(r => r.IssuingCountryId, r => child.IssuingCountryId ?? r.IssuingCountryId)
+                .SetProperty(r => r.PreferenceDocumentTypeId, r => child.PreferenceDocumentTypeId ?? r.PreferenceDocumentTypeId)
+                .SetProperty(r => r.DocumentIssuingDate, r => documentIssuingDate ?? r.DocumentIssuingDate)
                 .SetProperty(r => r.UpdateDate, now)
                 .SetProperty(r => r.UpdateUserId, userId));
     }

@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# The coordinator's edits to a child request on the file screen (legacy UpdateAndSaveImportAuthenticationRequest,
+# a full Repository.Save per child). The file status is left unchanged (10 -> 10, after 70), so only the child
+# write runs. 990105 carries edits; 990106 carries ONLY the base fields, which must leave its stored values alone.
+body:
+  type: json
+  content: |-
+    {
+      "id": 990002,
+      "authenticationFileStatusId": 10,
+      "originalAuthenticationFileStatusId": 10,
+      "notes": null, "postalAdress": "seed address 2", "deliveryMethodId": 1,
+      "emailAdress": "seed2@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "seed user 2",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": 990105, "authenticationFileId": 990002, "decisionId": 10, "originalRequestDecisionId": 10,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5,
+          "decisionCircumstences": "PM circumstances 80", "cirumstanceDetails": "PM details 80",
+          "remarks": "PM remarks 80", "documentNumber": "DN-80", "vendorId": 779,
+          "preferenceDocumentTypeId": 4 },
+        { "documentId": 990106, "authenticationFileId": 990002, "decisionId": null, "originalRequestDecisionId": null,
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30070
