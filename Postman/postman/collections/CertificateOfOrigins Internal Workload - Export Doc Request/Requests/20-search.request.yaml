@@ -3,9 +3,9 @@ url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/Search"
 method: QUERY
 headers:
   Content-Type: application/json
-# Search with an empty filter. It returns rows only because the setup above set exporterCustomerId - that is what makes FillExportRequestNames (lines 371-403, the largest gap in this class) execute at all.
+# Search by the invoice number the setup minted for this run: exactly the request 00 created, enriched by FillExportRequestNames (it has an exporterCustomerId). An empty filter would search the whole table - it grew past the platform row cap and answered 500.
 body:
   type: json
   content: |-
-    {}
+    { "invoiceIdNum": "EXPINV-MULTI-{{runId}}" }
 order: 12000

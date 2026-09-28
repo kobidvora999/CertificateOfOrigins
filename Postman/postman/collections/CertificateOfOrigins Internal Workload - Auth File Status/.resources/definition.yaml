@@ -147,7 +147,7 @@ scripts:
       // ---- delivery-sent guards ----
       // The endpoint answers a bare boolean: false when it cannot find an AuthenticationRequestFile among the
       // related entities. Both scenarios must be false, for two different reasons.
-      if (name === '10-no-related-entities' || name === '20-wrong-entity-type') {
+      if (name === '95-delivery-no-related-entities' || name === '96-delivery-wrong-entity-type') {
           pm.test(name + ': no authentication file found -> false', function () {
               pm.expect(pm.response.text().trim().toLowerCase()).to.eql('false');
           });

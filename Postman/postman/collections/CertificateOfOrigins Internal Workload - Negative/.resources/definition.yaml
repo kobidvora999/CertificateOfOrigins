@@ -23,6 +23,12 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Values minted per run: a certificate number that cannot exist, and the DocumentID of the Template setup
+      // (800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT 7 - see Auth Lifecycle).
+      if (pm.info.requestName === 'auth-file-by-id' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+          pm.collectionVariables.set('negDoc', 800000000 + (Date.now() % 1000000) * 100 + 7 * 10 + 1);
+      }
 
       // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
       // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
@@ -52,12 +58,33 @@ scripts:
           '10-stale-timestamp':      409,
           '20-stale-with-children':  409,
           'certificate-empty-body':  400,
+          'certificate-by-number':   404,
+          'save-import-missing':     404,
+          'save-file-missing':       404,
+          'template-missing-entity': 404,
+          '00-template-create-request': 200,
+          '01-template-create-file': 200,
+          '10-template-unknown-id':  404,
+          'certificates-filter-no-match': 200,
       };
 
       if (name === '00-setup') {
           pm.collectionVariables.set('conflictId', pm.response.json().id);
           pm.test('conflict target created', function () {
               pm.expect(pm.response.json().id, 'id').to.be.a('number').and.not.equal(0);
+          });
+      }
+
+      if (name === 'certificates-filter-no-match') {
+          pm.test('a search that matches nothing answers an empty list', function () {
+              pm.expect(pm.response.json(), 'rows').to.be.an('array').that.is.empty;
+          });
+      }
+
+      if (name === '01-template-create-file') {
+          pm.collectionVariables.set('negFileId', pm.response.json().id);
+          pm.test('the file the unknown-template probe names exists', function () {
+              pm.expect(pm.response.json().id, 'id').to.be.a('number').and.above(0);
           });
       }
 

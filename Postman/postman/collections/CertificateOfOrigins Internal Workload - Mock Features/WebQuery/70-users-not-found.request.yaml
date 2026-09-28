@@ -12,7 +12,7 @@ body:
       "id": 0,
       "typeId": 2, "state": 1, "title": "mock-features users not found",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "MF-COO-D",
+      "certificateNumber": "MF-COO-D-{{runId}}",
       "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 2,

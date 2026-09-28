@@ -1,18 +1,21 @@
 # Internal-workload report — CertificateOfOrigins
 
-שירות CertificateOfOrigins · 18 collections (`CertificateOfOrigins Internal Workload - *`) · ריצה 2026-09-28 ·
+שירות CertificateOfOrigins · 17 collections (`CertificateOfOrigins Internal Workload - *`) · ריצה 2026-09-28 ·
 port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 תחת session ‏dotnet-coverage אחד.
 
 ## 1. GATE — ⚠️ PASS-WITH-BLOCKERS
 
-**Assertions: 1073/1073 passed** · 18/18 collections · 342 requests · 0 collections ללא assertions.
+**Assertions: 944/944 passed** · 17/17 collections · 312 requests · 0 collections ללא assertions.
+`Param IssueByWorker` (מעבר נפרד, `run-issue-by-worker.ps1`): 10/10.
 שני מעברים ⏸ BLOCKED (skip גלוי, לא מכשילים) — סעיף 3.
 
 | | לפני (אותו יום, master) | אחרי |
 |---|---|---|
-| Collections ירוקים | 11/15 | **18/18** |
+| Collections ירוקים | 11/15 | **17/17** |
 | Assertions שנכשלו | 10 | **0** |
 | תהליכים עם chain מלא | 0 | **3** |
+| בקשות שפונות לנתון קבוע שלא נוצר בריצה | 62 | **0** |
+| seed לפני ריצה | נדרש | **אין** |
 
 ## 2. מה תוקן כדי שהחבילה תהיה ירוקה
 
@@ -53,10 +56,26 @@ port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 
 `AuthenticationRequestBl` נמוך יחסית בגלל `AuthenticationRequestBl.Schedulers.cs` — קוד Planar שאין לו HTTP trigger
 (ראה `coverage-baseline.json` → history.c17). הכלי הנכון שם הוא unit tests, לא Postman.
 
-## 5. Inventory
+## 5. Inventory — אין שום בקשה שפונה לנתון קבוע
 
-35 endpoints (כולל 4 ‏`[HttpQuery]`). 0 ORPHAN. כל endpoint נקרא לפחות פעם אחת ב-chain על ישות שנוצרה באותה ריצה,
-חוץ מ-`Template` (BLOCKED). קריאות literal-id שנותרו ב-collection ‏`API` (smoke) ממשיכות לרוץ, אך אינן ההוכחה לתהליך.
+35 endpoints (כולל 4 ‏`[HttpQuery]`). 0 ORPHAN. כל endpoint נקרא על ישות שנוצרה באותה ריצה (חוץ מ-`Template`, BLOCKED).
+
+ניקוי (2026-09-28):
+- **`API` נמחק** (40 בקשות, רובן על ids מומצאים: `900500`, `File/1`, `id: 999`, `IL0000116895`, GUID קבוע). כל
+  ה-endpoints שלו מכוסים ב-lifecycle collections; חוזי ה-not-found הייחודיים עברו ל-`Negative`. גם ה-export הישן
+  `Postman/CertificateOfOrigins-Internal.postman_collection.json` נמחק.
+- **`seed_ImportAuthenticationRequests.sql` נמחק.** `Mock Features/AuthRequest` יוצר בקשה ותיק משלו (במקום 990101/990001).
+- **מספרי תעודה ביצירה** (`BLC-*`, `RC-*`, `MF-COO-*`, `POSTMAN-COO-1`) מקבלים סיומת `-{{runId}}`. מספר קבוע נופל,
+  מהריצה השנייה, לענף "מספר קיים → גרסה חדשה, הישנה מבוטלת".
+- **חיפושים** מסוננים לפי ערך שהריצה יצרה (מספר חשבונית / DocumentID). `Export Doc Request/20-search` חיפש בכל הטבלה;
+  היא גדלה מעבר לתקרת השורות של הפלטפורמה והבקשה נפלה ב-500.
+- **בדיקות קיום** (`CheckIfExistsAdditionalRequestsFor{Vendor,Importer}`): ספק ויבואן חדשים בכל ריצה, כך שהתשובה
+  תלויה רק בריצה.
+- **Not-found:** `2147483647` (int.MaxValue — identity לא יגיע אליו) ו-`NO-SUCH-{{runId}}` למספרים, במקום `99999999`.
+- `Auth File Status`: בדיקות ה-delivery עברו ל-`FileStatus/95-96`, אחרי שהתיק נוצר (תיקיות רצות לפי סדר אלפביתי).
+
+נשארו בכוונה (לא נתון של השירות): template id `1`/`99` (קוד), לקוח `777`/`888` וארץ `32` — ישויות חיצוניות
+שה-mock עונה עליהן לכל id.
 
 ## 6. ממצאים לבירור (לא תוקנו)
 
@@ -66,18 +85,21 @@ port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 
 2. **`GET ui/AuthenticationRequest/File/{id}` לא מחזיר `organizationUnitId`.** לקוח שקורא את התיק ושומר אותו
    בחזרה מקבל 500 (`organizationUnitId must be greater then 0` ב-event builder). ה-chain שולח את ה-org unit
    שנלכד ביצירת התיק.
-3. `Export Doc Request/25-search-multi-invoice` — ה-assertion השני מסתיים ב-`|| j.length > 0` (טאוטולוגיה).
-4. שאלות העסק ב-`lifecycle-map.md` §5 (אין אכיפת מעברים בשרת; UI create בסטטוס 8 מדלג על הפרסום; פרסום אוטומטי
+3. **`SaveImport` (update) בלי תאריכים → 500** (`datetime2 → datetime out-of-range`): ה-UPDATE נשלח עם תאריך אפס לפני
+   שבודקים שהשורה קיימת. תאריך חובה חסר צריך להיות 400.
+4. **חיפוש בקשות יצוא בלי פילטר → 500** כשהתוצאה עוברת את תקרת השורות של הפלטפורמה
+   (`DbInterceptionException: Result rows count`). צריך 400 או paging.
+5. שאלות העסק ב-`lifecycle-map.md` §5 (אין אכיפת מעברים בשרת; UI create בסטטוס 8 מדלג על הפרסום; פרסום אוטומטי
    אחרי 7 לא הומר; `MessageTypeId = 0` ב-feedback).
 
 ## 7. Levers applied
 
-- **CHAIN:** 3 collections חדשים (81 requests, 259 assertions).
+- **CHAIN:** 3 collections חדשים.
 - **קוד:** תיקון BL אחד (reconcile אחרי מסר).
-- **fixtures:** 3 collections תוקנו (script syntax, assertion ישן, קודי ארץ).
-- MOCK/DB-STATE: אין שינויים. `seed_ImportAuthenticationRequests.sql` עדיין נדרש ל-`Auth File Status` בין ריצות.
+- **fixtures:** script syntax, assertion ישן, קודי ארץ; ניקוי כל הערכים הקבועים (סעיף 5).
+- **DB-STATE:** אין seed — כל collection יוצר את הנתונים שלו.
 
 ## 8. Paths
 
-`lifecycle-map.md` · `coverage-baseline.json` · collections: `Postman/postman/collections/CertificateOfOrigins Internal Workload - {Certificate,Import Auth,Export Auth} Lifecycle`.
-תנאי ריצה: `node tools/local-lookup-stub.js` + Consul ‏`Main/CentralConfig` → `CustomsDb` = ‏CertificateOfOrigins.
+`lifecycle-map.md` · `coverage-baseline.json` · collections: `Postman/postman/collections/CertificateOfOrigins Internal Workload - *`.
+תנאי ריצה (אין seed): `node tools/local-lookup-stub.js` + Consul ‏`Main/CentralConfig` → `CustomsDb` = ‏CertificateOfOrigins.

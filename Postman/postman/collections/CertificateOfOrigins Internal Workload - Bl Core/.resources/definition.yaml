@@ -26,7 +26,7 @@ scripts:
       var now = Date.now(), DAY = 86400000;
       pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
       pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
-      if (!pm.collectionVariables.get('runId')) { pm.collectionVariables.set('runId', String(now).slice(-7)); }
+      if (pm.info.requestName === '00-setup-wq-target' || !pm.collectionVariables.get('runId')) { pm.collectionVariables.set('runId', String(now).slice(-7)); }
     language: text/javascript
   - type: http:afterResponse
     code: |-

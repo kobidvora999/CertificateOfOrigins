@@ -18,7 +18,7 @@ body:
       "organizationUnitId": 1,
       "customerId": 777,
       "createCustomerId": 777,
-      "certificateNumber": "POSTMAN-COO-1",
+      "certificateNumber": "POSTMAN-COO-1-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,

@@ -17,6 +17,10 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Run-scoped invoice number: the searches must find this run's request only, never the whole table.
+      if (pm.info.requestName === '00-setup-save-children' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
 
       // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
       // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
@@ -58,8 +62,9 @@ scripts:
       if (name === '20-search') {
           // The whole point of this collection: an empty array here means the SP filtered everything out
           // (EAR.ExporterCustomerID IS NOT NULL) and the enrichment method never ran.
-          pm.test('search returns rows', function () {
-              pm.expect(j, 'search results').to.be.an('array').that.is.not.empty;
+          pm.test('the run invoice finds exactly the request created at 00', function () {
+              pm.expect(j, 'search results').to.be.an('array').with.lengthOf(1);
+              pm.expect(j[0].requestId, 'requestId').to.eql(Number(pm.collectionVariables.get('exportReqId')));
           });
           pm.test('FillExportRequestNames enriched the rows', function () {
               var r = j[0];
@@ -74,9 +79,8 @@ scripts:
           // separated terms. Under the single-LIKE regression this returned [] — which is what makes this a real
           // assertion rather than a smoke test.
           pm.test('multi-value invoice search ORs the terms', function () {
-              pm.expect(j, 'search results').to.be.an('array').that.is.not.empty;
-              pm.expect(j.some(function (r) { return r.invoiceNumbers === 'EXPINV-MULTI'; })
-                        || j.length > 0, 'the seeded invoice row is matched by the second term').to.be.true;
+              pm.expect(j, 'search results').to.be.an('array').with.lengthOf(1);
+              pm.expect(j[0].requestId, 'the request of this run is matched by the second term').to.eql(Number(pm.collectionVariables.get('exportReqId')));
           });
       }
 

@@ -21,6 +21,11 @@ scripts:
     code: |-
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-setup-Match' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       pm.collectionVariables.set('tenDaysAgo', iso(Date.now() - 10 * 86400000));
     language: text/javascript

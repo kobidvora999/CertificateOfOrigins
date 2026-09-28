@@ -12,7 +12,7 @@ body:
     {
       "id": 0, "state": 1, "typeId": 2, "title": "bl-core BLC-WQ-TARGET",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "BLC-WQ-TARGET",
+      "certificateNumber": "BLC-WQ-TARGET-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,

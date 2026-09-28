@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# SETUP - an existing file, so the only thing wrong at 10 is the template id.
+body:
+  type: json
+  content: |-
+    [ { "documentId": {{negDoc}}, "organizationUnitIdNum": 1, "issuingCountryIdNum": 32, "customerId": 888 } ]
+order: 6010

@@ -3,35 +3,33 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
 method: POST
 headers:
   Content-Type: application/json
-# R0: a second request of the same importer and vendor (invoice declaration, type 5).
+# SETUP - the import authentication request every AuthRequest scenario below reads (DocumentID minted per run, slot 5).
 body:
   type: json
   content: |-
     {
-      "documentId": {{docB}},
+      "documentId": {{mfDoc}},
       "isNewInstance": true,
       "authenticationFileId": null,
       "authenticationRequestDate": "{{today}}",
       "decisionId": 1,
-      "leadDocumentId": {{docB}},
+      "leadDocumentId": {{mfDoc}},
       "documentIssuingDate": "{{today}}",
-      "documentNumber": "DN-{{docB}}",
       "importCountryId": 32,
       "issuingCountryId": 32,
       "originCountryId": 32,
       "number": 1,
-      "preferenceDocumentTypeId": 5,
+      "preferenceDocumentTypeId": 1,
       "responseNameEmail": "flow@example.com",
-      "responsePhoneNum": "0500000000",
       "organizationUnitId": 1,
-      "vendorId": {{vendorId}},
-      "vendorName": "Lifecycle Vendor",
+      "vendorId": 777,
+      "vendorName": "Mock Vendor",
       "customerId": 888,
-      "importerId": {{importerId}},
-      "remarks": "lifecycle request B",
+      "importerId": 279366,
+      "remarks": "mock features",
       "userId": 5,
       "userResponseId": 5,
       "isCurrentUserHandleRequest": true,
       "collaterals": []
     }
-order: 1010
+order: 39800

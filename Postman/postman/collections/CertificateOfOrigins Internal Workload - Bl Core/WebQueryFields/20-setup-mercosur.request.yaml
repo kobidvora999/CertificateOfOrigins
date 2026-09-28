@@ -10,7 +10,7 @@ body:
     {
       "id": 0, "state": 1, "typeId": 3, "title": "bl-core BLC-WQ-MERCOSUR",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "BLC-WQ-MERCOSUR",
+      "certificateNumber": "BLC-WQ-MERCOSUR-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 2,

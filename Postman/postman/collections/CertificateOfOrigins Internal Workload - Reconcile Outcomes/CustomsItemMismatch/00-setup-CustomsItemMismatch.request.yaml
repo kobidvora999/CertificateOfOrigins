@@ -11,7 +11,7 @@ body:
       "id": 0, "state": 1, "typeId": 3, "title": "reconcile-outcomes RC-CIMM",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "leadDocumentId": 111,
-      "certificateNumber": "RC-CIMM",
+      "certificateNumber": "RC-CIMM-{{runId}}",
       "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,

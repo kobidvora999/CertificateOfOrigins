@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/{{expCountryId}}"
 method: GET
 # The foreign customs house of the request country (32).
 order: 1660

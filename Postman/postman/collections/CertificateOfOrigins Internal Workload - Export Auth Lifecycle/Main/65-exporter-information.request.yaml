@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformation/888"
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformation/{{expExporterId}}"
 method: GET
 # The exporter of the request (customer 888) with its addresses.
 order: 1650

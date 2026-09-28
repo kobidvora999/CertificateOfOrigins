@@ -1,9 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/ByLeadDocumentIDs"
-method: POST
-headers:
-  Content-Type: application/json
-body:
-  type: json
-  content: "[1]"
-order: 6000

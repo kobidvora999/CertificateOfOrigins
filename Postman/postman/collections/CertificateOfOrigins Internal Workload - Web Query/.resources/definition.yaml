@@ -17,6 +17,11 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-setup-publish' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
 
       // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
       // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the

@@ -10,7 +10,8 @@ body:
   type: json
   content: |-
     {
-      "fromRequestDate": "2000-01-01",
-      "toRequestDate": "2100-01-01"
+      "documentId": {{mfDoc}},
+      "fromRequestDate": "{{tenDaysAgo}}",
+      "toRequestDate": "{{inOneMonth}}"
     }
 order: 40500

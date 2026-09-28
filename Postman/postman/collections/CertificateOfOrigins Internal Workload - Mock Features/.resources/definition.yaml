@@ -14,7 +14,7 @@ description: >-
   aborts the call) and the BL does not catch them, so they would surface as 500. Whether a downstream transport
   failure SHOULD be a 500 or a 502 is a contract question for the developer; asserting the current 500 would
   freeze an unreviewed answer. See reports/gap-analysis.md.
-  REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql for AuthRequest.
+  AuthRequest creates the request and file it reads (01/02) - no seed.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -27,6 +27,15 @@ scripts:
       // the request yaml, not here: one flag per scenario is the whole point.
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // DocumentID of the AuthRequest setup: 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT 5 (see Auth Lifecycle).
+      if (pm.info.requestName === '01-create-request' || !pm.collectionVariables.get('mfDoc')) {
+          pm.collectionVariables.set('mfDoc', 800000000 + (Date.now() % 1000000) * 100 + 5 * 10 + 1);
+      }
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-baseline' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
 
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       var now = Date.now(), DAY = 86400000;
@@ -62,6 +71,48 @@ scripts:
           pm.test('90-site-not-found: rejected on the org unit the unresolved site never supplied', function () {
               pm.expect(body).to.include('OrganizationUnitId');
           });
+      }
+
+      // ---- AuthRequest setup and reads: every read must be of the request / file created at 01-02 ----
+
+      var mfDoc = Number(pm.collectionVariables.get('mfDoc'));
+
+      if (name === '02-create-file' && j) { pm.collectionVariables.set('mfFileId', j.id); }
+
+      if (name === '01-create-request') {
+
+          pm.test('01: the request was inserted', function () { pm.expect(j.documentId, 'documentId').to.eql(mfDoc); });
+
+      }
+
+      if (['10-collateral-empty', '20-tasks-empty', '30-document-by-id-not-found', '40-no-submission-date'].indexOf(name) >= 0) {
+
+          pm.test(name + ': read the request created at 01', function () { pm.expect(j.documentId, 'documentId').to.eql(mfDoc); });
+
+      }
+
+      if (name === '50-file-tasks-empty') {
+
+          pm.test('50: read the file created at 02, holding the request', function () {
+
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('mfFileId')));
+
+              pm.expect((j.requests || []).map(function (r) { return r.documentId; }), 'children').to.include(mfDoc);
+
+          });
+
+      }
+
+      if (name === '60-importers-not-found' || name === '70-vendors-not-found') {
+
+          pm.test(name + ': the filter found exactly the request created at 01', function () {
+
+              pm.expect(j, 'rows').to.be.an('array').with.lengthOf(1);
+
+              pm.expect(j[0].documentId, 'documentId').to.eql(mfDoc);
+
+          });
+
       }
 
       // ---- captures (before the assertions, so a failed assertion cannot break the chain) ----

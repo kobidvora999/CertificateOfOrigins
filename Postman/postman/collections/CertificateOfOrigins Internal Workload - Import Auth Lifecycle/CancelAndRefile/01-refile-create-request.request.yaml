@@ -24,7 +24,7 @@ body:
       "responseNameEmail": "flow@example.com",
       "responsePhoneNum": "0500000000",
       "organizationUnitId": 1,
-      "vendorId": 777,
+      "vendorId": {{vendorId}},
       "vendorName": "Lifecycle Vendor",
       "customerId": 888,
       "importerId": {{importerId}},

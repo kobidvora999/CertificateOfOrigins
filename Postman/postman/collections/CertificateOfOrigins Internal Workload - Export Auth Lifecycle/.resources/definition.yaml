@@ -62,6 +62,10 @@ scripts:
           '05-cancel-read': ['expCxId', 1, 1], '15-cancel-read-cancelled': ['expCxId', 9, null]
       };
       if (READS[name] && j) { pm.collectionVariables.set(DTO_OF[READS[name][0]], JSON.stringify(j)); }
+      if (name === '55-read-closed-valid' && j) {
+          pm.collectionVariables.set('expExporterId', j.exporterCustomerId);
+          pm.collectionVariables.set('expCountryId', j.countryId);
+      }
 
       // ---- creation ----
       if (CREATE[name]) {
@@ -101,12 +105,12 @@ scripts:
       }
       if (name === '65-exporter-information') {
           pm.test('65: the exporter resolves with an address', function () {
-              pm.expect(j.id, 'id').to.eql(888);
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('expExporterId')));
               pm.expect(j.addresses, 'addresses').to.be.an('array').that.is.not.empty;
           });
       }
       if (name === '66-foreign-customs-house') {
-          pm.test('66: a foreign customs house resolves for country 32', function () {
+          pm.test('66: a foreign customs house resolves for the request country', function () {
               pm.expect(j.id, 'id').to.be.a('number').and.above(0);
               pm.expect(j.name, 'name').to.be.a('string').and.not.empty;
           });
