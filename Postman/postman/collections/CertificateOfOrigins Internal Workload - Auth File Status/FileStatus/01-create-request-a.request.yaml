@@ -3,38 +3,37 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
 method: POST
 headers:
   Content-Type: application/json
-  x-mock-feature--Tasks.Empty: "true"
-# A brand-new request: isNewInstance = true, as the legacy "new request" popup sent it (fresh documentId per run, set
-# in the collection pre-request script). The BL inserts because the CALLER says it is new - never because an update
-# found no row.
+# FLOW STEP - the first child of this run's file (the one the status scenarios decide).
+# isNewInstance = true INSERTS the request; the DocumentID is minted per run in the collection pre-request script.
+# It carries an ImporterID, which is what lets FillAuthenticationRequestNames' importer block run.
 body:
   type: json
   content: |-
     {
-      "documentId": {{newDocId}},
+      "documentId": {{docFileA}},
       "isNewInstance": true,
       "authenticationFileId": null,
       "authenticationRequestDate": "{{today}}",
       "collateralId": null,
       "decisionId": 1,
-      "leadDocumentId": {{leadDocId}},
+      "leadDocumentId": {{docFileA}},
       "documentIssuingDate": "{{today}}",
       "importCountryId": 32,
       "issuingCountryId": 32,
       "number": 1,
       "originCountryId": 32,
       "preferenceDocumentTypeId": 1,
-      "responseNameEmail": "test@test.gov.il",
+      "responseNameEmail": "flow@example.com",
+      "responsePhoneNum": "0500000000",
       "organizationUnitId": 1,
       "vendorId": 777,
-      "vendorName": "Seed Vendor",
+      "vendorName": "Flow Vendor",
       "customerId": null,
-      "importerId": null,
-      "lastDeliveryForImporter": null,
-      "invoiceNumber": null,
+      "importerId": 279366,
+      "remarks": "flow file request A",
       "userId": 5,
       "userResponseId": 5,
-      "isCurrentUserHandleRequest": false,
+      "isCurrentUserHandleRequest": true,
       "collaterals": []
     }
-order: 10700
+order: 29000

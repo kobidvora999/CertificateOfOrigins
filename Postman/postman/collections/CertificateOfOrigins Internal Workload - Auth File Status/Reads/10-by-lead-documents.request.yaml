@@ -3,10 +3,10 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/ByLeadDocumentIDs"
 method: POST
 headers:
   Content-Type: application/json
-# Lead-document ids that actually exist. The stock fixture sends [1], which matches nothing, so
+# The lead-document ids of the two requests this run created (01/02 use leadDocumentId = documentId). The stock fixture sends [1], which matches nothing, so
 # FillLeadDocumentRequestNames returned at its empty guard on every run and its two lookup fills never ran.
 body:
   type: json
   content: |-
-    [990205, 990206]
+    [{{docFileA}}, {{docFileB}}]
 order: 32000

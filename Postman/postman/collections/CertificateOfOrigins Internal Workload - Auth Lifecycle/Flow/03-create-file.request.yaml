@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# FLOW STEP - creates THIS run's authentication file from the linked request and links it (the file id is an
+# identity; captured into fileId by the collection afterResponse script). Every file scenario below uses {{fileId}}.
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": {{docLinked}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 123,
+        "responseNameEmail": "flow@example.com"
+      }
+    ]
+order: 1200

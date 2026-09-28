@@ -59,6 +59,7 @@ SELECT (SELECT COUNT(*) FROM CRM.CertificateOfOrigins_ImportAuthenticationFileDe
 -- above deliberately do not update, this does.
 UPDATE CRM.CertificateOfOrigins_ImportAuthenticationFileDetails
    SET AuthenticationFileStatusID = 1, DeliveryMethodID = 1, ReminderMethodID = 1, LastDelivery = NULL,
+       FirstProvideContactDate = NULL,   -- 30-delivery-vendor must stamp it from empty (Auth Lifecycle 35/45)
        UpdateDate = @now, UpdateUserID = 5
  WHERE ID = @fileId;
 

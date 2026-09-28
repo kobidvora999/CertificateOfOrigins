@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docUnlinked}}"
+method: GET
+# The request created by 02, AuthenticationFileID NULL - the other branch of the same mapper.
+order: 11000

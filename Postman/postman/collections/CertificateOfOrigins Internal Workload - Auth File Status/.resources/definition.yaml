@@ -7,11 +7,13 @@ description: >-
   file still under 70% branch coverage, and this cluster is why: one fixture, one status transition (2 -> 5),
   one child with decision 3 and userId == userResponseId. Every other arm of a nine-value status enum and a
   nine-value decision enum had never been entered.
-  REQUIRES the seed, which now also creates file 990002 with requests 990105 / 990106. That file is DEDICATED
-  to this collection: one scenario here is CancelledFile, which calls UnlinkAllRequestsFromFile, and it would
-  detach the Auth Lifecycle collection's rows from 990001 — the collections run in PARALLEL. The same seed also
-  gives 990105/990106 an ImporterID, which is what finally lets FillAuthenticationRequestNames' importer block
-  run: 990101-990104 leave it NULL, so importerIds was always empty.
+  SELF-CONTAINED FLOW - no seed, no fixed ids. FileStatus/01-03 create this run's data through the API: two
+  import authentication requests (SaveImport, isNewInstance = true, DocumentIDs minted per run below) and an
+  authentication file holding both (CreateNewFile, identity id captured into fileId). Every scenario addresses
+  only {{fileId}} / {{docFileA}} / {{docFileB}}. The file is DEDICATED to this collection: one scenario here is
+  CancelledFile, which calls UnlinkAllRequestsFromFile - the collections run in PARALLEL and each creates its
+  own file. Both requests carry an ImporterID, which is what lets FillAuthenticationRequestNames' importer
+  block run.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -21,6 +23,18 @@ scripts:
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       pm.collectionVariables.set('today', iso(Date.now()));
+
+      // ---- run-scoped ids for the rows this collection CREATES (never fixed ids, never a seed) ----
+      // DocumentID is caller-assigned: 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT unique per collection
+      // (see Auth Lifecycle for the full scheme). Re-minted on the first creation step of every run.
+      var SLOT = 2, FIRST = '01-create-request-a';
+      if (pm.info.requestName === FIRST || !pm.collectionVariables.get('docBase')) {
+          pm.collectionVariables.set('docBase', 800000000 + (Date.now() % 1000000) * 100 + SLOT * 10);
+          pm.collectionVariables.unset('fileId');
+      }
+      var docBase = Number(pm.collectionVariables.get('docBase'));
+      pm.collectionVariables.set('docFileA', docBase + 1);
+      pm.collectionVariables.set('docFileB', docBase + 2);
     language: text/javascript
   - type: http:afterResponse
     code: |-
@@ -32,11 +46,29 @@ scripts:
       });
       pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
 
-      // A 404 here means the seed has not been applied to this database - say so plainly rather than letting the
-      // suite look merely red.
+      var docFileA = Number(pm.collectionVariables.get('docFileA'));
+      var docFileB = Number(pm.collectionVariables.get('docFileB'));
+
+      // ---- flow: create this run's rows (captures first, so a failed assertion cannot break the chain) ----
+      var CREATED = { '01-create-request-a': docFileA, '02-create-request-b': docFileB };
+      if (CREATED[name] !== undefined) {
+          pm.test(name + ': the request was inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(CREATED[name]);
+          });
+      }
+      if (name === '03-create-file') {
+          if (j && j.id) { pm.collectionVariables.set('fileId', j.id); }
+          pm.test('03-create-file: a new authentication file was created', function () {
+              pm.expect(j && j.id, 'id').to.be.a('number').and.above(0);
+          });
+      }
+      var fileId = Number(pm.collectionVariables.get('fileId'));
+
+      // A 404 here means a creation step above failed, so the row this scenario addresses does not exist.
       if (pm.response.code === 404) {
-          pm.test('SEED MISSING - run seed/seed_ImportAuthenticationRequests.sql', function () {
-              pm.expect.fail('file 990002 / requests 990105-990106 not found; the seed has not been applied');
+          pm.test('FLOW BROKEN - the row this scenario addresses was not created by FileStatus/01-03', function () {
+              pm.expect.fail('not found; check the 01-create-* / 03-create-file results earlier in this run');
           });
           return;
       }
@@ -57,7 +89,7 @@ scripts:
       };
       if (SENT_STATUS[name] !== undefined && j) {
           pm.test(name + ': the file came back at status ' + SENT_STATUS[name], function () {
-              pm.expect(j.id, 'id').to.eql(990002);
+              pm.expect(j.id, 'id').to.eql(fileId);
               pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(SENT_STATUS[name]);
           });
       }
@@ -78,10 +110,10 @@ scripts:
           pm.test('70-administrative-closure: the child request kept decision 10', function () {
               var kids = j.importAuthenticationRequests || j.requests || [];
               pm.expect(kids, 'children').to.be.an('array').that.is.not.empty;
-              // File 990002 has TWO children (990105 + 990106) and the read does not promise an order, so match
+              // The file has TWO children (docFileA + docFileB) and the read does not promise an order, so match
               // the one this request actually decided rather than indexing blindly.
-              var target = kids.filter(function (k) { return k.documentId === 990105; })[0];
-              pm.expect(target, 'request 990105 in the response').to.not.be.undefined;
+              var target = kids.filter(function (k) { return k.documentId === docFileA; })[0];
+              pm.expect(target, 'request docFileA in the response').to.not.be.undefined;
               pm.expect(target.decisionId, 'decisionId').to.eql(10);
           });
       }
@@ -91,9 +123,9 @@ scripts:
           // (Repository.Save), the migration had kept only DecisionID + IsOldIndication.
           var kids80 = j.importAuthenticationRequests || j.requests || [];
           var byId = function (id) { return kids80.filter(function (k) { return k.documentId === id; })[0]; };
-          pm.test('80-child-edits: the coordinator edits on 990105 were saved and read back', function () {
-              var a = byId(990105);
-              pm.expect(a, 'request 990105 in the response').to.not.be.undefined;
+          pm.test('80-child-edits: the coordinator edits on docFileA were saved and read back', function () {
+              var a = byId(docFileA);
+              pm.expect(a, 'request docFileA in the response').to.not.be.undefined;
               pm.expect(a.decisionCircumstences, 'decisionCircumstences').to.eql('PM circumstances 80');
               pm.expect(a.cirumstanceDetails, 'cirumstanceDetails').to.eql('PM details 80');
               pm.expect(a.remarks, 'remarks').to.eql('PM remarks 80');
@@ -101,12 +133,13 @@ scripts:
               pm.expect(a.vendorId, 'vendorId').to.eql(779);
               pm.expect(a.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(4);
           });
-          pm.test('80-child-edits: fields 990106 did not send kept their stored values', function () {
-              var b = byId(990106);
-              pm.expect(b, 'request 990106 in the response').to.not.be.undefined;
+          // "Stored" = what 02-create-request-b inserted earlier in this run.
+          pm.test('80-child-edits: fields docFileB did not send kept their stored values', function () {
+              var b = byId(docFileB);
+              pm.expect(b, 'request docFileB in the response').to.not.be.undefined;
               pm.expect(b.vendorId, 'vendorId').to.eql(778);
               pm.expect(b.importerId, 'importerId').to.eql(279367);
-              pm.expect(b.remarks, 'remarks').to.eql('seed file request B');
+              pm.expect(b.remarks, 'remarks').to.eql('flow file request B');
               pm.expect(b.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(1);
           });
       }
@@ -124,6 +157,9 @@ scripts:
       if (name === '10-by-lead-documents' && j) {
           pm.test('10-by-lead-documents: the query matched, so the name fills actually ran', function () {
               pm.expect(j, 'rows').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('10-by-lead-documents: only the requests of this run came back', function () {
+              j.forEach(function (r) { pm.expect([docFileA, docFileB], 'documentId').to.include(r.documentId); });
           });
           pm.test('10-by-lead-documents: FillLeadDocumentRequestNames resolved the lookup names', function () {
               pm.expect(j[0].importCountryName, 'importCountryName (Country lookup)').to.be.a('string').and.not.empty;

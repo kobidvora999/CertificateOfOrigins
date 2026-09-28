@@ -3,14 +3,14 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryAndReminderForVen
 method: POST
 headers:
   Content-Type: application/json
-# Same endpoint with isDelivery=false - the REMINDER branch of AdvanceDeliveryStatus, which the delivery call above does not reach.
+# Delivery to the vendor - advances the flow-created file's status machine (AdvanceDeliveryStatus). isDelivery=true is the delivery branch.
 body:
   type: json
   content: |-
     {
-      "id": 990001,
+      "id": {{fileId}},
       "authenticationFileStatusId": 1,
       "deliveryMethodId": 1,
-      "isDelivery": false
+      "isDelivery": true
     }
-order: 14000
+order: 13000

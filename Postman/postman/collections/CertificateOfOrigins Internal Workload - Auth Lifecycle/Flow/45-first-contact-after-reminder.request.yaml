@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: GET
+# After 40-reminder-vendor: a reminder never touches FirstProvideContactDate, so the date from 30 is still there.
+order: 14500

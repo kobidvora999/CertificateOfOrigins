@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: GET
+# The file created by 03, with its child requests enriched.
+order: 12000
