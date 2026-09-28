@@ -188,7 +188,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404. All
         // exceptions — validation, not-found, and (once wired) declaration reconciliation — flow through the single
         // requestExceptions channel.
-        var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions);
+        var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions, reasonCode);
         return response;
     }
 
@@ -231,7 +231,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
     // reconciliation exceptions (from the post-save declaration check) and the in-band request exceptions (not-found /
     // missing-id, accumulated above) are merged onto the response — the legacy returns them here, it does not throw.
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> requestExceptions)
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> requestExceptions, int requestReasonCode)
     {
         // A resolved certificate carries the full feedback; an unresolved one (not-found) leaves the feedback empty and
         // relies on the exceptions to convey the failure — the certificate id is then unknown (0).
@@ -241,15 +241,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             ApplicationId = certificate?.Id ?? 0,
             Feedback = feedback,
             Exceptions = requestExceptions.Count > 0 ? requestExceptions : null,
-            Attachments = certificate != null ? await BuildFeedbackAttachments(certificate) : null,
+            Attachments = certificate != null ? await BuildFeedbackAttachments(certificate, requestReasonCode) : null,
         };
         return response;
     }
 
     // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site:
     //
-    //   Attachment = (reason == EmptyCertificate || reason == CertificateCancellation || reason == GetRequestStatus
-    //                 || (reason != Draft && status != Published)) ? null : CreateAttachments(certificate);
+    //   Attachment = (requestReasonCode == EmptyCertificate || requestReasonCode == CertificateCancellation
+    //                 || requestReasonCode == GetRequestStatus
+    //                 || (requestReasonCode != Draft && certificate.status != Published)) ? null : CreateAttachments(certificate);
+    //
+    // requestReasonCode is the INCOMING message's reason, not the stored certificate's: a status query or a cancellation
+    // returns an existing certificate whose own reason (e.g. NewCertificate) differs from the message's.
     //
     // i.e. the agent gets the rendered document back for a Draft request, or once the certificate reaches
     // Published — and never for the three read/cancel reasons. The migration hard-coded null here, so an agent
@@ -262,15 +266,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // ⚠️ Legacy could return up to THREE templates — the main one plus eurPage2Template (page 2 of an EUR
     // certificate) and templateForView. The migrated render produces one. That gap is inside the renderer, not
     // here; recorded as a separate finding rather than widened into this fix.
-    private async Task<List<CertificateOfOriginMessageAttachmentDto>?> BuildFeedbackAttachments(CertificateOfOrigin certificate)
+    private async Task<List<CertificateOfOriginMessageAttachmentDto>?> BuildFeedbackAttachments(CertificateOfOrigin certificate, int requestReasonCode)
     {
-        var reason = certificate.RequestReasonCode;
-        var isReadOrCancelReason = reason == (int)ERequestReason.EmptyCertificate
-            || reason == (int)ERequestReason.CertificateCancellation
-            || reason == (int)ERequestReason.GetRequestStatus;
-        var isDraftOrPublished = reason == (int)ERequestReason.Draft
-            || certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published;
-        if (isReadOrCancelReason || !isDraftOrPublished)
+        if (requestReasonCode is (int)ERequestReason.EmptyCertificate or (int)ERequestReason.CertificateCancellation or (int)ERequestReason.GetRequestStatus
+            || (requestReasonCode != (int)ERequestReason.Draft && certificate.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published))
         {
             return null;
         }
