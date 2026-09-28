@@ -28,7 +28,7 @@ public partial class CertificateOfOriginsBl
 
         var templateRequest = templateUtil.CreateRequestBuilder()
             .WithName(printTemplate.Name)
-            .WithData(printTemplate.Data)
+            .WithJsonData(printTemplate.Data)
             .WithFormat(printTemplate.Format)
             .Build();
 
