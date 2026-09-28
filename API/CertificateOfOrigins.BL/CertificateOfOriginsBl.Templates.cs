@@ -67,6 +67,10 @@ public partial class CertificateOfOriginsBl
     //
     // The name is a lookup key, not a label: Templates loads "{Name}.docx" + "{Name}.yml" by it, so a mismatch fails
     // at render time with "template not found".
+    //
+    // TODO(internal): the South-Korea letter's .docx + .yml do not exist yet (new in CR 194221, no legacy source). To
+    // be produced and uploaded to the MinIO "templates" bucket in the internal environment (INTERNAL_INTEGRATION.md).
+    // Until then the render answers "template not found".
     private static (Type DataType, string Name, Format Format) GetTemplateMeta(int templateId)
     {
         return templateId switch
