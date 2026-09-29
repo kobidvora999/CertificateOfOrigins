@@ -289,8 +289,7 @@ public class ExportDocumentAuthenticationRequestBl(
 
         var statusUpdate = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.ExportAuthenticationRequestFileStatusUpdate)
-            .WithEntityId(id)
-            .WithEntityType((int)EEntityType.ExportDocumentAuthenticationRequest)
+            .WithEntity((int)EEntityType.ExportDocumentAuthenticationRequest, id)
             .WithTitle(id.ToString())
             .WithAdditionalInfo(updateInfo)
             .Build();
@@ -300,8 +299,7 @@ public class ExportDocumentAuthenticationRequestBl(
         {
             var specific = eventUtil.CreatBuilder()
                 .WithEventType((int)specificEvent.Value)
-                .WithEntityId(id)
-                .WithEntityType((int)EEntityType.ExportDocumentAuthenticationRequest)
+                .WithEntity((int)EEntityType.ExportDocumentAuthenticationRequest, id)
                 .WithTitle(id.ToString())
                 .WithAdditionalInfo(additionalInfo ?? string.Empty)
                 .Build();

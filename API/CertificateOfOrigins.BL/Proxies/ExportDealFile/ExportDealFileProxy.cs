@@ -8,7 +8,7 @@ namespace CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
 public class ExportDealFileProxy(IHttpProxy httpProxy)
-    : BaseCustomsProxy(httpProxy, CustomsMicroServices.ExportDealFile), IExportDealFileProxy
+    : BaseCustomsProxy(httpProxy, CustomsMicroServices.ExportDeclaration), IExportDealFileProxy
 {
     public async Task<ExportDeclarationDetailsDto?> GetExportDeclarationDetailsForCertificateOfOrigion(int? leadDocumentId, string? exportDeclarationNumber)
     {

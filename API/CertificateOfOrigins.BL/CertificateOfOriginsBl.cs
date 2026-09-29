@@ -1588,8 +1588,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(certificateId)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificateId)
             .WithTitle(certificateId.ToString());
 
         // Legacy EventUtil.RaiseEvent tolerated a 0/absent org unit — a NonManipulation certificate with no customs
@@ -1937,8 +1936,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(certificate.Id)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
             .WithTitle(certificate.Id.ToString());
 
         // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
@@ -1990,8 +1988,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, request.OrganizationUnitId);
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings)
-            .WithEntityId(certificate.Id)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
             .WithTitle(certificate.Id.ToString());
 
         // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
