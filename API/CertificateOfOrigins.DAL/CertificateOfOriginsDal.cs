@@ -124,9 +124,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     // bound to them, so the BL saves between step 2 and step 3.
     // ---------------------------------------------------------------------------------------------------------
 
-    // Step 1 — the certificate's detail rows, diff-merged by surrogate id.
+    // Step 1 — the certificate's detail rows, diff-merged by surrogate id. An EMPTY list means the caller did not send
+    // the details (a header-only save) — keep the stored rows, as the legacy self-tracking save did for rows the client
+    // never touched. A certificate always has details (mandatory fields per type), so an empty list is never a real
+    // "delete all". Same guard as the invoices in step 2.
     public Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details)
     {
+        if (details.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
         foreach (var detail in details)
         {
             detail.CertificateOfOriginId = certificateId;
