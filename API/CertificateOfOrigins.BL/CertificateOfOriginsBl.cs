@@ -12,6 +12,7 @@ using CustomsCloud.InfrastructureCore.Queue;
 using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Globalization;
@@ -88,7 +89,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var needLock = !string.IsNullOrEmpty(lockKey) && await parametersUtil.Get<bool>("IsNeedToLockCertificateOfOrigin");
         if (!needLock)
         {
-            var unlockedResult = await ProcessCertificateOfOriginRequest(request);
+            var unlockedResult = await ProcessCertificateOfOriginRequestInBand(request);
             return unlockedResult;
         }
 
@@ -102,7 +103,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         try
         {
-            var result = await ProcessCertificateOfOriginRequest(request);
+            var result = await ProcessCertificateOfOriginRequestInBand(request);
             return result;
         }
         finally
@@ -110,6 +111,29 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             await lockUtil.SafeReleaseAsync(lockKey!, lockState);
         }
     }
+
+    // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
+    // every exception of the processing - a failed external service included - is caught and returned to the sender
+    // in the response header (HandleMessageException), never as a fault. The message channel expects a response.
+#pragma warning disable CA1031 // catch-all on purpose: the legacy contract answers every message in-band
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequestInBand(CertificateOfOriginRequestMessageDto request)
+    {
+        try
+        {
+            var result = await ProcessCertificateOfOriginRequest(request);
+            return result;
+        }
+        catch (Exception exception)
+        {
+            Resolve<ILogger<CertificateOfOriginsBl>>().LogError(exception, "GetPC_MSG2280_2281 failed; answered in-band with GeneralException.");
+            return new CertificateOfOriginRequestFeedbackResponseDto
+            {
+                Feedback = new CertificateOfOriginRequestFeedbackDto(),
+                Exceptions = [BuildMessageException(EMessageCode.GeneralException)],
+            };
+        }
+    }
+#pragma warning restore CA1031
 
     private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
     {
@@ -167,6 +191,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     }
                 }
 
+                AddOpenCustomsEmployeeTaskException(certificateToResponse, requestExceptions);
+
                 // Legacy: the exception gate (throw _requestExceptions) runs BEFORE the reason switch, so the cancel is
                 // performed only when NOTHING accumulated — an amendment-linkage error, a not-found, or an associated
                 // declaration all block it. Only cancel when the request is clean.
@@ -186,7 +212,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404. All
         // exceptions — validation, not-found, and (once wired) declaration reconciliation — flow through the single
         // requestExceptions channel.
-        var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions);
+        var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions, reasonCode);
         return response;
     }
 
@@ -229,7 +255,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
     // reconciliation exceptions (from the post-save declaration check) and the in-band request exceptions (not-found /
     // missing-id, accumulated above) are merged onto the response — the legacy returns them here, it does not throw.
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> requestExceptions)
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> BuildRequestFeedbackResponse(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> requestExceptions, int requestReasonCode)
     {
         // A resolved certificate carries the full feedback; an unresolved one (not-found) leaves the feedback empty and
         // relies on the exceptions to convey the failure — the certificate id is then unknown (0).
@@ -239,15 +265,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             ApplicationId = certificate?.Id ?? 0,
             Feedback = feedback,
             Exceptions = requestExceptions.Count > 0 ? requestExceptions : null,
-            Attachments = certificate != null ? await BuildFeedbackAttachments(certificate) : null,
+            Attachments = certificate != null ? await BuildFeedbackAttachments(certificate, requestReasonCode) : null,
         };
         return response;
     }
 
     // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site:
     //
-    //   Attachment = (reason == EmptyCertificate || reason == CertificateCancellation || reason == GetRequestStatus
-    //                 || (reason != Draft && status != Published)) ? null : CreateAttachments(certificate);
+    //   Attachment = (requestReasonCode == EmptyCertificate || requestReasonCode == CertificateCancellation
+    //                 || requestReasonCode == GetRequestStatus
+    //                 || (requestReasonCode != Draft && certificate.status != Published)) ? null : CreateAttachments(certificate);
+    //
+    // requestReasonCode is the INCOMING message's reason, not the stored certificate's: a status query or a cancellation
+    // returns an existing certificate whose own reason (e.g. NewCertificate) differs from the message's.
     //
     // i.e. the agent gets the rendered document back for a Draft request, or once the certificate reaches
     // Published — and never for the three read/cancel reasons. The migration hard-coded null here, so an agent
@@ -260,15 +290,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // ⚠️ Legacy could return up to THREE templates — the main one plus eurPage2Template (page 2 of an EUR
     // certificate) and templateForView. The migrated render produces one. That gap is inside the renderer, not
     // here; recorded as a separate finding rather than widened into this fix.
-    private async Task<List<CertificateOfOriginMessageAttachmentDto>?> BuildFeedbackAttachments(CertificateOfOrigin certificate)
+    private async Task<List<CertificateOfOriginMessageAttachmentDto>?> BuildFeedbackAttachments(CertificateOfOrigin certificate, int requestReasonCode)
     {
-        var reason = certificate.RequestReasonCode;
-        var isReadOrCancelReason = reason == (int)ERequestReason.EmptyCertificate
-            || reason == (int)ERequestReason.CertificateCancellation
-            || reason == (int)ERequestReason.GetRequestStatus;
-        var isDraftOrPublished = reason == (int)ERequestReason.Draft
-            || certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published;
-        if (isReadOrCancelReason || !isDraftOrPublished)
+        if (requestReasonCode is (int)ERequestReason.EmptyCertificate or (int)ERequestReason.CertificateCancellation or (int)ERequestReason.GetRequestStatus
+            || (requestReasonCode != (int)ERequestReason.Draft && certificate.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published))
         {
             return null;
         }
@@ -1563,8 +1588,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(certificateId)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificateId)
             .WithTitle(certificateId.ToString());
 
         // Legacy EventUtil.RaiseEvent tolerated a 0/absent org unit — a NonManipulation certificate with no customs
@@ -1912,8 +1936,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(certificate.Id)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
             .WithTitle(certificate.Id.ToString());
 
         // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
@@ -1965,8 +1988,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, request.OrganizationUnitId);
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings)
-            .WithEntityId(certificate.Id)
-            .WithEntityType((int)EEntityType.CertificateOfOrigin)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
             .WithTitle(certificate.Id.ToString());
 
         // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
@@ -2034,17 +2056,24 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return BuildReconciliationResult(builder, false);
         }
 
+        // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
+        // decision, 2026-09-28): legacy ValidateExportDeclarationInfoForPCIsMatch collected the detail and
+        // import-replacement findings in a local list and handed them to the result (PassGroupdExceptionListToEntity)
+        // only inside its invoice block, so without invoice rows they were dropped. IsLinkedToImportDeclaration is read
+        // only on the warnings path, which a finding-free result never reaches.
+        var invoices = await DataLayer.GetCertificateInvoiceDetailsByCertificateIds([certificate.Id]);
+        if (invoices.Count == 0)
+        {
+            return BuildReconciliationResult(builder, false);
+        }
+
         await ValidateCertificateDetails(request, certificate, details, builder);
         var isLinkedToImportDeclaration = await ValidateImportReplacement(request, certificate, builder);
 
         // Invoice / goods-item / customs-item matching (the declaration already carries invoices — checked above).
-        var invoices = await DataLayer.GetCertificateInvoiceDetailsByCertificateIds([certificate.Id]);
-        if (invoices.Count > 0)
-        {
-            var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
-            var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
-            await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
-        }
+        var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
+        var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
+        await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
 
         return BuildReconciliationResult(builder, isLinkedToImportDeclaration);
     }

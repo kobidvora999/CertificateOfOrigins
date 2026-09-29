@@ -32,9 +32,9 @@ public class SaveCertificateOfOriginRequestValidator : AbstractValidator<SaveCer
             .GreaterThan(0)
             .WithMessage("CustomerId is required (CustomerID is NOT NULL).");
 
-        RuleFor(x => x.OrganizationUnitId)
-            .GreaterThan(0)
-            .WithMessage("OrganizationUnitId is required (OrganizationUnitID is NOT NULL).");
+        // OrganizationUnitId is NOT NULL but deliberately not required to be > 0: on the incoming message it comes only
+        // from the CustomsHouse field, which is optional for most certificate types, and legacy saved 0 when it was
+        // absent. The table has no FK on the column.
 
         // IsInEnum() only applies to enum-typed properties; these columns are plain ints.
         RuleFor(x => x.CertificateOfOriginStatusId)

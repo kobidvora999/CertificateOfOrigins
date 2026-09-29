@@ -2,6 +2,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
@@ -24,7 +25,8 @@ public class CustomerProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/Customer/CustomerInformation/{customerId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<CustomerDto>();
     }
 
@@ -44,7 +46,8 @@ public class CustomerProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/Customer/IdByExternalId/{externalId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<int?>();
     }
 }

@@ -7,9 +7,8 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // a nullable value being null carries the same "not supplied" meaning.
 public class CertificateOfOriginRequestMessageDto
 {
-    // The submitting agent's customer id (legacy CommandRequest.CustomerID from the message header).
-    public int CustomerId { get; set; }
-
+    // No sender id here: the submitting agent is the message sender, taken from RequestMetadata.MessageSenderId (the
+    // MessageSenderId header), never from the body.
     public CertificateOfOriginAgentRequestDto AgentRequest { get; set; } = new();
 
     // Null for a pure NonManipulation certificate (the certificate body is carried on NonManipulationCertificate).

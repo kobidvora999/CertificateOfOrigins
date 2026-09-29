@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -10,6 +11,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Api;
 // as an External WCF operation. Callers reach these under the api/ prefix, which is also what C15 makes every
 // outbound proxy route carry.
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("api/[controller]")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)

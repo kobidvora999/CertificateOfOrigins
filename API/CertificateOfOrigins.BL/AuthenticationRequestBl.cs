@@ -414,8 +414,7 @@ public partial class AuthenticationRequestBl(
             var documentId = request.DocumentId ?? 0;
             var decisionEvent = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
-                .WithEntityId(documentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, documentId)
                 .WithTitle(documentId.ToString())
                 .WithAdditionalInfo(documentId.ToString())
                 .Build();
@@ -436,8 +435,7 @@ public partial class AuthenticationRequestBl(
         // Final event: NewAuthenticationRequestFile (opens the HandleAuthenticationRequestFile task).
         var fileEvent = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.NewAuthenticationRequestFile)
-            .WithEntityId(fileId)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, fileId)
             .WithTitle(fileId.ToString())
             .WithOrganizationUnitId(organizationUnitId)
             .WithAdditionalInfo(fileId.ToString())
@@ -467,8 +465,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var eventRequest = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .Build();
@@ -485,8 +482,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var eventRequest = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CloseTaskReminderNotice3Months)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle($"  אימות מסמך מקור (יבוא) מספר פניה {request.Id}")
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
@@ -563,8 +559,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(request.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId);
         if (request.AuthenticationFileId.HasValue)
@@ -889,8 +884,7 @@ public partial class AuthenticationRequestBl(
                 {
                     var processedEvent = eventUtil.CreatBuilder()
                         .WithEventType((int)EEventType.ImportAuthenticationRequestProcessedWithWasRejected)
-                        .WithEntityId(request.DocumentId)
-                        .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                        .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                         .WithTitle(request.DocumentId.ToString())
                         .Build();
                     await eventUtil.RaiseEvent(processedEvent);
@@ -905,8 +899,7 @@ public partial class AuthenticationRequestBl(
                 // Close the SetDecisionBeforeAssociation task + notify the handling user(s) of the central decision.
                 var decisionEvent = eventUtil.CreatBuilder()
                     .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
-                    .WithEntityId(request.DocumentId)
-                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                     .WithTitle(request.DocumentId.ToString())
                     .WithAdditionalInfo(request.DocumentId.ToString())
                     .Build();
@@ -927,8 +920,7 @@ public partial class AuthenticationRequestBl(
         {
             var rejectedEvent = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.AuthenticationRequestRejected)
-                .WithEntityId(request.DocumentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                 .WithTitle(request.DocumentId.ToString())
                 .WithTaskArguments(task => task.WithTaskAssignmentUser(request.UserResponseId))
                 .Build();
@@ -966,8 +958,7 @@ public partial class AuthenticationRequestBl(
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.NewAuthenticationRequest)
-            .WithEntityId(request.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .WithAdditionalInfo(request.DocumentId.ToString());
@@ -1122,8 +1113,7 @@ public partial class AuthenticationRequestBl(
             {
                 var closeTasks = eventUtil.CreatBuilder()
                     .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequest)
-                    .WithEntityId(child.DocumentId)
-                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                     .WithTitle(child.DocumentId.ToString())
                     .WithOrganizationUnitId(child.OrganizationUnitId);
                 if (child.AuthenticationFileId.HasValue)
@@ -1159,8 +1149,7 @@ public partial class AuthenticationRequestBl(
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.AuthenticationRequestDecisionUpdate)
-            .WithEntityId(child.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
             .WithTitle(child.DocumentId.ToString());
         if (child.AuthenticationFileId.HasValue)
         {
@@ -1255,8 +1244,7 @@ public partial class AuthenticationRequestBl(
         {
             var closeFileTasks = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
-                .WithEntityId(request.Id)
-                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
                 .WithOrganizationUnitId(request.OrganizationUnitId)
                 .Build();
@@ -1267,8 +1255,7 @@ public partial class AuthenticationRequestBl(
         {
             var rejected = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.AuthenticationRequestRejected)
-                .WithEntityId(child.DocumentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                 .WithTitle(child.DocumentId.ToString())
                 .WithOrganizationUnitId(child.OrganizationUnitId)
                 .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
@@ -1302,8 +1289,7 @@ public partial class AuthenticationRequestBl(
         {
             var handle = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.HandleImportAuthenticationRequest)
-                .WithEntityId(request.Id)
-                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
                 .WithOrganizationUnitId(request.OrganizationUnitId)
                 .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
@@ -1332,8 +1318,7 @@ public partial class AuthenticationRequestBl(
     {
         var evt = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .Build();
@@ -1346,8 +1331,7 @@ public partial class AuthenticationRequestBl(
         var statusName = await GetFileStatusName(request.AuthenticationFileStatusId);
         var evt = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.AuthenticationRequestFileStatusUpdate)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithAdditionalInfo(FormatStatusUpdateInfo(statusName))
             .Build();

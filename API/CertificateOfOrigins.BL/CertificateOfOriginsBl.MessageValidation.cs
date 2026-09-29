@@ -185,7 +185,7 @@ public partial class CertificateOfOriginsBl
         var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
 
         // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
-        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices);
+        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
         var saved = await SaveCertificateOfOrigin(saveRequest);
 
         // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
@@ -217,7 +217,9 @@ public partial class CertificateOfOriginsBl
 
     // Map the validated incoming message + resolved side-values onto SaveCertificateOfOriginRequestDto (legacy
     // ConvertMessageToCertificateOfOrigin) — including the per-reason cancel/replace ids and the invoice/item graph.
-    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber, List<CertificateOfOriginInvoiceDetail> invoices)
+    // agentId is the message sender (legacy request.CustomerID of the EAI envelope). The agent never sends its own id in the
+    // message body: the platform sets it from the MessageSenderId header, read here from RequestMetadata.MessageSenderId.
+    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber, List<CertificateOfOriginInvoiceDetail> invoices, int agentId)
     {
         var agentRequest = request.AgentRequest;
 
@@ -226,7 +228,7 @@ public partial class CertificateOfOriginsBl
         // unconditionally (its default 0 if never resolved), never the agent id.
         var isNonManipulationOrNoBody = agentRequest.CertificateOfOriginTypeCode == (int)ECertificateOfOriginType.NonManipulation
             || request.CertificateOfOrigin is null;
-        var customerId = isNonManipulationOrNoBody ? request.CustomerId : context.ExporterId ?? 0;
+        var customerId = isNonManipulationOrNoBody ? agentId : context.ExporterId ?? 0;
 
         // Legacy ConvertMessageToCertificateOfOrigin per-reason assignments:
         //   CertificateUpdate           → CertificateIDToCancel = _certificateToUpdateId (the resolved existing cert)
@@ -249,8 +251,8 @@ public partial class CertificateOfOriginsBl
             Title = certificateNumber,
             CertificateNumber = certificateNumber,
             CustomerId = customerId,
-            CreateCustomerId = request.CustomerId,
-            UpdateCustomerId = request.CustomerId,
+            CreateCustomerId = agentId,
+            UpdateCustomerId = agentId,
             OrganizationUnitId = context.OrganizationUnitId ?? 0,
             DestinationCountry = context.DestinationCountryId,
             CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Received,

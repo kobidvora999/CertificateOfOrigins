@@ -15,6 +15,7 @@ public partial class CertificateOfOriginsBl
 {
     private enum EMessageCode
     {
+        GeneralException = 0,
         CustomerNotInCustomers = 4978,
         CertificateToCancelIncorrectStatus = 4984,
         ReplacementReasonMissing = 4986,
@@ -79,6 +80,7 @@ public partial class CertificateOfOriginsBl
     // code → authoritative Hebrew text (UIMessage.UserFriendlyMessage). {0}/{1}/{2} fill the legacy message parameters.
     private static readonly IReadOnlyDictionary<EMessageCode, string> MessageTexts = new Dictionary<EMessageCode, string>
     {
+        [EMessageCode.GeneralException] = "שגיאת מערכת, נא לפנות לספק התוכנה",
         [EMessageCode.CustomerNotInCustomers] = "לקוח {0} לא קיים במאגר לקוחות",
         [EMessageCode.CertificateToCancelIncorrectStatus] = "בהחלפת תעודה סטטוס התעודה לביטול חייב להיות מאושרת לפרסום באינטרנט",
         [EMessageCode.ReplacementReasonMissing] = "סיבת בקשה להחלפת תעודה חסרה",

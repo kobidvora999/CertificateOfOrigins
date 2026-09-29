@@ -181,7 +181,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
     {
         // UpdateCertificateOfOrigins: the certificates to reconcile against the export declaration. Projected to the
-        // columns the reconciler reads.
+        // columns the reconciler reads, plus CertificateIdToCancel for the release path's HandleCertificateReplacement.
         var result = await ReadOnlyContext.CertificateOfOrigins
             .Where(c => ids.Contains(c.Id))
             .Select(c => new CertificateOfOrigin
@@ -195,6 +195,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 ExportDeclarationNumber = c.ExportDeclarationNumber,
                 OrganizationUnitId = c.OrganizationUnitId,
                 RejectCancelReason = c.RejectCancelReason,
+                CertificateIdToCancel = c.CertificateIdToCancel,
                 CreateDate = c.CreateDate,
             })
             .ToListAsync();
