@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # Two years back is more than a year before exportDate -> ImportDatetIllegal. The other side of the same range check.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": { "customsHouse": "SITE01" },
       "nonManipulationCertificate": {
         "exportDate": "{{twoDaysAgo}}", "exportCountry": "DE", "importBillOfLadingNum": "IBL1", "exportPort": "DEHAM",

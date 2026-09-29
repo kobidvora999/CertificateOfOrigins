@@ -2,6 +2,7 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # reason 3 against a STORED NonManipulation(5) certificate, transmitted as EURMED(1) -> the types differ and one
 # side is NonManipulation, so IllegalCertificateTypeUpdate(11909) fires - CheckCertificateUpdate's third arm.
@@ -9,8 +10,7 @@ body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 3, "certificateId": "PR-PUB-E-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 3, "certificateId": "PR-PUB-E-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

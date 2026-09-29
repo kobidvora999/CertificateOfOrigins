@@ -2,6 +2,7 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # CheckIfExemptPlaceOfManufacture runs ONLY for EUR1(2) and only when the destination country id is in the
 # CountriesExemptedFromSendingThePlaceOfManufacture parameter, whose value here is 804. The Country mock derives a
@@ -12,8 +13,7 @@ body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 2, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 2, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St",
         "tradeAgreementCountry2": "DE",

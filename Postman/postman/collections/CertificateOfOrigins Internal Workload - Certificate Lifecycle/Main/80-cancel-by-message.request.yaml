@@ -2,10 +2,11 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # C12: the agent cancels the certificate by message (reason 14). The FIRST message carrying this certificate id - see 90.
 body:
   type: json
   content: |-
-    { "customerId": 1, "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "certificateId": "{{certNumber}}" } }
+    { "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "certificateId": "{{certNumber}}" } }
 order: 1800

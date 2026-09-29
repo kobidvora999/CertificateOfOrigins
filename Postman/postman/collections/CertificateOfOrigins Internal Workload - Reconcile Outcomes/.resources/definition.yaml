@@ -61,6 +61,7 @@ scripts:
       var EXPECT = {
           'Match':                 { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'MatchNoAssessor':       { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'NoInvoiceRowsMatch':    { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'Warnings':              { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אינה תואמת לחשבונית בהצהרת היצוא'] },
           'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אין בהצהרה טובין המקושרים להצהרת היבוא'] },
           'CustomsItemMismatch':   { levels: [1],   status: REJECTED,             contains: ['אינו תואם לפריט מכס בהצהרת היצוא',

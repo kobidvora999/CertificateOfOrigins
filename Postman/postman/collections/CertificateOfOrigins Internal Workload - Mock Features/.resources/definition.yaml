@@ -54,22 +54,38 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
 
-      // Most scenarios answer 200 with the branch visible in the body. Three do NOT, and their non-200 IS the
-      // branch proof - every one below was verified against the live service before being asserted here:
-      //   * ExportDoc: Customers.NotFound flips the customer read 200 -> 404 (control run confirms the 200).
-      //   * 90-site-not-found: the site never resolves, so context.OrganizationUnitId is never set and the save
-      //     is rejected by the validator - the early return above the org-unit check, seen from outside.
+      // Most scenarios answer 200 with the branch visible in the body. The two ExportDoc reads do NOT: a customer the
+      // Customers service does not know is refused with a 400 naming the field, as legacy (b720c6a, bdb1866).
       var EXPECT_STATUS = {
-          '10-customer-information-not-found': 404,
-          '20-customers-by-country-not-found': 404,
-          '90-site-not-found':                 400
+          '10-customer-information-not-found': 400,
+          '20-customers-by-country-not-found': 400
+      };
+      var REFUSED_FIELD = {
+          '10-customer-information-not-found': ['customerId', 'מספר זיהוי לא תקין'],
+          '20-customers-by-country-not-found': ['countryId', 'אין בית מכס למדינה זו']
       };
       var expected = EXPECT_STATUS[name] || 200;
       pm.test('status is ' + expected, function () { pm.response.to.have.status(expected); });
 
-      if (name === '90-site-not-found') {
-          pm.test('90-site-not-found: rejected on the org unit the unresolved site never supplied', function () {
-              pm.expect(body).to.include('OrganizationUnitId');
+      if (REFUSED_FIELD[name] && j) {
+          pm.test(name + ': refused on ' + REFUSED_FIELD[name][0] + ' with the legacy message', function () {
+              var err = (j.errors || []).filter(function (e) { return e.field === REFUSED_FIELD[name][0]; })[0];
+              pm.expect(err, 'error on ' + REFUSED_FIELD[name][0]).to.not.be.undefined;
+              pm.expect(err.detail, 'detail').to.include(REFUSED_FIELD[name][1]);
+          });
+      }
+
+      // C-02 (87f5039): the unresolved site leaves the org unit unset, and the save no longer requires one.
+      if (name === '90-site-not-found' && j) {
+          pm.collectionVariables.set('mfSiteCertId', j.applicationId);
+          pm.test('90-site-not-found: the certificate is saved although no org unit was resolved', function () {
+              pm.expect(j.applicationId, 'applicationId').to.be.a('number').and.above(0);
+          });
+      }
+      if (name === '95-read-site-not-found' && j) {
+          pm.test('95: stored with organizationUnitId 0', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('mfSiteCertId')));
+              pm.expect(j.organizationUnitId, 'organizationUnitId').to.eql(0);
           });
       }
 
