@@ -1,11 +1,45 @@
 $kind: collection
 name: CertificateOfOrigins Dependency Workload - SystemTables
-description: Dependency probe — proves the SystemTables microservice is alive. The certificate-request message fans out to SystemTables for Country (CountriesByAlphaCodes), Site (SitesByExternalNumbers), InternationalSite (InternationalSitesByLocodes), PackingType, MeasurementUnit, CurrencyType, CustomsBook (CustomsItemsByIds), CountryGroup and OrganizationUnit. Runs PRE-PROD with REAL proxies (infra flips them; this collection only points the CLI at the live service).
+description: >-
+  Dependency probe of the SystemTables service: one request per outbound call of the real proxies
+  (API/CertificateOfOrigins.BL/Proxies), sent straight to the route the proxy calls. Every entity id is 2147483647,
+  an id no service can have, so the probe proves the dependency answers per its contract without depending on or
+  changing pre-prod data. Runs PRE-PROD against the real service; base_URL is the target host (or the gateway).
 variables:
-  base_URL: http://localhost:9034
+  base_URL: https://REPLACE-with-preprod-host
 scripts:
   - type: http:beforeRequest
     code: |-
-      // Real proxies in pre-prod — NO x-mock-mode header. Only the acting-user context.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      pm.collectionVariables.set('today', new Date().toISOString().slice(0, 10) + 'T00:00:00');
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Expected statuses from the endpoint contract: a list read answers 200 (an empty list, never 404); a by-id or
+      // lookup read answers 200 or 404 (both prove the service answered); a write with an id that cannot exist is
+      // validated and refused (400/404) or accepted as a no-op (200/204). Never a 5xx.
+      var EXPECT = {
+          '10-country-group-exists': [200, 204, 404],
+          '20-is-country-in-country-group': [200, 204, 404],
+          '30-countries-by-alpha-codes': [200],
+          '40-currency-types-by-codes': [200],
+          '50-currency-types-by-ids': [200],
+          '60-customs-item-by-full-classification': [200, 204, 404],
+          '70-customs-items-by-ids': [200],
+          '80-is-trade-agreement-for-country': [200, 204, 404],
+          '90-data-dictionary-fields-by-ids': [200],
+          '100-international-sites-by-locodes': [200],
+          '110-measurement-units-by-codes': [200],
+          '120-is-customs-house': [200, 204, 404],
+          '130-packing-types-by-codes': [200],
+          '140-sites-by-external-numbers': [200]
+      };
+      var name = pm.info.requestName;
+      pm.test(name + ': ' + 'SystemTables answered - no 5xx', function () { pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500); });
+      pm.test(name + ': answered within 15s', function () { pm.expect(pm.response.responseTime).to.be.below(15000); });
+      pm.test(name + ': status per the contract ' + JSON.stringify(EXPECT[name]), function () { pm.expect(EXPECT[name], 'probe has an expected status').to.be.an('array'); pm.expect(pm.response.code).to.be.oneOf(EXPECT[name]); });
+      var ct = (pm.response.headers.get('Content-Type') || '').toLowerCase();
+      if (ct.indexOf('json') >= 0 && pm.response.text()) {
+          pm.test(name + ': body is valid JSON', function () { pm.expect(function () { pm.response.json(); }).to.not.throw(); });
+      }
     language: text/javascript

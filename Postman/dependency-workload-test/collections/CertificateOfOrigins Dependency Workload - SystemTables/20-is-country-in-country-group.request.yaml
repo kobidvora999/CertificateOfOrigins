@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/SystemTables/IsCountryInCountryGroup/376/2147483647"
+method: GET
+# IsCountryInCountryGroup - destination / origin group checks
+order: 2000

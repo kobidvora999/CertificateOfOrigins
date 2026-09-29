@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Collateral/CollateralRequestIdsByEntity/12384/2147483647"
+method: GET
+# GetCollateralRequestIdsByRelatedEntity - the ids before a decision grants them
+order: 2000

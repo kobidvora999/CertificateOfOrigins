@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_URL}}/api/Task/IsTaskExist"
+method: POST
+headers:
+  Content-Type: application/json
+# IsTaskExist - open tasks of an import authentication request
+body:
+  type: json
+  content: |-
+    {
+      "entityId": 2147483647,
+      "entityTypeId": 12384,
+      "taskTypeIds": [
+        406
+      ],
+      "isTaskInProgress": false
+    }
+order: 1000

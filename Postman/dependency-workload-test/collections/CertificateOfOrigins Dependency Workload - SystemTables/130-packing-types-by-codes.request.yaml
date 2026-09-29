@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/PackingType/PackingTypesByCodes"
+method: POST
+headers:
+  Content-Type: application/json
+# GetPackingTypesByCodes - item package type
+body:
+  type: json
+  content: |-
+    [
+      "BX"
+    ]
+order: 13000

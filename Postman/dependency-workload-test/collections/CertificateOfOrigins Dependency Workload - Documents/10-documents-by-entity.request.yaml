@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Document/DocumentsByEntity/2147483647/12319"
+method: GET
+# GetDocumentsByEntity - documents of a lead document / certificate
+order: 1000
