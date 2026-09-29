@@ -41,12 +41,13 @@ public class ExportDocumentAuthenticationRequestBl(
         var customerProxy = Resolve<ICustomerProxy>();
 
         // Foreign customs-houses in the given country (Customers service, activity-type filtered in the proxy).
-        // The legacy threw when the country had none, so an empty result owns the 404 contract, and it returned
-        // the first candidate (FirstOrDefault over the activity-type-filtered list).
+        // Legacy threw the business error EMessages.NoCustomHouseForThisCountry when the country had none, so it is a
+        // 400 with that message, not a 404 (analyst decision 2026-09-29); it returned the first candidate.
+        // TODO(confirm): the UIMessage text of NoCustomHouseForThisCountry (not in the local UIMessage copy).
         var customers = await customerProxy.GetCustomersByCountry(countryId);
         if (customers is null || customers.Count == 0)
         {
-            throw new RestNotFoundException();
+            throw new RestValidationException(nameof(countryId), "אין בית מכס למדינה זו");
         }
 
         return customers[0];
