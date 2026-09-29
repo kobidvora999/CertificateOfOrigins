@@ -77,10 +77,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId)
+    public async Task CancelCertificate(int id, string rejectCancelReason, int userId)
     {
-        // GetPC_MSG2280_2281 CertificateCancellation: set the certificate to Cancelled with the cancel-from-message
-        // reason. Set-based.
+        // Cancel a certificate with a reason that REPLACES the stored one, leaving IsLastVersion as it is: the message
+        // CertificateCancellation, the declaration-cancellation branch and the certificate replacement. (Superseding a
+        // version of the same number is CancelPreviousCertificate, which also drops IsLastVersion.) Set-based.
         var now = DateTime.Now;
         await Context.CertificateOfOrigins
             .Where(c => c.Id == id)

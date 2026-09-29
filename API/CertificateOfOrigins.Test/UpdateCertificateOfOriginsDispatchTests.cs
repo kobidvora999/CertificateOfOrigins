@@ -216,7 +216,7 @@ public class UpdateCertificateOfOriginsDispatchTests
                 case "GetCertificateInvoiceDetailsByCertificateIds":
                     return Task.FromResult(new List<CertificateReconcileInvoiceDto>());
 
-                case "CancelCertificateFromMessage":
+                case "CancelCertificate":
                     cap.Cancelled.Add(((int)args![0]!, (string)args[1]!));
                     return Task.CompletedTask;
 

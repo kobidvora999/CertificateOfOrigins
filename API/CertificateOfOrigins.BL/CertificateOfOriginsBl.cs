@@ -246,7 +246,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // ValidationMessages pipeline is still blocked repo-wide (BaseValidationMessages — see Program.cs), but this
         // specific message text is known, so it is set literally rather than deferred.
         certificate.RejectCancelReason = "התקבלה בקשה לביטול תעודה במסר";
-        await DataLayer.CancelCertificateFromMessage(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
+        await DataLayer.CancelCertificate(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
 
         var eventUtil = Resolve<IEventUtil>();
         await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate.Id, certificate.OrganizationUnitId, certificate.RejectCancelReason);
@@ -1562,11 +1562,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy HandleCertificateReplacement — cancel the replaced certificate + raise the replaced event scoped to the
     // cancelled certificate's own identity / organization unit.
-    // TODO(migration): three resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
+    // TODO(migration): two resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
     // talk-back: the new certificate's FeedbackRemark (legacy EMessages.UpdateExportDeclaration, params
-    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}); the cancelled certificate's RejectCancelReason
-    // (legacy EMessages.CertificateReplaced, param {entity.CertificateNumber} — currently left as the supersede reason
-    // from CancelPreviousCertificate); and SendMessageToAgent (legacy EMessages.UpdateExportDecForReplacement).
+    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}) and SendMessageToAgent (legacy
+    // EMessages.UpdateExportDecForReplacement).
     private async Task HandleCertificateReplacement(CertificateOfOrigin entity, IEventUtil eventUtil)
     {
         if (entity.CertificateIdToCancel is null)
@@ -1581,7 +1580,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return;
         }
 
-        await DataLayer.CancelPreviousCertificate(certificateToCancel.Id, string.Empty, RequestMetadata.UserId ?? 0);
+        // Legacy: Cancelled + the CertificateReplaced reason (replacing the old one). The replaced certificate keeps
+        // IsLastVersion - a replacement has a different number, so it is still the last version of its own.
+        // TODO(confirm): the UIMessage text of EMessages.CertificateReplaced (not in the local UIMessage copy).
+        await DataLayer.CancelCertificate(certificateToCancel.Id, $"התעודה הוחלפה בתעודה {entity.CertificateNumber}", RequestMetadata.UserId ?? 0);
 
         // Scope the replaced event to the CANCELLED certificate's own organization unit (legacy VirtualEntity(certificateToCancel)),
         // not the replacement certificate's — the two can differ on a cross-organization import-certificate replacement.
@@ -1851,7 +1853,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         foreach (var certificate in certificates)
         {
-            await DataLayer.CancelCertificateFromMessage(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
+            await DataLayer.CancelCertificate(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
             await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate.Id, certificate.OrganizationUnitId, null);
         }
     }
