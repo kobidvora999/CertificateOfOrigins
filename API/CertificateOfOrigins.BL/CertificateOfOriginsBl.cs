@@ -1019,13 +1019,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
         await LinkLeadDocument(entity, replacementOldId, userId);
 
-        // Status-change / remarks-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: a NEW instance has
-        // no tracked original status, so its side effects fire only when the status is Received; an existing instance
-        // compares against the original status.
+        // Status-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: a NEW instance has no tracked original
+        // status, so its side effects fire only when the status is Received; an existing instance compares against the
+        // original status. Legacy also had an isRemarksChanged branch, but it could never be true in production: the
+        // self-tracking CertificateOfOrigin records no original value for FeedbackRemark (its setter does not call
+        // RecordOriginalValue), so the original was always null. A remark change therefore sends no feedback here either
+        // (analyst decision 2026-09-29).
         var isStatusChanged = isNewInstance
             ? entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received
             : entity.CertificateOfOriginStatusId != request.OriginalCertificateOfOriginStatusId;
-        var isRemarksChanged = !string.Equals(entity.FeedbackRemark, request.OriginalFeedbackRemark, StringComparison.Ordinal);
 
         if (isStatusChanged)
         {
@@ -1042,7 +1044,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         //       (CertificateOfOriginsBL.cs:381,424); those columns do NOT exist on the .NET10 CertificateOfOrigin
         //       table/entity, so a retried Published save re-issues the template + (once #1 is restored) re-sends feedback.
         //       Needs the two columns (DB + entity + seed) to guard.
-        if ((isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published) || isRemarksChanged)
+        if (isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
             await SendRequestFeedback(entity);
         }

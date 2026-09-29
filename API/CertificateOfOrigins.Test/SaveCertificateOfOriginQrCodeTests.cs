@@ -119,7 +119,6 @@ public class SaveCertificateOfOriginQrCodeTests
             OriginalCertificateOfOriginStatusId = originalStatusId,
             RequestReasonCode = (int)ERequestReason.NewCertificate,
             FeedbackRemark = "remark",
-            OriginalFeedbackRemark = "remark", // unchanged → no feedback-message side effect
             QrCodePath = null,                 // empty → QR generation is required on publish
             QrImage = null,
             TimeStamp = id == 0 ? null : SeedRowVersion, // an update round-trips the stored row version

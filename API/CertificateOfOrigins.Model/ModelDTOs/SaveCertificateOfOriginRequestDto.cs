@@ -4,8 +4,8 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // Request for SaveCertificateOfOrigin — the certificate as edited by the SPA (the legacy passed the full
 // CertificateOfOrigin entity). Carries the editable scalar fields, its detail child collection, and the load-time
-// snapshots used for change detection (the .NET 10 stateless replacement for the legacy ChangeTracker.OriginalValues):
-// OriginalCertificateOfOriginStatusId + OriginalFeedbackRemark. Id == 0 → new certificate (insert); otherwise update.
+// snapshot used for change detection (the .NET 10 stateless replacement for the legacy ChangeTracker.OriginalValues):
+// OriginalCertificateOfOriginStatusId. Id == 0 → new certificate (insert); otherwise update.
 public class SaveCertificateOfOriginRequestDto
 {
     public int Id { get; set; }
@@ -45,9 +45,6 @@ public class SaveCertificateOfOriginRequestDto
     public int? DestinationCountry { get; set; }
 
     public string? FeedbackRemark { get; set; }
-
-    // Load-time snapshot of the feedback remark — drives the "remarks changed → send feedback" branch.
-    public string? OriginalFeedbackRemark { get; set; }
 
     public string? InternalApplication { get; set; }
 
