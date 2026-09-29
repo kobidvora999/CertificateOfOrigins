@@ -149,8 +149,9 @@ public class SaveCertificateOfOriginQrCodeTests
             dbContext.CertificateOfOrigins.Add(new CertificateOfOrigin
             {
                 Id = existingId,
-                CertificateNumber = request.CertificateNumber,
-                Title = request.CertificateNumber,
+                // NewPublishedRequest always sets CertificateNumber, so the seeded row copies it as-is.
+                CertificateNumber = request.CertificateNumber!,
+                Title = request.CertificateNumber!,
                 TimeStamp = SeedRowVersion,
                 CreateDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                 CreateUserId = 99,

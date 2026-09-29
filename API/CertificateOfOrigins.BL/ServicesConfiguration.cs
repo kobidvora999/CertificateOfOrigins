@@ -108,7 +108,7 @@ public class ServicesConfiguration : IServicesConfiguration
         // RabbitMQ exchange) — resolved lazily via IQueueUtil.
         services.AddQueueUtil();
 
-        // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs);
+        // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs), via
         // ITemplateUtil. Note this is a different path from the SSRS certificate rendering, which stays on
         // ICommonServicesProxy.GenerateTemplate.
         services.AddTemplateUtil();

@@ -270,11 +270,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return response;
     }
 
-    // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site:
-    //
-    //   Attachment = (requestReasonCode == EmptyCertificate || requestReasonCode == CertificateCancellation
-    //                 || requestReasonCode == GetRequestStatus
-    //                 || (requestReasonCode != Draft && certificate.status != Published)) ? null : CreateAttachments(certificate);
+    // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site: no
+    // attachment when the request reason is EmptyCertificate, CertificateCancellation or GetRequestStatus, nor when the
+    // reason is not Draft and the certificate is not Published - otherwise the rendered attachments.
     //
     // requestReasonCode is the INCOMING message's reason, not the stored certificate's: a status query or a cancellation
     // returns an existing certificate whose own reason (e.g. NewCertificate) differs from the message's.
@@ -1733,13 +1731,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
         var backfilledIds = new List<int>();
 
-        foreach (var certificate in certificates)
+        foreach (var certificateId in certificates.Where(certificate => string.IsNullOrEmpty(certificate.ExportDeclarationNumber)).Select(certificate => certificate.Id))
         {
-            if (string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
-            {
-                await DataLayer.UpdateCertificateDeclarationLink(certificate.Id, request.LeadDocumentId, request.ExportDeclarationNum, userId);
-                backfilledIds.Add(certificate.Id);
-            }
+            await DataLayer.UpdateCertificateDeclarationLink(certificateId, request.LeadDocumentId, request.ExportDeclarationNum, userId);
+            backfilledIds.Add(certificateId);
         }
 
         if (backfilledIds.Count == 0)
@@ -1756,8 +1751,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // PendingRelease certificate becomes Published — persist the status with the link, generate + upload its QR, and
     // publish its attachments; a certificate-replacement request cancels the replaced certificate. Finally reconcile the
     // freshly-linked certificates against the declaration.
-    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments;
-    // it is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
+    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments.
+    // It is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
     // confirm this is the intended behaviour for the release path too.
     private async Task<List<CertificateOfOriginExceptionDto>> DeclarationReleased(UpdateCertificateOfOriginsRequestDto request)
     {
@@ -1795,8 +1790,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 var qrCodeToUpload = await CreateQrCodeIfNeeded(certificate);
                 if (qrCodeToUpload is not null)
                 {
-                    // CreateQrCodeIfNeeded stamped Guid + QrImage on the entity expecting a main upsert to persist them;
-                    // the release path has no upsert, so persist them explicitly before uploading the QR document (the
+                    // CreateQrCodeIfNeeded stamped Guid + QrImage on the entity expecting a main upsert to persist them.
+                    // The release path has no upsert, so persist them explicitly before uploading the QR document (the
                     // Guid is embedded in the QR query URL).
                     await DataLayer.UpdateCertificateQrCode(certificate.Id, certificate.Guid, certificate.QrImage, userId);
                     await UploadQrCodeDocument(certificate, qrCodeToUpload, userId);
