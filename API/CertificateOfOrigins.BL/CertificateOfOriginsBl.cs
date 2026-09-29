@@ -12,6 +12,7 @@ using CustomsCloud.InfrastructureCore.Queue;
 using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Globalization;
@@ -88,7 +89,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var needLock = !string.IsNullOrEmpty(lockKey) && await parametersUtil.Get<bool>("IsNeedToLockCertificateOfOrigin");
         if (!needLock)
         {
-            var unlockedResult = await ProcessCertificateOfOriginRequest(request);
+            var unlockedResult = await ProcessCertificateOfOriginRequestInBand(request);
             return unlockedResult;
         }
 
@@ -102,7 +103,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         try
         {
-            var result = await ProcessCertificateOfOriginRequest(request);
+            var result = await ProcessCertificateOfOriginRequestInBand(request);
             return result;
         }
         finally
@@ -110,6 +111,29 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             await lockUtil.SafeReleaseAsync(lockKey!, lockState);
         }
     }
+
+    // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
+    // every exception of the processing - a failed external service included - is caught and returned to the sender
+    // in the response header (HandleMessageException), never as a fault. The message channel expects a response.
+#pragma warning disable CA1031 // catch-all on purpose: the legacy contract answers every message in-band
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequestInBand(CertificateOfOriginRequestMessageDto request)
+    {
+        try
+        {
+            var result = await ProcessCertificateOfOriginRequest(request);
+            return result;
+        }
+        catch (Exception exception)
+        {
+            Resolve<ILogger<CertificateOfOriginsBl>>().LogError(exception, "GetPC_MSG2280_2281 failed; answered in-band with GeneralException.");
+            return new CertificateOfOriginRequestFeedbackResponseDto
+            {
+                Feedback = new CertificateOfOriginRequestFeedbackDto(),
+                Exceptions = [BuildMessageException(EMessageCode.GeneralException)],
+            };
+        }
+    }
+#pragma warning restore CA1031
 
     private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
     {
