@@ -65,6 +65,20 @@ scripts:
       }
       var fileId = Number(pm.collectionVariables.get('fileId'));
 
+      // ---- the state the process left: every SaveFile sends these as its ORIGINAL values ----
+      // The file starts where CreateNewFile put it and each request where SaveImport put it; after that, every SaveFile
+      // answers the re-read file, so the next save's 'original' is always the state the previous step produced.
+      if (name === '01-create-request-a' && j) { pm.collectionVariables.set('decA', j.decisionId); }
+      if (name === '02-create-request-b' && j) { pm.collectionVariables.set('decB', j.decisionId); }
+      if (name === '03-create-file' && j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); }
+      if (/^[1-9]0-/.test(name) && j && j.authenticationFileStatusId !== undefined) {
+          pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId);
+          (j.importAuthenticationRequests || j.requests || []).forEach(function (k) {
+              if (k.documentId === docFileA) { pm.collectionVariables.set('decA', k.decisionId); }
+              if (k.documentId === docFileB) { pm.collectionVariables.set('decB', k.decisionId); }
+          });
+      }
+
       // A 404 here means a creation step above failed, so the row this scenario addresses does not exist.
       if (pm.response.code === 404) {
           pm.test('FLOW BROKEN - the row this scenario addresses was not created by FileStatus/01-03', function () {

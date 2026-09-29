@@ -5,7 +5,7 @@ port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 
 
 ## 1. GATE — ⚠️ PASS-WITH-BLOCKERS
 
-**Assertions: 944/944 passed** · 17/17 collections · 312 requests · 0 collections ללא assertions.
+**Assertions: 994/994 passed** · 17/17 collections · 321 requests · 0 collections ללא assertions.
 `Param IssueByWorker` (מעבר נפרד, `run-issue-by-worker.ps1`): 10/10.
 שני מעברים ⏸ BLOCKED (skip גלוי, לא מכשילים) — סעיף 3.
 
@@ -73,6 +73,17 @@ port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 
   תלויה רק בריצה.
 - **Not-found:** `2147483647` (int.MaxValue — identity לא יגיע אליו) ו-`NO-SUCH-{{runId}}` למספרים, במקום `99999999`.
 - `Auth File Status`: בדיקות ה-delivery עברו ל-`FileStatus/95-96`, אחרי שהתיק נוצר (תיקיות רצות לפי סדר אלפביתי).
+
+כל מצב נוצר ע"י מעבר, לא מוצהר (2026-09-29):
+- **12 תעודות נוצרו ישירות במצב מאושרת (8) / תואמת (6)** (`Bl Core` ×4, `Per Reason` ×7, `Web Query` ×1) — השמירה מקבלת,
+  אבל שלב הפרסום (QR, תאריך הנפקה, event, תבנית) לא רץ. עכשיו: יצירה ב-2 ואז שמירת סטטוס של העובד (2→8 / 2→6)
+  על אותה תעודה, עם הסטטוס המקורי מהתשובה.
+- **בקשות יצוא נוצרו ישירות בסטטוס 2/5/6/9.** `Export Doc Request/30-50` נמחקו (המעברים 5/6/7/9 מוכחים ב-`Export Auth
+  Lifecycle`); כל יצירה מתחילה ב-1.
+- **`Auth File Status` שלח "סטטוס מקורי" קבוע (1)** בכל שמירה, גם אחרי שהתיק כבר זז — מעבר מ-1 שלא קרה. עכשיו כל שמירה
+  שולחת את הסטטוס וההחלטות שהשמירה הקודמת החזירה.
+- **`Auth Lifecycle/40-reminder`** שלח מצב delivery ‏(1,1) במקום ה-(2,2) ששלב 30 החזיר; עכשיו משורשר ומאומת בדיוק.
+- **`Bl Core/20-convert`** עבר על שורה ישנה (`BLC-FILTER` מריצות קודמות) — עכשיו על מספר הריצה, ומאמת שחזר ה-id של התעודה שנוצרה.
 
 נשארו בכוונה (לא נתון של השירות): template id `1`/`99` (קוד), לקוח `777`/`888` וארץ `32` — ישויות חיצוניות
 שה-mock עונה עליהן לכל id.

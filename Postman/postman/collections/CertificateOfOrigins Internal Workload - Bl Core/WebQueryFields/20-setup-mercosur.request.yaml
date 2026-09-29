@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# The same certificate as MERCOSUR(3). MapConsigneeField branches on the TYPE: EUR1/EURMED take the print-out arm above, everything else falls through to PrintOutField. This is the only way to reach that second arm.
+# The same certificate as MERCOSUR(3). MapConsigneeField branches on the TYPE: EUR1/EURMED take the print-out arm above, everything else falls through to PrintOutField. This is the only way to reach that second arm. Created at Received (2); 21-publish-mercosur moves it to 8 through the status save.
 body:
   type: json
   content: |-
@@ -11,7 +11,7 @@ body:
       "id": 0, "state": 1, "typeId": 3, "title": "bl-core BLC-WQ-MERCOSUR",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "certificateNumber": "BLC-WQ-MERCOSUR-{{runId}}",
-      "certificateOfOriginStatusId": 8,
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 2,
       "certificateIdToCancel": {{wqTargetId}},

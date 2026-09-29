@@ -72,6 +72,7 @@ scripts:
       }
       if (name === '03-create-file') {
           if (j && j.id) { pm.collectionVariables.set('fileId', j.id); }
+          if (j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); pm.collectionVariables.set('fileDm', j.deliveryMethodId); }
           pm.test('03-create-file: a new authentication file was created', function () {
               pm.expect(j && j.id, 'id').to.be.a('number').and.above(0);
               pm.expect(j.authenticationFileStatusId, 'a new file starts at WaitingForSendingLetter (1)').to.eql(1);
@@ -112,10 +113,15 @@ scripts:
       if (name === '30-delivery-vendor' || name === '40-reminder-vendor') {
           // AdvanceDeliveryStatus returns the file's new status + delivery method; asserting they came back
           // non-zero is the proof the status machine actually ran rather than exiting early on a missing file.
-          pm.test(name + ': the status machine returned a new state', function () {
-              pm.expect(j, 'response body').to.be.an('object');
-              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.be.a('number').and.above(0);
+          // Each call is sent the state the step before left (fileStatus / fileDm): delivery (1,1) -> (2,2), then
+          // reminder (2,2) -> (3,2). The next call is sent what this one returned.
+          var WANT = { '30-delivery-vendor': [2, 2], '40-reminder-vendor': [3, 2] }[name];
+          pm.test(name + ': file moved to status ' + WANT[0] + ', delivery ' + WANT[1], function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(WANT[0]);
+              pm.expect(j.deliveryMethodId, 'deliveryMethodId').to.eql(WANT[1]);
           });
+          if (j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); pm.collectionVariables.set('fileDm', j.deliveryMethodId); }
       }
 
       if (name === '35-first-contact-after-delivery' || name === '45-first-contact-after-reminder') {

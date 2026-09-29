@@ -28,6 +28,23 @@ scripts:
     code: |-
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Status transitions of certificates this run created: the certificate the create answered, moved to the target
+      // status with its ORIGINAL status, the way the worker screen saves it.
+      var TRANSITION = {
+          '01-publish-A': ['00-setup-published-A', 8],
+          '01-publish-B': ['00-setup-published-B', 8],
+          '01-publish-C': ['00-setup-published-C', 8],
+          '01-publish-D': ['00-setup-published-D', 8],
+          '01-publish-E': ['00-setup-published-E', 8],
+          '01-publish-G': ['00-setup-published-G', 8],
+          '06-mark-match': ['05-setup-match', 6]
+      };
+      if (TRANSITION[pm.info.requestName]) {
+          var tDto = JSON.parse(pm.collectionVariables.get('dto_' + TRANSITION[pm.info.requestName][0]) || '{}');
+          tDto.originalCertificateOfOriginStatusId = tDto.certificateOfOriginStatusId;
+          tDto.certificateOfOriginStatusId = TRANSITION[pm.info.requestName][1];
+          pm.collectionVariables.set('transitionBody', JSON.stringify(tDto));
+      }
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       var now = Date.now(), DAY = 86400000;
       pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
@@ -44,6 +61,33 @@ scripts:
     code: |-
       var name = pm.info.requestName;
       var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      // ---- certificates that reach Published / Match through the process ----
+      var T_SETUP = ['00-setup-published-A', '00-setup-published-B', '00-setup-published-C', '00-setup-published-D', '00-setup-published-E', '00-setup-published-G', '05-setup-match'];
+      var T_STEP = {
+          '01-publish-A': ['00-setup-published-A', 8],
+          '01-publish-B': ['00-setup-published-B', 8],
+          '01-publish-C': ['00-setup-published-C', 8],
+          '01-publish-D': ['00-setup-published-D', 8],
+          '01-publish-E': ['00-setup-published-E', 8],
+          '01-publish-G': ['00-setup-published-G', 8],
+          '06-mark-match': ['05-setup-match', 6]
+      };
+      if (T_SETUP.indexOf(name) >= 0 && j) {
+          pm.collectionVariables.set('dto_' + name, JSON.stringify(j));
+          pm.test(name + ': created at Received (2)', function () { pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(2); });
+      }
+      if (T_STEP[name] && j) {
+          var tWant = T_STEP[name];
+          pm.test(name + ': ' + tWant[0] + ' moved 2 -> ' + tWant[1], function () {
+              pm.expect(j.id, 'id').to.eql(JSON.parse(pm.collectionVariables.get('dto_' + tWant[0])).id);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(tWant[1]);
+          });
+          if (tWant[1] === 8) {
+              pm.test(name + ': the publish step ran (issuing date stamped)', function () {
+                  pm.expect(j.issuingDate, 'issuingDate').to.be.a('string').and.not.empty;
+              });
+          }
+      }
 
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);

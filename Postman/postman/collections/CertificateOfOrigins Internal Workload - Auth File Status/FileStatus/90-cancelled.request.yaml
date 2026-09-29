@@ -10,14 +10,14 @@ body:
     {
       "id": {{fileId}},
       "authenticationFileStatusId": 9,
-      "originalAuthenticationFileStatusId": 1,
+      "originalAuthenticationFileStatusId": {{fileStatus}},
       "notes": null, "postalAdress": "flow address", "deliveryMethodId": 1,
       "emailAdress": "flow@example.com", "reminderMethodId": 1, "requestCountryId": 32,
       "userId": 5, "userNameIssuingLetter": "flow user",
       "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
       "organizationUnitId": 1,
       "requests": [
-        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 3, "originalRequestDecisionId": 1,
+        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 3, "originalRequestDecisionId": {{decA}},
           "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
     }
 order: 30090

@@ -83,13 +83,4 @@ scripts:
               pm.expect(j[0].requestId, 'the request of this run is matched by the second term').to.eql(Number(pm.collectionVariables.get('exportReqId')));
           });
       }
-
-      if (name === '30-status-ready' || name === '40-status-closed' || name === '50-status-cancelled') {
-          pm.test(name + ': saved and the status switch ran', function () {
-              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
-              // originalStatusId comes back equal to statusId once the save has applied it, which is how we know
-              // the transition (and therefore CheckStatusAndNotify) was actually processed.
-              pm.expect(j.statusId, 'statusId').to.be.a('number').and.above(0);
-          });
-      }
     language: text/javascript

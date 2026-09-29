@@ -9,8 +9,8 @@ body:
   content: |-
     {
       "id": {{fileId}},
-      "authenticationFileStatusId": 1,
-      "deliveryMethodId": 1,
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}},
       "isDelivery": true
     }
 order: 13000

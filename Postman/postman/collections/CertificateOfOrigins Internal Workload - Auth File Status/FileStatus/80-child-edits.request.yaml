@@ -13,19 +13,19 @@ body:
     {
       "id": {{fileId}},
       "authenticationFileStatusId": 10,
-      "originalAuthenticationFileStatusId": 10,
+      "originalAuthenticationFileStatusId": {{fileStatus}},
       "notes": null, "postalAdress": "flow address", "deliveryMethodId": 1,
       "emailAdress": "flow@example.com", "reminderMethodId": 1, "requestCountryId": 32,
       "userId": 5, "userNameIssuingLetter": "flow user",
       "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
       "organizationUnitId": 1,
       "requests": [
-        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 10, "originalRequestDecisionId": 10,
+        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 10, "originalRequestDecisionId": {{decA}},
           "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5,
           "decisionCircumstences": "PM circumstances 80", "cirumstanceDetails": "PM details 80",
           "remarks": "PM remarks 80", "documentNumber": "DN-80", "vendorId": 779,
           "preferenceDocumentTypeId": 4 },
-        { "documentId": {{docFileB}}, "authenticationFileId": {{fileId}}, "decisionId": null, "originalRequestDecisionId": null,
+        { "documentId": {{docFileB}}, "authenticationFileId": {{fileId}}, "decisionId": {{decB}}, "originalRequestDecisionId": {{decB}},
           "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
     }
 order: 30070

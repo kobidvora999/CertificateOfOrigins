@@ -3,14 +3,14 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryAndReminderForVen
 method: POST
 headers:
   Content-Type: application/json
-# Same endpoint with isDelivery=false - the REMINDER branch of AdvanceDeliveryStatus, which the delivery call above does not reach.
+# Same endpoint with isDelivery=false - the REMINDER branch of AdvanceDeliveryStatus - sent from the state the delivery at 30 returned.
 body:
   type: json
   content: |-
     {
       "id": {{fileId}},
-      "authenticationFileStatusId": 1,
-      "deliveryMethodId": 1,
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}},
       "isDelivery": false
     }
 order: 14000
