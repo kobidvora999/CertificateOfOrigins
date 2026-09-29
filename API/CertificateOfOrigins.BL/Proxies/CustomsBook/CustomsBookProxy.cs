@@ -16,7 +16,10 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         // microservice + endpoint route (until then the mock is enabled via x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/CustomsBook/IsTradeAgreementForCountry/{certificateTypeId}/{countryId}/{isCountryGroup}");
+            .WithResource("api/CustomsBook/IsTradeAgreementForCountry/{certificateTypeId}/{countryId}/{isCountryGroup}")
+            .AddUrlSegmentParameter("certificateTypeId", certificateTypeId)
+            .AddUrlSegmentParameter("countryId", countryId)
+            .AddUrlSegmentParameter("isCountryGroup", isCountryGroup);
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }
@@ -40,7 +43,8 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         // create-branch passes (ECustomsBookType.Export).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}");
+            .WithResource("api/CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}")
+            .AddUrlSegmentParameter("fullClassification", fullClassification);
         var response = await ExecuteWithoutValidationAsync(req);
         response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<int?>();

@@ -14,7 +14,9 @@ public class CountryGroupProxy(IHttpProxy httpProxy)
         // via x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/SystemTables/IsCountryInCountryGroup/{countryId}/{countryGroupId}");
+            .WithResource("api/SystemTables/IsCountryInCountryGroup/{countryId}/{countryGroupId}")
+            .AddUrlSegmentParameter("countryId", countryId)
+            .AddUrlSegmentParameter("countryGroupId", countryGroupId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }
@@ -25,7 +27,8 @@ public class CountryGroupProxy(IHttpProxy httpProxy)
         // x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/SystemTables/CountryGroupExists/{countryGroupId}");
+            .WithResource("api/SystemTables/CountryGroupExists/{countryGroupId}")
+            .AddUrlSegmentParameter("countryGroupId", countryGroupId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }

@@ -14,7 +14,8 @@ public class OrganizationUnitProxy(IHttpProxy httpProxy)
         // (until then the mock is enabled via x-mock-mode).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/OrganizationUnit/IsCustomsHouse/{organizationUnitId}");
+            .WithResource("api/OrganizationUnit/IsCustomsHouse/{organizationUnitId}")
+            .AddUrlSegmentParameter("organizationUnitId", organizationUnitId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<bool>();
     }
