@@ -39,8 +39,9 @@ public class SaveCertificateOfOriginRequestDto
 
     public int CertificateOfOriginStatusId { get; set; }
 
-    // Load-time snapshot of the status — drives the status-change events (replaces ChangeTracker original value).
-    public int OriginalCertificateOfOriginStatusId { get; set; }
+    // Load-time snapshot of the status, sent when the client changed it — the stateless counterpart of the self-tracking
+    // entity's recorded original. Null = not tracked (a new instance, or an unchanged status).
+    public int? OriginalCertificateOfOriginStatusId { get; set; }
 
     public int? DestinationCountry { get; set; }
 

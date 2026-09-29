@@ -1019,15 +1019,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
         await LinkLeadDocument(entity, replacementOldId, userId);
 
-        // Status-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: a NEW instance has no tracked original
-        // status, so its side effects fire only when the status is Received; an existing instance compares against the
-        // original status. Legacy also had an isRemarksChanged branch, but it could never be true in production: the
+        // Status-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: the self-tracking entity records an
+        // original status only when the status was changed, and a recorded original compares against the current one.
+        // Without one (a new instance, or an unchanged status) the save counts as a status change only when the status is
+        // Received - so an unchanged Received certificate re-fires its events, as in production. Legacy also had an isRemarksChanged branch, but it could never be true in production: the
         // self-tracking CertificateOfOrigin records no original value for FeedbackRemark (its setter does not call
         // RecordOriginalValue), so the original was always null. A remark change therefore sends no feedback here either
         // (analyst decision 2026-09-29).
-        var isStatusChanged = isNewInstance
-            ? entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received
-            : entity.CertificateOfOriginStatusId != request.OriginalCertificateOfOriginStatusId;
+        var isStatusChanged = (!isNewInstance
+                && request.OriginalCertificateOfOriginStatusId is int originalStatusId
+                && originalStatusId != entity.CertificateOfOriginStatusId)
+            || entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received;
 
         if (isStatusChanged)
         {
