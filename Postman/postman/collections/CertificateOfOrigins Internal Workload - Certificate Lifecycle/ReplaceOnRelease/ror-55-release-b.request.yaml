@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# B-H3: the declaration of B is released (1423) -> B is published AND the certificate it replaces is cancelled.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 1423,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [
+        {{rorB}}
+      ]
+    }
+order: 6055

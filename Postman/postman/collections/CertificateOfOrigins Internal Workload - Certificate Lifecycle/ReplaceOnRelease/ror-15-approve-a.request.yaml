@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# C4 on A -> PendingRelease (7).
+body:
+  type: json
+  content: |-
+    {{rorApproveABody}}
+order: 6015

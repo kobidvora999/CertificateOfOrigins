@@ -38,6 +38,9 @@ scripts:
       if (name === '40-approve') {
           pm.collectionVariables.set('approveBody', withStatus('certDto', 7));
       }
+      var APPROVE = { 'sqp-30-approve': ['sqpDto', 'sqpApproveBody'], 'ror-15-approve-a': ['rorADto', 'rorApproveABody'],
+                      'ror-50-approve-b': ['rorBDto', 'rorApproveBBody'] };
+      if (APPROVE[name]) { pm.collectionVariables.set(APPROVE[name][1], withStatus(APPROVE[name][0], 7)); }
       if (name === '20-reject') {
           pm.collectionVariables.set('rejectBody', withStatus('rejCertDto', 3, { rejectCancelReason: 'PM lifecycle reject' }));
       }
@@ -68,12 +71,15 @@ scripts:
 
       // ---- captures first, so an assertion failure cannot break the chain ----
       var CREATE = { '00-create-received': ['certId', 'certNumber'], '00-reject-create': ['rejCertId', null],
-                     '00-sq-create': [null, 'sqCertNumber'] };
+                     '00-sq-create': [null, 'sqCertNumber'], 'cb-00-create': ['cbId', 'cbNumber'],
+                     'sqp-00-create': ['sqpId', 'sqpNumber'], 'ror-00-create-a': ['rorA', 'rorANumber'],
+                     'ror-30-create-b': ['rorB', 'rorBNumber'] };
       if (CREATE[name] && j) {
           if (CREATE[name][0]) { pm.collectionVariables.set(CREATE[name][0], j.applicationId); }
           if (CREATE[name][1]) { pm.collectionVariables.set(CREATE[name][1], (j.feedback || {}).certificateId); }
       }
-      var READ = { '30-read-match': 'certDto', '10-reject-read': 'rejCertDto' };
+      var READ = { '30-read-match': 'certDto', '10-reject-read': 'rejCertDto', 'sqp-20-read-match': 'sqpDto',
+                   'ror-10-read-a-match': 'rorADto', 'ror-45-read-b-match': 'rorBDto' };
       if (READ[name] && j) { pm.collectionVariables.set(READ[name], JSON.stringify(j)); }
       if (name === '60-read-published' && j) { pm.collectionVariables.set('certGuid', j.guid); }
 
@@ -91,7 +97,19 @@ scripts:
 
       // ---- every read-back proves the state the previous transition left ----
       var EXPECTED_STATUS = { '10-read-received': 2, '30-read-match': 6, '60-read-published': 8,
-                              '85-read-cancelled': 4, '10-reject-read': 2, '30-reject-read-rejected': 3 };
+                              '85-read-cancelled': 4, '10-reject-read': 2, '30-reject-read-rejected': 3,
+                              'cb-20-read-match': 6, 'cb-40-read-unchanged': 6, 'sqp-20-read-match': 6, 'sqp-50-read-published': 8,
+                              'ror-10-read-a-match': 6, 'ror-25-read-a-published': 8, 'ror-35-read-b': 2, 'ror-45-read-b-match': 6,
+                              'ror-60-read-b-published': 8, 'ror-65-read-a-cancelled': 4 };
+      var READ_ID = { 'cb-20-read-match': 'cbId', 'cb-40-read-unchanged': 'cbId', 'sqp-20-read-match': 'sqpId',
+                      'sqp-50-read-published': 'sqpId', 'ror-10-read-a-match': 'rorA', 'ror-25-read-a-published': 'rorA',
+                      'ror-35-read-b': 'rorB', 'ror-45-read-b-match': 'rorB', 'ror-60-read-b-published': 'rorB',
+                      'ror-65-read-a-cancelled': 'rorA' };
+      if (READ_ID[name] && j) {
+          pm.test(name + ': read the certificate this folder created', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get(READ_ID[name])));
+          });
+      }
       if (EXPECTED_STATUS[name] !== undefined && j) {
           pm.test(name + ': certificate is at status ' + EXPECTED_STATUS[name], function () {
               pm.expect(j.certificateOfOriginStatusId, 'certificateOfOriginStatusId').to.eql(EXPECTED_STATUS[name]);
@@ -185,5 +203,42 @@ scripts:
               pm.expect(j.feedback.certificateId, 'certificateId').to.eql(pm.collectionVariables.get('sqCertNumber'));
               pm.expect(j.feedback.certificateOfOriginStatusCode, 'status').to.eql(2);
           });
+      }
+      // ---- C-01: a cancellation is refused while the customs-employee task is open ----
+      if (name === 'cb-30-cancel-message' && j) {
+          pm.test('cb-30: refused in-band with ItIsNotPossibleToTransmitACorrection (14027036)', function () {
+              var types = (j.exceptions || []).map(function (e) { return e.exceptionType; });
+              pm.expect(types, 'exceptionType').to.include(14027036);
+              pm.expect(j.feedback.certificateOfOriginStatusCode, 'status unchanged').to.eql(6);
+          });
+      }
+      // ---- C-03: a status query on a published certificate carries no attachment ----
+      if (name === 'sqp-60-status-query' && j) {
+          pm.test('sqp-60: the status of THIS certificate, Published (8), with no attachment', function () {
+              pm.expect(j.exceptions || [], 'exceptions').to.be.an('array').that.is.empty;
+              pm.expect(j.feedback.certificateId, 'certificateId').to.eql(pm.collectionVariables.get('sqpNumber'));
+              pm.expect(j.feedback.certificateOfOriginStatusCode, 'status').to.eql(8);
+              pm.expect(j.attachments, 'attachments').to.be.oneOf([null, undefined]);
+          });
+      }
+      // ---- B-H3: the release of a replacement cancels the certificate it replaces ----
+      if (name === 'ror-30-create-b' && j) {
+          pm.test('ror-30: the replacement was accepted', function () { pm.expect(j.feedback.requestReasonCode, 'reason').to.eql(4); });
+      }
+      if (name === 'ror-35-read-b' && j) {
+          pm.test('ror-35: B points at A as the certificate to cancel', function () {
+              pm.expect(j.certificateIdToCancel, 'certificateIdToCancel').to.eql(Number(pm.collectionVariables.get('rorA')));
+          });
+      }
+      var APPROVED = { 'sqp-30-approve': 'sqpId', 'ror-15-approve-a': 'rorA', 'ror-50-approve-b': 'rorB' };
+      if (APPROVED[name] && j) {
+          pm.test(name + ': saved at PendingRelease (7)', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get(APPROVED[name])));
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(7);
+          });
+      }
+      if (['cb-10-reconcile-match', 'sqp-10-reconcile-match', 'sqp-40-release', 'ror-05-reconcile-a', 'ror-20-release-a',
+           'ror-40-reconcile-b', 'ror-55-release-b'].indexOf(name) >= 0) {
+          pm.test(name + ': no reconciliation findings', function () { pm.expect(j, 'findings').to.be.an('array').that.is.empty; });
       }
     language: text/javascript

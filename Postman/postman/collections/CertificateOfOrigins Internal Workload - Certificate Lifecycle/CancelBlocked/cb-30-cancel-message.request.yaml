@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+method: POST
+headers:
+  MessageSenderId: "1"
+  Content-Type: application/json
+# C-01: the agent sends a cancellation while the customs-employee task is open -> refused in-band with ItIsNotPossibleToTransmitACorrection (14027036), as legacy.
+body:
+  type: json
+  content: |-
+    {
+      "agentRequest": {
+        "requestReasonCode": 14,
+        "certificateOfOriginTypeCode": 1,
+        "certificateId": "{{cbNumber}}"
+      }
+    }
+order: 4030
