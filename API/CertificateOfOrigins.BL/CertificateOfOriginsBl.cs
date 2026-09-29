@@ -1302,12 +1302,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var customerProxy = Resolve<ICustomerProxy>();
         var customsBookProxy = Resolve<ICustomsBookProxy>();
 
-        // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): resolve a brand-new certificate's
-        // DestinationCountry / PortOfShipment codes to internal ids before the id-based enrichment below (an existing
-        // instance already carries ids). entity.Id == 0 is captured before the upsert assigns the real id.
+        // Legacy SaveCertificateOfOrigin (CertificateOfOriginsBL.cs:977-1000): a NEW certificate only converts its
+        // DestinationCountry / PortOfShipment codes to ids; the CheckSpecificField enrichment + validation below runs for
+        // an EXISTING one. The message path already validated and resolved its new certificate's fields
+        // (ValidateMessageField), so running the loop again would re-resolve an already-internal exporter id as an
+        // external one. entity.Id == 0 is captured before the upsert assigns the real id.
         if (entity.Id == 0)
         {
             await ResolveNewInstanceDetailCodes(details);
+            return;
         }
 
         foreach (var detail in details)
