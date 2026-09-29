@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Customer/CustomerInformation/2147483647"
+method: GET
+# GetCustomerInformation - the exporter of an export request
+order: 2000

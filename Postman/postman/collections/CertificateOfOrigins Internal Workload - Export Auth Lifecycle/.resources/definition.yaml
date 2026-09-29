@@ -1,0 +1,118 @@
+$kind: collection
+id: certificateoforigins-export-auth-lifecycle-v1
+name: CertificateOfOrigins Export Auth Lifecycle
+description: >-
+  The export document authentication request end-to-end, on requests THIS run creates (lifecycle-map.md section 3).
+  Main: WaitingForLetterSending (1) -> letter sent, WaitingForExporter (2) -> reminder (3) -> WaitingForAdditionalInformation (4)
+  -> ReadyForProfessionalTreatment (5) -> ClosedValid (6), then the reads of the closed request. ClosedNotValid: 1 -> 5 -> 7.
+  Cancel: 1 -> 9. Every save is the request as the step before read it back, with the new status and the ORIGINAL status
+  (and timeStamp) - the BL runs the status side effects only when the two differ. The invoice number is minted per run,
+  so the search can assert on this run's request alone.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var name = pm.info.requestName;
+      if (name === '00-create' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
+      var today = new Date().toISOString().slice(0, 10) + 'T00:00:00';
+
+      // name -> [the read it builds on, new status, extra fields]
+      var TRANSITION = {
+          '10-letter-sent': ['expDto', 2, { deliveryMethodId: 2, lastDeliveryDate: today }],
+          '20-reminder-sent': ['expDto', 3, { deliveryMethodId: 4, lastDeliveryDate: today }],
+          '30-more-details': ['expDto', 4, {}],
+          '40-ready': ['expDto', 5, {}],
+          '50-closed-valid': ['expDto', 6, {}],
+          '10-notvalid-ready': ['expNvDto', 5, {}],
+          '20-notvalid-close': ['expNvDto', 7, {}],
+          '10-cancel': ['expCxDto', 9, {}]
+      };
+      var t = TRANSITION[name];
+      if (t) {
+          var dto = JSON.parse(pm.collectionVariables.get(t[0]) || '{}');
+          dto.originalStatusId = dto.statusId;
+          dto.statusId = t[1];
+          Object.keys(t[2]).forEach(function (k) { dto[k] = t[2][k]; });
+          pm.collectionVariables.set('expBody', JSON.stringify(dto));
+      }
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      pm.test(name + ': no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status 200', function () { pm.response.to.have.status(200); });
+
+      // ---- captures first ----
+      var CREATE = { '00-create': 'expId', '00-notvalid-create': 'expNvId', '00-cancel-create': 'expCxId' };
+      if (CREATE[name] && j) { pm.collectionVariables.set(CREATE[name], j.id); }
+      var DTO_OF = { expId: 'expDto', expNvId: 'expNvDto', expCxId: 'expCxDto' };
+      // Every read refreshes the DTO (and timeStamp) the next transition sends.
+      var READS = {
+          '05-read-created': ['expId', 1, 1], '15-read-letter-sent': ['expId', 2, 2], '25-read-reminder-sent': ['expId', 3, 4],
+          '35-read-more-details': ['expId', 4, null], '45-read-ready': ['expId', 5, null], '55-read-closed-valid': ['expId', 6, null],
+          '05-notvalid-read': ['expNvId', 1, 1], '15-notvalid-read-ready': ['expNvId', 5, null], '25-notvalid-read-closed': ['expNvId', 7, null],
+          '05-cancel-read': ['expCxId', 1, 1], '15-cancel-read-cancelled': ['expCxId', 9, null]
+      };
+      if (READS[name] && j) { pm.collectionVariables.set(DTO_OF[READS[name][0]], JSON.stringify(j)); }
+      if (name === '55-read-closed-valid' && j) {
+          pm.collectionVariables.set('expExporterId', j.exporterCustomerId);
+          pm.collectionVariables.set('expCountryId', j.countryId);
+      }
+
+      // ---- creation ----
+      if (CREATE[name]) {
+          pm.test(name + ': created at WaitingForLetterSending (1)', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.above(0);
+              pm.expect(j.statusId, 'statusId').to.eql(1);
+          });
+      }
+
+      // ---- every transition: the save answers the new status, the read-back proves it persisted ----
+      var SAVED = { '10-letter-sent': 2, '20-reminder-sent': 3, '30-more-details': 4, '40-ready': 5, '50-closed-valid': 6,
+                    '10-notvalid-ready': 5, '20-notvalid-close': 7, '10-cancel': 9 };
+      if (SAVED[name] !== undefined) {
+          pm.test(name + ': saved at status ' + SAVED[name], function () { pm.expect(j.statusId, 'statusId').to.eql(SAVED[name]); });
+      }
+      if (READS[name]) {
+          var want = READS[name];
+          pm.test(name + ': request is at status ' + want[1], function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get(want[0])));
+              pm.expect(j.statusId, 'statusId').to.eql(want[1]);
+              if (want[2] !== null) { pm.expect(j.deliveryMethodId, 'deliveryMethodId').to.eql(want[2]); }
+          });
+          pm.test(name + ': the child rows survived the save', function () {
+              pm.expect(j.customsItems, 'customsItems').to.have.lengthOf(1);
+              pm.expect(j.leadDocuments, 'leadDocuments').to.have.lengthOf(1);
+              pm.expect(j.manufacturingAreas, 'manufacturingAreas').to.have.lengthOf(1);
+          });
+      }
+
+      // ---- reads of the closed request ----
+      if (name === '60-search-by-invoice') {
+          pm.test('60: the run invoice finds exactly this request, closed valid', function () {
+              pm.expect(j, 'rows').to.be.an('array').with.lengthOf(1);
+              pm.expect(j[0].requestId, 'requestId').to.eql(Number(pm.collectionVariables.get('expId')));
+              pm.expect(j[0].requestStatusName, 'requestStatusName').to.eql('סגור - תקין');
+          });
+      }
+      if (name === '65-exporter-information') {
+          pm.test('65: the exporter resolves with an address', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('expExporterId')));
+              pm.expect(j.addresses, 'addresses').to.be.an('array').that.is.not.empty;
+          });
+      }
+      if (name === '66-foreign-customs-house') {
+          pm.test('66: a foreign customs house resolves for the request country', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.above(0);
+              pm.expect(j.name, 'name').to.be.a('string').and.not.empty;
+          });
+      }
+    language: text/javascript

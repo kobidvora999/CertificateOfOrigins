@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# A PUBLISHED row of type 5 (NonManipulation) for the type-switch check. The mismatch has to come from the
+# A PUBLISHED row of type 5 (NonManipulation) for the type-switch check. The mismatch has to come from the Created at Received (2); 01-publish-E moves it to 8 through the status save.
 # STORED certificate, not the request: sending certificateOfOriginTypeCode 5 instead makes the message itself a
 # NonManipulation message, whose field catalogue demands manifest/import/export values the EURMED body does not
 # carry - verified live, the run came back with only MandatoryValue(2387) and never reached CheckCertificateUpdate.
@@ -14,7 +14,7 @@ body:
       "id": 0, "state": 1, "typeId": 5, "title": "per-reason fixture PR-PUB-E-{{runId}}",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "certificateNumber": "PR-PUB-E-{{runId}}",
-      "certificateOfOriginStatusId": 8,
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,
       "isLastVersion": true, "versionNumber": 1,

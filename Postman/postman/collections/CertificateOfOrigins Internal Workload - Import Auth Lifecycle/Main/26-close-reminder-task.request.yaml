@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CloseReminderTask"
+method: POST
+headers:
+  Content-Type: application/json
+# F7: the 3-month reminder task is closed (event 1745).
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "organizationUnitId": {{fileOrg}}
+    }
+order: 1260

@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # A 300-character invoice description -> CheckDescriptionLength raises 14027343 (the cap is 255). The value is still kept - the legacy warns rather than truncates.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

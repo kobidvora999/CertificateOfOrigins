@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# Saves a certificate as Published (status 8). That is the ONLY path that stamps CertificateOfOrigin.Guid:
+# Saves a certificate as Published (status 8). That is the ONLY path that stamps CertificateOfOrigin.Guid: Created at Received (2); 05-publish moves it to 8 through the status save.
 # CreateQrCodeIfNeeded stamps it only when QrCodePath is empty AND the status is Published
 # (CertificateOfOriginsBl.cs:1044). Without a Guid the whole web-query mapping loop is unreachable, which is
 # why MapConsigneeField / MapDateOfDeclarationField / MapDetailField / PrintOutField all sat at 0%.
@@ -18,8 +18,8 @@ body:
       "organizationUnitId": 1,
       "customerId": 777,
       "createCustomerId": 777,
-      "certificateNumber": "POSTMAN-COO-1",
-      "certificateOfOriginStatusId": 8,
+      "certificateNumber": "POSTMAN-COO-1-{{runId}}",
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,
       "isLastVersion": true,

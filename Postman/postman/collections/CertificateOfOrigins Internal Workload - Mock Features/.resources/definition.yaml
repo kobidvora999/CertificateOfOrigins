@@ -14,7 +14,7 @@ description: >-
   aborts the call) and the BL does not catch them, so they would surface as 500. Whether a downstream transport
   failure SHOULD be a 500 or a 502 is a contract question for the developer; asserting the current 500 would
   freeze an unreviewed answer. See reports/gap-analysis.md.
-  REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql for AuthRequest.
+  AuthRequest creates the request and file it reads (01/02) - no seed.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -27,6 +27,15 @@ scripts:
       // the request yaml, not here: one flag per scenario is the whole point.
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // DocumentID of the AuthRequest setup: 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT 5 (see Auth Lifecycle).
+      if (pm.info.requestName === '01-create-request' || !pm.collectionVariables.get('mfDoc')) {
+          pm.collectionVariables.set('mfDoc', 800000000 + (Date.now() % 1000000) * 100 + 5 * 10 + 1);
+      }
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-baseline' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
 
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       var now = Date.now(), DAY = 86400000;
@@ -45,23 +54,81 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
 
-      // Most scenarios answer 200 with the branch visible in the body. Three do NOT, and their non-200 IS the
-      // branch proof - every one below was verified against the live service before being asserted here:
-      //   * ExportDoc: Customers.NotFound flips the customer read 200 -> 404 (control run confirms the 200).
-      //   * 90-site-not-found: the site never resolves, so context.OrganizationUnitId is never set and the save
-      //     is rejected by the validator - the early return above the org-unit check, seen from outside.
+      // Most scenarios answer 200 with the branch visible in the body. The two ExportDoc reads do NOT: a customer the
+      // Customers service does not know is refused with a 400 naming the field, as legacy (b720c6a, bdb1866).
       var EXPECT_STATUS = {
-          '10-customer-information-not-found': 404,
-          '20-customers-by-country-not-found': 404,
-          '90-site-not-found':                 400
+          '10-customer-information-not-found': 400,
+          '20-customers-by-country-not-found': 400
+      };
+      var REFUSED_FIELD = {
+          '10-customer-information-not-found': ['customerId', 'מספר זיהוי לא תקין'],
+          '20-customers-by-country-not-found': ['countryId', 'אין בית מכס למדינה זו']
       };
       var expected = EXPECT_STATUS[name] || 200;
       pm.test('status is ' + expected, function () { pm.response.to.have.status(expected); });
 
-      if (name === '90-site-not-found') {
-          pm.test('90-site-not-found: rejected on the org unit the unresolved site never supplied', function () {
-              pm.expect(body).to.include('OrganizationUnitId');
+      if (REFUSED_FIELD[name] && j) {
+          pm.test(name + ': refused on ' + REFUSED_FIELD[name][0] + ' with the legacy message', function () {
+              var err = (j.errors || []).filter(function (e) { return e.field === REFUSED_FIELD[name][0]; })[0];
+              pm.expect(err, 'error on ' + REFUSED_FIELD[name][0]).to.not.be.undefined;
+              pm.expect(err.detail, 'detail').to.include(REFUSED_FIELD[name][1]);
           });
+      }
+
+      // C-02 (87f5039): the unresolved site leaves the org unit unset, and the save no longer requires one.
+      if (name === '90-site-not-found' && j) {
+          pm.collectionVariables.set('mfSiteCertId', j.applicationId);
+          pm.test('90-site-not-found: the certificate is saved although no org unit was resolved', function () {
+              pm.expect(j.applicationId, 'applicationId').to.be.a('number').and.above(0);
+          });
+      }
+      if (name === '95-read-site-not-found' && j) {
+          pm.test('95: stored with organizationUnitId 0', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('mfSiteCertId')));
+              pm.expect(j.organizationUnitId, 'organizationUnitId').to.eql(0);
+          });
+      }
+
+      // ---- AuthRequest setup and reads: every read must be of the request / file created at 01-02 ----
+
+      var mfDoc = Number(pm.collectionVariables.get('mfDoc'));
+
+      if (name === '02-create-file' && j) { pm.collectionVariables.set('mfFileId', j.id); }
+
+      if (name === '01-create-request') {
+
+          pm.test('01: the request was inserted', function () { pm.expect(j.documentId, 'documentId').to.eql(mfDoc); });
+
+      }
+
+      if (['10-collateral-empty', '20-tasks-empty', '30-document-by-id-not-found', '40-no-submission-date'].indexOf(name) >= 0) {
+
+          pm.test(name + ': read the request created at 01', function () { pm.expect(j.documentId, 'documentId').to.eql(mfDoc); });
+
+      }
+
+      if (name === '50-file-tasks-empty') {
+
+          pm.test('50: read the file created at 02, holding the request', function () {
+
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('mfFileId')));
+
+              pm.expect((j.requests || []).map(function (r) { return r.documentId; }), 'children').to.include(mfDoc);
+
+          });
+
+      }
+
+      if (name === '60-importers-not-found' || name === '70-vendors-not-found') {
+
+          pm.test(name + ': the filter found exactly the request created at 01', function () {
+
+              pm.expect(j, 'rows').to.be.an('array').with.lengthOf(1);
+
+              pm.expect(j[0].documentId, 'documentId').to.eql(mfDoc);
+
+          });
+
       }
 
       // ---- captures (before the assertions, so a failed assertion cannot break the chain) ----

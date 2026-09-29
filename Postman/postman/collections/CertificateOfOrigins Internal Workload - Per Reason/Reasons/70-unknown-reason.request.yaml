@@ -2,17 +2,15 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
-# VERIFIED LIVE: a reason outside the enum never reaches the switch at all - a validator rejects it first with
-# 400 "RequestReasonCode must be a defined ERequestReason value". So the switch default arm is dead code behind
-# validation, and the BEHAVIOUR (an unknown reason is refused) is what this asserts. Keeping the scenario is the
-# point: it is what proves the arm is unreachable rather than merely untested.
+# An unknown reason is refused IN-BAND, as legacy did (EMessages.RequestReasonNotExist): 200 + exceptionType 5020,
+# nothing created. The per-reason switch default arm stays unreachable behind that check.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 99, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 99, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

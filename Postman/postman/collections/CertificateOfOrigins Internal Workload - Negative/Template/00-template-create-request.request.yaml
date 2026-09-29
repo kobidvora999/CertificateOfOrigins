@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# SETUP - a request for the file below (DocumentID minted per run, slot 7).
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{negDoc}},
+      "isNewInstance": true,
+      "authenticationRequestDate": "{{today}}",
+      "decisionId": 1,
+      "leadDocumentId": {{negDoc}},
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "originCountryId": 32,
+      "number": 1,
+      "preferenceDocumentTypeId": 4,
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "customerId": 888,
+      "importerId": 279366,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": true,
+      "collaterals": []
+    }
+order: 6000

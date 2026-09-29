@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/SystemTables/CountryGroupExists/2147483647"
+method: GET
+# CountryGroupExists - a country group on the message
+order: 1000

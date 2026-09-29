@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# C4: the worker approves - the full certificate read at 30, status 7 with the original status 6, so the status side effects run (ApproveUserId stamped, event 637).
+body:
+  type: json
+  content: |-
+    {{approveBody}}
+order: 1400

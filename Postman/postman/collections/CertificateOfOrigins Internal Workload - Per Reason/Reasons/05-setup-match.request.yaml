@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# A row at DeclarationMatch(6), for the tail of ResolveCertificateForReason that blocks a correction while a customs-employee task exists.
+# A row at DeclarationMatch(6), for the tail of ResolveCertificateForReason that blocks a correction while a customs-employee task exists. Created at Received (2); 06-mark-match moves it to 6 through the status save.
 body:
   type: json
   content: |-
@@ -11,7 +11,7 @@ body:
       "id": 0, "state": 1, "typeId": 1, "title": "per-reason fixture PR-MATCH-{{runId}}",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "certificateNumber": "PR-MATCH-{{runId}}",
-      "certificateOfOriginStatusId": 6,
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,
       "isLastVersion": true, "versionNumber": 1,

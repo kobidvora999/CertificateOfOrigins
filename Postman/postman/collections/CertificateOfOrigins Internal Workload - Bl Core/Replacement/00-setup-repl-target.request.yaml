@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# CertificateIdToCancel is a SELF-REFERENCING foreign key on CertificateOfOrigin.ID, so it cannot be an
+# CertificateIdToCancel is a SELF-REFERENCING foreign key on CertificateOfOrigin.ID, so it cannot be an Created at Received (2); 01-publish-repl-target moves it to 8 through the status save.
 # invented number - a literal 4242 fails the insert with an FK violation (verified: HTTP 500). This row exists
 # only to be pointed at.
 body:
@@ -12,8 +12,8 @@ body:
     {
       "id": 0, "state": 1, "typeId": 2, "title": "bl-core BLC-REPL-TARGET",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "BLC-REPL-TARGET",
-      "certificateOfOriginStatusId": 8,
+      "certificateNumber": "BLC-REPL-TARGET-{{runId}}",
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,
       "isLastVersion": true, "versionNumber": 1,

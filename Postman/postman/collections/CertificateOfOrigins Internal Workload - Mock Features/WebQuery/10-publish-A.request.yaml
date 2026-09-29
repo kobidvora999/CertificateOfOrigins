@@ -12,7 +12,7 @@ body:
       "timeStamp": "{{mfTsA}}",
       "typeId": 2, "state": 1, "title": "mock-features publish A",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "MF-COO-A",
+      "certificateNumber": "MF-COO-A-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 2,
       "requestReasonCode": 2,

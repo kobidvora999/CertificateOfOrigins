@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # reason 12 (Draft) - the only arm that does nothing but the published/cancelled check.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 12, "certificateId": "PR-PUB-C-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 12, "certificateId": "PR-PUB-C-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

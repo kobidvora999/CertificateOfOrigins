@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/99/{{negFileId}}"
+method: GET
+# An unregistered template id (99) for THIS run file -> 404 from GetTemplateMeta, before the Templates service is called.
+order: 6100

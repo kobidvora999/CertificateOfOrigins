@@ -3,9 +3,9 @@ url: "{{baseUrl}}/api/CertificateOfOrigins/Convert"
 method: POST
 headers:
   Content-Type: application/json
-# Convert resolves a certificate number to a VirtualEntity. With a number that exists it takes the SUCCESS path (9 lines) instead of the RestNotFoundException it hit on every previous run.
+# Convert resolves the number of the certificate 00-setup created in THIS run to a VirtualEntity - the SUCCESS path, and it must resolve to that certificate.
 body:
   type: json
   content: |-
-    { "entityIdKey1": "BLC-FILTER" }
+    { "entityIdKey1": "BLC-FILTER-{{runId}}" }
 order: 20020

@@ -7,5 +7,5 @@ headers:
 body:
   type: json
   content: |-
-    { "certificateNumber": "BLC-FILTER" }
+    { "certificateNumber": "BLC-FILTER-{{runId}}" }
 order: 20010

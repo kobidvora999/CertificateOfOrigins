@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{rejCertId}}"
+method: GET
+# State after C3: Rejected (3) with the worker's reason.
+order: 2300

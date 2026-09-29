@@ -21,6 +21,16 @@ scripts:
     code: |-
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-setup-Match' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
+      // B-H1: the declaration link the reconcile must backfill, minted per run so the read-back can only match THIS request.
+      if (pm.info.requestName === '00-setup-BackfillLink' || !pm.collectionVariables.get('bh1Lead')) {
+          pm.collectionVariables.set('bh1Lead', 7000000 + (Date.now() % 1000000));
+          pm.collectionVariables.set('bh1Decl', 'BH1-' + Date.now());
+      }
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       pm.collectionVariables.set('tenDaysAgo', iso(Date.now() - 10 * 86400000));
     language: text/javascript
@@ -42,6 +52,18 @@ scripts:
 
       // Each folder reconciles the certificate IT created. The folders are ordered so that a setup always
       // immediately precedes its own reconcile, so one shared variable is enough.
+      if (name === '20-verify-BackfillLink' && j) {
+          pm.test('BackfillLink/20: linked to the lead document and declaration number the reconcile sent', function () {
+              pm.expect(j.leadDocumentId, 'leadDocumentId').to.eql(Number(pm.collectionVariables.get('bh1Lead')));
+              pm.expect(j.exportDeclarationNumber, 'exportDeclarationNumber').to.eql(pm.collectionVariables.get('bh1Decl'));
+          });
+      }
+      if (name === '00-setup-BackfillLink' && j) {
+          pm.test('BackfillLink/00: created with no declaration number', function () {
+              pm.expect(j.exportDeclarationNumber, 'exportDeclarationNumber').to.be.oneOf([null, undefined, '']);
+          });
+      }
+
       if (step === '00-setup' && j) {
           pm.collectionVariables.set('certId', j.id);
           pm.test(folder + '/00-setup: created at Received', function () {
@@ -56,6 +78,8 @@ scripts:
       var EXPECT = {
           'Match':                 { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'MatchNoAssessor':       { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'BackfillLink':          { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'NoInvoiceRowsMatch':    { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'Warnings':              { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אינה תואמת לחשבונית בהצהרת היצוא'] },
           'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אין בהצהרה טובין המקושרים להצהרת היבוא'] },
           'CustomsItemMismatch':   { levels: [1],   status: REJECTED,             contains: ['אינו תואם לפריט מכס בהצהרת היצוא',

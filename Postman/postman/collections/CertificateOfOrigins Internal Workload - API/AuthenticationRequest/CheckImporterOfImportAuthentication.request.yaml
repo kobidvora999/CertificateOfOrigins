@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/CheckImporterOfImportAuthentication?importerId=12345"
-method: GET
-queryParams:
-  importerId: "12345"
-order: 1000

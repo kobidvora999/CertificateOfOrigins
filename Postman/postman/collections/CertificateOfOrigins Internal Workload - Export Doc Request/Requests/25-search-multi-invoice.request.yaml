@@ -14,6 +14,6 @@ body:
   type: json
   content: |-
     {
-      "invoiceIdNum": "NO-SUCH-INVOICE-ZZZ,EXPINV-MULTI"
+      "invoiceIdNum": "NO-SUCH-{{runId}},EXPINV-MULTI-{{runId}}"
     }
 order: 12500

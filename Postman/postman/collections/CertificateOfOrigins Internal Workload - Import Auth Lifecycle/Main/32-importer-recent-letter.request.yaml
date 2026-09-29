@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CheckIfExistsAdditionalRequestsForImporter?importerId={{importerId}}&customerId=888&countryId=32"
+method: GET
+# After the letter this run sent: the importer has a request with a recent delivery -> true.
+order: 1320

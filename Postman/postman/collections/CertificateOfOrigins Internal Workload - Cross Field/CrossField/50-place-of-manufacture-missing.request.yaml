@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # An Israel origin country with NO place-of-manufacture and no zip, on EURMED (whose type row sets IsZipcodeMandatory), with a destination outside the exempt list -> PlaceOfManufactureAndZipcodeRequired(5006). All four conditions of that && have to line up, which is why it had never fired.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",

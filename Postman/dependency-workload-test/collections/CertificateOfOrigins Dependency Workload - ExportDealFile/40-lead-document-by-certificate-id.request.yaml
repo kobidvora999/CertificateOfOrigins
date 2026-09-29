@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/ExportDealFile/LeadDocumentByCertificateOfOriginId/2147483647"
+method: GET
+# GetLeadDocumentByCertificateOfOriginId - the lead document of a certificate
+order: 4000

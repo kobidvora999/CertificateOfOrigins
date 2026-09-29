@@ -13,7 +13,7 @@ body:
       "timeStamp": "{{mfTsC}}",
       "typeId": 2, "state": 1, "title": "mock-features publish C",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "MF-COO-C",
+      "certificateNumber": "MF-COO-C-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 2,
       "requestReasonCode": 2,

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: GET
+# The file as the screen loads it before the answer: status 3, A at 9, B at 1. It is the body of the save at 55.
+order: 1500

@@ -2,10 +2,11 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # reason 13 with an id that resolves to nothing -> CertificateDoesntExist(13680). The id is run-scoped because a non-empty certificateId takes the five-minute message lease.
 body:
   type: json
   content: |-
-    { "customerId": 1, "agentRequest": { "requestReasonCode": 13, "certificateId": "BLC-NOPE-{{runId}}", "certificateOfOriginTypeCode": 1 } }
+    { "agentRequest": { "requestReasonCode": 13, "certificateId": "BLC-NOPE-{{runId}}", "certificateOfOriginTypeCode": 1 } }
 order: 21010

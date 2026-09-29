@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# The worker publishes the certificate 00-setup-published-A created: 2 -> 8, sent as the certificate that create answered with its original status 2, so the transition side effects run (QR + Guid, issuing date, issue event, template).
+body:
+  type: json
+  content: |-
+    {{transitionBody}}
+order: 10010

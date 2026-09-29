@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryReminderForImporterSent"
+method: POST
+headers:
+  Content-Type: application/json
+# F5: a reminder to the importer -> decision ReminderForImporterWasSent (9).
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{docA}},
+      "organizationUnitId": 1,
+      "authenticationFileId": {{fileId}},
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}}
+    }
+order: 1350

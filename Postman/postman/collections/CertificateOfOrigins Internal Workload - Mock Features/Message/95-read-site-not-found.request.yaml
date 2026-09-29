@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{mfSiteCertId}}"
+method: GET
+# C-02 (87f5039): the certificate 90 sent without a resolvable site is SAVED - the validator no longer requires OrganizationUnitId > 0 - and it is stored with organizationUnitId 0, as legacy did.
+order: 10901

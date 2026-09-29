@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # MERCOSUR takes the non-EUR branch, where the destination is checked by CheckDestinationCountry rather than by the XorGroup helper. With no destination country at all -> DestinationCountryRequired(5001).
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",

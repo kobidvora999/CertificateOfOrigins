@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -12,6 +13,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Community;
 // committed by hand at .spec/OpenApi/community-certificateoforiginrequest.openapi.json and guarded by
 // Test/SchemaContract/CommunityCertificateOfOriginRequestContractTests.cs.
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("community/[controller]")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)

@@ -2,6 +2,7 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
   x-mock-feature--DealFile.HasAssociatedDeclaration: "true"
 # GetLeadDocumentByCertificateOfOriginId returns a live lead document -> 14027174, and the cancel is blocked
@@ -15,8 +16,7 @@ body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146", "certificateId": "{{certIdCancelMf}}" },
+            "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146", "certificateId": "{{certIdCancelMf}}" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

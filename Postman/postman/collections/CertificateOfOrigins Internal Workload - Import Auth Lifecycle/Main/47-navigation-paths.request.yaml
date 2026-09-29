@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/PathsForNavigationToVendor"
+method: GET
+# Navigation paths for the vendor screen. viewPaths stays empty until the platform has a NavigationPath lookup (MIGRATION-NOT-DONE.md), so this asserts the shape only.
+order: 1470

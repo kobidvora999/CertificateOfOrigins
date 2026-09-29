@@ -1,10 +1,36 @@
 $kind: collection
 name: CertificateOfOrigins Dependency Workload - Collaterals
-description: Dependency probe — proves the Collaterals microservice is alive (GetCollateralRequest, ChangeTempCollateralRequest, GetCollateralRequestIdsByRelatedEntity, GrantAllCollateralRequests). GET AuthenticationRequestByID enriches the request's collateral via Collaterals. Runs PRE-PROD with REAL proxies.
+description: >-
+  Dependency probe of the Collaterals service: one request per outbound call of the real proxies
+  (API/CertificateOfOrigins.BL/Proxies), sent straight to the route the proxy calls. Every entity id is 2147483647,
+  an id no service can have, so the probe proves the dependency answers per its contract without depending on or
+  changing pre-prod data. Runs PRE-PROD against the real service; base_URL is the target host (or the gateway).
 variables:
-  base_URL: http://localhost:9034
+  base_URL: https://REPLACE-with-preprod-host
 scripts:
   - type: http:beforeRequest
     code: |-
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      pm.collectionVariables.set('today', new Date().toISOString().slice(0, 10) + 'T00:00:00');
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Expected statuses from the endpoint contract: a list read answers 200 (an empty list, never 404); a by-id or
+      // lookup read answers 200 or 404 (both prove the service answered); a write with an id that cannot exist is
+      // validated and refused (400/404) or accepted as a no-op (200/204). Never a 5xx.
+      var EXPECT = {
+          '10-collateral-requests-by-entity': [200],
+          '20-collateral-request-ids-by-entity': [200],
+          '30-change-temp-collateral-request': [200, 204, 400, 404],
+          '40-grant-all-collateral-requests': [200, 204, 400, 404],
+          '50-debit-credit-collateral-request': [200, 204, 400, 404]
+      };
+      var name = pm.info.requestName;
+      pm.test(name + ': ' + 'Collaterals answered - no 5xx', function () { pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500); });
+      pm.test(name + ': answered within 15s', function () { pm.expect(pm.response.responseTime).to.be.below(15000); });
+      pm.test(name + ': status per the contract ' + JSON.stringify(EXPECT[name]), function () { pm.expect(EXPECT[name], 'probe has an expected status').to.be.an('array'); pm.expect(pm.response.code).to.be.oneOf(EXPECT[name]); });
+      var ct = (pm.response.headers.get('Content-Type') || '').toLowerCase();
+      if (ct.indexOf('json') >= 0 && pm.response.text()) {
+          pm.test(name + ': body is valid JSON', function () { pm.expect(function () { pm.response.json(); }).to.not.throw(); });
+      }
     language: text/javascript

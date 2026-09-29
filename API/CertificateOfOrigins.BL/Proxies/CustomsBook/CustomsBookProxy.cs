@@ -2,6 +2,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
@@ -40,7 +41,8 @@ public class CustomsBookProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/CustomsBook/CustomsItemIdByFullClassification/Export/{fullClassification}");
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<int?>();
     }
 }

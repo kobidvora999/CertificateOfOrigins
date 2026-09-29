@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/CommonServices/GenerateTemplate/1/2147483647?additionalInfo="
+method: GET
+# GenerateTemplate - the certificate document rendered on publish
+order: 2000

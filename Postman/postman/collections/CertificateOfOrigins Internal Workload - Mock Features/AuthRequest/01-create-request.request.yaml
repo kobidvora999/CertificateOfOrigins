@@ -1,0 +1,35 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# SETUP - the import authentication request every AuthRequest scenario below reads (DocumentID minted per run, slot 5).
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{mfDoc}},
+      "isNewInstance": true,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "decisionId": 1,
+      "leadDocumentId": {{mfDoc}},
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "originCountryId": 32,
+      "number": 1,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "flow@example.com",
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "vendorName": "Mock Vendor",
+      "customerId": 888,
+      "importerId": 279366,
+      "remarks": "mock features",
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": true,
+      "collaterals": []
+    }
+order: 39800

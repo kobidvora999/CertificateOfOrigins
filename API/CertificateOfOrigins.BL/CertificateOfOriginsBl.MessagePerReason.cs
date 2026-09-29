@@ -96,17 +96,22 @@ public partial class CertificateOfOriginsBl
                 break;
         }
 
-        // Legacy tail: re-fetch if still unresolved, then block a correction while a customs-employee task exists
-        // (DeclarationMatch / DeclarationMismatch status).
+        // Legacy tail: re-fetch if still unresolved, then block a correction while a customs-employee task exists.
         certificate ??= await GetExistingCertificate(agentRequest.CertificateId);
-        if (certificate != null
-            && (certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.DeclarationMatch
-                || certificate.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.DeclarationMismatch))
-        {
-            context.Exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACorrectionWhenThereIsATaskForACustomsEmployee, certificate.CertificateNumber));
-        }
+        AddOpenCustomsEmployeeTaskException(certificate, context.Exceptions);
 
         return certificate;
+    }
+
+    // Legacy CheckRequestReasonAndGetSavedCertificate tail (every reason except GetRequestStatus, cancellation included):
+    // a certificate with an open customs-employee task (DeclarationMatch / DeclarationMismatch) cannot be corrected or
+    // cancelled by message.
+    private static void AddOpenCustomsEmployeeTaskException(CertificateOfOrigin? certificate, List<CertificateOfOriginExceptionDto> exceptions)
+    {
+        if (certificate?.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.DeclarationMatch or (int)ECertificateOfOriginStatus.DeclarationMismatch)
+        {
+            exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACorrectionWhenThereIsATaskForACustomsEmployee, certificate.CertificateNumber));
+        }
     }
 
     // Legacy CheckCertificateNumber: resolve the existing certificate by number; missing id / not-found are in-band errors.

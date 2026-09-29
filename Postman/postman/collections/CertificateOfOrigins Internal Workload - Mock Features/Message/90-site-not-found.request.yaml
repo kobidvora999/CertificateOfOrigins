@@ -2,17 +2,17 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
   x-mock-feature--Site.NotFound: "true"
 # Site.NotFound -> CheckIfSiteExistAndCustomsHouse returns EARLY (the branch ABOVE the org-unit check), so 5007 is
-# never raised AND context.OrganizationUnitId is never set. The save then fails validation with 400
-# "OrganizationUnitId is required" - verified live. That 400 is the branch proof, not a defect.
+# never raised AND context.OrganizationUnitId is never set. Since C-02 (87f5039) the save no longer requires
+# OrganizationUnitId > 0: the message is accepted and the certificate is stored with organizationUnitId 0 (read at 95).
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

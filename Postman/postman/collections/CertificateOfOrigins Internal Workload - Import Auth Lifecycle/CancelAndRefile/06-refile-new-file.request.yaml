@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# The unlinked request can open a NEW file (the loop back to F0), with a different file id.
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": {{docC}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 888,
+        "responseNameEmail": "flow@example.com"
+      }
+    ]
+order: 2050

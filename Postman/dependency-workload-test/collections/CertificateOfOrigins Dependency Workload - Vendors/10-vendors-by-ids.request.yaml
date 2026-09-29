@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/Vendor/VendorsByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetVendorsByIds - vendor names of the authentication requests
+body:
+  type: json
+  content: |-
+    [
+      2147483647
+    ]
+order: 1000

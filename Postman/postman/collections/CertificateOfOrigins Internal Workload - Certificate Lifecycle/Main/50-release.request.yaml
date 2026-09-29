@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# C9: the export declaration is released (eventType 1423) -> PendingRelease (7) is published.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 1423,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ]
+    }
+order: 1500

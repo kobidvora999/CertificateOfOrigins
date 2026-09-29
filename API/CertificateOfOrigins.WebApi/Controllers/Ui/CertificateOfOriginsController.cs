@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -10,6 +11,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Ui;
 // C14: the `ui` (internal) surface of CertificateOfOriginsBl. The class is named after the BL, not after a
 // resource — the same name recurs in Api/, Web/ and Community/, kept apart by folder + namespace.
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("ui/[controller]")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)
