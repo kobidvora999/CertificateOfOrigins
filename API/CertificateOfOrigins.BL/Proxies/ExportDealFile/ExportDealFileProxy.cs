@@ -2,6 +2,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
@@ -37,7 +38,8 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/ExportDealFile/LeadDocumentSubmissionDate/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<DateTime?>();
     }
 
@@ -55,7 +57,8 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/ExportDealFile/LeadDocumentByCertificateOfOriginId/{certificateOfOriginId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<LeadDocumentByCertificateOfOriginDto>();
     }
 
@@ -72,7 +75,8 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource($"api/ExportDealFile/ExportDeclarationInfo/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<ExportDeclarationInfoDto>();
     }
 
