@@ -27,10 +27,12 @@ public class ExportDocumentAuthenticationRequestBl(
     {
         var customerProxy = Resolve<ICustomerProxy>();
 
-        // Single-customer lookup against the Customers service by id; the legacy threw on a missing customer,
-        // so a not-found id owns the 404 contract. Address selection was client-side (SPA), not in the BL.
+        // Single-customer lookup against the Customers service by id. Legacy threw the business error
+        // EMessages.InvalidIdentificationNumber on a missing customer, so it is a 400 with that message, not a 404
+        // (analyst decision 2026-09-29). Address selection was client-side (SPA), not in the BL.
+        // TODO(confirm): the UIMessage text of InvalidIdentificationNumber (not in the local UIMessage copy).
         var customer = await customerProxy.GetCustomerInformation(customerId)
-            ?? throw new RestNotFoundException();
+            ?? throw new RestValidationException(nameof(customerId), "מספר זיהוי לא תקין");
         return customer;
     }
 
