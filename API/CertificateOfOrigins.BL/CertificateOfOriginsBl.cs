@@ -175,7 +175,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         switch (reasonCode)
         {
             case (int)ERequestReason.GetRequestStatus:
+                // Legacy validated a status query like any other message (type, fields, invoices; no body is required)
+                // and any error suppressed the status: the response then carries only the exceptions, with an empty
+                // feedback (the legacy throw → fresh response).
+                await ValidateMessageBody(request, context, requestExceptions);
+                requestExceptions.AddRange(context.Exceptions);
                 certificateToResponse = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
+                if (requestExceptions.Count > 0)
+                {
+                    certificateToResponse = null;
+                }
+
                 break;
 
             case (int)ERequestReason.CertificateCancellation:

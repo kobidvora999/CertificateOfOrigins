@@ -75,25 +75,73 @@ public partial class CertificateOfOriginsBl
     // faithful) and the method returns the saved certificate (null when validation failed, so no save happened).
     private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         var agentRequest = request.AgentRequest;
-        var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
         // The validation engine accumulates into context.Exceptions during the pass; they are merged into the single
         // requestExceptions channel at the gate below. The context (with its declaration-details cache) is created once
         // per request by the dispatcher and shared with the amendment guard + reconciliation.
+        var invoices = await ValidateMessageBody(request, context, requestExceptions);
+        if (invoices == null)
+        {
+            return null;
+        }
+
+        // Per-reason resolution (legacy CheckRequestReasonAndGetSavedCertificate): resolve the existing certificate the
+        // reason targets + its reason-specific validations, and record the update/cancel side-values. Runs as part of the
+        // accumulation, before the exception gate — faithful to the legacy ordering.
+        await ResolveCertificateForReason(agentRequest, context);
+
+        // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
+        // requestExceptions may already carry a pre-branch error (the amendment-linkage guard), which also blocks the save.
+        requestExceptions.AddRange(context.Exceptions);
+        if (requestExceptions.Count > 0)
+        {
+            return null;
+        }
+
+        // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
+        // → GetCertificateNumber when certificateId is empty).
+        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
+
+        // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
+        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
+        var saved = await SaveCertificateOfOrigin(saveRequest);
+
+        // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
+        // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
+        // not NonManipulation. The reconciliation's declaration-mismatch exceptions are returned in-band.
+        if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
+            && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
+        {
+            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved, context);
+            requestExceptions.AddRange(reconciliationExceptions);
+        }
+
+        var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
+        return certificateEntity;
+    }
+
+    // Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner ran this for every reason except CertificateCancellation —
+    // the create reasons AND GetRequestStatus: the certificate type, the mandatory body, the per-field and cross-field
+    // validation and the invoice conversion (GetCertificateDetailsFromMessageAndCheckFields). Field errors accumulate into
+    // context.Exceptions; a hard stop (missing body, missing/unknown type) is added to requestExceptions and returns null.
+    // Otherwise returns the converted invoices (empty for NonManipulation / no body).
+    private async Task<List<CertificateOfOriginInvoiceDetail>?> ValidateMessageBody(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
+    {
+        var countryProxy = Resolve<ICountryProxy>();
+        var agentRequest = request.AgentRequest;
+        var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
         // Legacy GetCertificateDetailsFromMessageAndCheckFields: NonManipulation validates a DIFFERENT body
         // (request.NonManipulationCertificate) than the standard CertificateOfOrigin body. A null body is a
-        // MandatoryValue error EXCEPT for EmptyCertificate (which carries no body). GetRequestStatus/CertificateCancellation
-        // are the legacy's other exemptions but never reach this create branch.
+        // MandatoryValue error EXCEPT for EmptyCertificate and GetRequestStatus, which carry no body
+        // (CertificateCancellation is the legacy's third exemption but never runs this validation).
         var isNonManipulation = certificateTypeId == (int)ECertificateOfOriginType.NonManipulation;
-        var isEmptyCertificate = agentRequest.RequestReasonCode == (int)ERequestReason.EmptyCertificate;
         var certificate = request.CertificateOfOrigin;
         var nonManipulation = request.NonManipulationCertificate;
 
         var bodyMissing = isNonManipulation ? nonManipulation is null : certificate is null;
-        if (bodyMissing && !isEmptyCertificate)
+        if (bodyMissing && agentRequest.RequestReasonCode is not ((int)ERequestReason.EmptyCertificate or (int)ERequestReason.GetRequestStatus))
         {
             var missingBodyName = isNonManipulation ? nameof(request.NonManipulationCertificate) : nameof(request.CertificateOfOrigin);
             requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, missingBodyName));
@@ -167,39 +215,7 @@ public partial class CertificateOfOriginsBl
             }
         }
 
-        // Per-reason resolution (legacy CheckRequestReasonAndGetSavedCertificate): resolve the existing certificate the
-        // reason targets + its reason-specific validations, and record the update/cancel side-values. Runs as part of the
-        // accumulation, before the exception gate — faithful to the legacy ordering.
-        await ResolveCertificateForReason(agentRequest, context);
-
-        // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
-        // requestExceptions may already carry a pre-branch error (the amendment-linkage guard), which also blocks the save.
-        requestExceptions.AddRange(context.Exceptions);
-        if (requestExceptions.Count > 0)
-        {
-            return null;
-        }
-
-        // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
-        // → GetCertificateNumber when certificateId is empty).
-        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
-
-        // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
-        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
-        var saved = await SaveCertificateOfOrigin(saveRequest);
-
-        // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
-        // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
-        // not NonManipulation. The reconciliation's declaration-mismatch exceptions are returned in-band.
-        if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
-            && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
-        {
-            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved, context);
-            requestExceptions.AddRange(reconciliationExceptions);
-        }
-
-        var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
-        return certificateEntity;
+        return invoices;
     }
 
     // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or a freshly
