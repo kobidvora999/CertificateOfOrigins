@@ -1714,7 +1714,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request)
     {
         var exceptions = new List<CertificateOfOriginExceptionDto>();
-        if (request.CertificateOfOriginsIds.Count == 0)
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
         {
             return exceptions;
         }
@@ -1792,6 +1792,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // reconcile exactly those freshly-linked certificates against the amended declaration.
     private async Task<List<CertificateOfOriginExceptionDto>> ExportDeclarationAmendmentSuccess(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return [];
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
         var backfilledIds = new List<int>();
@@ -1821,6 +1826,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // confirm this is the intended behaviour for the release path too.
     private async Task<List<CertificateOfOriginExceptionDto>> DeclarationReleased(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return [];
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var eventUtil = Resolve<IEventUtil>();
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
@@ -1903,6 +1913,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // deferral as HandleCertificateReplacement, pending the agent-message proxy.
     private async Task ExportDeclarationCancellationRequestCommited(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return;
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var eventUtil = Resolve<IEventUtil>();
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
@@ -2088,7 +2103,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         // No invoices in the declaration → Rejected. Legacy set hasErrors = true with NO exception: no error row, no
         // AdditionalInfo on the mismatch event, nothing returned to the caller.
-        if (request.ExportInvoiceInfoList.Count == 0)
+        if (request.ExportInvoiceInfoList == null || request.ExportInvoiceInfoList.Count == 0)
         {
             return new ReconciliationResult([], false, true);
         }
@@ -2112,7 +2127,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // Invoice / goods-item / customs-item matching (the declaration already carries invoices — checked above).
         var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
         var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
-        await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
+        await ValidateInvoiceMatching(request.ExportInvoiceInfoList, certificate, invoices, originCountry, originGroup, builder);
 
         return BuildReconciliationResult(builder, isLinkedToImportDeclaration);
     }
@@ -2227,7 +2242,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // goods items' origin country / country-group / certificate link / 6-digit customs classification must match, in
     // both directions.
     private async Task ValidateInvoiceMatching(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         string? originCountry,
@@ -2239,8 +2254,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Resolve the 6-digit tariff classification of every customs item on both sides in one batch.
         var certificateCustomsItemIds = invoices.SelectMany(invoice => invoice.CustomsItemIds);
-        var declarationCustomsItemIds = request.ExportInvoiceInfoList
-            .SelectMany(invoice => invoice.ExportGoodsItemInfoList)
+        var declarationCustomsItemIds = declarationInvoices
+            .SelectMany(invoice => invoice.ExportGoodsItemInfoList ?? [])
             .Select(goodsItem => goodsItem.CustomsItemId);
         var filters = certificateCustomsItemIds
             .Concat(declarationCustomsItemIds)
@@ -2253,13 +2268,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             .ToDictionary(group => group.Key, group => SixDigits(group.First().FullClassification));
 
         // Forward: every certificate invoice + goods item against the declaration.
-        var allInvoicesMatched = await ValidateCertificateInvoices(request, certificate, invoices, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
+        var allInvoicesMatched = await ValidateCertificateInvoices(declarationInvoices, certificate, invoices, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
 
         // Reverse: every declaration goods item linked to this certificate must have its 6-digit classification present
         // in the certificate's matching invoice (Error) — only when the type requires it and all invoices matched.
         if (allInvoicesMatched && isCustomsItemMandatory)
         {
-            ValidateDeclarationGoodsItems(request, certificate, invoices, sixDigitByCustomsItemId, builder);
+            ValidateDeclarationGoodsItems(declarationInvoices, certificate, invoices, sixDigitByCustomsItemId, builder);
         }
     }
 
@@ -2267,7 +2282,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // then each of its goods items is validated. Returns false if an invoice did not match (legacy returned from the
     // whole validator on the first unmatched invoice).
     private async Task<bool> ValidateCertificateInvoices(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         string? originCountry,
@@ -2278,7 +2293,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         foreach (var invoice in invoices)
         {
-            var declarationInvoice = request.ExportInvoiceInfoList.FirstOrDefault(declaration => declaration.ExternalIdNum == invoice.InvoiceNumber);
+            var declarationInvoice = declarationInvoices.FirstOrDefault(declaration => declaration.ExternalIdNum == invoice.InvoiceNumber);
             if (declarationInvoice == null)
             {
                 builder.Add(new ReconciliationFinding(
@@ -2292,19 +2307,20 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             // Legacy runs the per-goods-item checks only when BOTH sides are non-empty; the certificate side is implicit
             // (the loop below is empty when it has no customs items). Skip when the matched declaration invoice carries
             // no goods items — otherwise the absence-based checks (!Any) would false-positive on the empty list.
-            if (declarationInvoice.ExportGoodsItemInfoList.Count == 0)
+            var declarationGoodsItems = declarationInvoice.ExportGoodsItemInfoList;
+            if (declarationGoodsItems == null || declarationGoodsItems.Count == 0)
             {
                 continue;
             }
 
-            var declarationCustomsItemIdsForInvoice = declarationInvoice.ExportGoodsItemInfoList
+            var declarationCustomsItemIdsForInvoice = declarationGoodsItems
                 .Where(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id)
                 .Select(goodsItem => goodsItem.CustomsItemId)
                 .ToList();
 
             foreach (var certificateCustomsItemId in invoice.CustomsItemIds)
             {
-                await ValidateCertificateGoodsItem(certificate, declarationInvoice, invoice.InvoiceNumber, certificateCustomsItemId, declarationCustomsItemIdsForInvoice, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
+                await ValidateCertificateGoodsItem(certificate, declarationGoodsItems, invoice.InvoiceNumber, certificateCustomsItemId, declarationCustomsItemIdsForInvoice, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
             }
         }
 
@@ -2315,7 +2331,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // link, and the forward customs-item 6-digit match.
     private async Task ValidateCertificateGoodsItem(
         CertificateOfOrigin certificate,
-        ExportInvoiceInfoDto declarationInvoice,
+        List<ExportGoodsItemInfoDto> declarationGoodsItems,
         string? invoiceNumber,
         int certificateCustomsItemId,
         List<int> declarationCustomsItemIdsForInvoice,
@@ -2329,7 +2345,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Origin country present among the declaration's goods items (Error).
         if (int.TryParse(originCountry, out var originCountryId)
-            && !declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
+            && !declarationGoodsItems.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
         {
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.OriginCountryMismatch,
@@ -2342,7 +2358,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (!string.IsNullOrWhiteSpace(originGroup) && int.TryParse(originGroup, out var originGroupId))
         {
             var anyOriginInGroup = false;
-            foreach (var goodsItem in declarationInvoice.ExportGoodsItemInfoList)
+            foreach (var goodsItem in declarationGoodsItems)
             {
                 if (await countryGroupProxy.IsCountryInCountryGroup(goodsItem.OriginCountryId, originGroupId))
                 {
@@ -2362,7 +2378,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
 
         // The certificate must be linked to at least one declaration goods item (Error).
-        if (!declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
+        if (!declarationGoodsItems.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
         {
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.CertificateNumberNotInDealFile,
@@ -2391,14 +2407,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Reverse direction: every declaration goods item linked to this certificate must have its 6-digit classification
     // present in the certificate's matching invoice (Error).
     private static void ValidateDeclarationGoodsItems(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         Dictionary<int, string?> sixDigitByCustomsItemId,
         List<ReconciliationFinding> builder)
     {
-        foreach (var declarationInvoice in request.ExportInvoiceInfoList)
+        foreach (var declarationInvoice in declarationInvoices)
         {
+            if (declarationInvoice.ExportGoodsItemInfoList == null)
+            {
+                continue;
+            }
+
             var certificateCustomsItemIdsForInvoice = invoices
                 .FirstOrDefault(invoice => invoice.InvoiceNumber == declarationInvoice.ExternalIdNum)?.CustomsItemIds ?? [];
             foreach (var goodsItem in declarationInvoice.ExportGoodsItemInfoList.Where(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
