@@ -31,6 +31,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
                 CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
@@ -117,6 +118,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 VersionNumber = c.VersionNumber,
                 OrganizationUnitId = c.OrganizationUnitId,
@@ -210,6 +213,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 RequestReasonCode = c.RequestReasonCode,

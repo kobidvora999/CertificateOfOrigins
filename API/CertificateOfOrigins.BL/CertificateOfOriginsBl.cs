@@ -249,7 +249,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await DataLayer.CancelCertificate(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
 
         var eventUtil = Resolve<IEventUtil>();
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate.Id, certificate.OrganizationUnitId, certificate.RejectCancelReason);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate, certificate.RejectCancelReason);
     }
 
     // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
@@ -955,12 +955,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // New instance (not a cancellation): supersede the latest existing certificate with the same number.
         var replacementOldId = 0;
-        var previousCertificateId = 0;
-        var previousOrganizationUnitId = 0;
+        CertificateOfOrigin? previous = null;
         string? previousCancelReason = null;
         if (isNewInstance && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled)
         {
-            (replacementOldId, previousCertificateId, previousOrganizationUnitId, previousCancelReason) = await SupersedePreviousVersion(entity);
+            (replacementOldId, previous, previousCancelReason) = await SupersedePreviousVersion(entity);
         }
 
         byte[]? qrCodeToUpload = null;
@@ -1007,13 +1006,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Supersede events — raised here (not in SupersedePreviousVersion) because ApplicationCorrected references the
         // new certificate's id, which is only assigned by the save above. Legacy raised both when a previous existed.
-        if (previousCertificateId != 0)
+        if (previous is not null)
         {
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity.Id, entity.OrganizationUnitId, null);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity, null);
 
             // Legacy scoped this event to the CANCELLED certificate's own VirtualEntity (its org unit) with its reject
             // reason as AdditionalInfo — not the new certificate's org unit / a null reason.
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previousCertificateId, previousOrganizationUnitId, previousCancelReason);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previous, previousCancelReason);
         }
 
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
@@ -1145,17 +1144,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy: on a new instance, cancel the latest existing certificate with the same number, bump the version, and
     // raise the application-corrected + user-cancelled events. Returns the superseded certificate id (0 if none).
     // Returns (replacementOldId — the previous version to relink the lead document from, 0 when it was already
-    // cancelled; previousCertificateId — the previous version's id, 0 when there was none). The supersede events are
+    // cancelled; previous — the previous version itself, null when there was none). The supersede events are
     // NOT raised here: ApplicationCorrected references the new certificate's id, which is only assigned by the save
     // that runs after this method — so the caller raises them post-save.
-    private async Task<(int ReplacementOldId, int PreviousCertificateId, int PreviousOrganizationUnitId, string? PreviousCancelReason)> SupersedePreviousVersion(CertificateOfOrigin entity)
+    private async Task<(int ReplacementOldId, CertificateOfOrigin? Previous, string? PreviousCancelReason)> SupersedePreviousVersion(CertificateOfOrigin entity)
     {
         var previous = await DataLayer.GetLatestCertificateByNumber(entity.CertificateNumber);
         if (previous is null)
         {
             entity.VersionNumber = 1;
             entity.IsLastVersion = true;
-            return (0, 0, 0, null);
+            return (0, null, null);
         }
 
         // Legacy cancels the previous version + clears its IsLastVersion UNCONDITIONALLY; only the replacement-id link
@@ -1171,7 +1170,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         entity.IsLastVersion = true;
 
         var replacementOldId = previous.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled ? previous.Id : 0;
-        return (replacementOldId, previous.Id, previous.OrganizationUnitId, previousCancelReason);
+        return (replacementOldId, previous, previousCancelReason);
     }
 
     // Legacy CreateQRCodeIfNeededAndUpload (generation half) — on publish (and only when no QR path yet), generate the
@@ -1450,7 +1449,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 : null;
 
             // Legacy set the Export organization-unit type on the match and mismatch events' VirtualEntity.
-            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo,
+            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity, additionalInfo,
                 entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.DeclarationMatch or (int)ECertificateOfOriginStatus.DeclarationMismatch
                     ? CertificateOfOriginsConsts.ExportOrganizationUnitType
                     : null);
@@ -1501,7 +1500,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // certificate here) — the main upsert already ran before publish, so these post-publish stamps need their own write.
         await DataLayer.UpdateCertificatePublishingState(entity.Id, entity.IssuingDate.Value, entity.IsInPublishingProcess, userId);
 
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateIssued, entity.Id, entity.OrganizationUnitId, null);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateIssued, entity, null);
 
         // Issue-by-worker: publish the certificate to the RabbitMQ issue queue instead of generating the template inline.
         // Legacy issued through the worker only when the certificate type has an SSRS ReportId (every type does).
@@ -1617,24 +1616,51 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Scope the replaced event to the CANCELLED certificate's own organization unit (legacy VirtualEntity(certificateToCancel)),
         // not the replacement certificate's — the two can differ on a cross-organization import-certificate replacement.
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, certificateToCancel.Id, certificateToCancel.OrganizationUnitId, entity.CertificateNumber);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, certificateToCancel, entity.CertificateNumber);
     }
 
     // A certificate-scoped event (VirtualEntity(certificate)) with an optional AdditionalInfo.
-    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, int certificateId, int organizationUnitId, string? additionalInfo, int? organizationUnitTypeId = null)
+    // The header every certificate event shares. Legacy built them from new VirtualEntity(certificate), whose constructor
+    // copied the certificate's Title (its number) and CustomerID onto the event, so the task title shows the certificate
+    // number and the event is linked to the customer.
+    private static IEventRequestBuilder CreateCertificateEventBuilder(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate)
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificateId)
-            .WithTitle(certificateId.ToString());
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
+            .WithTitle(certificate.Title)
+            .WithCustomerId(certificate.CustomerId.ToString(CultureInfo.InvariantCulture));
 
         // Legacy EventUtil.RaiseEvent tolerated a 0/absent org unit — a NonManipulation certificate with no customs
         // house is saved with OrganizationUnitID 0 (legacy _organizationUnit default). The .NET 10 builder rejects 0,
         // so apply it only when present, preserving the legacy behaviour (the event is still raised).
-        if (organizationUnitId > 0)
+        if (certificate.OrganizationUnitId > 0)
         {
-            builder = builder.WithOrganizationUnitId(organizationUnitId);
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
         }
+
+        return builder;
+    }
+
+    // Legacy built this one event's VirtualEntity by hand (an initializer, not the copying constructor): the id, the org
+    // unit and a fixed title - no customer.
+    private static async Task RaiseImportReplacementTaskEvent(IEventUtil eventUtil, CertificateOfOrigin certificate)
+    {
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
+            .WithTitle(nameof(EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate));
+        if (certificate.OrganizationUnitId > 0)
+        {
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
+        }
+
+        await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate, string? additionalInfo, int? organizationUnitTypeId = null)
+    {
+        var builder = CreateCertificateEventBuilder(eventUtil, eventTypeId, certificate);
 
         // Legacy set the organization-unit TYPE (Export) on the declaration match/mismatch events' VirtualEntity — passed
         // only by those callers (the save's status events and the reconciliation mismatch); other events leave it unset.
@@ -1884,7 +1910,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         foreach (var certificate in certificates)
         {
             await DataLayer.CancelCertificate(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate.Id, certificate.OrganizationUnitId, null);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate, null);
         }
     }
 
@@ -1912,7 +1938,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (hasErrors)
         {
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate.Id, certificate.OrganizationUnitId, additionalInfo, CertificateOfOriginsConsts.ExportOrganizationUnitType);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate, additionalInfo, CertificateOfOriginsConsts.ExportOrganizationUnitType);
             return ((int)ECertificateOfOriginStatus.Rejected, CertificateOfOriginsConsts.ReconciliationMismatchReason);
         }
 
@@ -1921,7 +1947,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             // Legacy: an import-certificate replacement whose associated goods are not in the trade agreement opens a
             // task to handle the replacement.
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate, certificate.Id, certificate.OrganizationUnitId, null);
+            await RaiseImportReplacementTaskEvent(eventUtil, certificate);
         }
 
         await RaiseDeclarationHasWarningsEvent(certificate, request, eventUtil, additionalInfo);
@@ -1969,16 +1995,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task RaiseCertificatePreferredAssessorEvent(CertificateOfOrigin certificate, IEventUtil eventUtil, int eventTypeId)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
-        var builder = eventUtil.CreatBuilder()
-            .WithEventType(eventTypeId)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
-            .WithTitle(certificate.Id.ToString());
-
-        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
-        if (certificate.OrganizationUnitId > 0)
-        {
-            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
-        }
+        var builder = CreateCertificateEventBuilder(eventUtil, eventTypeId, certificate);
 
         // Legacy RaiseTaskNewCertificateOfOriginCheck set the organization-unit TYPE (Export) on the event.
         builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
@@ -2021,16 +2038,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task RaiseDeclarationHasWarningsEvent(CertificateOfOrigin certificate, UpdateCertificateOfOriginsRequestDto request, IEventUtil eventUtil, string additionalInfo)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, request.OrganizationUnitId);
-        var builder = eventUtil.CreatBuilder()
-            .WithEventType((int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
-            .WithTitle(certificate.Id.ToString());
-
-        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
-        if (certificate.OrganizationUnitId > 0)
-        {
-            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
-        }
+        var builder = CreateCertificateEventBuilder(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings, certificate);
 
         // Legacy set the organization-unit TYPE (Export) on the warnings event's VirtualEntity.
         builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
