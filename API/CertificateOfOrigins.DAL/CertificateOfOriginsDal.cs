@@ -205,8 +205,13 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
     {
-        // UpdateCertificateOfOrigins: the certificates to reconcile against the export declaration. Projected to the
-        // columns the reconciler reads, plus CertificateIdToCancel for the release path's HandleCertificateReplacement.
+        // UpdateCertificateOfOrigins: the certificates of a declaration event. Legacy loaded the full entity here and ran
+        // the whole flow on it; the entity has 36 columns (over the platform's 30-column interceptor limit), so this is a
+        // projection that serves BOTH consumers - keep every column of each when changing it:
+        //  - the reconciler (status, reason, type, declaration link, org unit, reject reason);
+        //  - the release path: HandleCertificateReplacement (CertificateIdToCancel), the events (Title, CustomerId), and
+        //    the publish of a PendingRelease certificate - CreateQrCodeIfNeeded (QrCodePath, Guid) and the issue-queue
+        //    payload (CreateCustomerId, InternalApplication, FeedbackRemark).
         var result = await ReadOnlyContext.CertificateOfOrigins
             .Where(c => ids.Contains(c.Id))
             .Select(c => new CertificateOfOrigin
@@ -223,6 +228,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 OrganizationUnitId = c.OrganizationUnitId,
                 RejectCancelReason = c.RejectCancelReason,
                 CertificateIdToCancel = c.CertificateIdToCancel,
+                QrCodePath = c.QrCodePath,
+                Guid = c.Guid,
+                CreateCustomerId = c.CreateCustomerId,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
                 CreateDate = c.CreateDate,
             })
             .ToListAsync();
