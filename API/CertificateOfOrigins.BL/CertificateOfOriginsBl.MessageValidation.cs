@@ -540,7 +540,7 @@ public partial class CertificateOfOriginsBl
             case ECertificateDetailsType.ExitPort:
             case ECertificateDetailsType.ExportPort:
             case ECertificateDetailsType.PortOfShipment:
-                await CheckIfInternationalSiteExist(field);
+                await CheckIfInternationalSiteExist(field, context);
                 break;
 
             default:
@@ -814,17 +814,20 @@ public partial class CertificateOfOriginsBl
     }
 
     // Legacy CheckIfInternationalSiteExist: the port or shipment value is a locode that resolves to an international
-    // site. Rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
-    private async Task CheckIfInternationalSiteExist(MessageField field)
+    // site (SystemTablesUtil.GetIdByCode<InternationalSite>(PropLocode) + GetCodeById). Rewrites the value to the site's
+    // locode and the display to its English name. An unknown locode is TheValueInFieldNotExistsInSystem: legacy
+    // GetIdByCode caught the lookup's miss exception and added it to the request exceptions.
+    private async Task CheckIfInternationalSiteExist(MessageField field, MessageValidationContext context)
     {
-        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
-        var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([field.Value ?? string.Empty]);
-        var site = sites?.FirstOrDefault();
-        if (site is not null)
+        var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == field.Value)).FirstOrDefault();
+        if (site is null)
         {
-            field.Value = site.Locode;
-            field.DisplayedValue = site.EnglishName;
+            context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
+            return;
         }
+
+        field.Value = site.Locode;
+        field.DisplayedValue = site.EnglishName;
     }
 
     // ── Shared resolution helpers ──

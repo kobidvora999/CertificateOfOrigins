@@ -160,7 +160,6 @@ public partial class CertificateOfOriginsBl
     // the org-unit side-value the save consumes is recorded.
     private async Task CheckIfSiteExistAndCustomsHouse(CertificateOfOriginDetails customsHouseDetail, MessageValidationContext context)
     {
-        var siteProxy = Resolve<ISiteProxy>();
         var organizationUnitProxy = Resolve<IOrganizationUnitProxy>();
         var customsHouseExternalNumber = customsHouseDetail.Value;
         if (string.IsNullOrWhiteSpace(customsHouseExternalNumber))
@@ -169,8 +168,17 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var sites = await siteProxy.GetSitesByExternalNumbers([customsHouseExternalNumber]);
-        var organizationUnitId = sites?.FirstOrDefault()?.OrganizationUnitId;
+        // Legacy GetIdByCode<SiteLookup>(PropExternalSiteNumberForMessages): an unknown site number is
+        // TheValueInFieldNotExistsInSystem (the private GetIdByCode wrapper added the lookup's miss exception). A site with no
+        // org unit passes silently, as in legacy.
+        var site = (await lookupUtil.Search<Lookups.Site>(s => s.ExternalSiteNumberForMessages == customsHouseExternalNumber)).FirstOrDefault();
+        if (site is null)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CustomsHouse"));
+            return;
+        }
+
+        var organizationUnitId = site.OrganizationUnitId;
         if (!organizationUnitId.HasValue)
         {
             return;

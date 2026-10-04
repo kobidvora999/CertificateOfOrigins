@@ -1274,8 +1274,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CheckSpecificField (reduced core): the proxy-backed field validations (exporter existence via Customers,
     // trade-agreement membership via CustomsBook, customs-house via OrgUnit) + the SystemTables id→name display
     // enrichment for country + city detail types (via ILookupUtil). Text fields pass through.
-    // TODO(migration): country-group + international-site id→name have no ILookupUtil type — they need a SystemTables
-    // proxy (rollout); the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
+    // TODO(migration): country-group id→name has no ILookupUtil type yet; the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
     // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): a brand-new certificate's DestinationCountry /
     // PortOfShipment details arrive from the SPA as an alpha-2 country code / locode; resolve them to the internal id
     // (Country by alpha-2, InternationalSite by locode). Unresolved values are left as-is (an existing instance never
@@ -1283,7 +1282,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task ResolveNewInstanceDetailCodes(List<CertificateOfOriginDetails> details)
     {
         var countryProxy = Resolve<ICountryProxy>();
-        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
         foreach (var detail in details)
         {
             if (string.IsNullOrEmpty(detail.Value))
@@ -1301,10 +1299,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
             else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)
             {
-                var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([detail.Value]);
-                if (sites?.FirstOrDefault()?.Id is int siteId)
+                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value)).FirstOrDefault();
+                if (site is not null)
                 {
-                    detail.Value = siteId.ToString(CultureInfo.InvariantCulture);
+                    detail.Value = site.Id.ToString(CultureInfo.InvariantCulture);
                 }
             }
         }

@@ -1,3 +1,4 @@
+using CertificateOfOrigins.BL.Lookups;
 using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
@@ -55,14 +56,10 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
         // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — Country
-        // by alpha-2 code, the CustomsHouse site external number → org-unit id (ILookupUtil<Country> is by-id only), the
-        // port/shipment international sites by locode, and the invoice item packing type / measurement unit by code.
-        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, Site/SitesByExternalNumbers,
-        // InternationalSite/InternationalSitesByLocodes, PackingType/PackingTypesByCodes, MeasurementUnit/MeasurementUnitsByCodes,
-        // CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
+        // by alpha-2 code and the invoice item packing type / measurement unit by code.
+        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, PackingType/PackingTypesByCodes,
+        // MeasurementUnit/MeasurementUnitsByCodes, CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
         services.AddProxy<ICountryProxy, CountryProxy, CountryMockProxy>();
-        services.AddProxy<ISiteProxy, SiteProxy, SiteMockProxy>();
-        services.AddProxy<IInternationalSiteProxy, InternationalSiteProxy, InternationalSiteMockProxy>();
         services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
         services.AddProxy<IMeasurementUnitProxy, MeasurementUnitProxy, MeasurementUnitMockProxy>();
 
@@ -127,6 +124,11 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
         services.AddLookup<DocumentType>();
+
+        // TODO(internal): lookup types missing from the platform Lookup package — local stand-ins (Lookups/), loaded and
+        // cached like a platform lookup. Replace each with services.AddLookup<Lookup.T>() once the platform has the type.
+        services.AddLocalLookup<Lookups.InternationalSite>(CustomsMicroServices.SystemTables);
+        services.AddLocalLookup<Lookups.Site>(CustomsMicroServices.Sites);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

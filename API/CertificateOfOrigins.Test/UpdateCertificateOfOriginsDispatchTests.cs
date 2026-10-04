@@ -312,8 +312,6 @@ public class UpdateCertificateOfOriginsDispatchTests
         }));
         services.AddSingleton(Fake<ILockUtil>());
         services.AddSingleton(Fake<ICountryProxy>());
-        services.AddSingleton(Fake<ISiteProxy>());
-        services.AddSingleton(Fake<IInternationalSiteProxy>());
         services.AddSingleton(Fake<IPackingTypeProxy>());
         services.AddSingleton(Fake<IMeasurementUnitProxy>());
         var serviceProvider = services.BuildServiceProvider();

@@ -9,7 +9,12 @@
 // registered lookup type as a JSON array of {id,name,state,description,englishName} for ids 1..RANGE, so any id the
 // test data references resolves to a name. Unknown /lookup/* paths return [] (still HTTP 200 -> no 500).
 //
-// Ports (from the readiness log): 9000 = Country + City, 9006 = DocumentType, 9015 = OrganizationUnit.
+// Ports (from the readiness log): 9000 = Country + City, 9005 = SystemTables, 9006 = DocumentType, 9015 = OrganizationUnit,
+// 9029 = Sites.
+//
+// LOCAL lookup types (BL/Lookups, registered with AddLocalLookup) are lookups the platform package does not have yet.
+// They load the same way (GET lookup/{Type}) and are served here with their extra fields. TODO(internal): each one is
+// removed from here once the platform has the type and its real source serves it.
 // Run:  node tools/local-lookup-stub.js         (Ctrl+C to stop)
 // Then start the WebApi (see the readiness-gate bypass) and run the Postman collection.
 
@@ -18,11 +23,35 @@ const http = require('http');
 const RANGE = 500;
 const PORTS = {
   9000: ['Country', 'City'],
+  9005: ['InternationalSite'],
   9006: ['DocumentType'],
+  9029: ['Site'],
   9015: ['OrganizationUnit'],
 };
 
+// Extra fields of the local lookup types, by id. Ids not listed get only the base fields.
+// InternationalSite: the UN/LOCODEs the Postman collections send (portOfEntrance / exitPort / exportPort).
+const EXTRA = {
+  InternationalSite: {
+    1: { locode: 'ILHFA', englishName: 'Haifa' },
+    2: { locode: 'ILASH', englishName: 'Ashdod' },
+    3: { locode: 'DEHAM', englishName: 'Hamburg' },
+  },
+  // Site: the customs-house external site numbers the Postman collections send, each pointing at an org unit.
+  Site: {
+    // SITE01 -> org unit 407: the id the retired SiteMockProxy derived for SITE01, so the collections' expectations hold.
+    407: { externalSiteNumberForMessages: 'SITE01', organizationUnitId: 407, typeId: 1, englishName: 'Site SITE01' },
+  },
+};
+
 function items(type) {
+  const extra = EXTRA[type];
+  if (extra) {
+    return Object.entries(extra).map(([id, fields]) => ({
+      id: Number(id), name: fields.englishName, state: 1, description: fields.englishName, ...fields,
+    }));
+  }
+
   const out = [];
   for (let id = 1; id <= RANGE; id++) {
     out.push({
