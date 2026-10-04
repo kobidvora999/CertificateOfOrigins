@@ -49,6 +49,11 @@ public class SaveCertificateOfOriginRequestDto
 
     public string? InternalApplication { get; set; }
 
+    // Whether the certificate's export declaration is released, as the client got it from the declaration check
+    // (legacy CheckExportDeclarationDetails set it on the entity, and the save carried it). Not a column: it only travels
+    // on the issue-queue payload when the certificate is published by the worker.
+    public bool? IsDeclarationReleased { get; set; }
+
     public DateTime? IssuingDate { get; set; }
 
     public string? RejectCancelReason { get; set; }

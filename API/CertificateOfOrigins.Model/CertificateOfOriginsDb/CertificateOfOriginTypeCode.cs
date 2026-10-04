@@ -5,7 +5,8 @@ namespace CertificateOfOrigins.Model.CertificateOfOriginsDb;
 
 // CRM.CertificateOfOrigins_enum_CertificateOfOriginTypeCode — the certificate-type C-table. Read by
 // UpdateCertificateOfOrigins reconciliation (IsCustomsItemMandatory) and by the GetPC_MSG2280_2281 create branch, which
-// reads all three mandatory flags to drive origin-criterion / customs-item / zipcode validation.
+// reads all three mandatory flags to drive origin-criterion / customs-item / zipcode validation, and by the certificate
+// render / issue queue, which use the type's SSRS ReportId.
 [Table("CertificateOfOrigins_enum_CertificateOfOriginTypeCode", Schema = "CRM")]
 public class CertificateOfOriginTypeCode
 {
@@ -22,4 +23,8 @@ public class CertificateOfOriginTypeCode
 
     [Column("IsZipcodeMandatory")]
     public bool IsZipcodeMandatory { get; set; }
+
+    // The SSRS report the certificate of this type is rendered with (7000-7007). Legacy rendered and issued by it.
+    [Column("ReportId")]
+    public int? ReportId { get; set; }
 }

@@ -1053,7 +1053,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (isStatusChanged && entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published)
         {
-            await PublishAttachments(entity, eventUtil, userId);
+            await PublishAttachments(entity, eventUtil, userId, request.IsDeclarationReleased);
             if (entity.RequestReasonCode == (int)ERequestReason.CertificateReplacement)
             {
                 await HandleCertificateReplacement(entity, eventUtil);
@@ -1488,7 +1488,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CreateAttacmentsAndSendFeedBackMessage — on publish: stamp IssuingDate, raise the certificate-issued
     // event, then either hand the certificate to the issue-by-worker queue (when IssueCertificateOfOriginByWorker is
     // on) or generate the certificate template inline and save it as an attachment (PrintCertificateOfOriginAndSaveAttachments).
-    private async Task PublishAttachments(CertificateOfOrigin entity, IEventUtil eventUtil, int userId)
+    private async Task PublishAttachments(CertificateOfOrigin entity, IEventUtil eventUtil, int userId, bool? isDeclarationReleased)
     {
         entity.IssuingDate = DateTime.Now;
         var issueByWorker = await parametersUtil.Get<bool>("IssueCertificateOfOriginByWorker");
@@ -1504,9 +1504,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateIssued, entity.Id, entity.OrganizationUnitId, null);
 
         // Issue-by-worker: publish the certificate to the RabbitMQ issue queue instead of generating the template inline.
+        // Legacy issued through the worker only when the certificate type has an SSRS ReportId (every type does).
         if (issueByWorker && entity.IsInPublishingProcess)
         {
-            await SendCertificateToIssueQueue(entity);
+            var reportId = (await DataLayer.GetCertificateTypeCode(entity.TypeId))?.ReportId;
+            if (reportId.HasValue)
+            {
+                await SendCertificateToIssueQueue(entity, reportId.Value, isDeclarationReleased);
+            }
+
             return;
         }
 
@@ -1523,8 +1529,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // nothing was rendered.
     private async Task<TemplateResultDto?> PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
     {
+        // Legacy rendered the certificate with its type's SSRS report (CertificateOfOriginTypeCode.ReportId, 7000-7007),
+        // never with the TypeId. A type without a ReportId fell to a per-type template switch that no type reaches (every
+        // type has one), so it is not rendered here.
+        var reportId = (await DataLayer.GetCertificateTypeCode(certificate.TypeId))?.ReportId;
+        if (reportId is null)
+        {
+            return null;
+        }
+
         var commonServicesProxy = Resolve<ICommonServicesProxy>();
-        var template = await commonServicesProxy.GenerateTemplate(certificate.TypeId, certificate.Id, additionalInfo);
+        var template = await commonServicesProxy.GenerateTemplate(reportId.Value, certificate.Id, additionalInfo);
         if (template is null)
         {
             return null;
@@ -1545,10 +1560,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy SendCertificateToIssueQueue — publish the certificate to the "IssueCertificateOfOrigin" RabbitMQ exchange
     // for asynchronous issuing by a worker (IQueueUtil, mirroring QueueUtilFactory 1:1).
-    private async Task SendCertificateToIssueQueue(CertificateOfOrigin entity)
+    private async Task SendCertificateToIssueQueue(CertificateOfOrigin entity, int reportId, bool? isDeclarationReleased)
     {
         var payload = new IssueCertificateDto
         {
+            ReportId = reportId,
             CertificateOfOriginId = entity.Id,
             CertificateNumber = entity.CertificateNumber,
             CertificateOfOriginStatusId = entity.CertificateOfOriginStatusId,
@@ -1561,6 +1577,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             InternalApplication = entity.InternalApplication,
             FeedbackRemark = entity.FeedbackRemark,
             IssuingDate = entity.IssuingDate,
+            IsDeclarationReleased = isDeclarationReleased,
             Guid = entity.Guid,
             OrganizationUnitId = entity.OrganizationUnitId,
         };
@@ -1819,7 +1836,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     await UploadQrCodeDocument(certificate, qrCodeToUpload, userId);
                 }
 
-                await PublishAttachments(certificate, eventUtil, userId);
+                await PublishAttachments(certificate, eventUtil, userId, null);
             }
             else if (linkChanged)
             {
