@@ -60,8 +60,9 @@ internal static class CertificateOfOriginsConsts
     // Legacy EServerTerms.CertificateUpdateRecived — appended to a superseded certificate's cancel reason.
     public const string CertificateUpdateReceived = "התקבל עדכון לתעודה"; // TODO(migration): source from ValidationMessages/resx.
 
-    // Legacy ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration — set on a rejected reconciliation.
-    public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה לבין ההצהרה"; // TODO(migration): source from ValidationMessages/resx.
+    // Legacy CertificateOfOriginsConsts.ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration (a code constant, copied
+    // exactly) — set on a rejected reconciliation.
+    public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה להצהרה";
 
     // Legacy EServerTerms.CanceledDeclaration — the reject/cancel reason stamped when an export declaration's
     // cancellation is committed (ExportDeclarationCancellationRequestCommited).
