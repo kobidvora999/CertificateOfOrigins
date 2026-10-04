@@ -1384,25 +1384,38 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Legacy: repoint the DealFile lead document to this certificate; backfill LeadDocumentId/ExportDeclarationNumber
-    // when the certificate has none.
+    // when the certificate has none; then CheckDeclarationStatus.
     private async Task LinkLeadDocument(CertificateOfOrigin entity, int replacementOldId, int userId)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var oldId = replacementOldId != 0 ? replacementOldId : entity.Id;
         var leadDocument = await exportDealFileProxy.GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(oldId, entity.Id);
-        if (leadDocument is null)
-        {
-            return;
-        }
-
-        if (string.IsNullOrEmpty(entity.ExportDeclarationNumber))
+        if (leadDocument is not null && string.IsNullOrEmpty(entity.ExportDeclarationNumber))
         {
             entity.LeadDocumentId = leadDocument.LeadDocumentId;
             entity.ExportDeclarationNumber = leadDocument.LeadDocumentTitle;
 
             // The backfill is stamped after the main upsert (this method needs the new certificate id), so it needs its
-            // own explicit write to persist. TODO(migration): the title-mismatch validation + CheckDeclarationStatus are deferred.
+            // own explicit write to persist. TODO(migration): the title-mismatch validation is deferred.
             await DataLayer.UpdateCertificateDeclarationLink(entity.Id, entity.LeadDocumentId, entity.ExportDeclarationNumber, userId);
+        }
+
+        // Legacy CheckDeclarationStatus(certificate, false) (CertificateOfOriginsBL.cs:648-667): when the certificate
+        // carries a declaration and either replaces a certificate (replacementOldId - legacy CertificateOfOriginIdOfReplacement)
+        // or has an earlier version (the second-newest with the same Title, any status), repoint the declaration's lead
+        // document from that certificate to this one.
+        var declarationDetails = entity.LeadDocumentId.HasValue || entity.ExportDeclarationNumber is not null
+            ? await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(entity.LeadDocumentId, entity.ExportDeclarationNumber)
+            : null;
+        if (declarationDetails is null)
+        {
+            return;
+        }
+
+        var previousCertificateId = replacementOldId != 0 ? replacementOldId : await DataLayer.GetPreviousCertificateIdByTitle(entity.Title);
+        if (previousCertificateId.HasValue)
+        {
+            await exportDealFileProxy.ChangeCertificateOfOriginIdForLeadDocument(declarationDetails.LeadDocumentId, previousCertificateId.Value, entity.Id);
         }
     }
 

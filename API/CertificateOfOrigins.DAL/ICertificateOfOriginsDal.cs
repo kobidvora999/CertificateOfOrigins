@@ -87,6 +87,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
 
+    Task<int?> GetPreviousCertificateIdByTitle(string title);
+
     Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber);
 
     Task CancelCertificate(int id, string rejectCancelReason, int userId);

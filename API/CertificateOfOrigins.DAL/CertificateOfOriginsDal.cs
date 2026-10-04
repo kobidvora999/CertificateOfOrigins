@@ -92,6 +92,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.UpdateUserId, userId));
     }
 
+    public async Task<int?> GetPreviousCertificateIdByTitle(string title)
+    {
+        // Legacy CheckDeclarationStatus: the previous version of a just-saved certificate - the second-newest certificate
+        // with the same Title, whatever its status. Null when it is the first one.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.Title == title)
+            .OrderByDescending(c => c.Id)
+            .Skip(1)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
     {
         // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance
