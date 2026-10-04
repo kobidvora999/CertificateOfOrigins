@@ -1897,7 +1897,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         UpdateCertificateOfOriginsRequestDto request,
         IEventUtil eventUtil)
     {
-        var hasErrors = reconciliation.Exceptions.Exists(exception => !exception.ExceptionLevel.HasValue || exception.ExceptionLevel == (int)EExceptionLevel.Error);
+        var hasErrors = reconciliation.HasNoExportInvoices
+            || reconciliation.Exceptions.Exists(exception => !exception.ExceptionLevel.HasValue || exception.ExceptionLevel == (int)EExceptionLevel.Error);
         var hasWarnings = reconciliation.Exceptions.Exists(exception => exception.ExceptionLevel == (int)EExceptionLevel.Warning);
 
         if (!hasErrors && !hasWarnings)
@@ -2077,18 +2078,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         CertificateOfOrigin certificate,
         List<CertificateOfOriginDetails> details)
     {
-        var builder = new List<ReconciliationFinding>();
-
-        // No invoices in the declaration → the certificate cannot be reconciled (legacy: hasErrors = true).
+        // No invoices in the declaration → Rejected. Legacy set hasErrors = true with NO exception: no error row, no
+        // AdditionalInfo on the mismatch event, nothing returned to the caller.
         if (request.ExportInvoiceInfoList.Count == 0)
         {
-            builder.Add(new ReconciliationFinding(
-                EReconciliationMessage.NoExportInvoices,
-                (int)EExceptionLevel.Error,
-                "אין חשבוניות בהצהרת היצוא",
-                "No export invoices in the declaration."));
-            return BuildReconciliationResult(builder, false);
+            return new ReconciliationResult([], false, true);
         }
+
+        var builder = new List<ReconciliationFinding>();
 
         // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
         // decision, 2026-09-28): legacy ValidateExportDeclarationInfoForPCIsMatch collected the detail and
@@ -2441,7 +2438,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 ExceptionType = 0, // TODO(migration): the real EMessages code (legacy GetUIMessageWithEnglishAndLevel).
             })
             .ToList();
-        return new ReconciliationResult(exceptions, isLinkedToImportDeclaration);
+        return new ReconciliationResult(exceptions, isLinkedToImportDeclaration, false);
     }
 
     // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member
@@ -2451,7 +2448,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // EMessages code and source the text from ValidationMessages.
     private enum EReconciliationMessage
     {
-        NoExportInvoices,                           // migration-added (legacy set hasErrors without an EMessages)
         DestinationCountryMismatch,                 // EMessages.DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration
         DestinationGroupDiscrepancy,                // EMessages.DiscrepancyBetweenTheCountriesInTheAgreementVersusTheCountryOfTheBuyer
         ExportDeclarationNotInSystem,               // EMessages.ExportDeclarationNotInSystemForWarningMessage
@@ -2475,10 +2471,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         public string EnglishDescription { get; } = englishDescription;
     }
 
-    private sealed class ReconciliationResult(List<CertificateOfOriginExceptionDto> exceptions, bool isLinkedToImportDeclaration)
+    private sealed class ReconciliationResult(List<CertificateOfOriginExceptionDto> exceptions, bool isLinkedToImportDeclaration, bool hasNoExportInvoices)
     {
         public List<CertificateOfOriginExceptionDto> Exceptions { get; } = exceptions;
 
         public bool IsLinkedToImportDeclaration { get; } = isLinkedToImportDeclaration;
+
+        // The declaration carried no invoices: an error outcome (Rejected) that legacy raised with no exception.
+        public bool HasNoExportInvoices { get; } = hasNoExportInvoices;
     }
 }
