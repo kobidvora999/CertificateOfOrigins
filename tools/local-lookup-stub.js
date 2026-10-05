@@ -39,10 +39,12 @@ const EXTRA = {
     3: { locode: 'DEHAM', englishName: 'Hamburg' },
   },
   // Site: the customs-house external site numbers the Postman collections send, each pointing at an org unit.
-  // CountryGroup: the group ids the collections send (1, 5).
+  // CountryGroup: the group ids the collections send (1, 5, and 7 for 'not in the group').
   CountryGroup: {
     1: { englishName: 'Country group 1', isForTradeAgreement: true },
     5: { englishName: 'Country group 5', isForTradeAgreement: true },
+    // Group 7 exists but has no members: the 'country not in the group' scenarios send it.
+    7: { englishName: 'Country group 7 (no members)', isForTradeAgreement: true },
   },
   // CountryCountryGroup: every country the collections send in both groups — the retired CountryGroupMockProxy answered
   // "in the group" by default. A "not in the group" scenario sends a country that is not listed here.
