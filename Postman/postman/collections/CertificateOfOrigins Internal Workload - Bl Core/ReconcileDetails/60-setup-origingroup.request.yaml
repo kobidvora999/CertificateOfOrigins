@@ -20,7 +20,7 @@ body:
       "certificateOfOriginDetails": [
         { "certificateDetailsTypeCodeId": 15, "value": "32" },
         { "certificateDetailsTypeCodeId": 1,  "value": "888" },
-        { "certificateDetailsTypeCodeId": 14, "value": "5" }],
+        { "certificateDetailsTypeCodeId": 14, "value": "7" }],
       "certificateOfOriginInvoiceDetails": [
         { "id": 0, "invoiceNumber": "INV1", "invoiceAmount": 50, "invoiceDate": "{{tenDaysAgo}}",
           "invoiceGoodsDescription": "goods", "isToPrint": true,

@@ -4,10 +4,9 @@ method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-  x-mock-feature--Site.NotFound: "true"
-# Site.NotFound -> CheckIfSiteExistAndCustomsHouse returns EARLY (the branch ABOVE the org-unit check), so 5007 is
-# never raised AND context.OrganizationUnitId is never set. Since C-02 (87f5039) the save no longer requires
-# OrganizationUnitId > 0: the message is accepted and the certificate is stored with organizationUnitId 0 (read at 95).
+# SITE99 is not a site in the lookup stub -> CheckIfSiteExistAndCustomsHouse adds TheValueInFieldNotExistsInSystem
+# (650 with CustomsHouse) and returns before the org-unit check, so 5007 is never raised. As in legacy (whose
+# GetIdByCode<SiteLookup> added the miss error, C-F05), the message is rejected and nothing is saved.
 body:
   type: json
   content: |-
@@ -20,7 +19,7 @@ body:
         "originCountry": "IL", "destinationCountry": "DE",
         "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SITE99", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
         "invoiceDetails": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",

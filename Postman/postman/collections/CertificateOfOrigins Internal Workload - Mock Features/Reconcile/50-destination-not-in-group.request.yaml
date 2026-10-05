@@ -4,8 +4,7 @@ method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-  x-mock-feature--CountryGroup.NotInGroup: "true"
-# IsCountryInCountryGroup=false -> ValidateCertificateDetails' DestinationGroupDiscrepancy finding.
+# Group 7 exists in the lookup stub but has no members, so IsCountryInCountryGroup=false -> ValidateCertificateDetails' DestinationGroupDiscrepancy finding.
 body:
   type: json
   content: |-
@@ -20,7 +19,7 @@ body:
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
         "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "destinationGroupOfCountries": 5,
+        "destinationGroupOfCountries": 7,
         "invoiceDetails": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
             "invoiceSum": 100, "currencyType": "USD",

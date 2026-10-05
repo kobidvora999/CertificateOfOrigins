@@ -4,7 +4,6 @@ method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-  x-mock-feature--PackingType.NotFound: "true"
 # ResolvePackingTypeId's unresolved arm -> 650 with PackageType.
 body:
   type: json
@@ -24,7 +23,7 @@ body:
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
             "invoiceSum": 100, "currencyType": "USD",
             "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
-              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+              "originCriterion": "A", "measureType": "KG", "packageType": "QQ", "packageQuantity": 1, "weight": 10 } ] } ]
       }
     }
 order: 10500

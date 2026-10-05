@@ -4,7 +4,6 @@ method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-  x-mock-feature--MeasurementUnit.NotFound: "true"
 # ResolveMeasurementUnitId's unresolved arm -> TheValueInFieldNotExistsInSystem(650) with MeasureType.
 body:
   type: json
@@ -24,7 +23,7 @@ body:
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
             "invoiceSum": 100, "currencyType": "USD",
             "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
-              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+              "originCriterion": "A", "measureType": "QQ", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
       }
     }
 order: 10400
