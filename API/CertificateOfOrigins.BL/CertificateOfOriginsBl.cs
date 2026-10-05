@@ -1281,7 +1281,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // reaches here, so no id is overwritten with a code).
     private async Task ResolveNewInstanceDetailCodes(List<CertificateOfOriginDetails> details)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         foreach (var detail in details)
         {
             if (string.IsNullOrEmpty(detail.Value))
@@ -1291,10 +1290,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
             if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.DestinationCountry)
             {
-                var countries = await countryProxy.GetCountriesByAlphaCodes([detail.Value]);
-                if (countries?.FirstOrDefault()?.Id is int countryId)
+                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value)).FirstOrDefault();
+                if (country is not null)
                 {
-                    detail.Value = countryId.ToString(CultureInfo.InvariantCulture);
+                    detail.Value = country.Id.ToString(CultureInfo.InvariantCulture);
                 }
             }
             else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)

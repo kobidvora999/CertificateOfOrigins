@@ -121,20 +121,17 @@ public partial class CertificateOfOriginsBl
     // (unless the destination is in the exempt list) and the zip must be at least 7 characters.
     private async Task CheckPlaceOfManufactureAndZipcode(CertificateOfOriginMessageDto certificate, bool isZipcodeMandatory, MessageValidationContext context)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         if (string.IsNullOrWhiteSpace(certificate.OriginCountry))
         {
             return;
         }
 
-        var originCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.OriginCountry]);
-        var originCountryId = originCountry?.FirstOrDefault()?.Id ?? 0;
+        var originCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.OriginCountry)).FirstOrDefault()?.Id ?? 0;
 
         var destinationCountryId = 0;
         if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
         {
-            var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
-            destinationCountryId = destinationCountry?.FirstOrDefault()?.Id ?? 0;
+            destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id ?? 0;
         }
 
         var exemptCsv = await parametersUtil.Get<string>("CountriesExemptedFromSendingThePlaceOfManufacture") ?? string.Empty;

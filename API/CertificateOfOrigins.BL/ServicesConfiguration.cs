@@ -55,11 +55,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
-        // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — Country
-        // by alpha-2 code and the invoice item packing type / measurement unit by code.
-        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, PackingType/PackingTypesByCodes,
+        // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — the
+        // invoice item packing type / measurement unit by code.
+        // TODO(blocking): verify the real SystemTables endpoints (PackingType/PackingTypesByCodes,
         // MeasurementUnit/MeasurementUnitsByCodes, CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
-        services.AddProxy<ICountryProxy, CountryProxy, CountryMockProxy>();
         services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
         services.AddProxy<IMeasurementUnitProxy, MeasurementUnitProxy, MeasurementUnitMockProxy>();
 

@@ -128,7 +128,6 @@ public partial class CertificateOfOriginsBl
     // Otherwise returns the converted invoices (empty for NonManipulation / no body).
     private async Task<List<CertificateOfOriginInvoiceDetail>?> ValidateMessageBody(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         var agentRequest = request.AgentRequest;
         var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
@@ -198,8 +197,7 @@ public partial class CertificateOfOriginsBl
             int? destinationCountryId = null;
             if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
             {
-                var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
-                destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
+                destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id;
             }
 
             // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
@@ -832,12 +830,11 @@ public partial class CertificateOfOriginsBl
 
     // ── Shared resolution helpers ──
 
-    // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country; missing → country-not-in-table.
-    private async Task<CountryByCodeDto?> ResolveCountry(string? alphaCode, MessageValidationContext context)
+    // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country (SystemTablesUtil.GetIdByCode<Country>(
+    // PropCountryAlphaCode_2) = Lookup.Country by CountryAlphaCode2); missing → country-not-in-table.
+    private async Task<Lookup.Country?> ResolveCountry(string? alphaCode, MessageValidationContext context)
     {
-        var countryProxy = Resolve<ICountryProxy>();
-        var countries = await countryProxy.GetCountriesByAlphaCodes([alphaCode ?? string.Empty]);
-        var country = countries?.FirstOrDefault();
+        var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == alphaCode)).FirstOrDefault();
         if (country is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.ExportCountryDoesNotExistInTheCountryTable, alphaCode));
@@ -847,7 +844,7 @@ public partial class CertificateOfOriginsBl
     }
 
     // Legacy tail of the country validators: rewrite the value to the country id and the display to its English name.
-    private static void ApplyCountryResolution(MessageField field, CountryByCodeDto country)
+    private static void ApplyCountryResolution(MessageField field, Lookup.Country country)
     {
         field.Value = country.Id.ToString(CultureInfo.InvariantCulture);
         field.DisplayedValue = country.EnglishName;

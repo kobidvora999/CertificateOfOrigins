@@ -44,6 +44,16 @@ const EXTRA = {
   },
 };
 
+// Extra fields on rows of PLATFORM lookup types (merged into the 1..RANGE rows).
+// Country: the alpha-2 codes the Postman collections send, on the ids the retired CountryMockProxy gave them
+// (IL = 376, the CountryIsrael parameter; DE = 138).
+const OVERRIDES = {
+  Country: {
+    376: { countryAlphaCode2: 'IL', englishName: 'Israel', isCountry: true },
+    138: { countryAlphaCode2: 'DE', englishName: 'Germany', isCountry: true },
+  },
+};
+
 function items(type) {
   const extra = EXTRA[type];
   if (extra) {
@@ -62,7 +72,8 @@ function items(type) {
       englishName: `${type} ${id}`,
     });
   }
-  return out;
+  const overrides = OVERRIDES[type] || {};
+  return out.map(item => ({ ...item, ...(overrides[item.id] || {}) }));
 }
 
 function makeServer(port, types) {
