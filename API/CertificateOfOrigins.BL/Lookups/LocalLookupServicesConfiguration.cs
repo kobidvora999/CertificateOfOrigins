@@ -14,7 +14,8 @@ public static class LocalLookupServicesConfiguration
     public static IServiceCollection AddLocalLookup<T>(this IServiceCollection services, CustomsMicroServices sourceService)
         where T : ILookup
     {
-        services.AddSingleton(provider => new LocalLookupResolver<T>(provider, provider.GetRequiredService<IServiceScopeFactory>(), sourceService));
+        services.AddSingleton(new LocalLookupSource<T>(sourceService));
+        services.AddSingleton<LocalLookupResolver<T>>();
         services.AddSingleton<IResolver>(provider => provider.GetRequiredService<LocalLookupResolver<T>>());
         services.AddKeyedSingleton<IResolver>(typeof(T), (provider, _) => provider.GetRequiredService<LocalLookupResolver<T>>());
         services.AddHeartBeatSubscriber<LocalLookupResolver<T>>(ServiceLifetime.Transient);
