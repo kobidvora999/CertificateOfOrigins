@@ -206,17 +206,16 @@ public partial class CertificateOfOriginsBl
         return id;
     }
 
-    // Legacy GetIdByCode<PackingType>(PropCommonCode, code): unresolvable code → validation exception.
+    // Legacy GetIdByCode<PackingType>(PropCommonCode, code) = Lookups.PackingType by CommonCode: unresolvable code →
+    // validation exception.
     private async Task<int?> ResolvePackingTypeId(string? code, MessageValidationContext context)
     {
-        var packingTypeProxy = Resolve<IPackingTypeProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;
         }
 
-        var packingTypes = await packingTypeProxy.GetPackingTypesByCodes([code]);
-        var id = packingTypes?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.PackingType>(packingType => packingType.CommonCode == code)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "PackageType"));

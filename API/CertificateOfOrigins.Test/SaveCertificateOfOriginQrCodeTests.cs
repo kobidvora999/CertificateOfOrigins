@@ -271,7 +271,6 @@ public class SaveCertificateOfOriginQrCodeTests
         services.AddSingleton(Fake<IMessageManagementProxy>());
         services.AddSingleton(Fake<ITasksProxy>());
         services.AddSingleton(Fake<ILockUtil>());
-        services.AddSingleton(Fake<IPackingTypeProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(

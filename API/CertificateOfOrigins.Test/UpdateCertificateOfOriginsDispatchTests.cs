@@ -309,7 +309,6 @@ public class UpdateCertificateOfOriginsDispatchTests
             return null;
         }));
         services.AddSingleton(Fake<ILockUtil>());
-        services.AddSingleton(Fake<IPackingTypeProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(serviceProvider, Fake<ILookupUtil>(), parametersUtil);

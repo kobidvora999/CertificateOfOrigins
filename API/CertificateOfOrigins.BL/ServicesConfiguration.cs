@@ -51,11 +51,6 @@ public class ServicesConfiguration : IServicesConfiguration
         // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
 
-        // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — the
-        // invoice item packing type by code.
-        // TODO(blocking): verify the real SystemTables endpoint (PackingType/PackingTypesByCodes) before ROLLOUT.
-        services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
-
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
         services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
@@ -130,6 +125,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // General_enum_CurrencyType: invoice currency code ↔ id (the message conversion and the web query). Loaded from Common,
         // like the other General tables. TODO(internal): confirm the source with the platform.
         services.AddLocalLookup<Lookups.CurrencyType>(CustomsMicroServices.Common);
+
+        // CargoControl_c_PackingType: invoice item package-type code → id. Loaded from the Cargos service, the owner of the
+        // CargoControl tables. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.PackingType>(CustomsMicroServices.Cargos);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

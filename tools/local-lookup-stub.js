@@ -10,7 +10,7 @@
 // test data references resolves to a name. Unknown /lookup/* paths return [] (still HTTP 200 -> no 500).
 //
 // Ports (from the readiness log): 9000 = Country + City, 9005 = SystemTables, 9006 = DocumentType, 9015 = OrganizationUnit,
-// 9029 = Sites.
+// 9026 = Cargos, 9029 = Sites.
 //
 // LOCAL lookup types (BL/Lookups, registered with AddLocalLookup) are lookups the platform package does not have yet.
 // They load the same way (GET lookup/{Type}) and are served here with their extra fields. TODO(internal): each one is
@@ -25,6 +25,7 @@ const PORTS = {
   9000: ['Country', 'City', 'MeasurementUnit', 'CountryGroup', 'CountryCountryGroup', 'CurrencyType'],
   9005: ['InternationalSite'],
   9006: ['DocumentType'],
+  9026: ['PackingType'],
   9029: ['Site'],
   9015: ['OrganizationUnit'],
 };
@@ -52,6 +53,12 @@ const EXTRA = {
   CurrencyType: {
     1: { currencyCode: 'EUR', englishName: 'Euro' },
     237: { currencyCode: 'USD', englishName: 'US Dollar' },
+  },
+  // PackingType: the package-type codes the collections send, on the ids the retired PackingTypeMockProxy gave them
+  // (BOX-40 = 379 = the container packing type, CertificateOfOriginsConsts.PackingTypeContainer).
+  PackingType: {
+    155: { commonCode: 'BX', englishName: 'Box' },
+    379: { commonCode: 'BOX-40', englishName: 'Container 40' },
   },
   Site: {
     // SITE01 -> org unit 407: the id the retired SiteMockProxy derived for SITE01, so the collections' expectations hold.
