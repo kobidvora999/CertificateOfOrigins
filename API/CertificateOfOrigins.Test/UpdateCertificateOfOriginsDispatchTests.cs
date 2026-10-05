@@ -299,7 +299,6 @@ public class UpdateCertificateOfOriginsDispatchTests
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());
         services.AddSingleton(Fake<IMessageManagementProxy>());
-        services.AddSingleton(Fake<ICountryGroupProxy>());
         services.AddSingleton(Fake<ITasksProxy>((method, args) =>
         {
             if (method.Name == nameof(ITasksProxy.GetLatestUserHandlingEntityTasksWithTaskUnification))

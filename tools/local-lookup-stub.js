@@ -22,7 +22,7 @@ const http = require('http');
 
 const RANGE = 500;
 const PORTS = {
-  9000: ['Country', 'City', 'MeasurementUnit'],
+  9000: ['Country', 'City', 'MeasurementUnit', 'CountryGroup', 'CountryCountryGroup'],
   9005: ['InternationalSite'],
   9006: ['DocumentType'],
   9029: ['Site'],
@@ -38,6 +38,15 @@ const EXTRA = {
     3: { locode: 'DEHAM', englishName: 'Hamburg' },
   },
   // Site: the customs-house external site numbers the Postman collections send, each pointing at an org unit.
+  // CountryGroup: the group ids the collections send (1, 5).
+  CountryGroup: {
+    1: { englishName: 'Country group 1', isForTradeAgreement: true },
+    5: { englishName: 'Country group 5', isForTradeAgreement: true },
+  },
+  // CountryCountryGroup: every country the collections send in both groups — the retired CountryGroupMockProxy answered
+  // "in the group" by default. A "not in the group" scenario sends a country that is not listed here.
+  CountryCountryGroup: Object.fromEntries([32, 99, 138, 376].flatMap((countryId, i) => [1, 5].map((countryGroupId, j) =>
+    [i * 2 + j + 1, { name: '', countryId, countryGroupId }]))),
   Site: {
     // SITE01 -> org unit 407: the id the retired SiteMockProxy derived for SITE01, so the collections' expectations hold.
     407: { externalSiteNumberForMessages: 'SITE01', organizationUnitId: 407, typeId: 1, englishName: 'Site SITE01' },

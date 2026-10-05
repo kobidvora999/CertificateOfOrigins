@@ -83,10 +83,6 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddProxy<ICommonServicesProxy, CommonServicesProxy, CommonServicesMockProxy>();
         services.AddProxy<IOrganizationUnitProxy, OrganizationUnitProxy, OrganizationUnitMockProxy>();
 
-        // UpdateCertificateOfOrigins reconciliation: the SystemTables CountryCountryGroup membership lookup used for the
-        // destination / origin country-group agreement checks. TODO(blocking): confirm the endpoint route before ROLLOUT.
-        services.AddProxy<ICountryGroupProxy, CountryGroupProxy, CountryGroupMockProxy>();
-
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
         // CertificateOfOriginQueryURL is already seeded in the local Infrastructure.Parameters table.
@@ -130,6 +126,11 @@ public class ServicesConfiguration : IServicesConfiguration
         // cached like a platform lookup. Replace each with services.AddLookup<Lookup.T>() once the platform has the type.
         services.AddLocalLookup<Lookups.InternationalSite>(CustomsMicroServices.SystemTables);
         services.AddLocalLookup<Lookups.Site>(CustomsMicroServices.Sites);
+
+        // General_enum_CountryGroup + the General_cl_CountryCountryGroup membership: loaded from the same source as the
+        // platform Lookup.Country (General_c_Country), the Common service. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.CountryGroup>(CustomsMicroServices.Common);
+        services.AddLocalLookup<Lookups.CountryCountryGroup>(CustomsMicroServices.Common);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

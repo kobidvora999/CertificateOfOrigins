@@ -2147,7 +2147,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         List<CertificateOfOriginDetails> details,
         List<ReconciliationFinding> builder)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
         var destinationCountry = GetDetailValue(details, ECertificateDetailsType.DestinationCountry);
         var destinationGroup = GetDetailValue(details, ECertificateDetailsType.DestinationGroupOfCountries);
         var exporterId = GetDetailValue(details, ECertificateDetailsType.ExporterId);
@@ -2170,7 +2169,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (!string.IsNullOrWhiteSpace(destinationGroup) && int.TryParse(destinationGroup, out var destinationGroupId))
         {
             var destinationInGroup = request.DestinationCountryId.HasValue
-                && await countryGroupProxy.IsCountryInCountryGroup(request.DestinationCountryId.Value, destinationGroupId);
+                && await IsCountryInCountryGroup(request.DestinationCountryId.Value, destinationGroupId);
             if (!destinationInGroup)
             {
                 builder.Add(new ReconciliationFinding(
@@ -2348,8 +2347,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         bool isCustomsItemMandatory,
         List<ReconciliationFinding> builder)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
-
         // Origin country present among the declaration's goods items (Error).
         if (int.TryParse(originCountry, out var originCountryId)
             && !declarationGoodsItems.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
@@ -2367,7 +2364,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             var anyOriginInGroup = false;
             foreach (var goodsItem in declarationGoodsItems)
             {
-                if (await countryGroupProxy.IsCountryInCountryGroup(goodsItem.OriginCountryId, originGroupId))
+                if (await IsCountryInCountryGroup(goodsItem.OriginCountryId, originGroupId))
                 {
                     anyOriginInGroup = true;
                     break;
@@ -2413,6 +2410,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Reverse direction: every declaration goods item linked to this certificate must have its 6-digit classification
     // present in the certificate's matching invoice (Error).
+    // Legacy SystemTablesUtil.GetTablesSync<CountryCountryGroup>(IgnoreState = true, CountryID == x && CountryGroupID == y):
+    // the country belongs to the country group (no state filter, no date window — as legacy).
+    private async Task<bool> IsCountryInCountryGroup(int countryId, int countryGroupId)
+    {
+        var result = (await lookupUtil.Search<Lookups.CountryCountryGroup>(link => link.CountryId == countryId && link.CountryGroupId == countryGroupId)).Any();
+        return result;
+    }
+
     private static void ValidateDeclarationGoodsItems(
         List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,

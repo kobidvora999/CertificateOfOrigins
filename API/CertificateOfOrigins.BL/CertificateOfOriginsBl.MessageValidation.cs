@@ -663,14 +663,13 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
     private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
         var customsBookProxy = Resolve<ICustomsBookProxy>();
 
         // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
-        // (GetIdByCode<CountryGroup>(PropID, id) → TheValueInFieldNotExistsInSystem on a miss); on failure the legacy
-        // returns 0 and skips the trade-agreement check.
+        // (GetIdByCode<CountryGroup>(PropID, id) = Lookup.CountryGroup by id → TheValueInFieldNotExistsInSystem on a miss); on
+        // failure the legacy returns 0 and skips the trade-agreement check.
         if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId)
-            || !await countryGroupProxy.CountryGroupExists(countryGroupId))
+            || !await lookupUtil.Exists<Lookups.CountryGroup>(countryGroupId))
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
             return;
