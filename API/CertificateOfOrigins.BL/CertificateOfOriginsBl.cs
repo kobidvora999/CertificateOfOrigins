@@ -431,8 +431,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 InvoiceGoodsDescription = invoice.InvoiceGoodsDescription,
             };
 
-            // Legacy: SystemTablesUtil.GetCodeById<CurrencyType>(id).CurrencyCode — resolved via ICurrencyTypeProxy
-            // against the SystemTables microservice (no ILookupUtil type exists for CurrencyType).
+            // Legacy: SystemTablesUtil.GetCodeById<CurrencyType>(id).CurrencyCode — Lookups.CurrencyType.
             if (invoice.CurrencyTypeId.HasValue)
             {
                 invoiceDetail.CurrencyCode = currencyCodesById.GetValueOrDefault(invoice.CurrencyTypeId.Value);
@@ -463,21 +462,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     private async Task<Dictionary<int, string?>> GetCurrencyCodes(List<int> currencyTypeIds)
     {
-        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
-        if (currencyTypeIds.Count == 0)
-        {
-            return [];
-        }
-
-        var currencies = await currencyTypeProxy.GetCurrencyTypesByIds(currencyTypeIds.Distinct().ToList());
-        if (currencies == null)
-        {
-            return [];
-        }
-
-        return currencies
-            .GroupBy(c => c.Id)
-            .ToDictionary(g => g.Key, g => g.First().CurrencyCode);
+        var currencies = await lookupUtil.Search<Lookups.CurrencyType>(currency => currencyTypeIds.Contains(currency.Id));
+        var result = currencies.ToDictionary(currency => currency.Id, currency => currency.CurrencyCode);
+        return result;
     }
 
     private async Task<List<FieldDataDto>> GetCertificateOfOriginDetails(CertificateOfOriginWebQueryDto certificate)

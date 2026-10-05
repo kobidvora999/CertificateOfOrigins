@@ -51,14 +51,9 @@ public class ServicesConfiguration : IServicesConfiguration
         // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
         services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
 
-        // Invoice currency codes for GetCertificateRequestByGuid — legacy read them from SystemTables CurrencyType
-        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
-        services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
-
         // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — the
         // invoice item packing type by code.
-        // TODO(blocking): verify the real SystemTables endpoints (PackingType/PackingTypesByCodes,
-        // CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
+        // TODO(blocking): verify the real SystemTables endpoint (PackingType/PackingTypesByCodes) before ROLLOUT.
         services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
 
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
@@ -131,6 +126,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // platform Lookup.Country (General_c_Country), the Common service. TODO(internal): confirm the source with the platform.
         services.AddLocalLookup<Lookups.CountryGroup>(CustomsMicroServices.Common);
         services.AddLocalLookup<Lookups.CountryCountryGroup>(CustomsMicroServices.Common);
+
+        // General_enum_CurrencyType: invoice currency code ↔ id (the message conversion and the web query). Loaded from Common,
+        // like the other General tables. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.CurrencyType>(CustomsMicroServices.Common);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

@@ -265,7 +265,6 @@ public class SaveCertificateOfOriginQrCodeTests
         services.AddSingleton(Fake<IExportDealFileProxy>()); // GetLeadDocument... → null (default) → LinkLeadDocument returns early
         services.AddSingleton(Fake<IUserProxy>());           // GetUsersByIds → null (default) → org unit resolves to 0
         services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
-        services.AddSingleton(Fake<ICurrencyTypeProxy>());
         services.AddSingleton(Fake<IDocumentsProxy>());
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());

@@ -187,18 +187,17 @@ public partial class CertificateOfOriginsBl
         return originCriterion.Id;
     }
 
-    // Legacy GetIdByCode<CurrencyType>(PropCurrencyCode, code): an unresolvable code accumulates a validation exception
-    // (the legacy GetIdByCode throws → the caller adds it to _requestExceptions), not a silent null.
+    // Legacy GetIdByCode<CurrencyType>(PropCurrencyCode, code) = Lookups.CurrencyType by CurrencyCode: an unresolvable code
+    // accumulates a validation exception (the legacy GetIdByCode throws → the caller adds it to _requestExceptions), not a
+    // silent null.
     private async Task<int?> ResolveCurrencyTypeId(string? currencyCode, MessageValidationContext context)
     {
-        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
         if (string.IsNullOrEmpty(currencyCode))
         {
             return null;
         }
 
-        var currencies = await currencyTypeProxy.GetCurrencyTypesByCodes([currencyCode]);
-        var id = currencies?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.CurrencyType>(currency => currency.CurrencyCode == currencyCode)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CurrencyType"));

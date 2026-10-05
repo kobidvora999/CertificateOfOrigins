@@ -22,7 +22,7 @@ const http = require('http');
 
 const RANGE = 500;
 const PORTS = {
-  9000: ['Country', 'City', 'MeasurementUnit', 'CountryGroup', 'CountryCountryGroup'],
+  9000: ['Country', 'City', 'MeasurementUnit', 'CountryGroup', 'CountryCountryGroup', 'CurrencyType'],
   9005: ['InternationalSite'],
   9006: ['DocumentType'],
   9029: ['Site'],
@@ -47,6 +47,12 @@ const EXTRA = {
   // "in the group" by default. A "not in the group" scenario sends a country that is not listed here.
   CountryCountryGroup: Object.fromEntries([32, 99, 138, 376].flatMap((countryId, i) => [1, 5].map((countryGroupId, j) =>
     [i * 2 + j + 1, { name: '', countryId, countryGroupId }]))),
+  // CurrencyType: what the collections use, on the ids the retired CurrencyTypeMockProxy gave them (USD = 237 by code;
+  // id 1 = EUR by id).
+  CurrencyType: {
+    1: { currencyCode: 'EUR', englishName: 'Euro' },
+    237: { currencyCode: 'USD', englishName: 'US Dollar' },
+  },
   Site: {
     // SITE01 -> org unit 407: the id the retired SiteMockProxy derived for SITE01, so the collections' expectations hold.
     407: { externalSiteNumberForMessages: 'SITE01', organizationUnitId: 407, typeId: 1, englishName: 'Site SITE01' },
