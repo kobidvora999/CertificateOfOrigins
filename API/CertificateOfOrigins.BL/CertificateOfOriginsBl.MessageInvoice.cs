@@ -187,18 +187,17 @@ public partial class CertificateOfOriginsBl
         return originCriterion.Id;
     }
 
-    // Legacy GetIdByCode<CurrencyType>(PropCurrencyCode, code): an unresolvable code accumulates a validation exception
-    // (the legacy GetIdByCode throws → the caller adds it to _requestExceptions), not a silent null.
+    // Legacy GetIdByCode<CurrencyType>(PropCurrencyCode, code) = Lookups.CurrencyType by CurrencyCode: an unresolvable code
+    // accumulates a validation exception (the legacy GetIdByCode throws → the caller adds it to _requestExceptions), not a
+    // silent null.
     private async Task<int?> ResolveCurrencyTypeId(string? currencyCode, MessageValidationContext context)
     {
-        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
         if (string.IsNullOrEmpty(currencyCode))
         {
             return null;
         }
 
-        var currencies = await currencyTypeProxy.GetCurrencyTypesByCodes([currencyCode]);
-        var id = currencies?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.CurrencyType>(currency => currency.CurrencyCode == currencyCode)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CurrencyType"));
@@ -207,17 +206,16 @@ public partial class CertificateOfOriginsBl
         return id;
     }
 
-    // Legacy GetIdByCode<PackingType>(PropCommonCode, code): unresolvable code → validation exception.
+    // Legacy GetIdByCode<PackingType>(PropCommonCode, code) = Lookups.PackingType by CommonCode: unresolvable code →
+    // validation exception.
     private async Task<int?> ResolvePackingTypeId(string? code, MessageValidationContext context)
     {
-        var packingTypeProxy = Resolve<IPackingTypeProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;
         }
 
-        var packingTypes = await packingTypeProxy.GetPackingTypesByCodes([code]);
-        var id = packingTypes?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.PackingType>(packingType => packingType.CommonCode == code)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "PackageType"));
@@ -226,17 +224,16 @@ public partial class CertificateOfOriginsBl
         return id;
     }
 
-    // Legacy GetIdByCode<MeasurementUnit>(PropExternalIDNum, code): unresolvable code → validation exception.
+    // Legacy GetIdByCode<MeasurementUnit>(PropExternalIDNum, code) = Lookup.MeasurementUnit by ExternalIdnum: unresolvable
+    // code → validation exception.
     private async Task<int?> ResolveMeasurementUnitId(string? code, MessageValidationContext context)
     {
-        var measurementUnitProxy = Resolve<IMeasurementUnitProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;
         }
 
-        var units = await measurementUnitProxy.GetMeasurementUnitsByCodes([code]);
-        var id = units?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookup.MeasurementUnit>(unit => unit.ExternalIdnum == code)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "MeasureType"));

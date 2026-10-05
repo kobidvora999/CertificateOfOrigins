@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL.Proxies;
+using CertificateOfOrigins.BL.Resolver;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
 using System.Globalization;
@@ -75,25 +76,72 @@ public partial class CertificateOfOriginsBl
     // faithful) and the method returns the saved certificate (null when validation failed, so no save happened).
     private async Task<CertificateOfOrigin?> ProcessCreateCertificateBranch(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         var agentRequest = request.AgentRequest;
-        var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
         // The validation engine accumulates into context.Exceptions during the pass; they are merged into the single
         // requestExceptions channel at the gate below. The context (with its declaration-details cache) is created once
         // per request by the dispatcher and shared with the amendment guard + reconciliation.
+        var invoices = await ValidateMessageBody(request, context, requestExceptions);
+        if (invoices == null)
+        {
+            return null;
+        }
+
+        // Per-reason resolution (legacy CheckRequestReasonAndGetSavedCertificate): resolve the existing certificate the
+        // reason targets + its reason-specific validations, and record the update/cancel side-values. Runs as part of the
+        // accumulation, before the exception gate — faithful to the legacy ordering.
+        await ResolveCertificateForReason(agentRequest, context);
+
+        // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
+        // requestExceptions may already carry a pre-branch error (the amendment-linkage guard), which also blocks the save.
+        requestExceptions.AddRange(context.Exceptions);
+        if (requestExceptions.Count > 0)
+        {
+            return null;
+        }
+
+        // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
+        // → GetCertificateNumber when certificateId is empty).
+        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
+
+        // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
+        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
+        var saved = await SaveCertificateOfOrigin(saveRequest);
+
+        // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
+        // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
+        // not NonManipulation. The reconciliation's declaration-mismatch exceptions are returned in-band.
+        if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
+            && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
+        {
+            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved, context);
+            requestExceptions.AddRange(reconciliationExceptions);
+        }
+
+        var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
+        return certificateEntity;
+    }
+
+    // Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner ran this for every reason except CertificateCancellation —
+    // the create reasons AND GetRequestStatus: the certificate type, the mandatory body, the per-field and cross-field
+    // validation and the invoice conversion (GetCertificateDetailsFromMessageAndCheckFields). Field errors accumulate into
+    // context.Exceptions; a hard stop (missing body, missing/unknown type) is added to requestExceptions and returns null.
+    // Otherwise returns the converted invoices (empty for NonManipulation / no body).
+    private async Task<List<CertificateOfOriginInvoiceDetail>?> ValidateMessageBody(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, List<CertificateOfOriginExceptionDto> requestExceptions)
+    {
+        var agentRequest = request.AgentRequest;
+        var certificateTypeId = agentRequest.CertificateOfOriginTypeCode;
 
         // Legacy GetCertificateDetailsFromMessageAndCheckFields: NonManipulation validates a DIFFERENT body
         // (request.NonManipulationCertificate) than the standard CertificateOfOrigin body. A null body is a
-        // MandatoryValue error EXCEPT for EmptyCertificate (which carries no body). GetRequestStatus/CertificateCancellation
-        // are the legacy's other exemptions but never reach this create branch.
+        // MandatoryValue error EXCEPT for EmptyCertificate and GetRequestStatus, which carry no body
+        // (CertificateCancellation is the legacy's third exemption but never runs this validation).
         var isNonManipulation = certificateTypeId == (int)ECertificateOfOriginType.NonManipulation;
-        var isEmptyCertificate = agentRequest.RequestReasonCode == (int)ERequestReason.EmptyCertificate;
         var certificate = request.CertificateOfOrigin;
         var nonManipulation = request.NonManipulationCertificate;
 
         var bodyMissing = isNonManipulation ? nonManipulation is null : certificate is null;
-        if (bodyMissing && !isEmptyCertificate)
+        if (bodyMissing && agentRequest.RequestReasonCode is not ((int)ERequestReason.EmptyCertificate or (int)ERequestReason.GetRequestStatus))
         {
             var missingBodyName = isNonManipulation ? nameof(request.NonManipulationCertificate) : nameof(request.CertificateOfOrigin);
             requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, missingBodyName));
@@ -150,8 +198,7 @@ public partial class CertificateOfOriginsBl
             int? destinationCountryId = null;
             if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
             {
-                var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
-                destinationCountryId = destinationCountry?.FirstOrDefault()?.Id;
+                destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id;
             }
 
             // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
@@ -167,39 +214,7 @@ public partial class CertificateOfOriginsBl
             }
         }
 
-        // Per-reason resolution (legacy CheckRequestReasonAndGetSavedCertificate): resolve the existing certificate the
-        // reason targets + its reason-specific validations, and record the update/cancel side-values. Runs as part of the
-        // accumulation, before the exception gate — faithful to the legacy ordering.
-        await ResolveCertificateForReason(agentRequest, context);
-
-        // Legacy: if any validation exception accumulated, the request is rejected — surface them in-band, no save.
-        // requestExceptions may already carry a pre-branch error (the amendment-linkage guard), which also blocks the save.
-        requestExceptions.AddRange(context.Exceptions);
-        if (requestExceptions.Count > 0)
-        {
-            return null;
-        }
-
-        // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
-        // → GetCertificateNumber when certificateId is empty).
-        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
-
-        // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
-        var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
-        var saved = await SaveCertificateOfOrigin(saveRequest);
-
-        // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
-        // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
-        // not NonManipulation. The reconciliation's declaration-mismatch exceptions are returned in-band.
-        if (agentRequest.RequestReasonCode != (int)ERequestReason.EmptyCertificate
-            && agentRequest.CertificateOfOriginTypeCode != (int)ECertificateOfOriginType.NonManipulation)
-        {
-            var reconciliationExceptions = await ReconcileWithSubmittedDeclaration(saved, context);
-            requestExceptions.AddRange(reconciliationExceptions);
-        }
-
-        var certificateEntity = await DataLayer.GetLatestCertificateByNumberForFeedback(saved.CertificateNumber ?? string.Empty);
-        return certificateEntity;
+        return invoices;
     }
 
     // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or a freshly
@@ -524,7 +539,7 @@ public partial class CertificateOfOriginsBl
             case ECertificateDetailsType.ExitPort:
             case ECertificateDetailsType.ExportPort:
             case ECertificateDetailsType.PortOfShipment:
-                await CheckIfInternationalSiteExist(field);
+                await CheckIfInternationalSiteExist(field, context);
                 break;
 
             default:
@@ -622,14 +637,13 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryIsInTradeAgreement: country resolves + is part of the trade agreement for this certificate type.
     private async Task CheckIfCountryIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(field.Value, context);
         if (country is null)
         {
             return;
         }
 
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
         if (!isInTrade)
         {
             var code = field.DetailType switch
@@ -649,20 +663,17 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
     private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
-
         // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
-        // (GetIdByCode<CountryGroup>(PropID, id) → TheValueInFieldNotExistsInSystem on a miss); on failure the legacy
-        // returns 0 and skips the trade-agreement check.
+        // (GetIdByCode<CountryGroup>(PropID, id) = Lookup.CountryGroup by id → TheValueInFieldNotExistsInSystem on a miss); on
+        // failure the legacy returns 0 and skips the trade-agreement check.
         if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId)
-            || !await countryGroupProxy.CountryGroupExists(countryGroupId))
+            || !await lookupUtil.Exists<Lookups.CountryGroup>(countryGroupId))
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
             return;
         }
 
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, countryGroupId, true);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, countryGroupId, true);
         if (!isInTrade)
         {
             var code = field.DetailType switch
@@ -798,27 +809,29 @@ public partial class CertificateOfOriginsBl
     }
 
     // Legacy CheckIfInternationalSiteExist: the port or shipment value is a locode that resolves to an international
-    // site. Rewrites the value to the site's locode and the display to its English name. No error if unresolved (legacy).
-    private async Task CheckIfInternationalSiteExist(MessageField field)
+    // site (SystemTablesUtil.GetIdByCode<InternationalSite>(PropLocode) + GetCodeById). Rewrites the value to the site's
+    // locode and the display to its English name. An unknown locode is TheValueInFieldNotExistsInSystem: legacy
+    // GetIdByCode caught the lookup's miss exception and added it to the request exceptions.
+    private async Task CheckIfInternationalSiteExist(MessageField field, MessageValidationContext context)
     {
-        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
-        var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([field.Value ?? string.Empty]);
-        var site = sites?.FirstOrDefault();
-        if (site is not null)
+        var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == field.Value)).FirstOrDefault();
+        if (site is null)
         {
-            field.Value = site.Locode;
-            field.DisplayedValue = site.EnglishName;
+            context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
+            return;
         }
+
+        field.Value = site.Locode;
+        field.DisplayedValue = site.EnglishName;
     }
 
     // ── Shared resolution helpers ──
 
-    // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country; missing → country-not-in-table.
-    private async Task<CountryByCodeDto?> ResolveCountry(string? alphaCode, MessageValidationContext context)
+    // Legacy GetCountryId + GetCodeById<Country>: resolve an alpha-2 code to a country (SystemTablesUtil.GetIdByCode<Country>(
+    // PropCountryAlphaCode_2) = Lookup.Country by CountryAlphaCode2); missing → country-not-in-table.
+    private async Task<Lookup.Country?> ResolveCountry(string? alphaCode, MessageValidationContext context)
     {
-        var countryProxy = Resolve<ICountryProxy>();
-        var countries = await countryProxy.GetCountriesByAlphaCodes([alphaCode ?? string.Empty]);
-        var country = countries?.FirstOrDefault();
+        var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == alphaCode)).FirstOrDefault();
         if (country is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.ExportCountryDoesNotExistInTheCountryTable, alphaCode));
@@ -828,10 +841,38 @@ public partial class CertificateOfOriginsBl
     }
 
     // Legacy tail of the country validators: rewrite the value to the country id and the display to its English name.
-    private static void ApplyCountryResolution(MessageField field, CountryByCodeDto country)
+    private static void ApplyCountryResolution(MessageField field, Lookup.Country country)
     {
         field.Value = country.Id.ToString(CultureInfo.InvariantCulture);
         field.DisplayedValue = country.EnglishName;
+    }
+
+    // Legacy ServicesAdapter.IsTradeAgreementForCountry: Israel (as a country) always passes; otherwise the certificate type
+    // must have trade agreements (our CertificateOfOriginTypeByTradeAgreement table) and CustomsBook must place the country
+    // or group in one of them.
+    private async Task<bool> IsTradeAgreementForCountry(int certificateTypeId, int countryId, bool isCountryGroup)
+    {
+        if (!isCountryGroup && countryId == CertificateOfOriginsConsts.IsraelCountryId)
+        {
+            return true;
+        }
+
+        var (found, tradeAgreements) = await Resolve<CertificateTypeTradeAgreementsResolver>().TryFindAsync(certificateTypeId);
+        if (!found || tradeAgreements is null || tradeAgreements.TradeAgreementIds.Count == 0)
+        {
+            return false;
+        }
+
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
+        foreach (var tradeAgreementId in tradeAgreements.TradeAgreementIds)
+        {
+            if (await customsBookProxy.IsTradeAgreementForCountry(countryId, tradeAgreementId, isCountryGroup))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Legacy IsCountryIsrael: compare against the CountryIsrael config parameter.

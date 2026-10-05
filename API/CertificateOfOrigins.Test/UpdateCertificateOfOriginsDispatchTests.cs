@@ -216,7 +216,7 @@ public class UpdateCertificateOfOriginsDispatchTests
                 case "GetCertificateInvoiceDetailsByCertificateIds":
                     return Task.FromResult(new List<CertificateReconcileInvoiceDto>());
 
-                case "CancelCertificateFromMessage":
+                case "CancelCertificate":
                     cap.Cancelled.Add(((int)args![0]!, (string)args[1]!));
                     return Task.CompletedTask;
 
@@ -293,13 +293,10 @@ public class UpdateCertificateOfOriginsDispatchTests
         services.AddSingleton(Fake<ICustomerProxy>());
         services.AddSingleton(Fake<IExportDealFileProxy>());
         services.AddSingleton(Fake<IUserProxy>());
-        services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
-        services.AddSingleton(Fake<ICurrencyTypeProxy>());
         services.AddSingleton(Fake<IDocumentsProxy>());
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());
         services.AddSingleton(Fake<IMessageManagementProxy>());
-        services.AddSingleton(Fake<ICountryGroupProxy>());
         services.AddSingleton(Fake<ITasksProxy>((method, args) =>
         {
             if (method.Name == nameof(ITasksProxy.GetLatestUserHandlingEntityTasksWithTaskUnification))
@@ -311,11 +308,6 @@ public class UpdateCertificateOfOriginsDispatchTests
             return null;
         }));
         services.AddSingleton(Fake<ILockUtil>());
-        services.AddSingleton(Fake<ICountryProxy>());
-        services.AddSingleton(Fake<ISiteProxy>());
-        services.AddSingleton(Fake<IInternationalSiteProxy>());
-        services.AddSingleton(Fake<IPackingTypeProxy>());
-        services.AddSingleton(Fake<IMeasurementUnitProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(serviceProvider, Fake<ILookupUtil>(), parametersUtil);

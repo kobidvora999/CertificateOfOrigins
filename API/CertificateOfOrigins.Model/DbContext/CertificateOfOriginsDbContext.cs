@@ -47,6 +47,8 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginsAuthenticationFileStatus> CertificateOfOriginsAuthenticationFileStatuses { get; set; }
 
+    public virtual DbSet<CertificateOfOriginTypeByTradeAgreement> CertificateOfOriginTypeByTradeAgreements { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Date columns are SQL datetime/date and map natively to DateTime — no value converter.

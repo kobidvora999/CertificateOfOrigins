@@ -93,8 +93,8 @@ public enum EEventType
 
     // --- Reminder schedulers (the two C17 Planar jobs) ---
 
-    // Raised per import-authentication request whose importer letter has gone unanswered past the reminder window;
-    // opens the SendReminderForImporter task. Source: ReminderForImporterScheduler.
+    // Raised per import-authentication request whose importer letter has gone unanswered past the reminder window.
+    // It opens the SendReminderForImporter task. Source: ReminderForImporterScheduler.
     NewReminderForImporterCreated = 1510,
 
     // The reminder ladder raised by AuthenticationRequestReminder. Which member fires depends on the delivery method

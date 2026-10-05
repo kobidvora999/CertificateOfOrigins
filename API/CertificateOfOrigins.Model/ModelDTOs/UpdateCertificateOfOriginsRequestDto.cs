@@ -13,7 +13,9 @@ public class UpdateCertificateOfOriginsRequestDto
 
     public string? ExportDeclarationNum { get; set; }
 
-    public List<int> CertificateOfOriginsIds { get; set; } = [];
+    // Nullable on purpose: DealFile may send an explicit null, which legacy treated as empty (IsNullOrEmpty). A
+    // non-nullable list would get the [ApiController] implicit [Required] and answer 400 before the BL runs.
+    public List<int>? CertificateOfOriginsIds { get; set; } = [];
 
     public int? ExporterCustomerId { get; set; }
 
@@ -21,7 +23,8 @@ public class UpdateCertificateOfOriginsRequestDto
 
     public int OrganizationUnitId { get; set; }
 
-    public List<ExportInvoiceInfoDto> ExportInvoiceInfoList { get; set; } = [];
+    // Nullable for the same reason: an explicit null is "no invoices" (legacy: Rejected), not a 400.
+    public List<ExportInvoiceInfoDto>? ExportInvoiceInfoList { get; set; } = [];
 }
 
 // One invoice from the export declaration (DealFile) + its goods items — matched against the certificate's invoices.
@@ -29,7 +32,8 @@ public class ExportInvoiceInfoDto
 {
     public string? ExternalIdNum { get; set; }
 
-    public List<ExportGoodsItemInfoDto> ExportGoodsItemInfoList { get; set; } = [];
+    // Nullable for the same reason: an explicit null is an invoice without goods items.
+    public List<ExportGoodsItemInfoDto>? ExportGoodsItemInfoList { get; set; } = [];
 }
 
 // One goods item within a declaration invoice.

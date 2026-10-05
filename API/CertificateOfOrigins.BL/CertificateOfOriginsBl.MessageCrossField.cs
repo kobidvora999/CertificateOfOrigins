@@ -121,20 +121,17 @@ public partial class CertificateOfOriginsBl
     // (unless the destination is in the exempt list) and the zip must be at least 7 characters.
     private async Task CheckPlaceOfManufactureAndZipcode(CertificateOfOriginMessageDto certificate, bool isZipcodeMandatory, MessageValidationContext context)
     {
-        var countryProxy = Resolve<ICountryProxy>();
         if (string.IsNullOrWhiteSpace(certificate.OriginCountry))
         {
             return;
         }
 
-        var originCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.OriginCountry]);
-        var originCountryId = originCountry?.FirstOrDefault()?.Id ?? 0;
+        var originCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.OriginCountry)).FirstOrDefault()?.Id ?? 0;
 
         var destinationCountryId = 0;
         if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
         {
-            var destinationCountry = await countryProxy.GetCountriesByAlphaCodes([certificate.DestinationCountry]);
-            destinationCountryId = destinationCountry?.FirstOrDefault()?.Id ?? 0;
+            destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id ?? 0;
         }
 
         var exemptCsv = await parametersUtil.Get<string>("CountriesExemptedFromSendingThePlaceOfManufacture") ?? string.Empty;
@@ -160,7 +157,6 @@ public partial class CertificateOfOriginsBl
     // the org-unit side-value the save consumes is recorded.
     private async Task CheckIfSiteExistAndCustomsHouse(CertificateOfOriginDetails customsHouseDetail, MessageValidationContext context)
     {
-        var siteProxy = Resolve<ISiteProxy>();
         var organizationUnitProxy = Resolve<IOrganizationUnitProxy>();
         var customsHouseExternalNumber = customsHouseDetail.Value;
         if (string.IsNullOrWhiteSpace(customsHouseExternalNumber))
@@ -169,8 +165,17 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var sites = await siteProxy.GetSitesByExternalNumbers([customsHouseExternalNumber]);
-        var organizationUnitId = sites?.FirstOrDefault()?.OrganizationUnitId;
+        // Legacy GetIdByCode<SiteLookup>(PropExternalSiteNumberForMessages): an unknown site number is
+        // TheValueInFieldNotExistsInSystem (the private GetIdByCode wrapper added the lookup's miss exception). A site with no
+        // org unit passes silently, as in legacy.
+        var site = (await lookupUtil.Search<Lookups.Site>(s => s.ExternalSiteNumberForMessages == customsHouseExternalNumber)).FirstOrDefault();
+        if (site is null)
+        {
+            context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CustomsHouse"));
+            return;
+        }
+
+        var organizationUnitId = site.OrganizationUnitId;
         if (!organizationUnitId.HasValue)
         {
             return;
@@ -265,7 +270,6 @@ public partial class CertificateOfOriginsBl
     // on the destination detail.
     private async Task CheckIfDestinationCountryInAgreement(string destinationCountry, int certificateTypeId, List<CertificateOfOriginDetails> details, MessageValidationContext context)
     {
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(destinationCountry, context);
         if (country is null)
         {
@@ -273,7 +277,7 @@ public partial class CertificateOfOriginsBl
         }
 
         context.DestinationCountryId = country.Id;
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
         if (!isInTrade)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.DestinationCountryNotInAgreement));

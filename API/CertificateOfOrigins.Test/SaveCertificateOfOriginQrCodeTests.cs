@@ -119,7 +119,6 @@ public class SaveCertificateOfOriginQrCodeTests
             OriginalCertificateOfOriginStatusId = originalStatusId,
             RequestReasonCode = (int)ERequestReason.NewCertificate,
             FeedbackRemark = "remark",
-            OriginalFeedbackRemark = "remark", // unchanged → no feedback-message side effect
             QrCodePath = null,                 // empty → QR generation is required on publish
             QrImage = null,
             TimeStamp = id == 0 ? null : SeedRowVersion, // an update round-trips the stored row version
@@ -149,8 +148,9 @@ public class SaveCertificateOfOriginQrCodeTests
             dbContext.CertificateOfOrigins.Add(new CertificateOfOrigin
             {
                 Id = existingId,
-                CertificateNumber = request.CertificateNumber,
-                Title = request.CertificateNumber,
+                // NewPublishedRequest always sets CertificateNumber, so the seeded row copies it as-is.
+                CertificateNumber = request.CertificateNumber!,
+                Title = request.CertificateNumber!,
                 TimeStamp = SeedRowVersion,
                 CreateDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                 CreateUserId = 99,
@@ -264,20 +264,12 @@ public class SaveCertificateOfOriginQrCodeTests
         services.AddSingleton(Fake<ICustomerProxy>());
         services.AddSingleton(Fake<IExportDealFileProxy>()); // GetLeadDocument... → null (default) → LinkLeadDocument returns early
         services.AddSingleton(Fake<IUserProxy>());           // GetUsersByIds → null (default) → org unit resolves to 0
-        services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
-        services.AddSingleton(Fake<ICurrencyTypeProxy>());
         services.AddSingleton(Fake<IDocumentsProxy>());
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());
         services.AddSingleton(Fake<IMessageManagementProxy>());
-        services.AddSingleton(Fake<ICountryGroupProxy>());
         services.AddSingleton(Fake<ITasksProxy>());
         services.AddSingleton(Fake<ILockUtil>());
-        services.AddSingleton(Fake<ICountryProxy>());
-        services.AddSingleton(Fake<ISiteProxy>());
-        services.AddSingleton(Fake<IInternationalSiteProxy>());
-        services.AddSingleton(Fake<IPackingTypeProxy>());
-        services.AddSingleton(Fake<IMeasurementUnitProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(

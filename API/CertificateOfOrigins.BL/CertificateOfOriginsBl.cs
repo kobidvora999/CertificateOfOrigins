@@ -175,7 +175,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         switch (reasonCode)
         {
             case (int)ERequestReason.GetRequestStatus:
+                // Legacy validated a status query like any other message (type, fields, invoices; no body is required)
+                // and any error suppressed the status: the response then carries only the exceptions, with an empty
+                // feedback (the legacy throw → fresh response).
+                await ValidateMessageBody(request, context, requestExceptions);
+                requestExceptions.AddRange(context.Exceptions);
                 certificateToResponse = await GetSavedCertificateForMessage(agentRequest, requestExceptions);
+                if (requestExceptions.Count > 0)
+                {
+                    certificateToResponse = null;
+                }
+
                 break;
 
             case (int)ERequestReason.CertificateCancellation:
@@ -246,10 +256,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // ValidationMessages pipeline is still blocked repo-wide (BaseValidationMessages — see Program.cs), but this
         // specific message text is known, so it is set literally rather than deferred.
         certificate.RejectCancelReason = "התקבלה בקשה לביטול תעודה במסר";
-        await DataLayer.CancelCertificateFromMessage(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
+        await DataLayer.CancelCertificate(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
 
         var eventUtil = Resolve<IEventUtil>();
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate.Id, certificate.OrganizationUnitId, certificate.RejectCancelReason);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, certificate, certificate.RejectCancelReason);
     }
 
     // Legacy CreateCertificateOfOriginRequestFeedbackResponse: the feedback DTO + (create-branch) attachments. The
@@ -270,11 +280,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return response;
     }
 
-    // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site:
-    //
-    //   Attachment = (requestReasonCode == EmptyCertificate || requestReasonCode == CertificateCancellation
-    //                 || requestReasonCode == GetRequestStatus
-    //                 || (requestReasonCode != Draft && certificate.status != Published)) ? null : CreateAttachments(certificate);
+    // Legacy CertificateOfOriginsUtil.CreateAttachments, and the condition that guards it at the response site: no
+    // attachment when the request reason is EmptyCertificate, CertificateCancellation or GetRequestStatus, nor when the
+    // reason is not Draft and the certificate is not Published - otherwise the rendered attachments.
     //
     // requestReasonCode is the INCOMING message's reason, not the stored certificate's: a status query or a cancellation
     // returns an existing certificate whose own reason (e.g. NewCertificate) differs from the message's.
@@ -423,8 +431,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 InvoiceGoodsDescription = invoice.InvoiceGoodsDescription,
             };
 
-            // Legacy: SystemTablesUtil.GetCodeById<CurrencyType>(id).CurrencyCode — resolved via ICurrencyTypeProxy
-            // against the SystemTables microservice (no ILookupUtil type exists for CurrencyType).
+            // Legacy: SystemTablesUtil.GetCodeById<CurrencyType>(id).CurrencyCode — Lookups.CurrencyType.
             if (invoice.CurrencyTypeId.HasValue)
             {
                 invoiceDetail.CurrencyCode = currencyCodesById.GetValueOrDefault(invoice.CurrencyTypeId.Value);
@@ -455,21 +462,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     private async Task<Dictionary<int, string?>> GetCurrencyCodes(List<int> currencyTypeIds)
     {
-        var currencyTypeProxy = Resolve<ICurrencyTypeProxy>();
-        if (currencyTypeIds.Count == 0)
-        {
-            return [];
-        }
-
-        var currencies = await currencyTypeProxy.GetCurrencyTypesByIds(currencyTypeIds.Distinct().ToList());
-        if (currencies == null)
-        {
-            return [];
-        }
-
-        return currencies
-            .GroupBy(c => c.Id)
-            .ToDictionary(g => g.Key, g => g.First().CurrencyCode);
+        var currencies = await lookupUtil.Search<Lookups.CurrencyType>(currency => currencyTypeIds.Contains(currency.Id));
+        var result = currencies.ToDictionary(currency => currency.Id, currency => currency.CurrencyCode);
+        return result;
     }
 
     private async Task<List<FieldDataDto>> GetCertificateOfOriginDetails(CertificateOfOriginWebQueryDto certificate)
@@ -627,23 +622,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         };
     }
 
+    // Legacy SystemTablesUtil.GetCodeById<DataDictionaryField>(fieldId).EnglishName — Lookups.DataDictionaryField.
+    // TODO(internal): the three web-query row titles (fields 20306 / 20310 / 20661) come from the DataDictionary field
+    // catalogue — move to the platform Lookup.DataDictionaryField and confirm its source service; until then the local stub
+    // serves placeholder titles ("Field 20306"), not the real catalogue text.
     private async Task<Dictionary<int, string?>> GetFieldLabels(List<int> fieldIds)
     {
-        var dataDictionaryFieldProxy = Resolve<IDataDictionaryFieldProxy>();
-        if (fieldIds.Count == 0)
-        {
-            return [];
-        }
-
-        var fields = await dataDictionaryFieldProxy.GetDataDictionaryFieldsByIds(fieldIds.Distinct().ToList());
-        if (fields == null)
-        {
-            return [];
-        }
-
-        return fields
-            .GroupBy(f => f.Id)
-            .ToDictionary(g => g.Key, g => g.First().EnglishName);
+        var fields = await lookupUtil.Search<Lookups.DataDictionaryField>(field => fieldIds.Contains(field.Id));
+        var result = fields.ToDictionary(field => field.Id, field => field.EnglishName);
+        return result;
     }
 
     private async Task<string> GetQueryUrl(Guid? guid)
@@ -957,12 +944,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // New instance (not a cancellation): supersede the latest existing certificate with the same number.
         var replacementOldId = 0;
-        var previousCertificateId = 0;
-        var previousOrganizationUnitId = 0;
+        CertificateOfOrigin? previous = null;
         string? previousCancelReason = null;
         if (isNewInstance && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled)
         {
-            (replacementOldId, previousCertificateId, previousOrganizationUnitId, previousCancelReason) = await SupersedePreviousVersion(entity);
+            (replacementOldId, previous, previousCancelReason) = await SupersedePreviousVersion(entity);
         }
 
         byte[]? qrCodeToUpload = null;
@@ -1009,25 +995,29 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Supersede events — raised here (not in SupersedePreviousVersion) because ApplicationCorrected references the
         // new certificate's id, which is only assigned by the save above. Legacy raised both when a previous existed.
-        if (previousCertificateId != 0)
+        if (previous is not null)
         {
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity.Id, entity.OrganizationUnitId, null);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity, null);
 
             // Legacy scoped this event to the CANCELLED certificate's own VirtualEntity (its org unit) with its reject
             // reason as AdditionalInfo — not the new certificate's org unit / a null reason.
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previousCertificateId, previousOrganizationUnitId, previousCancelReason);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginUserCancelledCertificate, previous, previousCancelReason);
         }
 
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
         await LinkLeadDocument(entity, replacementOldId, userId);
 
-        // Status-change / remarks-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: a NEW instance has
-        // no tracked original status, so its side effects fire only when the status is Received; an existing instance
-        // compares against the original status.
-        var isStatusChanged = isNewInstance
-            ? entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received
-            : entity.CertificateOfOriginStatusId != request.OriginalCertificateOfOriginStatusId;
-        var isRemarksChanged = !string.Equals(entity.FeedbackRemark, request.OriginalFeedbackRemark, StringComparison.Ordinal);
+        // Status-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: the self-tracking entity records an
+        // original status only when the status was changed, and a recorded original compares against the current one.
+        // Without one (a new instance, or an unchanged status) the save counts as a status change only when the status is
+        // Received - so an unchanged Received certificate re-fires its events, as in production. Legacy also had an isRemarksChanged branch, but it could never be true in production: the
+        // self-tracking CertificateOfOrigin records no original value for FeedbackRemark (its setter does not call
+        // RecordOriginalValue), so the original was always null. A remark change therefore sends no feedback here either
+        // (analyst decision 2026-09-29).
+        var isStatusChanged = (!isNewInstance
+                && request.OriginalCertificateOfOriginStatusId is int originalStatusId
+                && originalStatusId != entity.CertificateOfOriginStatusId)
+            || entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received;
 
         if (isStatusChanged)
         {
@@ -1044,14 +1034,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         //       (CertificateOfOriginsBL.cs:381,424); those columns do NOT exist on the .NET10 CertificateOfOrigin
         //       table/entity, so a retried Published save re-issues the template + (once #1 is restored) re-sends feedback.
         //       Needs the two columns (DB + entity + seed) to guard.
-        if ((isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published) || isRemarksChanged)
+        if (isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
             await SendRequestFeedback(entity);
         }
 
         if (isStatusChanged && entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published)
         {
-            await PublishAttachments(entity, eventUtil, userId);
+            await PublishAttachments(entity, eventUtil, userId, request.IsDeclarationReleased);
             if (entity.RequestReasonCode == (int)ERequestReason.CertificateReplacement)
             {
                 await HandleCertificateReplacement(entity, eventUtil);
@@ -1143,17 +1133,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy: on a new instance, cancel the latest existing certificate with the same number, bump the version, and
     // raise the application-corrected + user-cancelled events. Returns the superseded certificate id (0 if none).
     // Returns (replacementOldId — the previous version to relink the lead document from, 0 when it was already
-    // cancelled; previousCertificateId — the previous version's id, 0 when there was none). The supersede events are
+    // cancelled; previous — the previous version itself, null when there was none). The supersede events are
     // NOT raised here: ApplicationCorrected references the new certificate's id, which is only assigned by the save
     // that runs after this method — so the caller raises them post-save.
-    private async Task<(int ReplacementOldId, int PreviousCertificateId, int PreviousOrganizationUnitId, string? PreviousCancelReason)> SupersedePreviousVersion(CertificateOfOrigin entity)
+    private async Task<(int ReplacementOldId, CertificateOfOrigin? Previous, string? PreviousCancelReason)> SupersedePreviousVersion(CertificateOfOrigin entity)
     {
         var previous = await DataLayer.GetLatestCertificateByNumber(entity.CertificateNumber);
         if (previous is null)
         {
             entity.VersionNumber = 1;
             entity.IsLastVersion = true;
-            return (0, 0, 0, null);
+            return (0, null, null);
         }
 
         // Legacy cancels the previous version + clears its IsLastVersion UNCONDITIONALLY; only the replacement-id link
@@ -1169,7 +1159,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         entity.IsLastVersion = true;
 
         var replacementOldId = previous.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled ? previous.Id : 0;
-        return (replacementOldId, previous.Id, previous.OrganizationUnitId, previousCancelReason);
+        return (replacementOldId, previous, previousCancelReason);
     }
 
     // Legacy CreateQRCodeIfNeededAndUpload (generation half) — on publish (and only when no QR path yet), generate the
@@ -1263,16 +1253,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CheckSpecificField (reduced core): the proxy-backed field validations (exporter existence via Customers,
     // trade-agreement membership via CustomsBook, customs-house via OrgUnit) + the SystemTables id→name display
     // enrichment for country + city detail types (via ILookupUtil). Text fields pass through.
-    // TODO(migration): country-group + international-site id→name have no ILookupUtil type — they need a SystemTables
-    // proxy (rollout); the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
+    // TODO(migration): country-group id→name has no ILookupUtil type yet; the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
     // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): a brand-new certificate's DestinationCountry /
     // PortOfShipment details arrive from the SPA as an alpha-2 country code / locode; resolve them to the internal id
     // (Country by alpha-2, InternationalSite by locode). Unresolved values are left as-is (an existing instance never
     // reaches here, so no id is overwritten with a code).
     private async Task ResolveNewInstanceDetailCodes(List<CertificateOfOriginDetails> details)
     {
-        var countryProxy = Resolve<ICountryProxy>();
-        var internationalSiteProxy = Resolve<IInternationalSiteProxy>();
         foreach (var detail in details)
         {
             if (string.IsNullOrEmpty(detail.Value))
@@ -1282,18 +1269,18 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
             if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.DestinationCountry)
             {
-                var countries = await countryProxy.GetCountriesByAlphaCodes([detail.Value]);
-                if (countries?.FirstOrDefault()?.Id is int countryId)
+                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value)).FirstOrDefault();
+                if (country is not null)
                 {
-                    detail.Value = countryId.ToString(CultureInfo.InvariantCulture);
+                    detail.Value = country.Id.ToString(CultureInfo.InvariantCulture);
                 }
             }
             else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)
             {
-                var sites = await internationalSiteProxy.GetInternationalSitesByLocodes([detail.Value]);
-                if (sites?.FirstOrDefault()?.Id is int siteId)
+                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value)).FirstOrDefault();
+                if (site is not null)
                 {
-                    detail.Value = siteId.ToString(CultureInfo.InvariantCulture);
+                    detail.Value = site.Id.ToString(CultureInfo.InvariantCulture);
                 }
             }
         }
@@ -1302,14 +1289,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task EnrichAndValidateDetails(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details)
     {
         var customerProxy = Resolve<ICustomerProxy>();
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
 
-        // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): resolve a brand-new certificate's
-        // DestinationCountry / PortOfShipment codes to internal ids before the id-based enrichment below (an existing
-        // instance already carries ids). entity.Id == 0 is captured before the upsert assigns the real id.
+        // Legacy SaveCertificateOfOrigin (CertificateOfOriginsBL.cs:977-1000): a NEW certificate only converts its
+        // DestinationCountry / PortOfShipment codes to ids; the CheckSpecificField enrichment + validation below runs for
+        // an EXISTING one. The message path already validated and resolved its new certificate's fields
+        // (ValidateMessageField), so running the loop again would re-resolve an already-internal exporter id as an
+        // external one. entity.Id == 0 is captured before the upsert assigns the real id.
         if (entity.Id == 0)
         {
             await ResolveNewInstanceDetailCodes(details);
+            return;
         }
 
         foreach (var detail in details)
@@ -1358,7 +1347,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             {
                 if (TradeAgreementCountryDetailTypes.Contains(typeId))
                 {
-                    await customsBookProxy.IsTradeAgreementForCountry(entity.TypeId, countryId, false);
+                    await IsTradeAgreementForCountry(entity.TypeId, countryId, false);
                 }
 
                 var country = await lookupUtil.Get<Lookup.Country>(countryId);
@@ -1379,25 +1368,38 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Legacy: repoint the DealFile lead document to this certificate; backfill LeadDocumentId/ExportDeclarationNumber
-    // when the certificate has none.
+    // when the certificate has none; then CheckDeclarationStatus.
     private async Task LinkLeadDocument(CertificateOfOrigin entity, int replacementOldId, int userId)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var oldId = replacementOldId != 0 ? replacementOldId : entity.Id;
         var leadDocument = await exportDealFileProxy.GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(oldId, entity.Id);
-        if (leadDocument is null)
-        {
-            return;
-        }
-
-        if (string.IsNullOrEmpty(entity.ExportDeclarationNumber))
+        if (leadDocument is not null && string.IsNullOrEmpty(entity.ExportDeclarationNumber))
         {
             entity.LeadDocumentId = leadDocument.LeadDocumentId;
             entity.ExportDeclarationNumber = leadDocument.LeadDocumentTitle;
 
             // The backfill is stamped after the main upsert (this method needs the new certificate id), so it needs its
-            // own explicit write to persist. TODO(migration): the title-mismatch validation + CheckDeclarationStatus are deferred.
+            // own explicit write to persist. TODO(migration): the title-mismatch validation is deferred.
             await DataLayer.UpdateCertificateDeclarationLink(entity.Id, entity.LeadDocumentId, entity.ExportDeclarationNumber, userId);
+        }
+
+        // Legacy CheckDeclarationStatus(certificate, false) (CertificateOfOriginsBL.cs:648-667): when the certificate
+        // carries a declaration and either replaces a certificate (replacementOldId - legacy CertificateOfOriginIdOfReplacement)
+        // or has an earlier version (the second-newest with the same Title, any status), repoint the declaration's lead
+        // document from that certificate to this one.
+        var declarationDetails = entity.LeadDocumentId.HasValue || entity.ExportDeclarationNumber is not null
+            ? await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(entity.LeadDocumentId, entity.ExportDeclarationNumber)
+            : null;
+        if (declarationDetails is null)
+        {
+            return;
+        }
+
+        var previousCertificateId = replacementOldId != 0 ? replacementOldId : await DataLayer.GetPreviousCertificateIdByTitle(entity.Title);
+        if (previousCertificateId.HasValue)
+        {
+            await exportDealFileProxy.ChangeCertificateOfOriginIdForLeadDocument(declarationDetails.LeadDocumentId, previousCertificateId.Value, entity.Id);
         }
     }
 
@@ -1432,7 +1434,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 : null;
 
             // Legacy set the Export organization-unit type on the match and mismatch events' VirtualEntity.
-            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity.Id, entity.OrganizationUnitId, additionalInfo,
+            await RaiseCertificateEvent(eventUtil, specificEvent.Value, entity, additionalInfo,
                 entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.DeclarationMatch or (int)ECertificateOfOriginStatus.DeclarationMismatch
                     ? CertificateOfOriginsConsts.ExportOrganizationUnitType
                     : null);
@@ -1470,7 +1472,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy CreateAttacmentsAndSendFeedBackMessage — on publish: stamp IssuingDate, raise the certificate-issued
     // event, then either hand the certificate to the issue-by-worker queue (when IssueCertificateOfOriginByWorker is
     // on) or generate the certificate template inline and save it as an attachment (PrintCertificateOfOriginAndSaveAttachments).
-    private async Task PublishAttachments(CertificateOfOrigin entity, IEventUtil eventUtil, int userId)
+    private async Task PublishAttachments(CertificateOfOrigin entity, IEventUtil eventUtil, int userId, bool? isDeclarationReleased)
     {
         entity.IssuingDate = DateTime.Now;
         var issueByWorker = await parametersUtil.Get<bool>("IssueCertificateOfOriginByWorker");
@@ -1483,12 +1485,18 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // certificate here) — the main upsert already ran before publish, so these post-publish stamps need their own write.
         await DataLayer.UpdateCertificatePublishingState(entity.Id, entity.IssuingDate.Value, entity.IsInPublishingProcess, userId);
 
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateIssued, entity.Id, entity.OrganizationUnitId, null);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateIssued, entity, null);
 
         // Issue-by-worker: publish the certificate to the RabbitMQ issue queue instead of generating the template inline.
+        // Legacy issued through the worker only when the certificate type has an SSRS ReportId (every type does).
         if (issueByWorker && entity.IsInPublishingProcess)
         {
-            await SendCertificateToIssueQueue(entity);
+            var reportId = (await DataLayer.GetCertificateTypeCode(entity.TypeId))?.ReportId;
+            if (reportId.HasValue)
+            {
+                await SendCertificateToIssueQueue(entity, reportId.Value, isDeclarationReleased);
+            }
+
             return;
         }
 
@@ -1505,8 +1513,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // nothing was rendered.
     private async Task<TemplateResultDto?> PrintCertificateOfOriginAndSaveAttachments(CertificateOfOrigin certificate, string additionalInfo)
     {
+        // Legacy rendered the certificate with its type's SSRS report (CertificateOfOriginTypeCode.ReportId, 7000-7007),
+        // never with the TypeId. A type without a ReportId fell to a per-type template switch that no type reaches (every
+        // type has one), so it is not rendered here.
+        var reportId = (await DataLayer.GetCertificateTypeCode(certificate.TypeId))?.ReportId;
+        if (reportId is null)
+        {
+            return null;
+        }
+
         var commonServicesProxy = Resolve<ICommonServicesProxy>();
-        var template = await commonServicesProxy.GenerateTemplate(certificate.TypeId, certificate.Id, additionalInfo);
+        var template = await commonServicesProxy.GenerateTemplate(reportId.Value, certificate.Id, additionalInfo);
         if (template is null)
         {
             return null;
@@ -1527,10 +1544,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy SendCertificateToIssueQueue — publish the certificate to the "IssueCertificateOfOrigin" RabbitMQ exchange
     // for asynchronous issuing by a worker (IQueueUtil, mirroring QueueUtilFactory 1:1).
-    private async Task SendCertificateToIssueQueue(CertificateOfOrigin entity)
+    private async Task SendCertificateToIssueQueue(CertificateOfOrigin entity, int reportId, bool? isDeclarationReleased)
     {
         var payload = new IssueCertificateDto
         {
+            ReportId = reportId,
             CertificateOfOriginId = entity.Id,
             CertificateNumber = entity.CertificateNumber,
             CertificateOfOriginStatusId = entity.CertificateOfOriginStatusId,
@@ -1543,6 +1561,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             InternalApplication = entity.InternalApplication,
             FeedbackRemark = entity.FeedbackRemark,
             IssuingDate = entity.IssuingDate,
+            IsDeclarationReleased = isDeclarationReleased,
             Guid = entity.Guid,
             OrganizationUnitId = entity.OrganizationUnitId,
         };
@@ -1557,11 +1576,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy HandleCertificateReplacement — cancel the replaced certificate + raise the replaced event scoped to the
     // cancelled certificate's own identity / organization unit.
-    // TODO(migration): three resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
+    // TODO(migration): two resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
     // talk-back: the new certificate's FeedbackRemark (legacy EMessages.UpdateExportDeclaration, params
-    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}); the cancelled certificate's RejectCancelReason
-    // (legacy EMessages.CertificateReplaced, param {entity.CertificateNumber} — currently left as the supersede reason
-    // from CancelPreviousCertificate); and SendMessageToAgent (legacy EMessages.UpdateExportDecForReplacement).
+    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}) and SendMessageToAgent (legacy
+    // EMessages.UpdateExportDecForReplacement).
     private async Task HandleCertificateReplacement(CertificateOfOrigin entity, IEventUtil eventUtil)
     {
         if (entity.CertificateIdToCancel is null)
@@ -1576,28 +1594,58 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return;
         }
 
-        await DataLayer.CancelPreviousCertificate(certificateToCancel.Id, string.Empty, RequestMetadata.UserId ?? 0);
+        // Legacy: Cancelled + the CertificateReplaced reason (replacing the old one). The replaced certificate keeps
+        // IsLastVersion - a replacement has a different number, so it is still the last version of its own.
+        // TODO(confirm): the UIMessage text of EMessages.CertificateReplaced (not in the local UIMessage copy).
+        await DataLayer.CancelCertificate(certificateToCancel.Id, $"התעודה הוחלפה בתעודה {entity.CertificateNumber}", RequestMetadata.UserId ?? 0);
 
         // Scope the replaced event to the CANCELLED certificate's own organization unit (legacy VirtualEntity(certificateToCancel)),
         // not the replacement certificate's — the two can differ on a cross-organization import-certificate replacement.
-        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, certificateToCancel.Id, certificateToCancel.OrganizationUnitId, entity.CertificateNumber);
+        await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateReplaced, certificateToCancel, entity.CertificateNumber);
     }
 
     // A certificate-scoped event (VirtualEntity(certificate)) with an optional AdditionalInfo.
-    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, int certificateId, int organizationUnitId, string? additionalInfo, int? organizationUnitTypeId = null)
+    // The header every certificate event shares. Legacy built them from new VirtualEntity(certificate), whose constructor
+    // copied the certificate's Title (its number) and CustomerID onto the event, so the task title shows the certificate
+    // number and the event is linked to the customer.
+    private static IEventRequestBuilder CreateCertificateEventBuilder(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate)
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificateId)
-            .WithTitle(certificateId.ToString());
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
+            .WithTitle(certificate.Title)
+            .WithCustomerId(certificate.CustomerId.ToString(CultureInfo.InvariantCulture));
 
         // Legacy EventUtil.RaiseEvent tolerated a 0/absent org unit — a NonManipulation certificate with no customs
         // house is saved with OrganizationUnitID 0 (legacy _organizationUnit default). The .NET 10 builder rejects 0,
         // so apply it only when present, preserving the legacy behaviour (the event is still raised).
-        if (organizationUnitId > 0)
+        if (certificate.OrganizationUnitId > 0)
         {
-            builder = builder.WithOrganizationUnitId(organizationUnitId);
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
         }
+
+        return builder;
+    }
+
+    // Legacy built this one event's VirtualEntity by hand (an initializer, not the copying constructor): the id, the org
+    // unit and a fixed title - no customer.
+    private static async Task RaiseImportReplacementTaskEvent(IEventUtil eventUtil, CertificateOfOrigin certificate)
+    {
+        var builder = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate)
+            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
+            .WithTitle(nameof(EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate));
+        if (certificate.OrganizationUnitId > 0)
+        {
+            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
+        }
+
+        await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate, string? additionalInfo, int? organizationUnitTypeId = null)
+    {
+        var builder = CreateCertificateEventBuilder(eventUtil, eventTypeId, certificate);
 
         // Legacy set the organization-unit TYPE (Export) on the declaration match/mismatch events' VirtualEntity — passed
         // only by those callers (the save's status events and the reconciliation mismatch); other events leave it unset.
@@ -1651,7 +1699,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request)
     {
         var exceptions = new List<CertificateOfOriginExceptionDto>();
-        if (request.CertificateOfOriginsIds.Count == 0)
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
         {
             return exceptions;
         }
@@ -1729,17 +1777,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // reconcile exactly those freshly-linked certificates against the amended declaration.
     private async Task<List<CertificateOfOriginExceptionDto>> ExportDeclarationAmendmentSuccess(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return [];
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
         var backfilledIds = new List<int>();
 
-        foreach (var certificate in certificates)
+        foreach (var certificateId in certificates.Where(certificate => string.IsNullOrEmpty(certificate.ExportDeclarationNumber)).Select(certificate => certificate.Id))
         {
-            if (string.IsNullOrEmpty(certificate.ExportDeclarationNumber))
-            {
-                await DataLayer.UpdateCertificateDeclarationLink(certificate.Id, request.LeadDocumentId, request.ExportDeclarationNum, userId);
-                backfilledIds.Add(certificate.Id);
-            }
+            await DataLayer.UpdateCertificateDeclarationLink(certificateId, request.LeadDocumentId, request.ExportDeclarationNum, userId);
+            backfilledIds.Add(certificateId);
         }
 
         if (backfilledIds.Count == 0)
@@ -1756,11 +1806,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // PendingRelease certificate becomes Published — persist the status with the link, generate + upload its QR, and
     // publish its attachments; a certificate-replacement request cancels the replaced certificate. Finally reconcile the
     // freshly-linked certificates against the declaration.
-    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments;
-    // it is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
+    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments.
+    // It is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
     // confirm this is the intended behaviour for the release path too.
     private async Task<List<CertificateOfOriginExceptionDto>> DeclarationReleased(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return [];
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var eventUtil = Resolve<IEventUtil>();
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
@@ -1795,14 +1850,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 var qrCodeToUpload = await CreateQrCodeIfNeeded(certificate);
                 if (qrCodeToUpload is not null)
                 {
-                    // CreateQrCodeIfNeeded stamped Guid + QrImage on the entity expecting a main upsert to persist them;
-                    // the release path has no upsert, so persist them explicitly before uploading the QR document (the
+                    // CreateQrCodeIfNeeded stamped Guid + QrImage on the entity expecting a main upsert to persist them.
+                    // The release path has no upsert, so persist them explicitly before uploading the QR document (the
                     // Guid is embedded in the QR query URL).
                     await DataLayer.UpdateCertificateQrCode(certificate.Id, certificate.Guid, certificate.QrImage, userId);
                     await UploadQrCodeDocument(certificate, qrCodeToUpload, userId);
                 }
 
-                await PublishAttachments(certificate, eventUtil, userId);
+                await PublishAttachments(certificate, eventUtil, userId, null);
             }
             else if (linkChanged)
             {
@@ -1843,14 +1898,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // deferral as HandleCertificateReplacement, pending the agent-message proxy.
     private async Task ExportDeclarationCancellationRequestCommited(UpdateCertificateOfOriginsRequestDto request)
     {
+        if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
+        {
+            return;
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
         var eventUtil = Resolve<IEventUtil>();
         var certificates = await DataLayer.GetCertificatesByIds(request.CertificateOfOriginsIds);
 
         foreach (var certificate in certificates)
         {
-            await DataLayer.CancelCertificateFromMessage(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate.Id, certificate.OrganizationUnitId, null);
+            await DataLayer.CancelCertificate(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate, null);
         }
     }
 
@@ -1863,7 +1923,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         UpdateCertificateOfOriginsRequestDto request,
         IEventUtil eventUtil)
     {
-        var hasErrors = reconciliation.Exceptions.Exists(exception => !exception.ExceptionLevel.HasValue || exception.ExceptionLevel == (int)EExceptionLevel.Error);
+        var hasErrors = reconciliation.HasNoExportInvoices
+            || reconciliation.Exceptions.Exists(exception => !exception.ExceptionLevel.HasValue || exception.ExceptionLevel == (int)EExceptionLevel.Error);
         var hasWarnings = reconciliation.Exceptions.Exists(exception => exception.ExceptionLevel == (int)EExceptionLevel.Warning);
 
         if (!hasErrors && !hasWarnings)
@@ -1877,7 +1938,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (hasErrors)
         {
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate.Id, certificate.OrganizationUnitId, additionalInfo, CertificateOfOriginsConsts.ExportOrganizationUnitType);
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationMismatch, certificate, additionalInfo, CertificateOfOriginsConsts.ExportOrganizationUnitType);
             return ((int)ECertificateOfOriginStatus.Rejected, CertificateOfOriginsConsts.ReconciliationMismatchReason);
         }
 
@@ -1886,7 +1947,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             // Legacy: an import-certificate replacement whose associated goods are not in the trade agreement opens a
             // task to handle the replacement.
-            await RaiseCertificateEvent(eventUtil, (int)EEventType.OpenTaskHandlingTheReplacementOfAnImportCertificate, certificate.Id, certificate.OrganizationUnitId, null);
+            await RaiseImportReplacementTaskEvent(eventUtil, certificate);
         }
 
         await RaiseDeclarationHasWarningsEvent(certificate, request, eventUtil, additionalInfo);
@@ -1934,16 +1995,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task RaiseCertificatePreferredAssessorEvent(CertificateOfOrigin certificate, IEventUtil eventUtil, int eventTypeId)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
-        var builder = eventUtil.CreatBuilder()
-            .WithEventType(eventTypeId)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
-            .WithTitle(certificate.Id.ToString());
-
-        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
-        if (certificate.OrganizationUnitId > 0)
-        {
-            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
-        }
+        var builder = CreateCertificateEventBuilder(eventUtil, eventTypeId, certificate);
 
         // Legacy RaiseTaskNewCertificateOfOriginCheck set the organization-unit TYPE (Export) on the event.
         builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
@@ -1986,16 +2038,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task RaiseDeclarationHasWarningsEvent(CertificateOfOrigin certificate, UpdateCertificateOfOriginsRequestDto request, IEventUtil eventUtil, string additionalInfo)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, request.OrganizationUnitId);
-        var builder = eventUtil.CreatBuilder()
-            .WithEventType((int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings)
-            .WithEntity((int)EEntityType.CertificateOfOrigin, certificate.Id)
-            .WithTitle(certificate.Id.ToString());
-
-        // See RaiseCertificateEvent: the legacy tolerated a 0 org unit (NonManipulation without a customs house).
-        if (certificate.OrganizationUnitId > 0)
-        {
-            builder = builder.WithOrganizationUnitId(certificate.OrganizationUnitId);
-        }
+        var builder = CreateCertificateEventBuilder(eventUtil, (int)EEventType.CertificateOfOriginCertificateDeclarationHasWarnings, certificate);
 
         // Legacy set the organization-unit TYPE (Export) on the warnings event's VirtualEntity.
         builder = builder.WithOrganizationUnitTypeId((CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes)CertificateOfOriginsConsts.ExportOrganizationUnitType);
@@ -2043,18 +2086,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         CertificateOfOrigin certificate,
         List<CertificateOfOriginDetails> details)
     {
-        var builder = new List<ReconciliationFinding>();
-
-        // No invoices in the declaration → the certificate cannot be reconciled (legacy: hasErrors = true).
-        if (request.ExportInvoiceInfoList.Count == 0)
+        // No invoices in the declaration → Rejected. Legacy set hasErrors = true with NO exception: no error row, no
+        // AdditionalInfo on the mismatch event, nothing returned to the caller.
+        if (request.ExportInvoiceInfoList == null || request.ExportInvoiceInfoList.Count == 0)
         {
-            builder.Add(new ReconciliationFinding(
-                EReconciliationMessage.NoExportInvoices,
-                (int)EExceptionLevel.Error,
-                "אין חשבוניות בהצהרת היצוא",
-                "No export invoices in the declaration."));
-            return BuildReconciliationResult(builder, false);
+            return new ReconciliationResult([], false, true);
         }
+
+        var builder = new List<ReconciliationFinding>();
 
         // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
         // decision, 2026-09-28): legacy ValidateExportDeclarationInfoForPCIsMatch collected the detail and
@@ -2073,7 +2112,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // Invoice / goods-item / customs-item matching (the declaration already carries invoices — checked above).
         var originCountry = GetDetailValue(details, ECertificateDetailsType.OriginCountry);
         var originGroup = GetDetailValue(details, ECertificateDetailsType.OriginGroupOfCountries);
-        await ValidateInvoiceMatching(request, certificate, invoices, originCountry, originGroup, builder);
+        await ValidateInvoiceMatching(request.ExportInvoiceInfoList, certificate, invoices, originCountry, originGroup, builder);
 
         return BuildReconciliationResult(builder, isLinkedToImportDeclaration);
     }
@@ -2086,7 +2125,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         List<CertificateOfOriginDetails> details,
         List<ReconciliationFinding> builder)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
         var destinationCountry = GetDetailValue(details, ECertificateDetailsType.DestinationCountry);
         var destinationGroup = GetDetailValue(details, ECertificateDetailsType.DestinationGroupOfCountries);
         var exporterId = GetDetailValue(details, ECertificateDetailsType.ExporterId);
@@ -2109,7 +2147,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (!string.IsNullOrWhiteSpace(destinationGroup) && int.TryParse(destinationGroup, out var destinationGroupId))
         {
             var destinationInGroup = request.DestinationCountryId.HasValue
-                && await countryGroupProxy.IsCountryInCountryGroup(request.DestinationCountryId.Value, destinationGroupId);
+                && await IsCountryInCountryGroup(request.DestinationCountryId.Value, destinationGroupId);
             if (!destinationInGroup)
             {
                 builder.Add(new ReconciliationFinding(
@@ -2153,7 +2191,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         List<ReconciliationFinding> builder)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         if (certificate.RequestReasonCode != (int)ERequestReason.ImportCertificateReplacement)
         {
             return false;
@@ -2163,7 +2200,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var isInTradeAgreement = false;
         foreach (var goodsItem in associatedGoodsItems ?? [])
         {
-            if (await customsBookProxy.IsTradeAgreementForCountry(certificate.TypeId, goodsItem.AssociatedOriginCountryId, false))
+            if (await IsTradeAgreementForCountry(certificate.TypeId, goodsItem.AssociatedOriginCountryId, false))
             {
                 isInTradeAgreement = true;
                 break;
@@ -2188,7 +2225,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // goods items' origin country / country-group / certificate link / 6-digit customs classification must match, in
     // both directions.
     private async Task ValidateInvoiceMatching(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         string? originCountry,
@@ -2200,8 +2237,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Resolve the 6-digit tariff classification of every customs item on both sides in one batch.
         var certificateCustomsItemIds = invoices.SelectMany(invoice => invoice.CustomsItemIds);
-        var declarationCustomsItemIds = request.ExportInvoiceInfoList
-            .SelectMany(invoice => invoice.ExportGoodsItemInfoList)
+        var declarationCustomsItemIds = declarationInvoices
+            .SelectMany(invoice => invoice.ExportGoodsItemInfoList ?? [])
             .Select(goodsItem => goodsItem.CustomsItemId);
         var filters = certificateCustomsItemIds
             .Concat(declarationCustomsItemIds)
@@ -2214,13 +2251,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             .ToDictionary(group => group.Key, group => SixDigits(group.First().FullClassification));
 
         // Forward: every certificate invoice + goods item against the declaration.
-        var allInvoicesMatched = await ValidateCertificateInvoices(request, certificate, invoices, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
+        var allInvoicesMatched = await ValidateCertificateInvoices(declarationInvoices, certificate, invoices, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
 
         // Reverse: every declaration goods item linked to this certificate must have its 6-digit classification present
         // in the certificate's matching invoice (Error) — only when the type requires it and all invoices matched.
         if (allInvoicesMatched && isCustomsItemMandatory)
         {
-            ValidateDeclarationGoodsItems(request, certificate, invoices, sixDigitByCustomsItemId, builder);
+            ValidateDeclarationGoodsItems(declarationInvoices, certificate, invoices, sixDigitByCustomsItemId, builder);
         }
     }
 
@@ -2228,7 +2265,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // then each of its goods items is validated. Returns false if an invoice did not match (legacy returned from the
     // whole validator on the first unmatched invoice).
     private async Task<bool> ValidateCertificateInvoices(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         string? originCountry,
@@ -2239,7 +2276,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         foreach (var invoice in invoices)
         {
-            var declarationInvoice = request.ExportInvoiceInfoList.FirstOrDefault(declaration => declaration.ExternalIdNum == invoice.InvoiceNumber);
+            var declarationInvoice = declarationInvoices.FirstOrDefault(declaration => declaration.ExternalIdNum == invoice.InvoiceNumber);
             if (declarationInvoice == null)
             {
                 builder.Add(new ReconciliationFinding(
@@ -2253,19 +2290,20 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             // Legacy runs the per-goods-item checks only when BOTH sides are non-empty; the certificate side is implicit
             // (the loop below is empty when it has no customs items). Skip when the matched declaration invoice carries
             // no goods items — otherwise the absence-based checks (!Any) would false-positive on the empty list.
-            if (declarationInvoice.ExportGoodsItemInfoList.Count == 0)
+            var declarationGoodsItems = declarationInvoice.ExportGoodsItemInfoList;
+            if (declarationGoodsItems == null || declarationGoodsItems.Count == 0)
             {
                 continue;
             }
 
-            var declarationCustomsItemIdsForInvoice = declarationInvoice.ExportGoodsItemInfoList
+            var declarationCustomsItemIdsForInvoice = declarationGoodsItems
                 .Where(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id)
                 .Select(goodsItem => goodsItem.CustomsItemId)
                 .ToList();
 
             foreach (var certificateCustomsItemId in invoice.CustomsItemIds)
             {
-                await ValidateCertificateGoodsItem(certificate, declarationInvoice, invoice.InvoiceNumber, certificateCustomsItemId, declarationCustomsItemIdsForInvoice, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
+                await ValidateCertificateGoodsItem(certificate, declarationGoodsItems, invoice.InvoiceNumber, certificateCustomsItemId, declarationCustomsItemIdsForInvoice, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
             }
         }
 
@@ -2276,7 +2314,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // link, and the forward customs-item 6-digit match.
     private async Task ValidateCertificateGoodsItem(
         CertificateOfOrigin certificate,
-        ExportInvoiceInfoDto declarationInvoice,
+        List<ExportGoodsItemInfoDto> declarationGoodsItems,
         string? invoiceNumber,
         int certificateCustomsItemId,
         List<int> declarationCustomsItemIdsForInvoice,
@@ -2286,11 +2324,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         bool isCustomsItemMandatory,
         List<ReconciliationFinding> builder)
     {
-        var countryGroupProxy = Resolve<ICountryGroupProxy>();
-
         // Origin country present among the declaration's goods items (Error).
         if (int.TryParse(originCountry, out var originCountryId)
-            && !declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
+            && !declarationGoodsItems.Any(goodsItem => goodsItem.OriginCountryId == originCountryId))
         {
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.OriginCountryMismatch,
@@ -2303,9 +2339,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (!string.IsNullOrWhiteSpace(originGroup) && int.TryParse(originGroup, out var originGroupId))
         {
             var anyOriginInGroup = false;
-            foreach (var goodsItem in declarationInvoice.ExportGoodsItemInfoList)
+            foreach (var goodsItem in declarationGoodsItems)
             {
-                if (await countryGroupProxy.IsCountryInCountryGroup(goodsItem.OriginCountryId, originGroupId))
+                if (await IsCountryInCountryGroup(goodsItem.OriginCountryId, originGroupId))
                 {
                     anyOriginInGroup = true;
                     break;
@@ -2323,7 +2359,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
 
         // The certificate must be linked to at least one declaration goods item (Error).
-        if (!declarationInvoice.ExportGoodsItemInfoList.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
+        if (!declarationGoodsItems.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
         {
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.CertificateNumberNotInDealFile,
@@ -2351,15 +2387,28 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Reverse direction: every declaration goods item linked to this certificate must have its 6-digit classification
     // present in the certificate's matching invoice (Error).
+    // Legacy SystemTablesUtil.GetTablesSync<CountryCountryGroup>(IgnoreState = true, CountryID == x && CountryGroupID == y):
+    // the country belongs to the country group (no state filter, no date window — as legacy).
+    private async Task<bool> IsCountryInCountryGroup(int countryId, int countryGroupId)
+    {
+        var result = (await lookupUtil.Search<Lookups.CountryCountryGroup>(link => link.CountryId == countryId && link.CountryGroupId == countryGroupId)).Any();
+        return result;
+    }
+
     private static void ValidateDeclarationGoodsItems(
-        UpdateCertificateOfOriginsRequestDto request,
+        List<ExportInvoiceInfoDto> declarationInvoices,
         CertificateOfOrigin certificate,
         List<CertificateReconcileInvoiceDto> invoices,
         Dictionary<int, string?> sixDigitByCustomsItemId,
         List<ReconciliationFinding> builder)
     {
-        foreach (var declarationInvoice in request.ExportInvoiceInfoList)
+        foreach (var declarationInvoice in declarationInvoices)
         {
+            if (declarationInvoice.ExportGoodsItemInfoList == null)
+            {
+                continue;
+            }
+
             var certificateCustomsItemIdsForInvoice = invoices
                 .FirstOrDefault(invoice => invoice.InvoiceNumber == declarationInvoice.ExternalIdNum)?.CustomsItemIds ?? [];
             foreach (var goodsItem in declarationInvoice.ExportGoodsItemInfoList.Where(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
@@ -2407,7 +2456,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 ExceptionType = 0, // TODO(migration): the real EMessages code (legacy GetUIMessageWithEnglishAndLevel).
             })
             .ToList();
-        return new ReconciliationResult(exceptions, isLinkedToImportDeclaration);
+        return new ReconciliationResult(exceptions, isLinkedToImportDeclaration, false);
     }
 
     // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member
@@ -2417,7 +2466,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // EMessages code and source the text from ValidationMessages.
     private enum EReconciliationMessage
     {
-        NoExportInvoices,                           // migration-added (legacy set hasErrors without an EMessages)
         DestinationCountryMismatch,                 // EMessages.DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration
         DestinationGroupDiscrepancy,                // EMessages.DiscrepancyBetweenTheCountriesInTheAgreementVersusTheCountryOfTheBuyer
         ExportDeclarationNotInSystem,               // EMessages.ExportDeclarationNotInSystemForWarningMessage
@@ -2441,10 +2489,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         public string EnglishDescription { get; } = englishDescription;
     }
 
-    private sealed class ReconciliationResult(List<CertificateOfOriginExceptionDto> exceptions, bool isLinkedToImportDeclaration)
+    private sealed class ReconciliationResult(List<CertificateOfOriginExceptionDto> exceptions, bool isLinkedToImportDeclaration, bool hasNoExportInvoices)
     {
         public List<CertificateOfOriginExceptionDto> Exceptions { get; } = exceptions;
 
         public bool IsLinkedToImportDeclaration { get; } = isLinkedToImportDeclaration;
+
+        // The declaration carried no invoices: an error outcome (Rejected) that legacy raised with no exception.
+        public bool HasNoExportInvoices { get; } = hasNoExportInvoices;
     }
 }

@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 
 namespace CertificateOfOrigins.DAL;
@@ -57,6 +58,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
 
+    Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType();
+
     Task<bool> IsSupplierDeliveryCountry(int countryId);
 
     Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId);
@@ -87,9 +90,11 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
 
+    Task<int?> GetPreviousCertificateIdByTitle(string title);
+
     Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber);
 
-    Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId);
+    Task CancelCertificate(int id, string rejectCancelReason, int userId);
 
     Task<int> GetNextCertificateOfOriginNumber();
 

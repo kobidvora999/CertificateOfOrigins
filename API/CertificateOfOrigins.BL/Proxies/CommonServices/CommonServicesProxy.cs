@@ -25,7 +25,9 @@ public class CommonServicesProxy(IHttpProxy httpProxy)
         // — confirm the route and run template-migrate for the real templates (until then the mock is used).
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/CommonServices/GenerateTemplate/{templateId}/{certificateOfOriginId}")
+            .WithResource("api/CommonServices/GenerateTemplate/{templateId}/{certificateOfOriginId}")
+            .AddUrlSegmentParameter("templateId", templateId)
+            .AddUrlSegmentParameter("certificateOfOriginId", certificateOfOriginId)
             .AddQueryStringParameter("additionalInfo", additionalInfo ?? string.Empty);
         var response = await ExecuteAsync(req);
         return await response.GetResult<TemplateResultDto>();

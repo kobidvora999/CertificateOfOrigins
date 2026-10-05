@@ -15,7 +15,9 @@ public class CollateralProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Collateral/CollateralRequestByEntity/{entityType}/{entityId}"); // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .WithResource("api/Collateral/CollateralRequestByEntity/{entityType}/{entityId}") // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .AddUrlSegmentParameter("entityType", entityType)
+            .AddUrlSegmentParameter("entityId", entityId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CollateralRequestDto>>();
     }
@@ -37,7 +39,9 @@ public class CollateralProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Collateral/CollateralRequestIdsByEntity/{entityType}/{entityId}"); // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .WithResource("api/Collateral/CollateralRequestIdsByEntity/{entityType}/{entityId}") // TODO(blocking): confirm endpoint name/route with the Collateral microservice
+            .AddUrlSegmentParameter("entityType", entityType)
+            .AddUrlSegmentParameter("entityId", entityId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<int>>();
     }

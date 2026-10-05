@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
                 CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
@@ -77,10 +79,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId)
+    public async Task CancelCertificate(int id, string rejectCancelReason, int userId)
     {
-        // GetPC_MSG2280_2281 CertificateCancellation: set the certificate to Cancelled with the cancel-from-message
-        // reason. Set-based.
+        // Cancel a certificate with a reason that REPLACES the stored one, leaving IsLastVersion as it is: the message
+        // CertificateCancellation, the declaration-cancellation branch and the certificate replacement. (Superseding a
+        // version of the same number is CancelPreviousCertificate, which also drops IsLastVersion.) Set-based.
         var now = DateTime.Now;
         await Context.CertificateOfOrigins
             .Where(c => c.Id == id)
@@ -89,6 +92,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
                 .SetProperty(c => c.UpdateDate, now)
                 .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task<int?> GetPreviousCertificateIdByTitle(string title)
+    {
+        // Legacy CheckDeclarationStatus: the previous version of a just-saved certificate - the second-newest certificate
+        // with the same Title, whatever its status. Null when it is the first one.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.Title == title)
+            .OrderByDescending(c => c.Id)
+            .Skip(1)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
     }
 
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
@@ -103,6 +119,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 VersionNumber = c.VersionNumber,
                 OrganizationUnitId = c.OrganizationUnitId,
@@ -124,9 +142,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     // bound to them, so the BL saves between step 2 and step 3.
     // ---------------------------------------------------------------------------------------------------------
 
-    // Step 1 — the certificate's detail rows, diff-merged by surrogate id.
+    // Step 1 — the certificate's detail rows, diff-merged by surrogate id. An EMPTY list means the caller did not send
+    // the details (a header-only save) — keep the stored rows, as the legacy self-tracking save did for rows the client
+    // never touched. A certificate always has details (mandatory fields per type), so an empty list is never a real
+    // "delete all". Same guard as the invoices in step 2.
     public Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details)
     {
+        if (details.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
         foreach (var detail in details)
         {
             detail.CertificateOfOriginId = certificateId;
@@ -180,14 +206,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
     {
-        // UpdateCertificateOfOrigins: the certificates to reconcile against the export declaration. Projected to the
-        // columns the reconciler reads, plus CertificateIdToCancel for the release path's HandleCertificateReplacement.
+        // UpdateCertificateOfOrigins: the certificates of a declaration event. Legacy loaded the full entity here and ran
+        // the whole flow on it; the entity has 36 columns (over the platform's 30-column interceptor limit), so this is a
+        // projection that serves BOTH consumers - keep every column of each when changing it:
+        //  - the reconciler (status, reason, type, declaration link, org unit, reject reason);
+        //  - the release path: HandleCertificateReplacement (CertificateIdToCancel), the events (Title, CustomerId), and
+        //    the publish of a PendingRelease certificate - CreateQrCodeIfNeeded (QrCodePath, Guid) and the issue-queue
+        //    payload (CreateCustomerId, InternalApplication, FeedbackRemark).
         var result = await ReadOnlyContext.CertificateOfOrigins
             .Where(c => ids.Contains(c.Id))
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 RequestReasonCode = c.RequestReasonCode,
@@ -196,6 +229,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 OrganizationUnitId = c.OrganizationUnitId,
                 RejectCancelReason = c.RejectCancelReason,
                 CertificateIdToCancel = c.CertificateIdToCancel,
+                QrCodePath = c.QrCodePath,
+                Guid = c.Guid,
+                CreateCustomerId = c.CreateCustomerId,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
                 CreateDate = c.CreateDate,
             })
             .ToListAsync();
@@ -485,6 +523,25 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
             .ToListAsync();
+        return result;
+    }
+
+    // Legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType, for every certificate type at once (the
+    // resolver's load): the trade-agreement ids per type. No ValidFrom / ValidTo or state filter, as legacy.
+    public async Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType()
+    {
+        var rows = await ReadOnlyContext.CertificateOfOriginTypeByTradeAgreements
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.CertificateOfOriginTypeCodeId, row.TradeAgreementId })
+            .ToListAsync();
+        var result = rows
+            .GroupBy(row => row.CertificateOfOriginTypeCodeId)
+            .Select(group => new CertificateTypeTradeAgreementsResolverDto
+            {
+                CertificateOfOriginTypeCodeId = group.Key,
+                TradeAgreementIds = group.Select(row => row.TradeAgreementId).ToList(),
+            })
+            .ToList();
         return result;
     }
 

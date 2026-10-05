@@ -4,8 +4,8 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // Request for SaveCertificateOfOrigin — the certificate as edited by the SPA (the legacy passed the full
 // CertificateOfOrigin entity). Carries the editable scalar fields, its detail child collection, and the load-time
-// snapshots used for change detection (the .NET 10 stateless replacement for the legacy ChangeTracker.OriginalValues):
-// OriginalCertificateOfOriginStatusId + OriginalFeedbackRemark. Id == 0 → new certificate (insert); otherwise update.
+// snapshot used for change detection (the .NET 10 stateless replacement for the legacy ChangeTracker.OriginalValues):
+// OriginalCertificateOfOriginStatusId. Id == 0 → new certificate (insert); otherwise update.
 public class SaveCertificateOfOriginRequestDto
 {
     public int Id { get; set; }
@@ -39,17 +39,20 @@ public class SaveCertificateOfOriginRequestDto
 
     public int CertificateOfOriginStatusId { get; set; }
 
-    // Load-time snapshot of the status — drives the status-change events (replaces ChangeTracker original value).
-    public int OriginalCertificateOfOriginStatusId { get; set; }
+    // Load-time snapshot of the status, sent when the client changed it — the stateless counterpart of the self-tracking
+    // entity's recorded original. Null = not tracked (a new instance, or an unchanged status).
+    public int? OriginalCertificateOfOriginStatusId { get; set; }
 
     public int? DestinationCountry { get; set; }
 
     public string? FeedbackRemark { get; set; }
 
-    // Load-time snapshot of the feedback remark — drives the "remarks changed → send feedback" branch.
-    public string? OriginalFeedbackRemark { get; set; }
-
     public string? InternalApplication { get; set; }
+
+    // Whether the certificate's export declaration is released, as the client got it from the declaration check
+    // (legacy CheckExportDeclarationDetails set it on the entity, and the save carried it). Not a column: it only travels
+    // on the issue-queue payload when the certificate is published by the worker.
+    public bool? IsDeclarationReleased { get; set; }
 
     public DateTime? IssuingDate { get; set; }
 
