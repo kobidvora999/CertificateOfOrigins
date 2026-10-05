@@ -6,8 +6,10 @@
   -->
   <ItemGroup>
     <!-- NU1903 GHSA-v5pm-xwqc-g5wc (CVE-2026-49451): Microsoft.OpenApi <= 2.7.4 stack-overflow on circular
-         schema refs. Pulled transitively at 2.0.0; pin the first patched 2.x (same major → low risk). -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+         schema refs. Pulled transitively at 2.0.0; pin the first patched 2.x (same major → low risk).
+         2.12.0, not 2.7.5: CustomsCloud.InfrastructureCore.WebApi 1.10.144 is compiled against 2.12.0, and an older
+         pin fails at startup (ReflectionTypeLoadException in MapControllers). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.12.0" />
   </ItemGroup>
 
   <!-- System.Security.Cryptography.Xml <= 8.0.2 (NU1903 GHSA-w3x6-4m5h-cxqf + GHSA-mmjf-rqrv-855v). Pulled
