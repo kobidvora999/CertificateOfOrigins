@@ -47,10 +47,6 @@ public class ServicesConfiguration : IServicesConfiguration
         // default (enabled via x-mock-mode); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
 
-        // Web-query field labels for GetCertificateRequestByGuid — legacy read them from SystemTables DataDictionaryField
-        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
-        services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
-
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
         services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
@@ -114,6 +110,7 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // TODO(internal): lookup types missing from the platform Lookup package — local stand-ins (Lookups/), loaded and
         // cached like a platform lookup. Replace each with services.AddLookup<Lookup.T>() once the platform has the type.
+        // TODO(internal): confirm the InternationalSite source service (SystemTables assumed — Lookup.Site loads from Sites).
         services.AddLocalLookup<Lookups.InternationalSite>(CustomsMicroServices.SystemTables);
         services.AddLocalLookup<Lookups.Site>(CustomsMicroServices.Sites);
 
@@ -129,6 +126,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // CargoControl_c_PackingType: invoice item package-type code → id. Loaded from the Cargos service, the owner of the
         // CargoControl tables. TODO(internal): confirm the source with the platform.
         services.AddLocalLookup<Lookups.PackingType>(CustomsMicroServices.Cargos);
+
+        // DataDictionaryField: the web-query field labels (GetCertificateRequestByGuid). There is no DataDictionary service in
+        // CustomsMicroServices; legacy read it through SystemTablesUtil. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.DataDictionaryField>(CustomsMicroServices.SystemTables);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

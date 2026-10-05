@@ -622,23 +622,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         };
     }
 
+    // Legacy SystemTablesUtil.GetCodeById<DataDictionaryField>(fieldId).EnglishName — Lookups.DataDictionaryField.
+    // TODO(internal): the three web-query row titles (fields 20306 / 20310 / 20661) come from the DataDictionary field
+    // catalogue — move to the platform Lookup.DataDictionaryField and confirm its source service; until then the local stub
+    // serves placeholder titles ("Field 20306"), not the real catalogue text.
     private async Task<Dictionary<int, string?>> GetFieldLabels(List<int> fieldIds)
     {
-        var dataDictionaryFieldProxy = Resolve<IDataDictionaryFieldProxy>();
-        if (fieldIds.Count == 0)
-        {
-            return [];
-        }
-
-        var fields = await dataDictionaryFieldProxy.GetDataDictionaryFieldsByIds(fieldIds.Distinct().ToList());
-        if (fields == null)
-        {
-            return [];
-        }
-
-        return fields
-            .GroupBy(f => f.Id)
-            .ToDictionary(g => g.Key, g => g.First().EnglishName);
+        var fields = await lookupUtil.Search<Lookups.DataDictionaryField>(field => fieldIds.Contains(field.Id));
+        var result = fields.ToDictionary(field => field.Id, field => field.EnglishName);
+        return result;
     }
 
     private async Task<string> GetQueryUrl(Guid? guid)

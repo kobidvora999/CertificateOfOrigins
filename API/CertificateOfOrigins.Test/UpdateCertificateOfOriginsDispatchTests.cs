@@ -293,7 +293,6 @@ public class UpdateCertificateOfOriginsDispatchTests
         services.AddSingleton(Fake<ICustomerProxy>());
         services.AddSingleton(Fake<IExportDealFileProxy>());
         services.AddSingleton(Fake<IUserProxy>());
-        services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
         services.AddSingleton(Fake<IDocumentsProxy>());
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());

@@ -23,7 +23,7 @@ const http = require('http');
 const RANGE = 500;
 const PORTS = {
   9000: ['Country', 'City', 'MeasurementUnit', 'CountryGroup', 'CountryCountryGroup', 'CurrencyType'],
-  9005: ['InternationalSite'],
+  9005: ['InternationalSite', 'DataDictionaryField'],
   9006: ['DocumentType'],
   9026: ['PackingType'],
   9029: ['Site'],
@@ -59,6 +59,13 @@ const EXTRA = {
   PackingType: {
     155: { commonCode: 'BX', englishName: 'Box' },
     379: { commonCode: 'BOX-40', englishName: 'Container 40' },
+  },
+  // DataDictionaryField: the three web-query field ids (CertificateOfOriginsConsts *FieldId), labelled as the retired
+  // DataDictionaryFieldMockProxy labelled them.
+  DataDictionaryField: {
+    20306: { englishName: 'Field 20306' },
+    20310: { englishName: 'Field 20310' },
+    20661: { englishName: 'Field 20661' },
   },
   Site: {
     // SITE01 -> org unit 407: the id the retired SiteMockProxy derived for SITE01, so the collections' expectations hold.
