@@ -226,17 +226,16 @@ public partial class CertificateOfOriginsBl
         return id;
     }
 
-    // Legacy GetIdByCode<MeasurementUnit>(PropExternalIDNum, code): unresolvable code → validation exception.
+    // Legacy GetIdByCode<MeasurementUnit>(PropExternalIDNum, code) = Lookup.MeasurementUnit by ExternalIdnum: unresolvable
+    // code → validation exception.
     private async Task<int?> ResolveMeasurementUnitId(string? code, MessageValidationContext context)
     {
-        var measurementUnitProxy = Resolve<IMeasurementUnitProxy>();
         if (string.IsNullOrEmpty(code))
         {
             return null;
         }
 
-        var units = await measurementUnitProxy.GetMeasurementUnitsByCodes([code]);
-        var id = units?.FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookup.MeasurementUnit>(unit => unit.ExternalIdnum == code)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "MeasureType"));

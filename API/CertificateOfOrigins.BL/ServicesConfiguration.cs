@@ -56,11 +56,10 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
 
         // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — the
-        // invoice item packing type / measurement unit by code.
+        // invoice item packing type by code.
         // TODO(blocking): verify the real SystemTables endpoints (PackingType/PackingTypesByCodes,
-        // MeasurementUnit/MeasurementUnitsByCodes, CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
+        // CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
         services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
-        services.AddProxy<IMeasurementUnitProxy, MeasurementUnitProxy, MeasurementUnitMockProxy>();
 
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
@@ -123,6 +122,9 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
         services.AddLookup<DocumentType>();
+
+        // Invoice item measure-type code → id for GetPC_MSG2280_2281 (was SystemTablesUtil.GetIdByCode<MeasurementUnit>).
+        services.AddLookup<MeasurementUnit>();
 
         // TODO(internal): lookup types missing from the platform Lookup package — local stand-ins (Lookups/), loaded and
         // cached like a platform lookup. Replace each with services.AddLookup<Lookup.T>() once the platform has the type.

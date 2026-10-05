@@ -22,7 +22,7 @@ const http = require('http');
 
 const RANGE = 500;
 const PORTS = {
-  9000: ['Country', 'City'],
+  9000: ['Country', 'City', 'MeasurementUnit'],
   9005: ['InternationalSite'],
   9006: ['DocumentType'],
   9029: ['Site'],
@@ -51,6 +51,10 @@ const OVERRIDES = {
   Country: {
     376: { countryAlphaCode2: 'IL', englishName: 'Israel', isCountry: true },
     138: { countryAlphaCode2: 'DE', englishName: 'Germany', isCountry: true },
+  },
+  // MeasurementUnit: the measure-type code the collections send, on the id the retired MeasurementUnitMockProxy gave it.
+  MeasurementUnit: {
+    147: { externalIdnum: 'KG', englishName: 'Kilogram' },
   },
 };
 
