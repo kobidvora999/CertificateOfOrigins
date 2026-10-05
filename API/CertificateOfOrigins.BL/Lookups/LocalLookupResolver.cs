@@ -13,7 +13,9 @@ namespace CertificateOfOrigins.BL.Lookups;
 // under the type key, so lookupUtil.Get<T> / Search<T> resolve it exactly like a platform lookup. Locally the source is
 // served by tools/local-lookup-stub.js. In the internal environment, once the platform package has the type: delete the
 // local record, register services.AddLookup<Lookup.T>() instead of AddLocalLookup, and the BL calls stay as they are.
-public class LocalLookupResolver<T>(IServiceProvider serviceProvider, IServiceScopeFactory scopeFactory, CustomsMicroServices sourceService)
+// The source service comes in as LocalLookupSource<T> so DI can build the resolver anywhere — the heartbeat registration
+// activates it by type.
+public class LocalLookupResolver<T>(IServiceProvider serviceProvider, IServiceScopeFactory scopeFactory, LocalLookupSource<T> source)
     : BaseDistributedResolver<int, T>(serviceProvider, 360, 10)
     where T : ILookup
 {
@@ -23,7 +25,7 @@ public class LocalLookupResolver<T>(IServiceProvider serviceProvider, IServiceSc
         var httpProxy = scope.ServiceProvider.GetRequiredService<IHttpProxy>();
         var request = httpProxy.CreateRequestBuilder()
             .UseGetMethod()
-            .ToCustomsService(sourceService)
+            .ToCustomsService(source.Service)
             .WithResource("lookup/" + typeof(T).Name)
             .WithCancellationToken(cancellationToken)
             .Build();
@@ -32,4 +34,14 @@ public class LocalLookupResolver<T>(IServiceProvider serviceProvider, IServiceSc
         var result = await response.GetResult<IEnumerable<T>>() ?? [];
         return result.ToDictionary(item => item.Id);
     }
+}
+
+// The source service a local lookup type loads from (GET lookup/{Type}), registered per type by AddLocalLookup.
+// T is only the DI discriminator: one registration per lookup type, so each resolver gets its own source.
+#pragma warning disable S2326 // T is the DI key, not data
+public sealed class LocalLookupSource<T>(CustomsMicroServices service)
+#pragma warning restore S2326
+    where T : ILookup
+{
+    public CustomsMicroServices Service { get; } = service;
 }
