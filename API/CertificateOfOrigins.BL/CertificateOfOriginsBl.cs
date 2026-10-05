@@ -1289,7 +1289,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task EnrichAndValidateDetails(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details)
     {
         var customerProxy = Resolve<ICustomerProxy>();
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
 
         // Legacy SaveCertificateOfOrigin (CertificateOfOriginsBL.cs:977-1000): a NEW certificate only converts its
         // DestinationCountry / PortOfShipment codes to ids; the CheckSpecificField enrichment + validation below runs for
@@ -1348,7 +1347,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             {
                 if (TradeAgreementCountryDetailTypes.Contains(typeId))
                 {
-                    await customsBookProxy.IsTradeAgreementForCountry(entity.TypeId, countryId, false);
+                    await IsTradeAgreementForCountry(entity.TypeId, countryId, false);
                 }
 
                 var country = await lookupUtil.Get<Lookup.Country>(countryId);
@@ -2192,7 +2191,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         List<ReconciliationFinding> builder)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         if (certificate.RequestReasonCode != (int)ERequestReason.ImportCertificateReplacement)
         {
             return false;
@@ -2202,7 +2200,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var isInTradeAgreement = false;
         foreach (var goodsItem in associatedGoodsItems ?? [])
         {
-            if (await customsBookProxy.IsTradeAgreementForCountry(certificate.TypeId, goodsItem.AssociatedOriginCountryId, false))
+            if (await IsTradeAgreementForCountry(certificate.TypeId, goodsItem.AssociatedOriginCountryId, false))
             {
                 isInTradeAgreement = true;
                 break;

@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
@@ -522,6 +523,25 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
             .ToListAsync();
+        return result;
+    }
+
+    // Legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType, for every certificate type at once (the
+    // resolver's load): the trade-agreement ids per type. No ValidFrom / ValidTo or state filter, as legacy.
+    public async Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType()
+    {
+        var rows = await ReadOnlyContext.CertificateOfOriginTypeByTradeAgreements
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.CertificateOfOriginTypeCodeId, row.TradeAgreementId })
+            .ToListAsync();
+        var result = rows
+            .GroupBy(row => row.CertificateOfOriginTypeCodeId)
+            .Select(group => new CertificateTypeTradeAgreementsResolverDto
+            {
+                CertificateOfOriginTypeCodeId = group.Key,
+                TradeAgreementIds = group.Select(row => row.TradeAgreementId).ToList(),
+            })
+            .ToList();
         return result;
     }
 

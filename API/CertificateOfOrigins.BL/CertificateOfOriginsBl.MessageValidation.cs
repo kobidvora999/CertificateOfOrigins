@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL.Proxies;
+using CertificateOfOrigins.BL.Resolver;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
 using System.Globalization;
@@ -636,14 +637,13 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryIsInTradeAgreement: country resolves + is part of the trade agreement for this certificate type.
     private async Task CheckIfCountryIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(field.Value, context);
         if (country is null)
         {
             return;
         }
 
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
         if (!isInTrade)
         {
             var code = field.DetailType switch
@@ -663,8 +663,6 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckIfCountryGroupIsInTradeAgreement: the (numeric) country-group id is part of the trade agreement.
     private async Task CheckIfCountryGroupIsInTradeAgreement(MessageField field, int certificateTypeId, MessageValidationContext context)
     {
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
-
         // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
         // (GetIdByCode<CountryGroup>(PropID, id) = Lookup.CountryGroup by id → TheValueInFieldNotExistsInSystem on a miss); on
         // failure the legacy returns 0 and skips the trade-agreement check.
@@ -675,7 +673,7 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, countryGroupId, true);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, countryGroupId, true);
         if (!isInTrade)
         {
             var code = field.DetailType switch
@@ -847,6 +845,34 @@ public partial class CertificateOfOriginsBl
     {
         field.Value = country.Id.ToString(CultureInfo.InvariantCulture);
         field.DisplayedValue = country.EnglishName;
+    }
+
+    // Legacy ServicesAdapter.IsTradeAgreementForCountry: Israel (as a country) always passes; otherwise the certificate type
+    // must have trade agreements (our CertificateOfOriginTypeByTradeAgreement table) and CustomsBook must place the country
+    // or group in one of them.
+    private async Task<bool> IsTradeAgreementForCountry(int certificateTypeId, int countryId, bool isCountryGroup)
+    {
+        if (!isCountryGroup && countryId == CertificateOfOriginsConsts.IsraelCountryId)
+        {
+            return true;
+        }
+
+        var (found, tradeAgreements) = await Resolve<CertificateTypeTradeAgreementsResolver>().TryFindAsync(certificateTypeId);
+        if (!found || tradeAgreements is null || tradeAgreements.TradeAgreementIds.Count == 0)
+        {
+            return false;
+        }
+
+        var customsBookProxy = Resolve<ICustomsBookProxy>();
+        foreach (var tradeAgreementId in tradeAgreements.TradeAgreementIds)
+        {
+            if (await customsBookProxy.IsTradeAgreementForCountry(countryId, tradeAgreementId, isCountryGroup))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Legacy IsCountryIsrael: compare against the CountryIsrael config parameter.

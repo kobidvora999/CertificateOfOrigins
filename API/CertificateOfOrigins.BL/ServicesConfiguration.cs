@@ -1,7 +1,9 @@
 using CertificateOfOrigins.BL.Lookups;
 using CertificateOfOrigins.BL.Proxies;
+using CertificateOfOrigins.BL.Resolver;
 using CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
+using CustomsCloud.InfrastructureCore.Interfaces;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
 using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
@@ -66,6 +68,10 @@ public class ServicesConfiguration : IServicesConfiguration
         // org-unit services are not yet stood up, so the mocks are the practical default (via x-mock-mode).
         // TODO(blocking): confirm each owning microservice + endpoint route before ROLLOUT.
         services.AddProxy<ICustomsBookProxy, CustomsBookProxy, CustomsBookMockProxy>();
+
+        // Our CertificateOfOrigins_cf_CertificateOfOriginTypeByTradeAgreement: the trade agreements per certificate type
+        // (legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType), cached.
+        services.AddResolver<CertificateTypeTradeAgreementsResolver>();
         services.AddProxy<ICommonServicesProxy, CommonServicesProxy, CommonServicesMockProxy>();
         services.AddProxy<IOrganizationUnitProxy, OrganizationUnitProxy, OrganizationUnitMockProxy>();
 

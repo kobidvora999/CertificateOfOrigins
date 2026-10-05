@@ -4,10 +4,10 @@ namespace CertificateOfOrigins.BL.Proxies;
 
 public interface ICustomsBookProxy
 {
-    // Legacy: servicesAdapter.IsTradeAgreementForCountry(certificateTypeId, countryId, isCountryGroup)
-    // (SaveCertificateOfOrigin field validation) — whether the country / country-group is party to the trade
-    // agreement of the given certificate type.
-    Task<bool> IsTradeAgreementForCountry(int certificateTypeId, int countryId, bool isCountryGroup);
+    // Legacy: CustomsBookServicesAdapter.IsTradeAgreementForCountry(countryId, tradeAgreementId, isCountryGroup) — whether
+    // the country / country-group is party to ONE trade agreement. The certificate-type logic around it (Israel, the type's
+    // agreements) is the BL's IsTradeAgreementForCountry, as legacy ServicesAdapter held it.
+    Task<bool> IsTradeAgreementForCountry(int countryOrGroupId, int tradeAgreementId, bool isGroup);
 
     // Legacy: ServicesAdapter.GetCustomsItemsByIdsSync(filters) (UpdateCertificateOfOrigins reconciliation) — resolves
     // the customs items' full tariff classification, used for the 6-digit match between the certificate and the

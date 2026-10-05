@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 
 namespace CertificateOfOrigins.DAL;
@@ -56,6 +57,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestId(int documentId);
 
     Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
+
+    Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType();
 
     Task<bool> IsSupplierDeliveryCountry(int countryId);
 

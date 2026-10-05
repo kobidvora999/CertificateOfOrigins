@@ -270,7 +270,6 @@ public partial class CertificateOfOriginsBl
     // on the destination detail.
     private async Task CheckIfDestinationCountryInAgreement(string destinationCountry, int certificateTypeId, List<CertificateOfOriginDetails> details, MessageValidationContext context)
     {
-        var customsBookProxy = Resolve<ICustomsBookProxy>();
         var country = await ResolveCountry(destinationCountry, context);
         if (country is null)
         {
@@ -278,7 +277,7 @@ public partial class CertificateOfOriginsBl
         }
 
         context.DestinationCountryId = country.Id;
-        var isInTrade = await customsBookProxy.IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
+        var isInTrade = await IsTradeAgreementForCountry(certificateTypeId, country.Id, false);
         if (!isInTrade)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.DestinationCountryNotInAgreement));

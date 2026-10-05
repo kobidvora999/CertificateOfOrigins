@@ -9,7 +9,7 @@ public class CustomsBookMockProxy(IProxyMockUtil mockUtil) : ICustomsBookProxy, 
 {
     // Default = the country IS in the trade agreement (validation passes); feature "CustomsBook.NotInAgreement"
     // flips it so the field-validation exception path is exercised.
-    public Task<bool> IsTradeAgreementForCountry(int certificateTypeId, int countryId, bool isCountryGroup)
+    public Task<bool> IsTradeAgreementForCountry(int countryOrGroupId, int tradeAgreementId, bool isGroup)
     {
         return Task.FromResult(!mockUtil.HasMockFeature("CustomsBook.NotInAgreement"));
     }
