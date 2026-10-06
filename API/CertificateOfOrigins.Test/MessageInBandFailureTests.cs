@@ -78,15 +78,24 @@ public class MessageInBandFailureTests
         Assert.That(response.Exceptions![0].ExceptionType, Is.Zero, "GeneralException");
     }
 
-    // Legacy released the lock in its finally whatever the outcome, an unacquired lock state included.
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task TheLockIsReleasedWhateverTheOutcome(bool lockAcquired)
+    // A lock this request took is released whatever the outcome. One it did NOT take is never released (legacy did call
+    // SafeReleaseAsync with an unacquired state; that could free the lock another request holds, so it is not reproduced).
+    [Test]
+    public async Task AnAcquiredLockIsReleased()
     {
         var released = new List<string>();
-        await Send(StatusQuery(), lockAcquired, released: released);
+        await Send(StatusQuery(), lockAcquired: true, released: released);
 
         Assert.That(released, Is.EqualTo(new[] { "COO-1001" }));
+    }
+
+    [Test]
+    public async Task ALockThisRequestDidNotTakeIsNeverReleased()
+    {
+        var released = new List<string>();
+        await Send(StatusQuery(), lockAcquired: false, released: released);
+
+        Assert.That(released, Is.Empty);
     }
 
     private static CertificateOfOriginRequestMessageDto StatusQuery()

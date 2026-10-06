@@ -136,8 +136,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
         finally
         {
-            // Legacy released in its finally whatever the lock outcome (an unacquired state included).
-            if (lockState is not null)
+            // Deliberate deviation: legacy also called SafeReleaseAsync with an UNACQUIRED state. Only a lock this request
+            // took is released here - releasing one it did not take could free the lock another request is holding,
+            // depending on how the lock library matches the state (not verified).
+            if (lockState is { IsAcquired: true })
             {
                 await lockUtil.SafeReleaseAsync(lockKey!, lockState);
             }
