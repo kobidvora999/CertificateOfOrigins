@@ -38,9 +38,9 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<int>> GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId);
 
-    Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, bool stampFirstContactDate = false);
+    Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, bool stampFirstContactDate = false);
 
-    Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId);
+    Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId);
 
     Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds);
 

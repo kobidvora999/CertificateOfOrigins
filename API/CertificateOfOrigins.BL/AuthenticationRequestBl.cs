@@ -505,7 +505,7 @@ public partial class AuthenticationRequestBl(
 
         // A delivery (not a reminder) records the first-contact date if the file has none yet — legacy set it on the
         // "send notification" button (OnRequestDeliverNotificationCommand); the reminder button never touched it.
-        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, request.IsDelivery);
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, RequestMetadata.UserId ?? 0, request.IsDelivery);
 
         return new HandleDeliveryAndReminderForVendorSentResultDto
         {
@@ -545,14 +545,14 @@ public partial class AuthenticationRequestBl(
         HandleDeliveryOrReminderForImporterSentRequestDto request, int eventTypeId, int decisionId)
     {
         // 1. Stamp the request (DecisionID + LastDeliveryForImporter + UpdateDate).
-        await DataLayer.UpdateRequestDecisionAfterDelivery(request.DocumentId, decisionId);
+        await DataLayer.UpdateRequestDecisionAfterDelivery(request.DocumentId, decisionId, RequestMetadata.UserId ?? 0);
 
         // 2. Advance the parent file's status machine + touch its child requests (only if the request has a file).
         var (status, deliveryMethod) = AdvanceDeliveryStatus(request.AuthenticationFileStatusId, request.DeliveryMethodId);
         if (request.AuthenticationFileId.HasValue)
         {
             // Importer letters never set the first-contact date (legacy: only the vendor/customs-house send did).
-            await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod);
+            await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod, RequestMetadata.UserId ?? 0);
         }
 
         // 3. Raise the event on the request (after the save, as in the legacy). Related entity = the file, if any.

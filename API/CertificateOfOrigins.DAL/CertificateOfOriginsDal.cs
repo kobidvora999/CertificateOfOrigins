@@ -1153,8 +1153,10 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, bool stampFirstContactDate = false)
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, bool stampFirstContactDate = false)
     {
+        // The legacy saved through the infrastructure repository, which stamps the update user; the set-based writes below
+        // do it explicitly, as every other writer in this DAL does (parity finding G F3).
         // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
         // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
         // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
@@ -1174,16 +1176,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.LastDelivery, today)
                 .SetProperty(f => f.FirstProvideContactDate,
                     f => stampFirstContactDate && f.FirstProvideContactDate == null ? today : f.FirstProvideContactDate)
-                .SetProperty(f => f.UpdateDate, today));
+                .SetProperty(f => f.UpdateDate, today)
+                .SetProperty(f => f.UpdateUserId, userId));
 
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.UpdateDate, now));
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
 
         return true;
     }
 
-    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId)
+    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId)
     {
         // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
         // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
@@ -1194,7 +1199,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.DecisionId, decisionId)
                 .SetProperty(r => r.LastDeliveryForImporter, today)
-                .SetProperty(r => r.UpdateDate, today));
+                .SetProperty(r => r.UpdateDate, today)
+                .SetProperty(r => r.UpdateUserId, userId));
         return true;
     }
 
