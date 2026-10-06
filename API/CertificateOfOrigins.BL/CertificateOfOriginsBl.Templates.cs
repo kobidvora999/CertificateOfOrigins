@@ -59,8 +59,23 @@ public partial class CertificateOfOriginsBl
         var data = ((dynamic)task).Result as object
             ?? throw new RestNotFoundException();
 
+        await EnrichTemplateData(data);
+
         var json = JsonSerializer.Serialize(data, dataType, TemplateJsonOptions);
         return new PrintTemplateDto { Name = name, Data = json, Format = format };
+    }
+
+    // Cross-service names. The procedure returns ids only — a service-owned procedure never joins another service's
+    // tables — so the names are resolved here, the same split the search reads use.
+    private async Task EnrichTemplateData(object data)
+    {
+        if (data is SouthKoreaOriginVerificationLetterResult letter && letter.RequestCountryId is > 0)
+        {
+            var country = await lookupUtil.Get<Lookup.Country>(letter.RequestCountryId.Value);
+
+            // The letter is in English and addressed abroad, so it wants the English country name.
+            letter.ExternalCustomDepartmentCountry = country?.EnglishName ?? country?.Name;
+        }
     }
 
     // Template id → (data contract, the name registered in the Templates module, output format).
@@ -75,7 +90,11 @@ public partial class CertificateOfOriginsBl
                 typeof(SouthKoreaOriginVerificationLetterResult),
                 "ExportAuthenticationSendDeliveryForExporterSouthKoreaTemplate",
                 Format.Pdf),
-            _ => throw new RestNotFoundException(),
+
+            // An id this service does not render is a bad request, not a missing resource — and keeping the two
+            // distinct is what lets a test tell "this template is not registered" apart from "that entity has no
+            // data", which a shared 404 cannot.
+            _ => throw new RestValidationException($"Unsupported templateId {templateId}."),
         };
     }
 }

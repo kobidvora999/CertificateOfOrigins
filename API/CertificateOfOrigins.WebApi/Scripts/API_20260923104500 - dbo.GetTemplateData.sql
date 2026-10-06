@@ -22,11 +22,18 @@ BEGIN
     -- @EntityID is CRM.CertificateOfOrigins_ImportAuthenticationFileDetails.ID — the authentication file.
     IF @TemplateID = 1
     BEGIN
+        -- The column names are the sibling import-verification letters' tag vocabulary (see 2251), not ad-hoc ones,
+        -- so the remaining letters in that family can reuse this shape. EmployeeFullName / EmployeeEmailAddress /
+        -- UserSignature have no confirmed source yet and are deliberately not selected — their tags render empty.
         SELECT
-            FileNo               = F.ID,
-            LetterDate           = CAST(GETDATE() AS DATE),
-            MovementCertificates = Movement.Numbers,
-            InvoiceDeclarations  = Invoice.Numbers
+            ImportAuthenticationRequestDate = CAST(GETDATE() AS DATE),
+            FileNumber                      = F.ID,
+            ExternalCustomDepartmentAddress = F.PostalAdress,
+            RequestCountryId                = F.RequestCountryID,
+            MovementCertificate             = Movement.Numbers,
+            InvoiceNumberForImportAuthenticationRequest = Invoice.Numbers,
+            -- FREETEXT is a reserved T-SQL keyword, so the alias must be bracketed.
+            [FreeText]                      = F.Notes
         FROM CRM.CertificateOfOrigins_ImportAuthenticationFileDetails AS F
         -- The child requests carry the preference document numbers; 4 = תעודת תנועה, 5 = הצהרת חשבונית
         -- (CRM.CertificateOfOrigins_enum_PrefernceDocumentType). Blank numbers are skipped so the letter does not
@@ -51,7 +58,8 @@ BEGIN
         RETURN;
     END
 
-    -- An unregistered template id returns no rows; the BL turns that into a 404.
+    -- An unregistered template id returns no rows; the BL turns that into a 404 (an id this service does not
+    -- render at all is rejected earlier, in GetTemplateMeta, as a bad request).
     RETURN;
 END
 GO

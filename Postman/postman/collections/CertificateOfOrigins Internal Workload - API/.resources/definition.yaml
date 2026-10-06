@@ -66,9 +66,10 @@ scripts:
           'AuthenticationRequestFileByID': 404,
           'SaveImportAuthenticationRequest': 404,
           'SaveAuthenticationRequestFile': 404,
-          // CR 194221 — both template cases assert the not-found contract on purpose: one for an unregistered
-          // template id, one for an entity that does not exist. Neither reaches the Templates microservice.
-          'Template (unknown template id)': 404,
+          // CR 194221 — the two template cases assert DIFFERENT contracts on purpose, which is what makes them
+          // worth having: an unsupported templateId is a bad request, a registered template pointed at an entity
+          // with no data is a not-found. Neither reaches the Templates microservice.
+          'Template (unknown template id)': 400,
           'Template (missing entity)': 404,
       };
 

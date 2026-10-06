@@ -1,0 +1,67 @@
+## CR 194221 — the origin-verification request letter to the Korea Customs Service.
+##
+## Pairs with ExportAuthenticationSendDeliveryForExporterSouthKoreaTemplate.docx. The Templates module loads both by
+## that name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## The document is built on the same structure as the other import-verification letters (2251 is its closest
+## sibling) — same letterhead header/footer and the SAME TAG VOCABULARY. Only the legal references differ
+## (Article 3.29 of Chapter 3 of the Israel–Korea FTA, in place of the EU protocol).
+##
+## Data source: dbo.GetTemplateData @TemplateID = <SouthKoreaOriginVerificationLetter>, serialized from
+## SouthKoreaOriginVerificationLetterResult with JsonNamingPolicy.CamelCase — hence the camelCase paths.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # "Date:" — stamped at render time.
+  - tag: ImportAuthenticationRequestDate
+    field type: PlainText
+    field path: $.importAuthenticationRequestDate
+    value type: DateTime
+    value format: dd/MM/yyyy
+
+  # "File No.:" — the import authentication file's id.
+  - tag: FileNumber
+    field type: PlainText
+    field path: $.fileNumber
+
+  # The addressee block — the foreign customs department and its country.
+  - tag: ExternalCustomDepartmentAddress
+    field type: PlainText
+    field path: $.externalCustomDepartmentAddress
+
+  - tag: ExternalCustomDepartmentCountry
+    field type: PlainText
+    field path: $.externalCustomDepartmentCountry
+
+  # "Movement certificate(s) No:" — PreferenceDocumentTypeID 4 (תעודת תנועה).
+  - tag: MovementCertificate
+    field type: PlainText
+    field path: $.movementCertificate
+
+  # "Invoice declaration(s) No:" — PreferenceDocumentTypeID 5 (הצהרת חשבונית).
+  - tag: InvoiceNumberForImportAuthenticationRequest
+    field type: PlainText
+    field path: $.invoiceNumberForImportAuthenticationRequest
+
+  # The free-text paragraph above the signature.
+  - tag: FreeText
+    field type: PlainText
+    field path: $.freeText
+
+  # The signing employee. These three have no confirmed data source yet (see the TODOs on the Result DTO) and
+  # therefore render empty; they are declared so the contract is complete the moment the source is decided.
+  - tag: EmployeeFullName
+    field type: PlainText
+    field path: $.employeeFullName
+
+  - tag: EmployeeEmailAddress
+    field type: PlainText
+    field path: $.employeeEmailAddress
+
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
