@@ -58,7 +58,7 @@
         "type": "object",
         "properties": {
           "invoiceNumber": { "type": "string", "nullable": true },
-          "invoiceDate": { "type": "string", "format": "date-time" },
+          "invoiceDate": { "type": "string", "format": "date" },
           "invoiceAmount": { "type": "number", "format": "double" },
           "currencyCode": { "type": "string", "nullable": true },
           "invoiceGoodsDescription": { "type": "string", "nullable": true },

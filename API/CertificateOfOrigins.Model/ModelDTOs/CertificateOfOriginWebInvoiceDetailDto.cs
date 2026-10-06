@@ -8,6 +8,8 @@ public class CertificateOfOriginWebInvoiceDetailDto
 {
     public string? InvoiceNumber { get; set; }
 
+    // Date-only on the wire, as the legacy portal contract ("yyyy-MM-dd"; parity finding D F2).
+    [System.Text.Json.Serialization.JsonConverter(typeof(WebDateJsonConverter))]
     public DateTime InvoiceDate { get; set; }
 
     public decimal InvoiceAmount { get; set; }

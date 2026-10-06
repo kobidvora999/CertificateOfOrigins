@@ -556,7 +556,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             });
         }
 
-        fieldDataDtos.Add(new FieldDataDto { Label = CertificateOfOriginsConsts.IssuingDateLabel, Value = certificate.IssuingDate });
+        // Legacy put the DateTime itself in the loosely-typed Value and the serializer wrote it as "yyyy-MM-dd"; the issuing
+        // date is stamped with DateTime.Now, so the platform serializer would add a time part (parity finding D F2).
+        fieldDataDtos.Add(new FieldDataDto
+        {
+            Label = CertificateOfOriginsConsts.IssuingDateLabel,
+            Value = certificate.IssuingDate?.ToString(WebDateJsonConverter.Format, CultureInfo.InvariantCulture),
+        });
 
         if (isExportDecForPrint)
         {
@@ -605,10 +611,30 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
     }
 
+    // Legacy parsed the stored DateOfDeclaration value with DateTime.TryParse under the WCF host's he-IL culture (day first:
+    // legacy-stored values are dd/MM/yyyy). The container's culture is not he-IL (usually invariant: month first), where a
+    // day above 12 fails to parse and the field silently disappears, and day <= 12 flips day and month (parity finding D F3).
+    private static readonly CultureInfo LegacyHostCulture = CreateLegacyHostCulture();
+
+    private static CultureInfo CreateLegacyHostCulture()
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo("he-IL");
+        }
+        catch (CultureNotFoundException)
+        {
+            // A container without ICU / with invariant globalization has no he-IL: reproduce its day-first short date.
+            var dayFirst = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+            dayFirst.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
+            return CultureInfo.ReadOnly(dayFirst);
+        }
+    }
+
     private static FieldDataDto? MapDateOfDeclarationField(CertificateOfOriginWebDetailDto detail)
     {
         if (!string.IsNullOrWhiteSpace(detail.Value) &&
-            DateTime.TryParse(detail.Value, CultureInfo.CurrentCulture, DateTimeStyles.None, out var dateOfDeclaration))
+            DateTime.TryParse(detail.Value, LegacyHostCulture, DateTimeStyles.None, out var dateOfDeclaration))
         {
             return new FieldDataDto
             {
