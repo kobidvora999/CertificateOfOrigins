@@ -63,9 +63,63 @@ public class DeclarationStatusEventsTests
         });
     }
 
+    // C F-06 regression: legacy RaiseEventForStatusReceived raised ApplicationCorrected right after ApplicationReceived
+    // for a CertificateUpdate request, with the superseded certificate as the related entity. The gate is the
+    // certificate's own RequestReasonCode, so it fires on both the incoming-message path (which supplies the id) and the
+    // SPA path (which does not - no related entity then).
+    [Test]
+    public async Task ReceivedCertificateUpdateRaisesApplicationCorrectedWithTheSupersededCertificateRelated()
+    {
+        var raised = await RaiseStatusEvents((int)ECertificateOfOriginStatus.Received, (int)ERequestReason.CertificateUpdate, certificateToUpdateId: 41);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raised.EventTypes, Is.EqualTo(new[]
+            {
+                (int)EEventType.CertificateOfOriginApplicationReceived,
+                (int)EEventType.CertificateOfOriginApplicationCorrected,
+            }), "ApplicationReceived first, then ApplicationCorrected, as legacy");
+            Assert.That(raised.RelatedEntities, Is.EqualTo(new[] { (41, (int)EEntityType.CertificateOfOrigin) }));
+        });
+    }
+
+    [Test]
+    public async Task ReceivedCertificateUpdateWithoutAnIdStillRaisesApplicationCorrectedButRelatesNothing()
+    {
+        var raised = await RaiseStatusEvents((int)ECertificateOfOriginStatus.Received, (int)ERequestReason.CertificateUpdate, certificateToUpdateId: null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raised.EventTypes, Does.Contain((int)EEventType.CertificateOfOriginApplicationCorrected));
+            Assert.That(raised.RelatedEntities, Is.Empty);
+        });
+    }
+
+    [TestCase((int)ERequestReason.NewCertificate)]
+    [TestCase((int)ERequestReason.CertificateReplacement)]
+    [TestCase((int)ERequestReason.GetRequestStatus)]
+    public async Task ReceivedForOtherReasonsRaisesOnlyApplicationReceived(int reason)
+    {
+        var raised = await RaiseStatusEvents((int)ECertificateOfOriginStatus.Received, reason, certificateToUpdateId: 41);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raised.EventTypes, Is.EqualTo(new[] { (int)EEventType.CertificateOfOriginApplicationReceived }));
+            Assert.That(raised.RelatedEntities, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task CertificateUpdateInAnotherStatusDoesNotRaiseApplicationCorrected()
+    {
+        var raised = await RaiseStatusEvents((int)ECertificateOfOriginStatus.PendingRelease, (int)ERequestReason.CertificateUpdate, certificateToUpdateId: 41);
+
+        Assert.That(raised.EventTypes, Does.Not.Contain((int)EEventType.CertificateOfOriginApplicationCorrected));
+    }
+
     // RaiseStatusEvents is the private static status-event step of SaveCertificateOfOrigin; it is invoked directly so the
     // assertion is on the event alone, not on the whole save.
-    private static async Task<Raised> RaiseStatusEvents(int statusId, int reason)
+    private static async Task<Raised> RaiseStatusEvents(int statusId, int reason, int? certificateToUpdateId = null)
     {
         var raised = new Raised();
         var builderType = typeof(IEventUtil).GetMethod(nameof(IEventUtil.CreatBuilder))!.ReturnType;
@@ -78,7 +132,7 @@ public class DeclarationStatusEventsTests
 
         await (Task)typeof(CertificateOfOriginsBl)
             .GetMethod("RaiseStatusEvents", BindingFlags.NonPublic | BindingFlags.Static)!
-            .Invoke(null, [new CertificateOfOrigin { Id = 5, OrganizationUnitId = 1, CertificateOfOriginStatusId = statusId, RequestReasonCode = reason }, eventUtil])!;
+            .Invoke(null, [new CertificateOfOrigin { Id = 5, OrganizationUnitId = 1, CertificateOfOriginStatusId = statusId, RequestReasonCode = reason }, eventUtil, certificateToUpdateId])!;
         return raised;
     }
 
@@ -86,6 +140,7 @@ public class DeclarationStatusEventsTests
     {
         public List<int> EventTypes { get; } = [];
         public List<int> OrganizationUnitTypes { get; } = [];
+        public List<(int Id, int EntityType)> RelatedEntities { get; } = [];
     }
 
     // --- Minimal dependency-free interface faking over System.Reflection.DispatchProxy (no mocking package). ---
@@ -115,6 +170,11 @@ public class DeclarationStatusEventsTests
             if (method.Name == "WithOrganizationUnitTypeId")
             {
                 raised.OrganizationUnitTypes.Add(Convert.ToInt32(args![0]));
+            }
+
+            if (method.Name == "AddRelatedEntity")
+            {
+                raised.RelatedEntities.Add((Convert.ToInt32(args![0]), Convert.ToInt32(args![1])));
             }
 
             return method.ReturnType == builderType ? proxy : DefaultReturn(method);

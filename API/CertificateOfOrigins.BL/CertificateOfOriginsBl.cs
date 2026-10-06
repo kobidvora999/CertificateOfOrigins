@@ -921,6 +921,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // the exact EAI feedback-message mapping are deferred (inline TODOs).
     public async Task<CertificateOfOriginDto> SaveCertificateOfOrigin(SaveCertificateOfOriginRequestDto request)
     {
+        // The SPA save passes no certificate-to-update id, exactly as the legacy internal call site did.
+        var result = await SaveCertificateOfOriginCore(request, null);
+        return result;
+    }
+
+    // certificateToUpdateId is legacy's SaveCertificateOfOrigin(certificateToUpdateId) argument: the id of the existing
+    // certificate a CertificateUpdate message targets. Only the incoming-message path supplies it; it becomes the related
+    // entity of the Received-status ApplicationCorrected event.
+    private async Task<CertificateOfOriginDto> SaveCertificateOfOriginCore(SaveCertificateOfOriginRequestDto request, int? certificateToUpdateId)
+    {
         // Guard the DB-required fields before anything reaches the context. Without this a malformed body (e.g. an
         // empty "{}") produced an entity with zeroed keys, the INSERT failed on a foreign key, and the
         // DbUpdateException escaped as an unhandled 500 instead of a 400.
@@ -1021,7 +1031,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (isStatusChanged)
         {
-            await RaiseStatusEvents(entity, eventUtil);
+            await RaiseStatusEvents(entity, eventUtil, certificateToUpdateId);
         }
 
         // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin, deferred pending platform/schema:
@@ -1407,7 +1417,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // "new certificate created" secondary event on Received / DeclarationMatch, but only when the export-declaration
     // integration was off — that branch is gone (see the note at the end of this method). The legacy
     // DeclarationMismatch "assessor decision" is a no-op (empty in the legacy), so nothing is raised there.
-    private static async Task RaiseStatusEvents(CertificateOfOrigin entity, IEventUtil eventUtil)
+    private static async Task RaiseStatusEvents(CertificateOfOrigin entity, IEventUtil eventUtil, int? certificateToUpdateId)
     {
         int? specificEvent = entity.CertificateOfOriginStatusId switch
         {
@@ -1438,6 +1448,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 entity.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.DeclarationMatch or (int)ECertificateOfOriginStatus.DeclarationMismatch
                     ? CertificateOfOriginsConsts.ExportOrganizationUnitType
                     : null);
+        }
+
+        // Legacy RaiseEventForStatusReceived: a CertificateUpdate request raised ApplicationCorrected right after
+        // ApplicationReceived. The gate is the certificate's own RequestReasonCode (not the save's requestReason
+        // argument, which the incoming path passes as null), and the superseded certificate is attached as a related
+        // entity only when the caller supplied its id (the SPA save does not).
+        if (entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received
+            && entity.RequestReasonCode == (int)ERequestReason.CertificateUpdate)
+        {
+            await RaiseCertificateEvent(eventUtil, (int)EEventType.CertificateOfOriginApplicationCorrected, entity, null,
+                relatedCertificateId: certificateToUpdateId);
         }
 
         // Legacy RaiseNewCertificateOfOriginCreatedEvent removed (developer decision 2026-08-23). It raised the
@@ -1643,7 +1664,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await eventUtil.RaiseEvent(builder.Build());
     }
 
-    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate, string? additionalInfo, int? organizationUnitTypeId = null)
+    private static async Task RaiseCertificateEvent(IEventUtil eventUtil, int eventTypeId, CertificateOfOrigin certificate, string? additionalInfo, int? organizationUnitTypeId = null, int? relatedCertificateId = null)
     {
         var builder = CreateCertificateEventBuilder(eventUtil, eventTypeId, certificate);
 
@@ -1657,6 +1678,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (!string.IsNullOrEmpty(additionalInfo))
         {
             builder = builder.WithAdditionalInfo(additionalInfo);
+        }
+
+        if (relatedCertificateId.HasValue)
+        {
+            builder = builder.AddRelatedEntity(relatedCertificateId.Value, (int)EEntityType.CertificateOfOrigin);
         }
 
         await eventUtil.RaiseEvent(builder.Build());

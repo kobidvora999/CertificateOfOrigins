@@ -106,7 +106,7 @@ public partial class CertificateOfOriginsBl
 
         // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
         var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
-        var saved = await SaveCertificateOfOrigin(saveRequest);
+        var saved = await SaveCertificateOfOriginCore(saveRequest, context.CertificateToUpdateId);
 
         // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
         // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is
