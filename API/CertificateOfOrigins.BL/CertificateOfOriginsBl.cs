@@ -76,64 +76,84 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // check) is deferred and delivered together with the FluentValidation unit — because the legacy field validation
     // ALSO resolves the exporter / destination-country / org-unit / cert-to-update values the save consumes (the same
     // proxy checks produce them), so it cannot be wired faithfully without that unit. See the default-branch TODO.
+    //
+    // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
+    // EVERYTHING the message does - reading the config, taking the lock, processing, a failed external service - runs
+    // inside one try; every exception is caught and returned to the sender in the response header
+    // (HandleMessageException), never as a fault. The message channel expects a response.
+#pragma warning disable CA1031 // catch-all on purpose: the legacy contract answers every message in-band
     public async Task<CertificateOfOriginRequestFeedbackResponseDto> GetPC22802281CertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
     {
-        if (request.AgentRequest is null)
-        {
-            throw new RestValidationException(nameof(request.AgentRequest), "AgentRequest is required.");
-        }
-
-        // Legacy InternalGetPC...: an optional distributed lock (config IsNeedToLockCertificateOfOrigin), keyed by the
-        // certificate id, serializes concurrent requests for the same certificate; released in a finally.
-        var lockKey = request.AgentRequest.CertificateId;
-        var needLock = !string.IsNullOrEmpty(lockKey) && await parametersUtil.Get<bool>("IsNeedToLockCertificateOfOrigin");
-        if (!needLock)
-        {
-            var unlockedResult = await ProcessCertificateOfOriginRequestInBand(request);
-            return unlockedResult;
-        }
-
-        var lockUtil = Resolve<ILockUtil>();
-        var lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(GetPC22802281CertificateOfOriginRequest));
-        if (!lockState.IsAcquired)
-        {
-            // Legacy: EMessages.ConcurrencyErrorTryAgain.
-            throw new RestValidationException(nameof(request.AgentRequest.CertificateId), "The certificate is locked by another request; please try again.");
-        }
-
         try
         {
-            var result = await ProcessCertificateOfOriginRequestInBand(request);
-            return result;
-        }
-        finally
-        {
-            await lockUtil.SafeReleaseAsync(lockKey!, lockState);
-        }
-    }
-
-    // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
-    // every exception of the processing - a failed external service included - is caught and returned to the sender
-    // in the response header (HandleMessageException), never as a fault. The message channel expects a response.
-#pragma warning disable CA1031 // catch-all on purpose: the legacy contract answers every message in-band
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequestInBand(CertificateOfOriginRequestMessageDto request)
-    {
-        try
-        {
-            var result = await ProcessCertificateOfOriginRequest(request);
+            var result = await GetPC22802281CertificateOfOriginRequestUnderLock(request);
             return result;
         }
         catch (Exception exception)
         {
             Resolve<ILogger<CertificateOfOriginsBl>>().LogError(exception, "GetPC_MSG2280_2281 failed; answered in-band with GeneralException.");
-            return new CertificateOfOriginRequestFeedbackResponseDto
-            {
-                Feedback = new CertificateOfOriginRequestFeedbackDto(),
-                Exceptions = [BuildMessageException(EMessageCode.GeneralException)],
-            };
+            var failedResponse = BuildInBandErrorResponse(EMessageCode.GeneralException);
+            return failedResponse;
         }
     }
 #pragma warning restore CA1031
+
+    // Legacy InternalGetPC_MSG2280_2281_CertificateOfOriginRequest.
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> GetPC22802281CertificateOfOriginRequestUnderLock(CertificateOfOriginRequestMessageDto request)
+    {
+        // Legacy dereferenced request.Content.AgentRequest on its first line, so a message without one failed with a
+        // NullReferenceException that the wrapper answered in-band (GeneralException).
+        if (request.AgentRequest is null)
+        {
+            throw new InvalidOperationException("GetPC_MSG2280_2281 received no AgentRequest.");
+        }
+
+        // An optional distributed lock (config IsNeedToLockCertificateOfOrigin), keyed by the certificate id, serializes
+        // concurrent requests for the same certificate; released in a finally.
+        var lockKey = request.AgentRequest.CertificateId;
+        var needLock = !string.IsNullOrEmpty(lockKey) && await parametersUtil.Get<bool>("IsNeedToLockCertificateOfOrigin");
+        if (!needLock)
+        {
+            var unlockedResult = await ProcessCertificateOfOriginRequest(request);
+            return unlockedResult;
+        }
+
+        var lockUtil = Resolve<ILockUtil>();
+        ILockState? lockState = null;
+        try
+        {
+            lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(GetPC22802281CertificateOfOriginRequest));
+            if (!lockState.IsAcquired)
+            {
+                // Legacy threw InfException(ConcurrencyErrorTryAgain) here; the wrapper answered it in-band with that
+                // exception in the response header (a 200 the sender can retry on), not as a fault.
+                var lockedResponse = BuildInBandErrorResponse(EMessageCode.ConcurrencyErrorTryAgain);
+                return lockedResponse;
+            }
+
+            var result = await ProcessCertificateOfOriginRequest(request);
+            return result;
+        }
+        finally
+        {
+            // Legacy released in its finally whatever the lock outcome (an unacquired state included).
+            if (lockState is not null)
+            {
+                await lockUtil.SafeReleaseAsync(lockKey!, lockState);
+            }
+        }
+    }
+
+    // The legacy wrapper's fresh response for a failed message: an empty feedback and the failure in the header exceptions.
+    private static CertificateOfOriginRequestFeedbackResponseDto BuildInBandErrorResponse(EMessageCode code)
+    {
+        var response = new CertificateOfOriginRequestFeedbackResponseDto
+        {
+            Feedback = new CertificateOfOriginRequestFeedbackDto(),
+            Exceptions = [BuildMessageException(code)],
+        };
+        return response;
+    }
 
     private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
     {

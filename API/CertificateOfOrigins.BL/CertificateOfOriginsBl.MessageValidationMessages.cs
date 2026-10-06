@@ -16,6 +16,7 @@ public partial class CertificateOfOriginsBl
     private enum EMessageCode
     {
         GeneralException = 0,
+        ConcurrencyErrorTryAgain = 1402474,
         CustomerNotInCustomers = 4978,
         CertificateToCancelIncorrectStatus = 4984,
         ReplacementReasonMissing = 4986,
@@ -81,6 +82,7 @@ public partial class CertificateOfOriginsBl
     private static readonly IReadOnlyDictionary<EMessageCode, string> MessageTexts = new Dictionary<EMessageCode, string>
     {
         [EMessageCode.GeneralException] = "שגיאת מערכת, נא לפנות לספק התוכנה",
+        [EMessageCode.ConcurrencyErrorTryAgain] = "נעשה נסיון לעדכן את אותה היישות יותר מפעם אחת בו זמנית. יש לנסות שוב.",
         [EMessageCode.CustomerNotInCustomers] = "לקוח {0} לא קיים במאגר לקוחות",
         [EMessageCode.CertificateToCancelIncorrectStatus] = "בהחלפת תעודה סטטוס התעודה לביטול חייב להיות מאושרת לפרסום באינטרנט",
         [EMessageCode.ReplacementReasonMissing] = "סיבת בקשה להחלפת תעודה חסרה",
