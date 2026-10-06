@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# C6: export declaration submitted (eventType 240) with the certificate's own destination/exporter and its invoice INV1 -> no findings.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 777,
+      "destinationCountryId": 138,
+      "organizationUnitId": 407,
+      "exportInvoiceInfoList": [ { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] } ]
+    }
+order: 1200

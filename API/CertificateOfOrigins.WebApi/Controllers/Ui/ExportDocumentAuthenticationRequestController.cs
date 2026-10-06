@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CertificateOfOrigins.WebApi.Controllers.Ui;
 
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("ui/[controller]")]
 public class ExportDocumentAuthenticationRequestController(IServiceProvider serviceProvider)
     : BaseController<ExportDocumentAuthenticationRequestBl>(serviceProvider)

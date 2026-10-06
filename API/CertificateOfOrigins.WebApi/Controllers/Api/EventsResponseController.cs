@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -11,6 +12,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Api;
 // under the `api` domain, and it is the one case where a second controller/BL pair appears inside a single domain —
 // the class is named after its own BL (EventsResponseBl), which delegates to the business BL.
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("api/[controller]")]
 public class EventsResponseController(IServiceProvider serviceProvider)
     : BaseController<EventsResponseBl>(serviceProvider)

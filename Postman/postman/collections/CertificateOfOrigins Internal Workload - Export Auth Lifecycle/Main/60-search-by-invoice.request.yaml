@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/Search"
+method: QUERY
+headers:
+  Content-Type: application/json
+# Search by the invoice number minted for this run finds exactly this request, closed valid.
+body:
+  type: json
+  content: |-
+    {
+      "invoiceIdNum": "EXP-LC-{{runId}}"
+    }
+order: 1600

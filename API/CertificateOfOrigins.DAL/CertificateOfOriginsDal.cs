@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
                 CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
@@ -77,10 +79,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId)
+    public async Task CancelCertificate(int id, string rejectCancelReason, int userId)
     {
-        // GetPC_MSG2280_2281 CertificateCancellation: set the certificate to Cancelled with the cancel-from-message
-        // reason. Set-based.
+        // Cancel a certificate with a reason that REPLACES the stored one, leaving IsLastVersion as it is: the message
+        // CertificateCancellation, the declaration-cancellation branch and the certificate replacement. (Superseding a
+        // version of the same number is CancelPreviousCertificate, which also drops IsLastVersion.) Set-based.
         var now = DateTime.Now;
         await Context.CertificateOfOrigins
             .Where(c => c.Id == id)
@@ -89,6 +92,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
                 .SetProperty(c => c.UpdateDate, now)
                 .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task<int?> GetPreviousCertificateIdByTitle(string title)
+    {
+        // Legacy CheckDeclarationStatus: the previous version of a just-saved certificate - the second-newest certificate
+        // with the same Title, whatever its status. Null when it is the first one.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.Title == title)
+            .OrderByDescending(c => c.Id)
+            .Skip(1)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
     }
 
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
@@ -103,6 +119,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 VersionNumber = c.VersionNumber,
                 OrganizationUnitId = c.OrganizationUnitId,
@@ -124,9 +142,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     // bound to them, so the BL saves between step 2 and step 3.
     // ---------------------------------------------------------------------------------------------------------
 
-    // Step 1 — the certificate's detail rows, diff-merged by surrogate id.
+    // Step 1 — the certificate's detail rows, diff-merged by surrogate id. An EMPTY list means the caller did not send
+    // the details (a header-only save) — keep the stored rows, as the legacy self-tracking save did for rows the client
+    // never touched. A certificate always has details (mandatory fields per type), so an empty list is never a real
+    // "delete all". Same guard as the invoices in step 2.
     public Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details)
     {
+        if (details.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
         foreach (var detail in details)
         {
             detail.CertificateOfOriginId = certificateId;
@@ -180,14 +206,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
     {
-        // UpdateCertificateOfOrigins: the certificates to reconcile against the export declaration. Projected to the
-        // columns the reconciler reads.
+        // UpdateCertificateOfOrigins: the certificates of a declaration event. Legacy loaded the full entity here and ran
+        // the whole flow on it; the entity has 36 columns (over the platform's 30-column interceptor limit), so this is a
+        // projection that serves BOTH consumers - keep every column of each when changing it:
+        //  - the reconciler (status, reason, type, declaration link, org unit, reject reason);
+        //  - the release path: HandleCertificateReplacement (CertificateIdToCancel), the events (Title, CustomerId), and
+        //    the publish of a PendingRelease certificate - CreateQrCodeIfNeeded (QrCodePath, Guid) and the issue-queue
+        //    payload (CreateCustomerId, InternalApplication, FeedbackRemark).
         var result = await ReadOnlyContext.CertificateOfOrigins
             .Where(c => ids.Contains(c.Id))
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
                 TypeId = c.TypeId,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 RequestReasonCode = c.RequestReasonCode,
@@ -195,6 +228,12 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 ExportDeclarationNumber = c.ExportDeclarationNumber,
                 OrganizationUnitId = c.OrganizationUnitId,
                 RejectCancelReason = c.RejectCancelReason,
+                CertificateIdToCancel = c.CertificateIdToCancel,
+                QrCodePath = c.QrCodePath,
+                Guid = c.Guid,
+                CreateCustomerId = c.CreateCustomerId,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
                 CreateDate = c.CreateDate,
             })
             .ToListAsync();
@@ -487,6 +526,25 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    // Legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType, for every certificate type at once (the
+    // resolver's load): the trade-agreement ids per type. No ValidFrom / ValidTo or state filter, as legacy.
+    public async Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType()
+    {
+        var rows = await ReadOnlyContext.CertificateOfOriginTypeByTradeAgreements
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.CertificateOfOriginTypeCodeId, row.TradeAgreementId })
+            .ToListAsync();
+        var result = rows
+            .GroupBy(row => row.CertificateOfOriginTypeCodeId)
+            .Select(group => new CertificateTypeTradeAgreementsResolverDto
+            {
+                CertificateOfOriginTypeCodeId = group.Key,
+                TradeAgreementIds = group.Select(row => row.TradeAgreementId).ToList(),
+            })
+            .ToList();
+        return result;
+    }
+
     public async Task<bool> IsSupplierDeliveryCountry(int countryId)
     {
         // Legacy IsVendor: GetIdByCode<...>("ConutryID", countryId) > 0 — true when the issuing country has an active
@@ -533,10 +591,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // SaveAuthenticationRequestFile forwards them to SendDecisionMessage. While this read omitted them, a
         // GET → edit → POST on the file screen posted 0 for both and routed the decision message / rejection task to
         // user 0.
-        // The remaining legacy result-set columns (CirumstanceDetails, DecisionCircumstences, DocumentNumber,
-        // RequestCircumstancesID, ResponsePhoneNum, IsOldIndication, OrganizationUnitTypeID, Remarks, ItemDetailID,
-        // CreateUserID and the two *InvoiceGoodsItemTaxDifference fields) are deliberately NOT projected: nothing on
-        // AuthenticationFileRequestDto exposes them, and each costs headroom against the 30-column interceptor cap.
+        // The last eight (CirumstanceDetails … AllInvoiceGoodsItemTaxDifference) are what the legacy file screen shows
+        // for the selected request: the coordinator edits the circumstances/remarks and sees the rest read-only.
+        // Without them a GET → edit → POST could not round-trip those values. 28 columns — under the platform
+        // interceptor's 30-column cap. Still not projected: ResponsePhoneNum, OrganizationUnitTypeID, ItemDetailID,
+        // CreateUserID (not on the file screen).
         var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
             .Select(r => new CertificateOfOriginsImportAuthenticationRequest
@@ -561,6 +620,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 InvoiceNumber = r.InvoiceNumber,
                 UserId = r.UserId,
                 UserResponseId = r.UserResponseId,
+                CirumstanceDetails = r.CirumstanceDetails,
+                DecisionCircumstences = r.DecisionCircumstences,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                Remarks = r.Remarks,
+                DocumentNumber = r.DocumentNumber,
+                IsOldIndication = r.IsOldIndication,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference,
             })
             .ToListAsync();
         return result;
@@ -601,7 +668,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    public async Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
     {
         // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). Legacy did a full
         // self-tracking-entity save, so an explicit set-list is only equivalent for columns nobody edits.
@@ -616,9 +683,10 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // OrganizationUnitTypeId (system-assigned, no screen edits them), and IsOldIndication (derived from
         // DocumentIssuingDate and written by the file-save path, not by the coordinator).
         //
-        // DocumentID is a non-identity, externally-assigned key — this method only ever edits an existing request;
-        // no matching row → false (404 in the BL).
-        var now = DateTimeOffset.Now;
+        // DocumentID is a non-identity, externally-assigned key. This method edits an existing request only; no
+        // matching row → false (404 in the BL). A new request is inserted by AddImportAuthenticationRequest, chosen by
+        // the caller's IsNewInstance — never by this method's result.
+        var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
             .ExecuteUpdateAsync(setters => setters
@@ -661,6 +729,60 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(r => r.UpdateUserId, userId));
 
         return affected > 0;
+    }
+
+    public async Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    {
+        // SaveImportAuthenticationRequest when the caller sends IsNewInstance = true (legacy Repository.Save of an
+        // IsNewInstance entity — the coordinator's popup creates requests through that operation). DocumentID is the
+        // caller-assigned key and is written as sent. The entity is not an ICloudEntity (its key is DocumentID, not Id), so the audit columns are
+        // stamped here, as the update above does.
+        //
+        // NOT NULL columns the popup does not send: RequestCircumstancesID = 1 (the value InitNewImportProcess sets),
+        // Remarks = empty, ItemDetailID = 0 and IsOldIndication = false (the legacy entity's CLR defaults).
+        var now = DateTime.Now;
+        Context.CertificateOfOriginsImportAuthenticationRequests.Add(new CertificateOfOriginsImportAuthenticationRequest
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = now,
+            CreateUserId = userId,
+            UpdateDate = now,
+            UpdateUserId = userId,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            ResponsePhoneNum = request.ResponsePhoneNum,
+            OrganizationUnitId = request.OrganizationUnitId,
+            OrganizationUnitTypeId = request.OrganizationUnitTypeId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+            UserId = request.UserId,
+            UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            RequestCircumstancesId = request.RequestCircumstancesId ?? 1,
+            Remarks = request.Remarks ?? string.Empty,
+            DocumentNumber = request.DocumentNumber,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
+            ItemDetailId = 0,
+            IsOldIndication = false,
+        });
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
 
     // The GetById read projection omits State + OrganizationUnitId (29-column interceptor limit), so a round-tripped
@@ -1031,13 +1153,18 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId)
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, bool stampFirstContactDate = false)
     {
         // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
         // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
         // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
-        var now = DateTimeOffset.Now;
-        var today = new DateTimeOffset(now.Date, now.Offset);
+        //
+        // stampFirstContactDate: the first vendor/customs-house delivery also records FirstProvideContactDate = today,
+        // only while it is still empty. Legacy set it client-side (OnRequestDeliverNotificationCommand, "if null →
+        // Today") and the full-entity save persisted it; the reminder-ladder SP measures every rung from
+        // ISNULL(FirstProvideContactDate, LastDelivery), so without it the ladder restarts on each reminder.
+        var now = DateTime.Now;
+        var today = now.Date;
 
         await Context.CertificateOfOriginsImportAuthenticationFileDetails
             .Where(f => f.Id == fileId)
@@ -1045,7 +1172,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
                 .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
                 .SetProperty(f => f.LastDelivery, today)
-                .SetProperty(f => f.UpdateDate, today.DateTime));
+                .SetProperty(f => f.FirstProvideContactDate,
+                    f => stampFirstContactDate && f.FirstProvideContactDate == null ? today : f.FirstProvideContactDate)
+                .SetProperty(f => f.UpdateDate, today));
 
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
@@ -1059,7 +1188,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
         // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
         // which — matching the legacy loop — overrides this request's UpdateDate to "now".) Set-based, no row loaded.
-        var today = new DateTimeOffset(DateTimeOffset.Now.Date, DateTimeOffset.Now.Offset);
+        var today = DateTime.Today;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .ExecuteUpdateAsync(s => s
@@ -1069,16 +1198,36 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
-    public async Task UpdateImportRequestDecision(int documentId, int? decisionId, bool isOldIndication, int userId)
+    public async Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId)
     {
-        // SaveAuthenticationRequestFile step 1 (UpdateAndSaveImportAuthenticationRequest): stamp each child request's
-        // decision + the recomputed IsOldIndication flag + update-audit. Set-based, no row loaded.
-        var now = DateTimeOffset.Now;
+        // SaveAuthenticationRequestFile step 1 (legacy UpdateAndSaveImportAuthenticationRequest): per child request,
+        // Repository.Save of the client-modified entity + the server-recomputed IsOldIndication. The legacy screen can
+        // change the decision, the circumstances/remarks, the vendor / foreign customs house / importer, the countries,
+        // the preference-document type and issuing date, and clears InvoiceNumber or DocumentNumber in code — so those
+        // are written here. The fields that screen shows read-only are not.
+        //
+        // A null from the caller keeps the stored value (value-from-row overload), so a caller sending only the base
+        // fields does not wipe the rest. DocumentIssuingDate is part of the base contract (the file read returns it and
+        // IsOldIndication is computed from it), so it is written as sent. Set-based, no row loaded.
+        var now = DateTime.Now;
         await Context.CertificateOfOriginsImportAuthenticationRequests
-            .Where(r => r.DocumentId == documentId)
+            .Where(r => r.DocumentId == child.DocumentId)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.DecisionId, decisionId)
+                .SetProperty(r => r.DecisionId, child.DecisionId)
                 .SetProperty(r => r.IsOldIndication, isOldIndication)
+                .SetProperty(r => r.DecisionCircumstences, r => child.DecisionCircumstences ?? r.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, r => child.CirumstanceDetails ?? r.CirumstanceDetails)
+                .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
+                .SetProperty(r => r.DocumentNumber, r => child.DocumentNumber ?? r.DocumentNumber)
+                .SetProperty(r => r.InvoiceNumber, r => child.InvoiceNumber ?? r.InvoiceNumber)
+                .SetProperty(r => r.VendorId, r => child.VendorId ?? r.VendorId)
+                .SetProperty(r => r.CustomerId, r => child.CustomerId ?? r.CustomerId)
+                .SetProperty(r => r.ImporterId, r => child.ImporterId ?? r.ImporterId)
+                .SetProperty(r => r.ImportCountryId, r => child.ImportCountryId ?? r.ImportCountryId)
+                .SetProperty(r => r.OriginCountryId, r => child.OriginCountryId ?? r.OriginCountryId)
+                .SetProperty(r => r.IssuingCountryId, r => child.IssuingCountryId ?? r.IssuingCountryId)
+                .SetProperty(r => r.PreferenceDocumentTypeId, r => child.PreferenceDocumentTypeId ?? r.PreferenceDocumentTypeId)
+                .SetProperty(r => r.DocumentIssuingDate, child.DocumentIssuingDate)
                 .SetProperty(r => r.UpdateDate, now)
                 .SetProperty(r => r.UpdateUserId, userId));
     }
@@ -1087,7 +1236,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile step 4: persist the file's editable scalar columns + update-audit. Set-based
         // (the repo write convention) — CreateDate/CreateUserId/State/TimeStamp are left untouched. Missing row → false.
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationFileDetails
             .Where(f => f.Id == file.Id)
             .ExecuteUpdateAsync(s => s
@@ -1103,7 +1252,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.LastDelivery, file.LastDelivery)
                 .SetProperty(f => f.ImporterContactingReasonId, file.ImporterContactingReasonId)
                 .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
-                .SetProperty(f => f.UpdateDate, now.DateTime)
+                .SetProperty(f => f.UpdateDate, now)
                 .SetProperty(f => f.UpdateUserId, userId));
         return affected > 0;
     }
@@ -1112,7 +1261,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile / CheckStatusAndOpenTask CancelledFile branch: detach every child request from
         // the cancelled file (AuthenticationFileID → null) + stamp update-audit. Set-based.
-        var now = DateTimeOffset.Now;
+        var now = DateTime.Now;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.AuthenticationFileId == fileId)
             .ExecuteUpdateAsync(s => s

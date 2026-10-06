@@ -9,7 +9,7 @@ public class GetAuthenticationRequestFileByIdResultDto
 
     public int State { get; set; }
 
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     public int AuthenticationFileStatusId { get; set; }
 
@@ -29,11 +29,11 @@ public class GetAuthenticationRequestFileByIdResultDto
 
     public string? UserNameIssuingLetter { get; set; }
 
-    public DateTimeOffset? LastDelivery { get; set; }
+    public DateTime? LastDelivery { get; set; }
 
     public int? ImporterContactingReasonId { get; set; }
 
-    public DateTimeOffset? FirstProvideContactDate { get; set; }
+    public DateTime? FirstProvideContactDate { get; set; }
 
     // Legacy transient (no SP column): the materializer set CustomerID 0 -> -1, and the SP never populates it, so it
     // is always -1.

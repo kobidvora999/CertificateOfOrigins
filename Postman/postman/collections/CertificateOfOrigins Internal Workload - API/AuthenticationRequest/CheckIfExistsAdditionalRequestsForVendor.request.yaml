@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId=555"
-method: GET
-queryParams:
-  vendorId: "555"
-order: 3000

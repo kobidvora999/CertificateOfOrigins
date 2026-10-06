@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# FLOW STEP - creates THIS run's authentication file from both requests above and links them. The id is an
+# identity, captured into fileId; the file is DEDICATED to this collection (90-cancelled unlinks its children).
+body:
+  type: json
+  content: |-
+    [
+      { "documentId": {{docFileA}}, "organizationUnitIdNum": 1, "issuingCountryIdNum": 32, "customerId": 123,
+        "responseNameEmail": "flow@example.com" },
+      { "documentId": {{docFileB}}, "organizationUnitIdNum": 1, "issuingCountryIdNum": 32, "customerId": 123,
+        "responseNameEmail": "flow@example.com" }
+    ]
+order: 29200

@@ -22,16 +22,54 @@ scripts:
     code: |-
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Status transitions of certificates this run created: the certificate the create answered, moved to the target
+      // status with its ORIGINAL status, the way the worker screen saves it.
+      var TRANSITION = {
+          '01-publish-repl-target': ['00-setup-repl-target', 8],
+          '01-publish-wq-target': ['00-setup-wq-target', 8],
+          '01-publish-eurmed': ['00-setup-eurmed', 8],
+          '21-publish-mercosur': ['20-setup-mercosur', 8]
+      };
+      if (TRANSITION[pm.info.requestName]) {
+          var tDto = JSON.parse(pm.collectionVariables.get('dto_' + TRANSITION[pm.info.requestName][0]) || '{}');
+          tDto.originalCertificateOfOriginStatusId = tDto.certificateOfOriginStatusId;
+          tDto.certificateOfOriginStatusId = TRANSITION[pm.info.requestName][1];
+          pm.collectionVariables.set('transitionBody', JSON.stringify(tDto));
+      }
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       var now = Date.now(), DAY = 86400000;
       pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
       pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
-      if (!pm.collectionVariables.get('runId')) { pm.collectionVariables.set('runId', String(now).slice(-7)); }
+      if (pm.info.requestName === '00-setup-wq-target' || !pm.collectionVariables.get('runId')) { pm.collectionVariables.set('runId', String(now).slice(-7)); }
     language: text/javascript
   - type: http:afterResponse
     code: |-
       var name = pm.info.requestName;
       var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      // ---- certificates that reach Published / Match through the process ----
+      var T_SETUP = ['00-setup-repl-target', '00-setup-wq-target', '00-setup-eurmed', '20-setup-mercosur'];
+      var T_STEP = {
+          '01-publish-repl-target': ['00-setup-repl-target', 8],
+          '01-publish-wq-target': ['00-setup-wq-target', 8],
+          '01-publish-eurmed': ['00-setup-eurmed', 8],
+          '21-publish-mercosur': ['20-setup-mercosur', 8]
+      };
+      if (T_SETUP.indexOf(name) >= 0 && j) {
+          pm.collectionVariables.set('dto_' + name, JSON.stringify(j));
+          pm.test(name + ': created at Received (2)', function () { pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(2); });
+      }
+      if (T_STEP[name] && j) {
+          var tWant = T_STEP[name];
+          pm.test(name + ': ' + tWant[0] + ' moved 2 -> ' + tWant[1], function () {
+              pm.expect(j.id, 'id').to.eql(JSON.parse(pm.collectionVariables.get('dto_' + tWant[0])).id);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(tWant[1]);
+          });
+          if (tWant[1] === 8) {
+              pm.test(name + ': the publish step ran (issuing date stamped)', function () {
+                  pm.expect(j.issuingDate, 'issuingDate').to.be.a('string').and.not.empty;
+              });
+          }
+      }
 
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
@@ -39,6 +77,7 @@ scripts:
       pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
 
       // ---- captures ----
+      if (name === '00-setup' && j) { pm.collectionVariables.set('filterCertId', j.id); }
       var SAVE_VAR = {
           '00-setup-wq-target':   'wqTargetId',
           '00-setup-repl-target': 'replTargetId',
@@ -47,9 +86,8 @@ scripts:
       };
       if (SAVE_VAR[name] && j) {
           pm.collectionVariables.set(SAVE_VAR[name], j.id);
-          pm.test(name + ': published row created', function () {
+          pm.test(name + ': row created', function () {
               pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
-              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
           });
       }
       var GUID_VAR = { '05-read-eurmed': 'wqEurmedGuid', '25-read-mercosur': 'wqMercosurGuid' };
@@ -68,7 +106,7 @@ scripts:
               pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
           });
       }
-      if (name === '05-read' && j) { pm.collectionVariables.set('replTs', j.timeStamp); }
+      if (name === '05-read' && j) { pm.collectionVariables.set('replTs', j.timeStamp); pm.collectionVariables.set('replStatus', j.certificateOfOriginStatusId); }
 
       // ---- web-query field mapping ----
       // The response carries the rendered field list. Asserting on the LABELS proves which mapper ran: each one
@@ -97,8 +135,9 @@ scripts:
 
       // ---- filter + convert ----
       if (name === '10-by-filter' && j) {
-          pm.test('10-by-filter: the filter matched, so the enrichment actually ran', function () {
-              pm.expect(j, 'rows').to.be.an('array').that.is.not.empty;
+          pm.test('10-by-filter: the run number matched exactly the certificate 00-setup created', function () {
+              pm.expect(j, 'rows').to.be.an('array').with.lengthOf(1);
+              pm.expect(j[0].id, 'id').to.eql(Number(pm.collectionVariables.get('filterCertId')));
           });
           pm.test('10-by-filter: FillCustomersInformation resolved the customer names', function () {
               var row = j[0];
@@ -107,7 +146,7 @@ scripts:
       }
       if (name === '20-convert' && j) {
           pm.test('20-convert: took the success path, not the 404', function () {
-              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.id, 'id - the certificate created at 00-setup, not an older row').to.eql(Number(pm.collectionVariables.get('filterCertId')));
               pm.expect(j.entityType, 'entityType').to.be.a('number');
           });
       }

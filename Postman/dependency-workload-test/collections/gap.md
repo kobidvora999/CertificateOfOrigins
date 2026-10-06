@@ -1,37 +1,52 @@
 # Dependency-workload — outbound-call map & gaps (CertificateOfOrigins)
 
-Derived from `API/**/BL/Proxies/*Proxy.cs` (real proxies, excluding `*MockProxy.cs`) + their BL callers + the
-controller endpoints. **9 external services**, one v3 collection each. Runs **pre-prod with REAL proxies** (infra
-flips proxies + stands up the environment; these collections only point the Postman CLI at the live service).
+Derived from the **real** proxies `API/CertificateOfOrigins.BL/Proxies/*/*Proxy.cs` (excluding `*MockProxy.cs` and the
+interfaces): **42 outbound calls to 9 external services**, one v3 collection per service, **one request per outbound
+call**, sent **straight to the route the proxy calls** (`{{base_URL}}/api/{Controller}/{Endpoint}`) — not through
+CertificateOfOrigins. Runs **pre-prod** against the real services (infrastructure stands them up).
 
-| External service (`CustomsMicroServices.X`) | Outbound calls (proxy methods) | Probe endpoint (fires the call) | Liveness assertion |
-|---|---|---|---|
-| SystemTables | Country/CountriesByAlphaCodes · Site/SitesByExternalNumbers · InternationalSite/InternationalSitesByLocodes · PackingType/PackingTypesByCodes · MeasurementUnit/MeasurementUnitsByCodes · CurrencyType/CurrencyTypesBy{Ids,Codes} · CustomsBook/CustomsItemsByIds · CountryGroup · OrganizationUnit | `POST /CertificateOfOrigins/CertificateOfOriginRequest` (message validation fans out to all of them) | HTTP 200 |
-| Customers | Customer/CustomersByIds · GetCustomerIdByExternalId | `GET /CertificateOfOrigins/CertificateOfOriginById/{id}` (enriches customer name) | HTTP 200 |
-| Users | User/UsersByIds | `GET /CertificateOfOrigins/CertificateOfOriginById/{id}` (enriches handling-user name) | HTTP 200 |
-| Vendors | Vendor/VendorsByIds | `GET /AuthenticationRequest/AuthenticationRequestByID/{documentId}` (enriches vendor) | HTTP 200 |
-| ExportDealFile | ExportDeclarationDetailsForCertificateOfOrigin · ExportDeclarationInfoForPc · GetLeadDocumentByCertificateOfOriginId · GetLeadDocumentSubmissionDate | `GET /CertificateOfOrigins/LoadDataFromExportDeclaration?leadDocumentId=…&requestReasonCode=1` | HTTP 200 |
-| Documents | Document/DocumentsByEntity · AttachDocumentsToEntity · DeleteDocuments · GetDocumentById | `GET /AuthenticationRequest/EntityDocuments/{leadDocumentId}` (DocumentsByEntity) | HTTP 200 |
-| Collaterals | GetCollateralRequest · ChangeTempCollateralRequest · GetCollateralRequestIdsByRelatedEntity · GrantAllCollateralRequests | `GET /AuthenticationRequest/AuthenticationRequestByID/{documentId}` (resolves collateral) | HTTP 200 |
-| Common | Message/SendMessage · CommonServices/CreateQrCode · GenerateTemplate (SSRS) | `POST /CertificateOfOrigins/CertificateOfOriginRequest` (fires SendMessage feedback) | HTTP 200 |
-| Tasks | Task/IsTaskExist · Task/LatestUserHandlingEntityTasksWithTaskUnification | `GET /AuthenticationRequest/AuthenticationRequestByID/{documentId}` (IsTaskExist) | HTTP 200 |
+Rebuilt 2026-09-29. The previous 9 probes called CertificateOfOrigins itself on routes without the `ui/` / `community/`
+prefix (404), read `{{certificateId}}` / `{{authenticationRequestDocumentId}}` / `{{leadDocumentId}}` that were defined
+nowhere, and kept their assertions in request-level `scripts:`. None of them proved a dependency.
 
-## Placeholder collection-variables — MUST be set to real pre-prod ids before the run
-The probe URLs reference variables that need valid pre-prod values (do **not** invent business data — supply from
-the pre-prod dataset):
-- `{{certificateId}}` — an existing certificate id (Customers, Users probes).
-- `{{authenticationRequestDocumentId}}` — an existing import-authentication-request DocumentId (Vendors, Collaterals, Tasks probes).
-- `{{leadDocumentId}}` — an existing lead-document id with linked documents + an export declaration (Documents, ExportDealFile probes).
+## Design: no pre-prod data, no side effects
+Every entity id a probe sends is **2147483647** (int.MaxValue — no identity reaches it), external codes are
+**standard codes** (`IL`, `USD`, `KG`, `BX`, `ILHFA`) or `NO-SUCH-…`. So:
+- a probe never depends on data that happens to exist in pre-prod, and
+- a **write** probe (collateral grant/debit/change, document attach/delete, lead-document re-point, message send) can
+  only be validated and refused — or accepted as a no-op — it can never change a real record.
 
-Set them in each `.resources/definition.yaml` `variables:` block, or pass `--env-var` at run time.
+Assertions live at **collection level**, keyed on `pm.info.requestName`: no 5xx, < 15 s, valid JSON when the body is
+JSON, and the status from the endpoint contract:
 
-## Notes / partial coverage
-- **Common — CreateQrCode + GenerateTemplate are NOT fired by the probe.** They run only on the **publish path**
-  (`SaveCertificateOfOrigin` with a published status). The current probe proves Common via `Message/SendMessage`
-  (request feedback). To also exercise QR/SSRS, add a publish-path probe once a publishable pre-prod certificate exists.
-- **Documents — AttachDocumentsToEntity / DeleteDocuments** are write-side (Save/attach flows); the probe proves
-  Documents liveness via the read `DocumentsByEntity`. Liveness of the write endpoints is proven by a successful
-  Save flow (out of scope for a read-only probe).
-- **Assertions are HTTP-200 liveness only.** Per the skill, where the outbound effect isn't cleanly visible in the
-  response (in-band feedback, enrichment that may be null for a given id), liveness is proven by the call succeeding.
-  Tighten to enriched-field assertions once real pre-prod ids yield deterministic responses.
+| Kind | Expected | Why |
+|---|---|---|
+| list / by-ids / by-codes read | 200 | an empty list, never 404 |
+| by-id / lookup read | 200, 204 or 404 | both prove the service answered for an id that cannot exist |
+| write with an id that cannot exist | 200, 204, 400 or 404 | validated and refused, or a no-op |
+
+## The map
+| Service | Calls | Probes |
+|---|---|---|
+| Collaterals | CollateralRequestByEntity · CollateralRequestIdsByEntity · ChangeTempCollateralRequest · GrantAllCollateralRequests · DebitCreditCollateralRequest | 5 |
+| Common | CommonServices/CreateQrCode · CommonServices/GenerateTemplate · Message/SendMessage | 3 |
+| Customers | CustomersByIds · CustomerInformation · CustomersByCountry (activity type 40) · IdByExternalId | 4 |
+| Documents | DocumentsByEntity · Document/{id} · AttachDocumentsToEntity · DeleteDocuments | 4 |
+| ExportDealFile | ExportDeclarationDetailsForCertificateOfOrigin · LeadDocumentSubmissionDate · LeadDocumentByCertificateOfOrigin (update) · LeadDocumentByCertificateOfOriginId · ChangeCertificateOfOriginForLeadDocument · ExportDeclarationInfo · DetailsForExportAssociatedGoodsItems | 7 |
+| SystemTables | CountryGroupExists · IsCountryInCountryGroup · CountriesByAlphaCodes · CurrencyTypesByCodes · CurrencyTypesByIds · CustomsItemIdByFullClassification · CustomsItemsByIds · IsTradeAgreementForCountry · DataDictionaryFieldsByIds · InternationalSitesByLocodes · MeasurementUnitsByCodes · OrganizationUnit/IsCustomsHouse · PackingTypesByCodes · SitesByExternalNumbers | 14 |
+| Tasks | IsTaskExist · IsTaskExistsOnEntity · LatestUserHandlingEntityTasksWithTaskUnification | 3 |
+| Users | UsersByIds | 1 |
+| Vendors | VendorsByIds | 1 |
+
+Verified locally against a stub that answers `200 []`: all 9 collections load, all 42 requests go out on the proxy
+route with the proxy's body and no unresolved variable, 168 assertions run. That proves the wiring, **not** the
+services — only a pre-prod run does.
+
+## Open
+- **Every route is still `TODO(blocking): confirm endpoint`** in the proxies (INTERNAL_INTEGRATION.md). A 404 on a
+  route that does not exist looks the same as a 404 for a missing id; the first pre-prod run must check that the
+  by-id 404s come from the service (a problem-details body) and not from the gateway.
+- **base_URL is one host.** If pre-prod does not front all services behind a gateway, run per service with its own
+  host (`run.ps1 -Prefix "CertificateOfOrigins Dependency Workload - {Service}" -BaseUrl <host>`).
+- `LatestUserHandlingEntityTasksWithTaskUnification` sends the values the BL sends: the export lead-document entity type and
+  `organizationUnitTypeId: 18` (Export, `CertificateOfOriginsConsts.ExportOrganizationUnitType`).

@@ -205,11 +205,7 @@ public partial class AuthenticationRequestBl(
         {
             Id = file.Id,
             State = file.State,
-
-            // The entity maps CreateDate as DateTime (ICloudEntity); the DTO exposes DateTimeOffset. Build it with a
-            // ZERO offset to match what the DbContext DateTimeOffset value converter produced before C12 — an implicit
-            // DateTime→DateTimeOffset conversion would stamp the LOCAL offset and shift the instant on the wire.
-            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
+            CreateDate = file.CreateDate,
             AuthenticationFileStatusId = file.AuthenticationFileStatusId,
             Notes = file.Notes,
             PostalAdress = file.PostalAdress,
@@ -287,6 +283,14 @@ public partial class AuthenticationRequestBl(
             InvoiceNumber = request.InvoiceNumber,
             UserId = request.UserId,
             UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            Remarks = request.Remarks,
+            DocumentNumber = request.DocumentNumber,
+            RequestCircumstancesId = request.RequestCircumstancesId,
+            IsOldIndication = request.IsOldIndication,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
             Decisions = decisions,
             ItemDetails = allItemDetails
                 .Where(item => item.ImportAuthenticationRequestId == request.DocumentId)
@@ -410,8 +414,7 @@ public partial class AuthenticationRequestBl(
             var documentId = request.DocumentId ?? 0;
             var decisionEvent = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
-                .WithEntityId(documentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, documentId)
                 .WithTitle(documentId.ToString())
                 .WithAdditionalInfo(documentId.ToString())
                 .Build();
@@ -432,8 +435,7 @@ public partial class AuthenticationRequestBl(
         // Final event: NewAuthenticationRequestFile (opens the HandleAuthenticationRequestFile task).
         var fileEvent = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.NewAuthenticationRequestFile)
-            .WithEntityId(fileId)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, fileId)
             .WithTitle(fileId.ToString())
             .WithOrganizationUnitId(organizationUnitId)
             .WithAdditionalInfo(fileId.ToString())
@@ -450,9 +452,7 @@ public partial class AuthenticationRequestBl(
             DeliveryMethodId = file.DeliveryMethodId,
             ReminderMethodId = file.ReminderMethodId,
             EmailAdress = file.EmailAdress,
-
-            // Zero offset — see the note at CreateDate in MapToFileResultDto above (ICloudEntity DateTime → DTO DateTimeOffset).
-            CreateDate = new DateTimeOffset(DateTime.SpecifyKind(file.CreateDate, DateTimeKind.Unspecified), TimeSpan.Zero),
+            CreateDate = file.CreateDate,
         };
     }
 
@@ -465,8 +465,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var eventRequest = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .Build();
@@ -483,8 +482,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var eventRequest = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.CloseTaskReminderNotice3Months)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle($"  אימות מסמך מקור (יבוא) מספר פניה {request.Id}")
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
@@ -505,7 +503,9 @@ public partial class AuthenticationRequestBl(
             : (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend;
         var (status, deliveryMethod) = AdvanceDeliveryStatus(initialStatus, request.DeliveryMethodId);
 
-        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod);
+        // A delivery (not a reminder) records the first-contact date if the file has none yet — legacy set it on the
+        // "send notification" button (OnRequestDeliverNotificationCommand); the reminder button never touched it.
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, request.IsDelivery);
 
         return new HandleDeliveryAndReminderForVendorSentResultDto
         {
@@ -551,6 +551,7 @@ public partial class AuthenticationRequestBl(
         var (status, deliveryMethod) = AdvanceDeliveryStatus(request.AuthenticationFileStatusId, request.DeliveryMethodId);
         if (request.AuthenticationFileId.HasValue)
         {
+            // Importer letters never set the first-contact date (legacy: only the vendor/customs-house send did).
             await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod);
         }
 
@@ -558,8 +559,7 @@ public partial class AuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var builder = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(request.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId);
         if (request.AuthenticationFileId.HasValue)
@@ -835,8 +835,10 @@ public partial class AuthenticationRequestBl(
     // all collaterals are pushed to permanent (Collateral service) — collaterals are NOT a local child table; (2) the
     // decision switch raises the matching events (Tasks-service task checks reuse IsTaskExist) and, on a central
     // decision, sends the decision message (Message-Management service); (3) VendorId 0 → null; (4) AuthenticationNeedless
-    // additionally raises a rejection event assigning the opened task to the responder. The persist is a set-based
-    // update on the existing row (the entity has no child collection — ItemDetailID is a scalar). Missing row → 404.
+    // additionally raises a rejection event assigning the opened task to the responder. The persist follows the
+    // caller's IsNewInstance (legacy Repository.Save of an IsNewInstance entity): insert a new request, or a set-based
+    // update of the existing row — 404 when that row is missing (the entity has no child collection — ItemDetailID is
+    // a scalar).
     // Returns the fully re-read request graph via GetAuthenticationRequestByID — consistent with the sibling
     // SaveAuthenticationRequestFile (both saves return the same shape as their GetById read).
     public async Task<GetAuthenticationRequestByIdResultDto> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request)
@@ -882,8 +884,7 @@ public partial class AuthenticationRequestBl(
                 {
                     var processedEvent = eventUtil.CreatBuilder()
                         .WithEventType((int)EEventType.ImportAuthenticationRequestProcessedWithWasRejected)
-                        .WithEntityId(request.DocumentId)
-                        .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                        .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                         .WithTitle(request.DocumentId.ToString())
                         .Build();
                     await eventUtil.RaiseEvent(processedEvent);
@@ -898,8 +899,7 @@ public partial class AuthenticationRequestBl(
                 // Close the SetDecisionBeforeAssociation task + notify the handling user(s) of the central decision.
                 var decisionEvent = eventUtil.CreatBuilder()
                     .WithEventType((int)EEventType.NewDecisionBeforeAssociation)
-                    .WithEntityId(request.DocumentId)
-                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                     .WithTitle(request.DocumentId.ToString())
                     .WithAdditionalInfo(request.DocumentId.ToString())
                     .Build();
@@ -920,20 +920,31 @@ public partial class AuthenticationRequestBl(
         {
             var rejectedEvent = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.AuthenticationRequestRejected)
-                .WithEntityId(request.DocumentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
                 .WithTitle(request.DocumentId.ToString())
                 .WithTaskArguments(task => task.WithTaskAssignmentUser(request.UserResponseId))
                 .Build();
             await eventUtil.RaiseEvent(rejectedEvent);
         }
 
-        // Persist (set-based update) — 404 if the request row is gone.
+        // Persist. The caller says which it is — never the database. The coordinator's "new authentication request"
+        // popup (legacy ImportProcessFormPresenter.InitNewImportProcess) sends IsNewInstance = true and saves through
+        // this same operation; every other save edits an existing request. The key cannot decide it: DocumentID is
+        // caller-assigned (the document's id), so a new request never arrives with 0. An update that matches no row
+        // is a 404 — a stale or wrong id must never turn into a new request.
         var userId = RequestMetadata.UserId ?? 0;
-        var saved = await DataLayer.SaveImportAuthenticationRequest(request, userId);
-        if (!saved)
+        if (request.IsNewInstance)
         {
-            throw new RestNotFoundException();
+            await DataLayer.AddImportAuthenticationRequest(request, userId);
+            await SaveChangesAsync();
+        }
+        else
+        {
+            var updated = await DataLayer.UpdateImportAuthenticationRequest(request, userId);
+            if (!updated)
+            {
+                throw new RestNotFoundException();
+            }
         }
 
         // Return the fully re-read request graph (consistent with the sibling SaveAuthenticationRequestFile — the SPA
@@ -947,8 +958,7 @@ public partial class AuthenticationRequestBl(
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.NewAuthenticationRequest)
-            .WithEntityId(request.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .WithAdditionalInfo(request.DocumentId.ToString());
@@ -1057,12 +1067,12 @@ public partial class AuthenticationRequestBl(
     {
         var userId = RequestMetadata.UserId ?? 0;
 
-        // 1. Persist every child request's decision + recomputed IsOldIndication (3+ years since issuing).
-        var threeYearsAgo = DateTimeOffset.Now.AddYears(-3);
+        // 1. Persist every child request's screen edits + the recomputed IsOldIndication (3+ years since issuing) —
+        //    legacy UpdateAndSaveImportAuthenticationRequest, a full Repository.Save per child.
+        var threeYearsAgo = DateTime.Now.AddYears(-3);
         foreach (var child in request.Requests)
         {
-            var isOldIndication = child.DocumentIssuingDate <= threeYearsAgo;
-            await DataLayer.UpdateImportRequestDecision(child.DocumentId, child.DecisionId, isOldIndication, userId);
+            await DataLayer.UpdateFileChildRequest(child, child.DocumentIssuingDate <= threeYearsAgo, userId);
         }
 
         // 2. Per changed child: events + decision message (+ grant collaterals on approval).
@@ -1103,8 +1113,7 @@ public partial class AuthenticationRequestBl(
             {
                 var closeTasks = eventUtil.CreatBuilder()
                     .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequest)
-                    .WithEntityId(child.DocumentId)
-                    .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                    .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                     .WithTitle(child.DocumentId.ToString())
                     .WithOrganizationUnitId(child.OrganizationUnitId);
                 if (child.AuthenticationFileId.HasValue)
@@ -1140,8 +1149,7 @@ public partial class AuthenticationRequestBl(
     {
         var builder = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.AuthenticationRequestDecisionUpdate)
-            .WithEntityId(child.DocumentId)
-            .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
             .WithTitle(child.DocumentId.ToString());
         if (child.AuthenticationFileId.HasValue)
         {
@@ -1236,8 +1244,7 @@ public partial class AuthenticationRequestBl(
         {
             var closeFileTasks = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
-                .WithEntityId(request.Id)
-                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
                 .WithOrganizationUnitId(request.OrganizationUnitId)
                 .Build();
@@ -1248,8 +1255,7 @@ public partial class AuthenticationRequestBl(
         {
             var rejected = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.AuthenticationRequestRejected)
-                .WithEntityId(child.DocumentId)
-                .WithEntityType((int)EEntityType.ImportAuthenticationRequest)
+                .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                 .WithTitle(child.DocumentId.ToString())
                 .WithOrganizationUnitId(child.OrganizationUnitId)
                 .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
@@ -1283,8 +1289,7 @@ public partial class AuthenticationRequestBl(
         {
             var handle = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.HandleImportAuthenticationRequest)
-                .WithEntityId(request.Id)
-                .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+                .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
                 .WithOrganizationUnitId(request.OrganizationUnitId)
                 .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
@@ -1313,8 +1318,7 @@ public partial class AuthenticationRequestBl(
     {
         var evt = eventUtil.CreatBuilder()
             .WithEventType(eventTypeId)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithOrganizationUnitId(request.OrganizationUnitId)
             .Build();
@@ -1327,8 +1331,7 @@ public partial class AuthenticationRequestBl(
         var statusName = await GetFileStatusName(request.AuthenticationFileStatusId);
         var evt = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.AuthenticationRequestFileStatusUpdate)
-            .WithEntityId(request.Id)
-            .WithEntityType((int)EEntityType.AuthenticationRequestFile)
+            .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
             .WithAdditionalInfo(FormatStatusUpdateInfo(statusName))
             .Build();

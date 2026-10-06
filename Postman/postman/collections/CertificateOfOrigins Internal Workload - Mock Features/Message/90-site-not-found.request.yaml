@@ -2,17 +2,16 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
-  x-mock-feature--Site.NotFound: "true"
-# Site.NotFound -> CheckIfSiteExistAndCustomsHouse returns EARLY (the branch ABOVE the org-unit check), so 5007 is
-# never raised AND context.OrganizationUnitId is never set. The save then fails validation with 400
-# "OrganizationUnitId is required" - verified live. That 400 is the branch proof, not a defect.
+# SITE99 is not a site in the lookup stub -> CheckIfSiteExistAndCustomsHouse adds TheValueInFieldNotExistsInSystem
+# (650 with CustomsHouse) and returns before the org-unit check, so 5007 is never raised. As in legacy (whose
+# GetIdByCode<SiteLookup> added the miss error, C-F05), the message is rejected and nothing is saved.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
@@ -20,7 +19,7 @@ body:
         "originCountry": "IL", "destinationCountry": "DE",
         "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SITE99", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
         "invoiceDetails": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",

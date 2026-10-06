@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# The coordinator's edits to a child request on the file screen (legacy UpdateAndSaveImportAuthenticationRequest,
+# a full Repository.Save per child). The file status is left unchanged (10 -> 10, after 70), so only the child
+# write runs. The first request (docFileA) carries edits; the second (docFileB) carries ONLY the base fields,
+# which must leave its stored values alone.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "authenticationFileStatusId": 10,
+      "originalAuthenticationFileStatusId": {{fileStatus}},
+      "notes": null, "postalAdress": "flow address", "deliveryMethodId": 1,
+      "emailAdress": "flow@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "flow user",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 10, "originalRequestDecisionId": {{decA}},
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5,
+          "decisionCircumstences": "PM circumstances 80", "cirumstanceDetails": "PM details 80",
+          "remarks": "PM remarks 80", "documentNumber": "DN-80", "vendorId": 779,
+          "preferenceDocumentTypeId": 4 },
+        { "documentId": {{docFileB}}, "authenticationFileId": {{fileId}}, "decisionId": {{decB}}, "originalRequestDecisionId": {{decB}},
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30070

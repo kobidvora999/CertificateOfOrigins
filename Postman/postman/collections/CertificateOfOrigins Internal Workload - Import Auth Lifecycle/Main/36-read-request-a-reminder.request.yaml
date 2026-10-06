@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docA}}"
+method: GET
+# State after F5: decision 9.
+order: 1360

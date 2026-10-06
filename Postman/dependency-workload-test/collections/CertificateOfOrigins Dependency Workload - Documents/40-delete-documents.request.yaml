@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_URL}}/api/Document/DeleteDocuments"
+method: POST
+headers:
+  Content-Type: application/json
+# DeleteDocuments - attachments replaced on publish
+body:
+  type: json
+  content: |-
+    {
+      "documentIds": [
+        2147483647
+      ],
+      "entity": {
+        "id": 2147483647,
+        "title": "dependency probe",
+        "entityType": 12319,
+        "customerId": 0
+      }
+    }
+order: 4000

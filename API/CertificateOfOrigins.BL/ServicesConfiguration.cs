@@ -1,6 +1,9 @@
+using CertificateOfOrigins.BL.Lookups;
 using CertificateOfOrigins.BL.Proxies;
+using CertificateOfOrigins.BL.Resolver;
 using CertificateOfOrigins.DAL;
 using CustomsCloud.InfrastructureCore;
+using CustomsCloud.InfrastructureCore.Interfaces;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
 using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
@@ -46,26 +49,6 @@ public class ServicesConfiguration : IServicesConfiguration
         // default (enabled via x-mock-mode); switch to the real endpoint once it exists.
         services.AddProxy<IExportDealFileProxy, ExportDealFileProxy, ExportDealFileMockProxy>();
 
-        // Web-query field labels for GetCertificateRequestByGuid — legacy read them from SystemTables DataDictionaryField
-        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
-        services.AddProxy<IDataDictionaryFieldProxy, DataDictionaryFieldProxy, DataDictionaryFieldMockProxy>();
-
-        // Invoice currency codes for GetCertificateRequestByGuid — legacy read them from SystemTables CurrencyType
-        // (no ILookupUtil type exists for it). TODO(blocking): verify the real SystemTables endpoint before ROLLOUT.
-        services.AddProxy<ICurrencyTypeProxy, CurrencyTypeProxy, CurrencyTypeMockProxy>();
-
-        // GetPC_MSG2280_2281 create branch: SystemTables code→id lookups the message-field validation resolves — Country
-        // by alpha-2 code, the CustomsHouse site external number → org-unit id (ILookupUtil<Country> is by-id only), the
-        // port/shipment international sites by locode, and the invoice item packing type / measurement unit by code.
-        // TODO(blocking): verify the real SystemTables endpoints (Country/CountriesByAlphaCodes, Site/SitesByExternalNumbers,
-        // InternationalSite/InternationalSitesByLocodes, PackingType/PackingTypesByCodes, MeasurementUnit/MeasurementUnitsByCodes,
-        // CurrencyType/CurrencyTypesByCodes) before ROLLOUT.
-        services.AddProxy<ICountryProxy, CountryProxy, CountryMockProxy>();
-        services.AddProxy<ISiteProxy, SiteProxy, SiteMockProxy>();
-        services.AddProxy<IInternationalSiteProxy, InternationalSiteProxy, InternationalSiteMockProxy>();
-        services.AddProxy<IPackingTypeProxy, PackingTypeProxy, PackingTypeMockProxy>();
-        services.AddProxy<IMeasurementUnitProxy, MeasurementUnitProxy, MeasurementUnitMockProxy>();
-
         // Entity documents for GetEntityDocuments (was IDocumentsExternalProxy.GetDocumentsByEntitySync).
         // TODO(blocking): verify the real Documents endpoint (Document/DocumentsByEntity) before ROLLOUT.
         services.AddProxy<IDocumentsProxy, DocumentsProxy, DocumentsMockProxy>();
@@ -85,12 +68,12 @@ public class ServicesConfiguration : IServicesConfiguration
         // org-unit services are not yet stood up, so the mocks are the practical default (via x-mock-mode).
         // TODO(blocking): confirm each owning microservice + endpoint route before ROLLOUT.
         services.AddProxy<ICustomsBookProxy, CustomsBookProxy, CustomsBookMockProxy>();
+
+        // Our CertificateOfOrigins_cf_CertificateOfOriginTypeByTradeAgreement: the trade agreements per certificate type
+        // (legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType), cached.
+        services.AddResolver<CertificateTypeTradeAgreementsResolver>();
         services.AddProxy<ICommonServicesProxy, CommonServicesProxy, CommonServicesMockProxy>();
         services.AddProxy<IOrganizationUnitProxy, OrganizationUnitProxy, OrganizationUnitMockProxy>();
-
-        // UpdateCertificateOfOrigins reconciliation: the SystemTables CountryCountryGroup membership lookup used for the
-        // destination / origin country-group agreement checks. TODO(blocking): confirm the endpoint route before ROLLOUT.
-        services.AddProxy<ICountryGroupProxy, CountryGroupProxy, CountryGroupMockProxy>();
 
         // QueryURL config for GetCertificateRequestByGuid + document-type filter for GetEntityDocuments
         // (both were Configuration.GetConfig<string>; keys seeded in the local Infrastructure.Parameters).
@@ -108,7 +91,7 @@ public class ServicesConfiguration : IServicesConfiguration
         // RabbitMQ exchange) — resolved lazily via IQueueUtil.
         services.AddQueueUtil();
 
-        // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs);
+        // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs), via
         // ITemplateUtil. Note this is a different path from the SSRS certificate rendering, which stays on
         // ICommonServicesProxy.GenerateTemplate.
         services.AddTemplateUtil();
@@ -127,6 +110,32 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).
         services.AddLookup<DocumentType>();
+
+        // Invoice item measure-type code → id for GetPC_MSG2280_2281 (was SystemTablesUtil.GetIdByCode<MeasurementUnit>).
+        services.AddLookup<MeasurementUnit>();
+
+        // TODO(internal): lookup types missing from the platform Lookup package — local stand-ins (Lookups/), loaded and
+        // cached like a platform lookup. Replace each with services.AddLookup<Lookup.T>() once the platform has the type.
+        // TODO(internal): confirm the InternationalSite source service (SystemTables assumed — Lookup.Site loads from Sites).
+        services.AddLocalLookup<Lookups.InternationalSite>(CustomsMicroServices.SystemTables);
+        services.AddLocalLookup<Lookups.Site>(CustomsMicroServices.Sites);
+
+        // General_enum_CountryGroup + the General_cl_CountryCountryGroup membership: loaded from the same source as the
+        // platform Lookup.Country (General_c_Country), the Common service. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.CountryGroup>(CustomsMicroServices.Common);
+        services.AddLocalLookup<Lookups.CountryCountryGroup>(CustomsMicroServices.Common);
+
+        // General_enum_CurrencyType: invoice currency code ↔ id (the message conversion and the web query). Loaded from Common,
+        // like the other General tables. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.CurrencyType>(CustomsMicroServices.Common);
+
+        // CargoControl_c_PackingType: invoice item package-type code → id. Loaded from the Cargos service, the owner of the
+        // CargoControl tables. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.PackingType>(CustomsMicroServices.Cargos);
+
+        // DataDictionaryField: the web-query field labels (GetCertificateRequestByGuid). There is no DataDictionary service in
+        // CustomsMicroServices; legacy read it through SystemTablesUtil. TODO(internal): confirm the source with the platform.
+        services.AddLocalLookup<Lookups.DataDictionaryField>(CustomsMicroServices.SystemTables);
 
         // TODO(blocking): GetPathsForNavigationToVendor needs a NavigationPath lookup. NavigationPath is a shared
         // GeneralServices reference table with no platform lookup type yet — once InfrastructureCore.Lookup adds a

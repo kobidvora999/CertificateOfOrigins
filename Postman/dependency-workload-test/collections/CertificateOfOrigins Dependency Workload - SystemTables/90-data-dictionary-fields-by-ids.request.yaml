@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/DataDictionaryField/DataDictionaryFieldsByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetDataDictionaryFieldsByIds - web-query field labels
+body:
+  type: json
+  content: |-
+    [
+      2147483647
+    ]
+order: 9000

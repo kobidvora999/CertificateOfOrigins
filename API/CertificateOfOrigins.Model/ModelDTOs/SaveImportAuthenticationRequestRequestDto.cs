@@ -3,14 +3,20 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // Request for SaveImportAuthenticationRequest — the import authentication request as edited by the SPA (the legacy
 // passed the full CertificateOfOriginsImportAuthenticationRequest entity). Carries the round-trip editable fields
 // (mirroring GetAuthenticationRequestByIdResultDto) plus the messaging users and the collaterals. The DAL applies
-// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here.
+// these over the existing row (Fetch & Merge), preserving the structural/audit columns not carried here — or, when
+// IsNewInstance is true, inserts it.
 public class SaveImportAuthenticationRequestRequestDto
 {
     public int DocumentId { get; set; }
 
+    // True when this save creates the request (legacy entity IsNewInstance — set by the coordinator's "new
+    // authentication request" popup). DocumentId is caller-assigned and non-zero for a new request too, so it cannot
+    // tell new from existing; this flag does. False → the request must already exist (404 otherwise).
+    public bool IsNewInstance { get; set; }
+
     public int? AuthenticationFileId { get; set; }
 
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     public int? CollateralId { get; set; }
 
@@ -18,7 +24,7 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int LeadDocumentId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int ImportCountryId { get; set; }
 
@@ -42,7 +48,7 @@ public class SaveImportAuthenticationRequestRequestDto
 
     public int? ImporterId { get; set; }
 
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     public string? InvoiceNumber { get; set; }
 
@@ -79,6 +85,10 @@ public class SaveImportAuthenticationRequestRequestDto
     public decimal? InvoiceGoodsItemTaxDifference { get; set; }
 
     public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+
+    // Written on insert only (a new request). The legacy popup set it from the creating user's
+    // FormalOrganizationUnitTypeID (ImportProcessFormPresenter.InitNewImportProcess); an update leaves it alone.
+    public int? OrganizationUnitTypeId { get; set; }
 
     // Precomputed on load (GetAuthenticationRequestByID): whether the current user already handles the request — gates
     // the NewAuthenticationRequest event in the decision switch.

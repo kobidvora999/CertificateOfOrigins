@@ -3,5 +3,5 @@ url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformationByCo
 method: GET
 headers:
   x-mock-feature--Customers.NotFound: "true"
-# GetCustomersByCountry -> null: the empty side of the by-country read.
+# GetCustomersByCountry -> null: no customs house for the country is refused with 400 NoCustomHouseForThisCountry on countryId (bdb1866), as legacy.
 order: 50100

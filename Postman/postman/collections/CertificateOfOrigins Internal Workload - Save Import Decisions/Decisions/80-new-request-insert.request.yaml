@@ -1,0 +1,40 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--Tasks.Empty: "true"
+# A brand-new request: isNewInstance = true, as the legacy "new request" popup sent it (fresh documentId per run, set
+# in the collection pre-request script). The BL inserts because the CALLER says it is new - never because an update
+# found no row.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{newDocId}},
+      "isNewInstance": true,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 1,
+      "leadDocumentId": {{leadDocId}},
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "test@test.gov.il",
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "vendorName": "Seed Vendor",
+      "customerId": null,
+      "importerId": null,
+      "lastDeliveryForImporter": null,
+      "invoiceNumber": null,
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": false,
+      "collaterals": []
+    }
+order: 10700

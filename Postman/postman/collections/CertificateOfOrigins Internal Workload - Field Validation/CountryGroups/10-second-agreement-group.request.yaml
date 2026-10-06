@@ -2,6 +2,7 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
   x-mock-feature--CustomsBook.NotInAgreement: "true"
 # The SECOND agreement party given as a group instead of a country -> GroupOfCountriesNotInAgreement(4994). CheckCountryXorGroup demands exactly one of each pair, so the group REPLACES tradeAgreementCountry2 rather than joining it.
@@ -9,8 +10,7 @@ body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",

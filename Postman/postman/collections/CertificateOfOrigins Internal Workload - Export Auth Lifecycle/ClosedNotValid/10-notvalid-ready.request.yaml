@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X4: ReadyForProfessionalTreatment (5).
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 2100

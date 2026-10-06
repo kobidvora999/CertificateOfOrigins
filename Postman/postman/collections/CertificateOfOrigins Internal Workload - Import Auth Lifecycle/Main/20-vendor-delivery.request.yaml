@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent"
+method: POST
+headers:
+  Content-Type: application/json
+# F1: the letter is sent to the vendor -> status 2 AuthenticationRequestWasSend, delivery 2 PostedMailing.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}},
+      "isDelivery": true
+    }
+order: 1200

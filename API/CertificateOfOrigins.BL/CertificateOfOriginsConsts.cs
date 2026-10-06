@@ -10,6 +10,9 @@ internal static class CertificateOfOriginsConsts
     public const string CertificateNumberPrefixIl = "IL";
     public const string CertificateNumberFormat10Digit = "0000000000";
 
+    // Legacy ServicesAdapter.IsraelID — a country (not a group) that is Israel is always in the trade agreement.
+    public const int IsraelCountryId = 376;
+
     // The packing type that denotes a container — when an item's packing type is this, a container ISO code is required.
     public const int PackingTypeContainer = 379;
 
@@ -60,8 +63,9 @@ internal static class CertificateOfOriginsConsts
     // Legacy EServerTerms.CertificateUpdateRecived — appended to a superseded certificate's cancel reason.
     public const string CertificateUpdateReceived = "התקבל עדכון לתעודה"; // TODO(migration): source from ValidationMessages/resx.
 
-    // Legacy ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration — set on a rejected reconciliation.
-    public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה לבין ההצהרה"; // TODO(migration): source from ValidationMessages/resx.
+    // Legacy CertificateOfOriginsConsts.ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration (a code constant, copied
+    // exactly) — set on a rejected reconciliation.
+    public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה להצהרה";
 
     // Legacy EServerTerms.CanceledDeclaration — the reject/cancel reason stamped when an export declaration's
     // cancellation is committed (ExportDeclarationCancellationRequestCommited).

@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/User/UsersByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetUsersByIds - user names on the certificate and file
+body:
+  type: json
+  content: |-
+    [
+      2147483647
+    ]
+order: 1000

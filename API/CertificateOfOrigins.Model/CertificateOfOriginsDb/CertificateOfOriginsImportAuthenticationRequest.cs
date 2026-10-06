@@ -14,13 +14,13 @@ public class CertificateOfOriginsImportAuthenticationRequest
     public int DocumentId { get; set; }
 
     [Column("CreateDate")]
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     [Column("CreateUserID")]
     public int CreateUserId { get; set; }
 
     [Column("UpdateDate")]
-    public DateTimeOffset UpdateDate { get; set; }
+    public DateTime UpdateDate { get; set; }
 
     [Column("UpdateUserID")]
     public int UpdateUserId { get; set; }
@@ -29,7 +29,7 @@ public class CertificateOfOriginsImportAuthenticationRequest
     public int? AuthenticationFileId { get; set; }
 
     [Column("AuthenticationRequestDate")]
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     [Column("CirumstanceDetails")]
     public string? CirumstanceDetails { get; set; }
@@ -47,7 +47,7 @@ public class CertificateOfOriginsImportAuthenticationRequest
     public int LeadDocumentId { get; set; }
 
     [Column("DocumentIssuingDate")]
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     [Column("ImportCountryID")]
     public int ImportCountryId { get; set; }
@@ -110,7 +110,7 @@ public class CertificateOfOriginsImportAuthenticationRequest
     public int? ImporterId { get; set; }
 
     [Column("LastDeliveryForImporter")]
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     [Column("InvoiceNumber")]
     public string? InvoiceNumber { get; set; }

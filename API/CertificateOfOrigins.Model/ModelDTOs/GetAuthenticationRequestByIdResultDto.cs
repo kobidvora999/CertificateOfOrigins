@@ -7,11 +7,11 @@ public class GetAuthenticationRequestByIdResultDto
 {
     public int DocumentId { get; set; }
 
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     public int? AuthenticationFileId { get; set; }
 
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     public int? CollateralId { get; set; }
 
@@ -19,7 +19,7 @@ public class GetAuthenticationRequestByIdResultDto
 
     public int LeadDocumentId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int ImportCountryId { get; set; }
 
@@ -43,7 +43,7 @@ public class GetAuthenticationRequestByIdResultDto
 
     public int? ImporterId { get; set; }
 
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     public string? InvoiceNumber { get; set; }
 
@@ -62,7 +62,7 @@ public class GetAuthenticationRequestByIdResultDto
 
     // The lead-document submission date (legacy CRP.DealFile_LeadDocumentSubmissionData JOIN) — enriched via
     // IExportDealFileProxy.GetLeadDocumentSubmissionDate. The proxy route is a rollout TODO(blocking).
-    public DateTimeOffset? LeadDocumentSubmissionDate { get; set; }
+    public DateTime? LeadDocumentSubmissionDate { get; set; }
 
     // Current-user task flags (from the Tasks microservice, compared to RequestMetadata.UserId).
     public bool IsCurrentUserHandleRequest { get; set; }

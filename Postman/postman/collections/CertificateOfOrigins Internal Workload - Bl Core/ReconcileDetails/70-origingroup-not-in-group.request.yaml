@@ -3,8 +3,8 @@ url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
 method: POST
 headers:
   Content-Type: application/json
-  x-mock-feature--CountryGroup.NotInGroup: "true"
-# IsCountryInCountryGroup false for every declaration goods item -> the origin-country-GROUP arm raises OriginCountryMismatch. This is the loop that had never been entered: no fixture ever sent an OriginGroupOfCountries detail.
+# The certificate's origin group is 7 (setup 60): it exists in the lookup stub but has no members, so
+# IsCountryInCountryGroup is false for every declaration goods item -> the origin-country-GROUP arm raises OriginCountryMismatch. This is the loop that had never been entered: no fixture ever sent an OriginGroupOfCountries detail.
 body:
   type: json
   content: |-

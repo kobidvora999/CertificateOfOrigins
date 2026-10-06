@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # TransirCountry(40) is a NonManipulation-only field, so it is only ever validated by a NonManipulation message - and the one fixture that sends one uses IL. A non-Israel transit country reaches the fourth arm of CheckIfCountryInSystemAndIsrael's switch: TransirCountryIllegal(5018).
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": { "customsHouse": "SITE01" },
       "nonManipulationCertificate": {
         "exportDate": "{{twoDaysAgo}}",

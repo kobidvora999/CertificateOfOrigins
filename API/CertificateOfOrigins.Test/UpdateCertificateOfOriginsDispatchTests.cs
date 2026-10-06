@@ -33,8 +33,8 @@ public class UpdateCertificateOfOriginsDispatchTests
     {
         var certs = new[]
         {
-            Cert(id: 11, status: (int)ECertificateOfOriginStatus.Published),
-            Cert(id: 22, status: (int)ECertificateOfOriginStatus.Published),
+            Cert(11, (int)ECertificateOfOriginStatus.Published),
+            Cert(22, (int)ECertificateOfOriginStatus.Published),
         };
         var request = Request((int)EEventType.CancellationRequestCommited, [11, 22]);
 
@@ -64,11 +64,11 @@ public class UpdateCertificateOfOriginsDispatchTests
         {
             // Empty declaration → backfilled. Non-Received so the follow-up reconciliation is gate-skipped (keeps the
             // test focused on the backfill selection).
-            Cert(id: 31, status: (int)ECertificateOfOriginStatus.Cancelled, exportDeclarationNumber: null),
+            Cert(31, (int)ECertificateOfOriginStatus.Cancelled, (int)ERequestReason.NewCertificate, 1, null),
             // Already linked → NOT backfilled.
-            Cert(id: 32, status: (int)ECertificateOfOriginStatus.Cancelled, exportDeclarationNumber: "EXISTING-DEC"),
+            Cert(32, (int)ECertificateOfOriginStatus.Cancelled, (int)ERequestReason.NewCertificate, 1, "EXISTING-DEC"),
         };
-        var request = Request((int)EEventType.ExportDeclarationAmendmentRequestCompleted, [31, 32], exportDeclarationNum: "NEW-DEC");
+        var request = Request((int)EEventType.ExportDeclarationAmendmentRequestCompleted, [31, 32], "NEW-DEC");
 
         var cap = await RunDispatchAsync(request, certs);
 
@@ -88,9 +88,9 @@ public class UpdateCertificateOfOriginsDispatchTests
     {
         var certs = new[]
         {
-            Cert(id: 41, status: (int)ECertificateOfOriginStatus.PendingRelease, exportDeclarationNumber: null, qrCodePath: null),
+            Cert(41, (int)ECertificateOfOriginStatus.PendingRelease, (int)ERequestReason.NewCertificate, 1, null, null),
         };
-        var request = Request((int)EEventType.ExportDeclarationReleased, [41], exportDeclarationNum: "REL-DEC");
+        var request = Request((int)EEventType.ExportDeclarationReleased, [41], "REL-DEC");
 
         var cap = await RunDispatchAsync(request, certs);
 
@@ -114,19 +114,43 @@ public class UpdateCertificateOfOriginsDispatchTests
         var certs = new[]
         {
             // Received + a reconcilable reason/type + empty declaration → backfilled AND passes the reconciliation gate.
-            Cert(id: 51, status: (int)ECertificateOfOriginStatus.Received,
-                reason: (int)ERequestReason.NewCertificate, typeId: 1, exportDeclarationNumber: null),
+            Cert(51, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null),
         };
         // The incoming event DOES carry invoice info; the release path must STRIP it before reconciling. If the strip
         // regresses (the full request is reused), the reconciliation would run real matching on faked-empty data and
         // reach DeclarationMatch instead — so asserting Rejected here catches that regression.
-        var request = Request((int)EEventType.ExportDeclarationReleased, [51], exportDeclarationNum: "REL-DEC");
+        var request = Request((int)EEventType.ExportDeclarationReleased, [51], "REL-DEC");
         request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
 
         var cap = await RunDispatchAsync(request, certs);
 
         Assert.That(cap.Reconciliations.Any(r => r.Id == 51 && r.StatusId == (int)ECertificateOfOriginStatus.Rejected),
             Is.True, "with the stripped (invoice-less) request the reconciliation forces Rejected");
+    }
+
+    // --- Branch 1: ExportDeclarationSubmissionSucceeded (legacy UpdateCertrificateOfOrigins, 490-526) — B-H1 ---
+    // A certificate reconciled for the first time has no declaration link in the DB. Legacy backfilled the link on the
+    // certificate itself, so the assessor lookup of the match event (RaiseTaskNewCertificateOfOriginCheck) used the
+    // request's lead document. The lookup must see the backfilled link, not the stored (empty) one.
+    [Test]
+    public async Task FirstReconciliationLooksUpTheAssessorByTheBackfilledLeadDocument()
+    {
+        var certs = new[]
+        {
+            Cert(61, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null),
+        };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [61], "SUB-DEC");
+        request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
+
+        var cap = await RunDispatchAsync(request, certs);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.RaisedEventTypes, Does.Contain((int)EEventType.CertificateOfOriginCertificateMatchDeclaration),
+                "the certificate matches the declaration");
+            Assert.That(cap.AssessorLookupLeadDocumentIds, Is.EqualTo(new[] { request.LeadDocumentId }),
+                "the assessor is looked up by the lead document backfilled from the request");
+        });
     }
 
     // ------------------------------------------------------------------------------------------------------------------
@@ -192,7 +216,7 @@ public class UpdateCertificateOfOriginsDispatchTests
                 case "GetCertificateInvoiceDetailsByCertificateIds":
                     return Task.FromResult(new List<CertificateReconcileInvoiceDto>());
 
-                case "CancelCertificateFromMessage":
+                case "CancelCertificate":
                     cap.Cancelled.Add(((int)args![0]!, (string)args[1]!));
                     return Task.CompletedTask;
 
@@ -269,20 +293,21 @@ public class UpdateCertificateOfOriginsDispatchTests
         services.AddSingleton(Fake<ICustomerProxy>());
         services.AddSingleton(Fake<IExportDealFileProxy>());
         services.AddSingleton(Fake<IUserProxy>());
-        services.AddSingleton(Fake<IDataDictionaryFieldProxy>());
-        services.AddSingleton(Fake<ICurrencyTypeProxy>());
         services.AddSingleton(Fake<IDocumentsProxy>());
         services.AddSingleton(Fake<ICustomsBookProxy>());
         services.AddSingleton(Fake<IOrganizationUnitProxy>());
         services.AddSingleton(Fake<IMessageManagementProxy>());
-        services.AddSingleton(Fake<ICountryGroupProxy>());
-        services.AddSingleton(Fake<ITasksProxy>());
+        services.AddSingleton(Fake<ITasksProxy>((method, args) =>
+        {
+            if (method.Name == nameof(ITasksProxy.GetLatestUserHandlingEntityTasksWithTaskUnification))
+            {
+                cap.AssessorLookupLeadDocumentIds.Add(((LatestUserHandlingEntityTasksFilterDto)args![0]!).EntityId);
+                return Task.FromResult<int?>(321);
+            }
+
+            return null;
+        }));
         services.AddSingleton(Fake<ILockUtil>());
-        services.AddSingleton(Fake<ICountryProxy>());
-        services.AddSingleton(Fake<ISiteProxy>());
-        services.AddSingleton(Fake<IInternationalSiteProxy>());
-        services.AddSingleton(Fake<IPackingTypeProxy>());
-        services.AddSingleton(Fake<IMeasurementUnitProxy>());
         var serviceProvider = services.BuildServiceProvider();
 
         var bl = new CertificateOfOriginsBl(serviceProvider, Fake<ILookupUtil>(), parametersUtil);
@@ -298,6 +323,7 @@ public class UpdateCertificateOfOriginsDispatchTests
         public List<(int Id, int StatusId)> Reconciliations { get; } = [];
         public List<(int Id, Guid? Guid, byte[]? Image)> QrWrites { get; } = [];
         public List<int> RaisedEventTypes { get; } = [];
+        public List<int> AssessorLookupLeadDocumentIds { get; } = [];
     }
 
     private sealed class FakeDocumentResponse : IDocumentResponse

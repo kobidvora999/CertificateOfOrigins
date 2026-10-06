@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # reason 3 against the Published row, sent by a DIFFERENT agent. The Customers mock maps a numeric externalId to itself, so exporterId 888 resolves to 888 while the row's CustomerId is 777 -> AgentInUpdateDifferent(11908), plus the published-status error(14027037). Two of CheckCertificateUpdate's three arms at once.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 3, "certificateId": "PR-PUB-D-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 3, "certificateId": "PR-PUB-D-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "888", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",

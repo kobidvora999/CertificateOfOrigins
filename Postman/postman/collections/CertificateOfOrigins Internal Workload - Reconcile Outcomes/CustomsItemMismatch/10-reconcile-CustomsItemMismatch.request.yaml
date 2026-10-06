@@ -14,7 +14,7 @@ body:
       "exportDeclarationNum": "260146",
       "certificateOfOriginsIds": [ {{certId}} ],
       "exporterCustomerId": 888,
-      "destinationCountryId": 32,
+      "destinationCountryId": 148,
       "organizationUnitId": 1,
       "exportInvoiceInfoList": [
         { "externalIdNum": "INV1", "exportGoodsItemInfoList": [

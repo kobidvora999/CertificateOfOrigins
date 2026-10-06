@@ -32,11 +32,11 @@ public class SaveAuthenticationRequestFileRequestDto
 
     public string? UserNameIssuingLetter { get; set; }
 
-    public DateTimeOffset? LastDelivery { get; set; }
+    public DateTime? LastDelivery { get; set; }
 
     public int? ImporterContactingReasonId { get; set; }
 
-    public DateTimeOffset? FirstProvideContactDate { get; set; }
+    public DateTime? FirstProvideContactDate { get; set; }
 
     // Transient (the file entity has no OrganizationUnit column) — supplied by the client for the file-level events.
     public int OrganizationUnitId { get; set; }
@@ -56,11 +56,42 @@ public class SaveAuthenticationRequestFileChildDto
     // The decision as loaded — used to detect which requests changed (drives the per-request events/message).
     public int? OriginalRequestDecisionId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int OrganizationUnitId { get; set; }
 
     public int UserId { get; set; }
 
     public int UserResponseId { get; set; }
+
+    // --- The request fields the legacy file screen lets the coordinator change (Edit mode), plus the two the screen
+    // clears in code when the preference-document type changes (InvoiceNumber / DocumentNumber). Legacy saved the
+    // whole client-modified entity (Repository.Save), so these were all persisted.
+    //
+    // All nullable, and null means "leave the stored value alone": callers that send only the base fields above (the
+    // pre-existing contract) must not wipe these columns. A string is cleared by sending "" — which is what the legacy
+    // screen writes when it clears InvoiceNumber / DocumentNumber.
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }   // legacy spelling, kept — it is the column name
+
+    public string? Remarks { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public string? InvoiceNumber { get; set; }
+
+    public int? VendorId { get; set; }
+
+    public int? CustomerId { get; set; }
+
+    public int? ImporterId { get; set; }
+
+    public int? ImportCountryId { get; set; }
+
+    public int? OriginCountryId { get; set; }
+
+    public int? IssuingCountryId { get; set; }
+
+    public int? PreferenceDocumentTypeId { get; set; }
 }

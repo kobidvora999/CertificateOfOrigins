@@ -2,12 +2,13 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
 [ExcludeFromCodeCoverage]
 public class ExportDealFileProxy(IHttpProxy httpProxy)
-    : BaseCustomsProxy(httpProxy, CustomsMicroServices.ExportDealFile), IExportDealFileProxy
+    : BaseCustomsProxy(httpProxy, CustomsMicroServices.ExportDeclaration), IExportDealFileProxy
 {
     public async Task<ExportDeclarationDetailsDto?> GetExportDeclarationDetailsForCertificateOfOrigion(int? leadDocumentId, string? exportDeclarationNumber)
     {
@@ -32,20 +33,24 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
 
     // Legacy: CRP.DealFile_LeadDocumentSubmissionData.SubmitDate (LEFT JOIN by LeadDocumentID) — the lead document's
     // submission date from the DealFile service.
-    public async Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId)
+    public async Task<DateTime?> GetLeadDocumentSubmissionDate(int leadDocumentId)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/ExportDealFile/LeadDocumentSubmissionDate/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
-        return await response.GetResult<DateTimeOffset?>();
+            .WithResource("api/ExportDealFile/LeadDocumentSubmissionDate/{leadDocumentId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("leadDocumentId", leadDocumentId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
+        return await response.GetResult<DateTime?>();
     }
 
     public async Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(int oldCertificateOfOriginId, int newCertificateOfOriginId)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource($"api/ExportDealFile/LeadDocumentByCertificateOfOrigin/{oldCertificateOfOriginId}/{newCertificateOfOriginId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .WithResource("api/ExportDealFile/LeadDocumentByCertificateOfOrigin/{oldCertificateOfOriginId}/{newCertificateOfOriginId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("oldCertificateOfOriginId", oldCertificateOfOriginId)
+            .AddUrlSegmentParameter("newCertificateOfOriginId", newCertificateOfOriginId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<LeadDocumentByCertificateOfOriginDto>();
     }
@@ -54,8 +59,10 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/ExportDealFile/LeadDocumentByCertificateOfOriginId/{certificateOfOriginId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
+            .WithResource("api/ExportDealFile/LeadDocumentByCertificateOfOriginId/{certificateOfOriginId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("certificateOfOriginId", certificateOfOriginId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<LeadDocumentByCertificateOfOriginDto>();
     }
 
@@ -63,7 +70,10 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UsePostMethod()
-            .WithResource($"api/ExportDealFile/ChangeCertificateOfOriginForLeadDocument/{leadDocumentId}/{oldCertificateOfOriginId}/{newCertificateOfOriginId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .WithResource("api/ExportDealFile/ChangeCertificateOfOriginForLeadDocument/{leadDocumentId}/{oldCertificateOfOriginId}/{newCertificateOfOriginId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("leadDocumentId", leadDocumentId)
+            .AddUrlSegmentParameter("oldCertificateOfOriginId", oldCertificateOfOriginId)
+            .AddUrlSegmentParameter("newCertificateOfOriginId", newCertificateOfOriginId);
         await ExecuteAsync(req);
     }
 
@@ -71,8 +81,10 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/ExportDealFile/ExportDeclarationInfo/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
-        var response = await ExecuteAsync(req);
+            .WithResource("api/ExportDealFile/ExportDeclarationInfo/{leadDocumentId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("leadDocumentId", leadDocumentId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<ExportDeclarationInfoDto>();
     }
 
@@ -80,7 +92,8 @@ public class ExportDealFileProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/ExportDealFile/DetailsForExportAssociatedGoodsItems/{leadDocumentId}"); // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .WithResource("api/ExportDealFile/DetailsForExportAssociatedGoodsItems/{leadDocumentId}") // TODO(blocking): confirm endpoint name/route with the DealFile microservice
+            .AddUrlSegmentParameter("leadDocumentId", leadDocumentId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<ExportAssociatedGoodsItemDto>>();
     }

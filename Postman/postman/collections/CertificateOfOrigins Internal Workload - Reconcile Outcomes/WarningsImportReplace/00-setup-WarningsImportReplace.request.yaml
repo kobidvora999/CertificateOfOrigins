@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# reason 5 (ImportCertificateReplacement), no invoices - so the only finding can come from ValidateImportReplacement.
+# reason 5 (ImportCertificateReplacement) with ONE invoice row that matches the declaration (INV1): since B-H2 (51b0376) the checks only count for a certificate that has invoice rows, as in production, and a matching row adds no finding - so the only finding is the ValidateImportReplacement warning.
 body:
   type: json
   content: |-
@@ -11,16 +11,18 @@ body:
       "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-IMPREP",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "leadDocumentId": 111,
-      "certificateNumber": "RC-IMPREP",
+      "certificateNumber": "RC-IMPREP-{{runId}}",
       "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 5,
       "exportDeclarationNumber": "260146",
       "isLastVersion": true, "versionNumber": 1,
       "certificateOfOriginDetails": [
-        { "certificateDetailsTypeCodeId": 15, "value": "32" },
+        { "certificateDetailsTypeCodeId": 15, "value": "AR" },
         { "certificateDetailsTypeCodeId": 1,  "value": "888" }
       ],
-      "certificateOfOriginInvoiceDetails": []
+      "certificateOfOriginInvoiceDetails": [
+        { "id": 0, "invoiceNumber": "INV1", "invoiceAmount": 50, "invoiceDate": "{{tenDaysAgo}}",
+          "invoiceGoodsDescription": "declared invoice", "isToPrint": true }]
     }
 order: 13000

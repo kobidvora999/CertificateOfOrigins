@@ -49,6 +49,7 @@ BEGIN
     SET @ToRequestDate   = DATEADD(MILLISECOND, -3, CAST(DATEADD(DAY, 1, CAST(@ToRequestDate AS DATE)) AS DATETIME));
 
     SET @Select = N'
+-- TOP (200) = Shared.ufn_GetMaxRows() of the legacy procedure; production returns 200 (confirmed 2026-10-04).
 SELECT  TOP (200)
                 R.DocumentID,
                 CAST(NULL AS NVARCHAR(255)) IssuingCountryID,

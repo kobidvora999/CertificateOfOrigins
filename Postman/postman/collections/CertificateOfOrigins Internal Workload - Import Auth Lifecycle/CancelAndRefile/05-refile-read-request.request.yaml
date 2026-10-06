@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docC}}"
+method: GET
+# State after 04: request C is in no file.
+order: 2040

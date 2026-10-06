@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent"
+method: POST
+headers:
+  Content-Type: application/json
+# F3: a reminder to the vendor, from the state 20 returned -> status 3 ReminderWasSend, delivery method unchanged (2).
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}},
+      "isDelivery": false
+    }
+order: 1250

@@ -21,5 +21,5 @@ public class CreateNewAuthenticationFileResultDto
 
     public string? EmailAdress { get; set; }
 
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 }

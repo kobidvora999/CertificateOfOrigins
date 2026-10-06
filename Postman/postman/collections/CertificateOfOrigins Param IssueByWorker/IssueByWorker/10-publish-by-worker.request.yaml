@@ -15,7 +15,7 @@ body:
       "timeStamp": "{{wTs}}",
       "typeId": 2, "state": 1, "title": "issue-by-worker chain",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
-      "certificateNumber": "MF-COO-W",
+      "certificateNumber": "MF-COO-W-{{runId}}",
       "certificateOfOriginStatusId": 8,
       "originalCertificateOfOriginStatusId": 2,
       "requestReasonCode": 2,

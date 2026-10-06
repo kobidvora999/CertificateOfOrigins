@@ -3,15 +3,12 @@ id: certificateoforigins-save-import-decisions-v1
 name: CertificateOfOrigins Save Import Decisions
 description: >-
   Every arm of SaveImportAuthenticationRequest's decision switch (AuthenticationRequestBl.cs:817).
-  The stock fixture pointed at documentId 900001, which does not exist: the set-based update affects 0 rows,
-  the BL throws RestNotFoundException, and the whole tail of the method - the VendorId 0 -> null
-  normalisation, the AuthenticationNeedless rejection event, the save and the re-read - was unreachable. Only
-  one of the four switch paths ever ran, and RaiseNewRequestEvent sat at 0/14.
-  These scenarios drive SEEDED rows instead, so the save succeeds and the method runs to the end.
-  REQUIRES the seed Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql, which now also
-  creates 990103 / 990104. Those two are DEDICATED to this collection and deliberately separate from
-  990101 / 990102: this save is a set-based UPDATE that writes AuthenticationFileID, DecisionID and VendorID,
-  the Auth Lifecycle collection asserts exactly those columns, and the collections run in PARALLEL.
+  SELF-CONTAINED FLOW - no seed, no fixed ids. 01/02 insert this run's two requests (isNewInstance = true,
+  DocumentIDs minted per run below) and 03 creates an authentication file from the first (identity id captured
+  into fileId). Scenarios 10-70 then drive THOSE rows through the update path; 80 inserts one more brand-new
+  request - the path the legacy popup created requests through. The collections run in PARALLEL and each one
+  creates its own rows, so this save's set-based UPDATE (AuthenticationFileID, DecisionID, VendorID...) can never
+  race another collection's assertions.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -21,23 +18,63 @@ scripts:
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
       var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
       pm.collectionVariables.set('today', iso(Date.now()));
+      // ---- run-scoped ids for the rows this collection CREATES (never fixed ids, never a seed) ----
+      // DocumentID is caller-assigned (not an identity): 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT unique
+      // per collection (see Auth Lifecycle for the full scheme). Re-minted on the first creation step of every run.
+      // 80 inserts a brand-new request, so it too needs an id no earlier run has used - a reused id would fall into
+      // the update path and prove nothing about the insert.
+      var SLOT = 4, FIRST = '01-create-request-a';
+      if (pm.info.requestName === FIRST || !pm.collectionVariables.get('docBase')) {
+          pm.collectionVariables.set('docBase', 800000000 + (Date.now() % 1000000) * 100 + SLOT * 10);
+          pm.collectionVariables.unset('fileId');
+      }
+      var docBase = Number(pm.collectionVariables.get('docBase'));
+      pm.collectionVariables.set('docDecisionA', docBase + 1);
+      pm.collectionVariables.set('docDecisionB', docBase + 2);
+      pm.collectionVariables.set('leadDocId', docBase + 1);
+      pm.collectionVariables.set('newDocId', docBase + 9);
     language: text/javascript
   - type: http:afterResponse
     code: |-
       var name = pm.info.requestName;
       var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
 
-      // 80-missing-row is the one scenario whose 4xx IS the branch - the rest must reach the tail and come back
-      // with the re-read graph.
-      var expected = (name === '80-missing-row') ? 404 : 200;
+      // Every scenario must reach the tail and come back with the re-read graph.
+      var expected = 200;
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
       pm.test(name + ': status is ' + expected, function () { pm.response.to.have.status(expected); });
 
-      if (name === '80-missing-row') {
-          pm.test('80: a missing request row is a 404, not a silent no-op 200', function () {
-              pm.expect(pm.response.code).to.eql(404);
+      var docA = Number(pm.collectionVariables.get('docDecisionA'));
+      var docB = Number(pm.collectionVariables.get('docDecisionB'));
+
+      // ---- flow: create this run's rows (captures first, so a failed assertion cannot break the chain) ----
+      var CREATED = { '01-create-request-a': docA, '02-create-request-b': docB };
+      if (CREATED[name] !== undefined) {
+          pm.test(name + ': the request was inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(CREATED[name]);
+          });
+          return;
+      }
+      if (name === '03-create-file') {
+          if (j && j.id) { pm.collectionVariables.set('fileId', j.id); }
+          pm.test('03-create-file: a new authentication file was created', function () {
+              pm.expect(j && j.id, 'id').to.be.a('number').and.above(0);
+          });
+          return;
+      }
+      var fileId = Number(pm.collectionVariables.get('fileId'));
+
+      if (name === '80-new-request-insert') {
+          // isNewInstance = true: the coordinator's "new authentication request" popup creates the request through
+          // this operation. The re-read returning the fresh DocumentID is the proof the row was INSERTED.
+          pm.test('80: a new request is inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(Number(pm.collectionVariables.get('newDocId')));
+              pm.expect(j.decisionId, 'decisionId').to.eql(1);
+              pm.expect(j.vendorId, 'vendorId').to.eql(777);
           });
           return;
       }
@@ -48,13 +85,13 @@ scripts:
       // (RaiseNewRequestEvent, the processed-after-rejection event, the rejection event) only raise events, which
       // the response cannot show; for those the status assertions are the contract and coverage is the proof.
       var SENT = {
-          '10-new-request-with-file':   { doc: 990103, decision: 1, file: 990001, vendor: 777 },
-          '20-new-request-no-file':     { doc: 990104, decision: 1, file: null,   vendor: 778 },
-          '30-new-request-user-handles':{ doc: 990103, decision: 1, file: 990001, vendor: 777 },
-          '40-new-request-task-exists': { doc: 990103, decision: 1, file: 990001, vendor: 777 },
-          '50-authreq-rejected-task':   { doc: 990104, decision: 6, file: null,   vendor: 778 },
-          '60-authreq-no-rejected':     { doc: 990104, decision: 6, file: null,   vendor: 778 },
-          '70-needless-collaterals':    { doc: 990103, decision: 7, file: 990001, vendor: null }
+          '10-new-request-with-file':   { doc: docA, decision: 1, file: fileId, vendor: 777 },
+          '20-new-request-no-file':     { doc: docB, decision: 1, file: null,   vendor: 778 },
+          '30-new-request-user-handles':{ doc: docA, decision: 1, file: fileId, vendor: 777 },
+          '40-new-request-task-exists': { doc: docA, decision: 1, file: fileId, vendor: 777 },
+          '50-authreq-rejected-task':   { doc: docB, decision: 6, file: null,   vendor: 778 },
+          '60-authreq-no-rejected':     { doc: docB, decision: 6, file: null,   vendor: 778 },
+          '70-needless-collaterals':    { doc: docA, decision: 7, file: fileId, vendor: null }
       };
       var want = SENT[name];
       if (!want || !j) { return; }

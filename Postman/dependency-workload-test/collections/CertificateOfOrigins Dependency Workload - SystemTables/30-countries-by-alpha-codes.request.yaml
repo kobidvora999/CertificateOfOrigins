@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/Country/CountriesByAlphaCodes"
+method: POST
+headers:
+  Content-Type: application/json
+# GetCountriesByAlphaCodes - message countries
+body:
+  type: json
+  content: |-
+    [
+      "IL"
+    ]
+order: 3000

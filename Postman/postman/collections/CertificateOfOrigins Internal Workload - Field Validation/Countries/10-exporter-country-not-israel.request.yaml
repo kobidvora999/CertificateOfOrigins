@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # Every fixture in the repo sent IL for every Israel-mandated country field, so CheckIfCountryInSystemAndIsrael only ever took its happy side (2 of 12 branches). The Country mock maps IL to 376, the CountryIsrael parameter value, and anything else to a stable non-Israel id - so DE reaches the error arm AND its DetailType switch: IllegalExporterCountry(4991).
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St",
         "tradeAgreementCountry2": "DE",

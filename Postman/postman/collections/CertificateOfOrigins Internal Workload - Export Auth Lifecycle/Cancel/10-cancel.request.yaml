@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X6: Cancelled (9) - raises ChangeFileStatus (2047).
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 3100

@@ -3,7 +3,7 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
-# A PUBLISHED row to point the per-reason checks at. Saved straight at status 8 - that is NOT a status CHANGE for a new instance (CertificateOfOriginsBl.cs:942) so no publish side effects fire; all this scenario needs is the row.
+# A PUBLISHED row to point the per-reason checks at. Saved straight at status 8 - that is NOT a status CHANGE for a new instance (CertificateOfOriginsBl.cs:942) so no publish side effects fire; all this scenario needs is the row. Created at Received (2); 01-publish-B moves it to 8 through the status save.
 body:
   type: json
   content: |-
@@ -11,7 +11,7 @@ body:
       "id": 0, "state": 1, "typeId": 1, "title": "per-reason fixture PR-PUB-B-{{runId}}",
       "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
       "certificateNumber": "PR-PUB-B-{{runId}}",
-      "certificateOfOriginStatusId": 8,
+      "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,
       "requestReasonCode": 1,
       "isLastVersion": true, "versionNumber": 1,

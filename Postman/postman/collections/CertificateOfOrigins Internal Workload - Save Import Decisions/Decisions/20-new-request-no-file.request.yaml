@@ -9,12 +9,12 @@ body:
   type: json
   content: |-
     {
-      "documentId": 990104,
+      "documentId": {{docDecisionB}},
       "authenticationFileId": null,
       "authenticationRequestDate": "{{today}}",
       "collateralId": null,
       "decisionId": 1,
-      "leadDocumentId": 111,
+      "leadDocumentId": {{leadDocId}},
       "documentIssuingDate": "{{today}}",
       "importCountryId": 32,
       "issuingCountryId": 32,

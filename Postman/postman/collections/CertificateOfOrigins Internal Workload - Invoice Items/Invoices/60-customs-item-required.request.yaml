@@ -2,6 +2,7 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # MERCOSUR (type 3), not EURMED. IsCustomsItemMandatory and IsCriterionMandatory are NOT request fields - the
 # BL overwrites them server-side from the certificate type row (MessageValidation.cs:105-107), so the only way to
@@ -12,8 +13,7 @@ body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",

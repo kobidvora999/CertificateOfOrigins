@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 namespace CertificateOfOrigins.WebApi.Controllers.Ui;
 
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("ui/[controller]")]
 public class AuthenticationRequestController(IServiceProvider serviceProvider)
     : BaseController<AuthenticationRequestBl>(serviceProvider)
@@ -170,7 +172,8 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
     // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
-    // updates the request row (set-based). Missing request row → 404. A state-changing write with a body → POST.
+    // inserts the request when the caller sends IsNewInstance, otherwise updates it (missing row → 404). A
+    // state-changing write with a body → POST.
     // Returns the fully re-read request graph (same shape as GetAuthenticationRequestByID).
     [HttpPost("SaveImport")]
     [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]

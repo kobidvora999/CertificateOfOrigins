@@ -11,6 +11,10 @@
         "tags": [ "CertificateOfOrigins" ],
         "summary": "An agent's certificate-of-origin request message.",
         "description": "Synchronous: returns the feedback directly, mirroring the legacy *Sync contract rather than the one-way MSMQ callback.",
+        "parameters": [
+          { "name": "MessageSenderId", "in": "header", "required": true, "description": "The sending agent's customer id, set by the messaging platform (legacy request.CustomerID of the EAI envelope). The agent never sends its own id in the body.", "schema": { "type": "integer", "format": "int32" } },
+          { "name": "MessageSenderTypeId", "in": "header", "required": false, "description": "The sender type, set by the messaging platform.", "schema": { "type": "integer", "format": "int32" } }
+        ],
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginRequestMessageDto" } } }
@@ -30,7 +34,6 @@
       "CertificateOfOriginRequestMessageDto": {
         "type": "object",
         "properties": {
-          "customerId": { "type": "integer", "format": "int32" },
           "agentRequest": { "$ref": "#/components/schemas/CertificateOfOriginAgentRequestDto" },
           "certificateOfOrigin": { "$ref": "#/components/schemas/CertificateOfOriginMessageDto" },
           "nonManipulationCertificate": { "$ref": "#/components/schemas/NonManipulationCertificateMessageDto" }

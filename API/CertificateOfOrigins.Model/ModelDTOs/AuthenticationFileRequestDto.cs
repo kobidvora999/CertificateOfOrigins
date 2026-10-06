@@ -7,17 +7,17 @@ public class AuthenticationFileRequestDto
 {
     public int DocumentId { get; set; }
 
-    public DateTimeOffset CreateDate { get; set; }
+    public DateTime CreateDate { get; set; }
 
     public int? AuthenticationFileId { get; set; }
 
-    public DateTimeOffset AuthenticationRequestDate { get; set; }
+    public DateTime AuthenticationRequestDate { get; set; }
 
     public int? DecisionId { get; set; }
 
     public int LeadDocumentId { get; set; }
 
-    public DateTimeOffset DocumentIssuingDate { get; set; }
+    public DateTime DocumentIssuingDate { get; set; }
 
     public int ImportCountryId { get; set; }
 
@@ -37,7 +37,7 @@ public class AuthenticationFileRequestDto
 
     public int? ImporterId { get; set; }
 
-    public DateTimeOffset? LastDeliveryForImporter { get; set; }
+    public DateTime? LastDeliveryForImporter { get; set; }
 
     public string? InvoiceNumber { get; set; }
 
@@ -47,6 +47,24 @@ public class AuthenticationFileRequestDto
     public int UserId { get; set; }
 
     public int UserResponseId { get; set; }
+
+    // --- What the legacy file screen shows for the selected request (AuthenticationRequestFileGeneralView +
+    // FileRequestDocumentEditView). The first four are editable there; the rest are read-only on that screen. ---
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }   // legacy spelling, kept — it is the column name
+
+    public string? Remarks { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public int RequestCircumstancesId { get; set; }
+
+    public bool IsOldIndication { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
 
     // The lead document (Documents service), enriched with TypeName (DocumentType lookup).
     public DocumentDto? Document { get; set; }
@@ -61,7 +79,7 @@ public class AuthenticationFileRequestDto
     public List<CollateralRequestDto> Collaterals { get; set; } = [];
 
     // Lead-document submission date (DealFile service; legacy CRP.DealFile_LeadDocumentSubmissionData JOIN).
-    public DateTimeOffset? LeadDocumentSubmissionDate { get; set; }
+    public DateTime? LeadDocumentSubmissionDate { get; set; }
 
     // True when an open SendReminderForImporter (404) task exists for this request (legacy OUTER APPLY on Tasks_Task).
     public bool IsSendReminderForImporterTaskExists { get; set; }

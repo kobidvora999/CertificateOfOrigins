@@ -17,6 +17,22 @@ scripts:
       pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
       // Acting-user context (RequestMetadata.UserId) — used for the update-audit + event 'by user' info.
       pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Status transitions of certificates this run created: the certificate the create answered, moved to the target
+      // status with its ORIGINAL status, the way the worker screen saves it.
+      var TRANSITION = {
+          '05-publish': ['00-setup-publish', 8]
+      };
+      if (TRANSITION[pm.info.requestName]) {
+          var tDto = JSON.parse(pm.collectionVariables.get('dto_' + TRANSITION[pm.info.requestName][0]) || '{}');
+          tDto.originalCertificateOfOriginStatusId = tDto.certificateOfOriginStatusId;
+          tDto.certificateOfOriginStatusId = TRANSITION[pm.info.requestName][1];
+          pm.collectionVariables.set('transitionBody', JSON.stringify(tDto));
+      }
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-setup-publish' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
 
       // Dates used by the incoming-message fixtures MUST be relative, not literal. The MERCOSUR create request
       // carried dateOfDeclaration = 2026-08-12; the exporter-declaration rule allows today..-5 days, so the
@@ -38,14 +54,34 @@ scripts:
 
       var name = pm.info.requestName;
       var j = pm.response.json();
+      // ---- certificates that reach Published / Match through the process ----
+      var T_SETUP = ['00-setup-publish'];
+      var T_STEP = {
+          '05-publish': ['00-setup-publish', 8]
+      };
+      if (T_SETUP.indexOf(name) >= 0 && j) {
+          pm.collectionVariables.set('dto_' + name, JSON.stringify(j));
+          pm.test(name + ': created at Received (2)', function () { pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(2); });
+      }
+      if (T_STEP[name] && j) {
+          var tWant = T_STEP[name];
+          pm.test(name + ': ' + tWant[0] + ' moved 2 -> ' + tWant[1], function () {
+              pm.expect(j.id, 'id').to.eql(JSON.parse(pm.collectionVariables.get('dto_' + tWant[0])).id);
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(tWant[1]);
+          });
+          if (tWant[1] === 8) {
+              pm.test(name + ': the publish step ran (issuing date stamped)', function () {
+                  pm.expect(j.issuingDate, 'issuingDate').to.be.a('string').and.not.empty;
+              });
+          }
+      }
 
       // --- chain captures (run before the assertions so a failure cannot break the chain) ---
       if (name === '00-setup-publish') {
           pm.collectionVariables.set('webQueryCertId', j.id);
           pm.collectionVariables.set('webQueryNumber', j.certificateNumber);
-          pm.test('published certificate created', function () {
+          pm.test('certificate created (05-publish publishes it; only a publish stamps the Guid)', function () {
               pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
-              pm.expect(j.certificateOfOriginStatusId, 'status must be Published(8) or the Guid is never stamped').to.eql(8);
           });
       }
 

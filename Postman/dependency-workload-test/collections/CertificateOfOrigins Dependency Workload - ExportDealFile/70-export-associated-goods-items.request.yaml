@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/ExportDealFile/DetailsForExportAssociatedGoodsItems/2147483647"
+method: GET
+# GetDetailsForExportAssociatedGoodsItemsByLeadDocumentId - goods items of an import replacement
+order: 7000

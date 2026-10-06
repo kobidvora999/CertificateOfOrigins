@@ -31,6 +31,7 @@ AS
             @TableJoin NVARCHAR(MAX) = ''
 
         SET @Select = '
+-- TOP (200) = Shared.ufn_GetMaxRows() of the legacy procedure; production returns 200 (confirmed 2026-10-04).
 SELECT      TOP (200)
                         F.ID,
                 F.CertificateNumber,

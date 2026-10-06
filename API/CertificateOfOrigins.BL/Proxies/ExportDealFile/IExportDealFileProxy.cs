@@ -8,7 +8,7 @@ public interface IExportDealFileProxy
 
     // Legacy: the CRP.DealFile_LeadDocumentSubmissionData.SubmitDate JOIN (GetAuthenticationRequestByID) — the lead
     // document's submission date lives in the DealFile service.
-    Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId);
+    Task<DateTime?> GetLeadDocumentSubmissionDate(int leadDocumentId);
 
     // Legacy: IExportDealFileExternalServiceAdapter.GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId
     // (SaveCertificateOfOrigin) — repoints the deal-file lead document from the old certificate to the new one and

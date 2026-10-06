@@ -25,7 +25,8 @@ public partial class CertificateOfOriginsBl
         }
 
         // Legacy: build the UpdateCetificateOfOriginsDTO from the declaration info + the just-saved certificate, then
-        // run the reconciliation (isFromDealFile:false → single certificate). EventType is left unset (legacy default).
+        // run the reconciliation (isFromDealFile:false → single certificate). Legacy called UpdateCertrificateOfOrigins
+        // directly, not the event dispatcher: EventType is unset here, and the dispatcher's default arm returns [].
         var updateRequest = new UpdateCertificateOfOriginsRequestDto
         {
             CertificateOfOriginsIds = [certificate.Id],
@@ -37,7 +38,7 @@ public partial class CertificateOfOriginsBl
             ExportInvoiceInfoList = declarationInfo.ExportInvoiceInfoList,
         };
 
-        var exceptions = await UpdateCertificateOfOrigins(updateRequest);
+        var exceptions = await ReconcileCertificatesAgainstDeclaration(updateRequest);
         return exceptions;
     }
 

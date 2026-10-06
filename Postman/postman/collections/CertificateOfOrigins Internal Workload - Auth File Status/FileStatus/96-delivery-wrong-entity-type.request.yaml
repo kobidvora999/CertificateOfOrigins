@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
+method: POST
+headers:
+  Content-Type: application/json
+# Related entities present but none of them is an AuthenticationRequestFile -> the SingleOrDefault comes
+# back null and the second guard returns false.
+# The id is the file THIS run created (FileStatus/03), so the entity type is the only thing that can be wrong.
+body:
+  type: json
+  content: |-
+    { "relatedEntities": [ { "id": {{fileId}}, "entityType": 999 } ] }
+order: 31010

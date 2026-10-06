@@ -2,6 +2,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
@@ -23,8 +24,10 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Customer/CustomerInformation/{customerId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
-        var response = await ExecuteAsync(req);
+            .WithResource("api/Customer/CustomerInformation/{customerId}") // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .AddUrlSegmentParameter("customerId", customerId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<CustomerDto>();
     }
 
@@ -34,7 +37,9 @@ public class CustomerProxy(IHttpProxy httpProxy)
         // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) alongside the country id.
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Customer/CustomersByCountry/{countryId}/{CertificateOfOriginsConsts.ForeignCustomsHouseActivityType}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .WithResource("api/Customer/CustomersByCountry/{countryId}/{activityType}") // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .AddUrlSegmentParameter("countryId", countryId)
+            .AddUrlSegmentParameter("activityType", CertificateOfOriginsConsts.ForeignCustomsHouseActivityType);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<CustomerDto>>();
     }
@@ -43,8 +48,10 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Customer/IdByExternalId/{externalId}"); // TODO(blocking): confirm endpoint name/route with the Customers microservice
-        var response = await ExecuteAsync(req);
+            .WithResource("api/Customer/IdByExternalId/{externalId}") // TODO(blocking): confirm endpoint name/route with the Customers microservice
+            .AddUrlSegmentParameter("externalId", externalId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<int?>();
     }
 }

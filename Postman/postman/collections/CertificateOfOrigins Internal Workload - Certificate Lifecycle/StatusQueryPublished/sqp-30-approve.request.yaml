@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# C4: the worker approves -> PendingRelease (7).
+body:
+  type: json
+  content: |-
+    {{sqpApproveBody}}
+order: 5030

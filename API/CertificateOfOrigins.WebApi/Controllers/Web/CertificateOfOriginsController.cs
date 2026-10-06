@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
@@ -12,6 +13,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Web;
 // Test/SchemaContract/WebCertificateRequestContractTests.cs — the controller is written to match the contract,
 // not the other way round.
 [ApiController]
+[ProxyFailureExceptionFilter]
 [Route("web/[controller]")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+method: GET
+# State after C12: Cancelled (4) with the by-message cancel reason.
+order: 1850

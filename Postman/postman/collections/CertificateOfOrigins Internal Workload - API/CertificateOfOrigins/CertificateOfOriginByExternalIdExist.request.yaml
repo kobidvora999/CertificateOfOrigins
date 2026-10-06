@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/ByExternalIdExist?certificateOfOriginExternalId=IL0000116895"
-method: GET
-queryParams:
-  certificateOfOriginExternalId: IL0000116895
-order: 4000

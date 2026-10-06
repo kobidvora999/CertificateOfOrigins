@@ -32,14 +32,14 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
     }
 
     // Default = a fixed submission date; feature "DealFile.NoSubmissionDate" returns none.
-    public Task<DateTimeOffset?> GetLeadDocumentSubmissionDate(int leadDocumentId)
+    public Task<DateTime?> GetLeadDocumentSubmissionDate(int leadDocumentId)
     {
         if (mockUtil.HasMockFeature("DealFile.NoSubmissionDate"))
         {
-            return Task.FromResult<DateTimeOffset?>(null);
+            return Task.FromResult<DateTime?>(null);
         }
 
-        return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero)); // TODO: dummy data
+        return Task.FromResult<DateTime?>(new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Unspecified)); // TODO: dummy data
     }
 
     // Default = a linked lead document whose title matches (no mismatch); feature "DealFile.NoLeadDocument" returns none.

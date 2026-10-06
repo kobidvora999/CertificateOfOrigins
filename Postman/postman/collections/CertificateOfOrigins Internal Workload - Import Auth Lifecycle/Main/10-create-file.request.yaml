@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# F0: both requests go into a new authentication file -> WaitingForSendingLetter (1), delivery WasNotSend (1).
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": {{docA}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 888,
+        "responseNameEmail": "flow@example.com"
+      },
+      {
+        "documentId": {{docB}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 888,
+        "responseNameEmail": "flow@example.com"
+      }
+    ]
+order: 1100

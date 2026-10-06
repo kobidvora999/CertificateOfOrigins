@@ -28,7 +28,7 @@ public class CertificateOfOriginsDecision
     public string? Enumeration { get; set; }
 
     [Column("StartDate")]
-    public DateTimeOffset? StartDate { get; set; }
+    public DateTime? StartDate { get; set; }
 
     // Audience flags — which screen's decision dropdown the value belongs to. The legacy WPF client filters on them
     // (AuthenticationRequestFilePresenter: Decisions.Where(d => d.IsForClaliMakorWorker); ImportProcessFormPresenter:

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/ExportDealFile/ExportDeclarationInfo/2147483647"
+method: GET
+# GetExportDeclarationInfoForPc - the declaration a certificate is reconciled against
+order: 6000

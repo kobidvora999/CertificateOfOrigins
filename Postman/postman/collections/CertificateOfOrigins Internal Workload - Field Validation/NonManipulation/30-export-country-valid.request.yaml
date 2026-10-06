@@ -2,14 +2,14 @@ $kind: http-request
 url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
 method: POST
 headers:
+  MessageSenderId: "1"
   Content-Type: application/json
 # The clean side of the same check: a non-Israel export country on a NonManipulation certificate raises nothing. Without this, a validator that fired on every export country would look just as green.
 body:
   type: json
   content: |-
     {
-      "customerId": 1,
-      "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": { "customsHouse": "SITE01" },
       "nonManipulationCertificate": {
         "exportDate": "{{twoDaysAgo}}",

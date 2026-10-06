@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_URL}}/api/Document/AttachDocumentsToEntity"
+method: POST
+headers:
+  Content-Type: application/json
+# AttachDocumentsToEntity - additional documents of an export request
+body:
+  type: json
+  content: |-
+    [
+      {
+        "entity": {
+          "id": 2147483647,
+          "title": "dependency probe",
+          "entityType": 12319,
+          "customerId": 0
+        },
+        "documentIds": [
+          2147483647
+        ]
+      }
+    ]
+order: 3000

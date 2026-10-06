@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/99/{{negFileId}}"
+method: GET
+# An unsupported template id (99) for THIS run file -> 400 (bad request) from GetTemplateMeta, before the Templates service is called; distinct from template-missing-entity, which is a genuine 404.
+order: 6100

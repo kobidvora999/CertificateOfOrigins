@@ -1,7 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CustomsCloud.InfrastructureCore.DAL;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CertificateOfOrigins.DAL;
 
@@ -48,34 +47,11 @@ public partial class CertificateOfOriginsDbContext : DbContext
 
     public virtual DbSet<CertificateOfOriginsAuthenticationFileStatus> CertificateOfOriginsAuthenticationFileStatuses { get; set; }
 
+    public virtual DbSet<CertificateOfOriginTypeByTradeAgreement> CertificateOfOriginTypeByTradeAgreements { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // The legacy SQL columns are `datetime` (CLR DateTime) while the entities map them as DateTimeOffset (repo
-        // convention). Without this converter an EF LINQ read that materializes such a column throws
-        // InvalidCastException (DateTime -> DateTimeOffset). Applied per-property here (not via ConfigureConventions)
-        // so no EF type is exposed on the Model project's public API (avoids an EF-version reference conflict).
-        var converter = new ValueConverter<DateTimeOffset, DateTime>(
-            offset => offset.DateTime,
-            dateTime => new DateTimeOffset(dateTime, TimeSpan.Zero));
-        var nullableConverter = new ValueConverter<DateTimeOffset?, DateTime?>(
-            offset => offset.HasValue ? offset.Value.DateTime : null,
-            dateTime => dateTime.HasValue ? new DateTimeOffset(dateTime.Value, TimeSpan.Zero) : null);
-
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            foreach (var property in entityType.GetProperties())
-            {
-                if (property.ClrType == typeof(DateTimeOffset))
-                {
-                    property.SetValueConverter(converter);
-                }
-                else if (property.ClrType == typeof(DateTimeOffset?))
-                {
-                    property.SetValueConverter(nullableConverter);
-                }
-            }
-        }
-
+        // Date columns are SQL datetime/date and map natively to DateTime — no value converter.
         OnModelCreatingPartial(modelBuilder);
     }
 

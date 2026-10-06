@@ -1,5 +1,6 @@
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
 using CustomsCloud.InfrastructureCore.DAL;
 
 namespace CertificateOfOrigins.DAL;
@@ -37,7 +38,7 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<int>> GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId);
 
-    Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId);
+    Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, bool stampFirstContactDate = false);
 
     Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId);
 
@@ -57,6 +58,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
 
+    Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType();
+
     Task<bool> IsSupplierDeliveryCountry(int countryId);
 
     Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId);
@@ -75,9 +78,11 @@ public interface ICertificateOfOriginsDal : IBaseDal
         List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
         List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas);
 
-    Task<bool> SaveImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+    Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
 
-    Task UpdateImportRequestDecision(int documentId, int? decisionId, bool isOldIndication, int userId);
+    Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+
+    Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId);
 
     Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId);
 
@@ -85,9 +90,11 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
 
+    Task<int?> GetPreviousCertificateIdByTitle(string title);
+
     Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber);
 
-    Task CancelCertificateFromMessage(int id, string rejectCancelReason, int userId);
+    Task CancelCertificate(int id, string rejectCancelReason, int userId);
 
     Task<int> GetNextCertificateOfOriginNumber();
 

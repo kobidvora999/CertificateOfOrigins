@@ -3,11 +3,13 @@ id: certificateoforigins-auth-lifecycle-v1
 name: CertificateOfOrigins Auth Lifecycle
 description: >-
   Import-authentication request/file reads and the delivery-status machine.
-  REQUIRES the seed: Postman/internal-workload-test/seed/seed_ImportAuthenticationRequests.sql.
-  This service has no insert path for CertificateOfOrigins_ImportAuthenticationRequest (the DAL only reads it
-  and updates it set-based), so these rows cannot be created through the API and a seed is the only way in.
-  The seed is idempotent AND resets the seeded rows, so the run stays repeatable even though the delivery
-  scenarios advance the file's status.
+  SELF-CONTAINED FLOW - no seed, no fixed ids. The first three requests create this run's data through the API:
+  01/02 insert two import authentication requests (SaveImport with isNewInstance = true, DocumentIDs minted per
+  run below), and 03 creates an authentication file from the first one (CreateNewFile - the file id is an identity
+  and is captured). Every scenario after that addresses only those rows, through {{docLinked}}, {{docUnlinked}} and
+  {{fileId}}. Because the file is brand new every run, it always starts at status 1 with no FirstProvideContactDate,
+  which is what the delivery scenarios need - the old seed had to reset its rows to get the same starting point.
+  Collections run in PARALLEL; this one creates its own rows and never touches another collection's.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -31,6 +33,22 @@ scripts:
       pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
       pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
       pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+
+      // ---- run-scoped ids for the rows this collection CREATES (never fixed ids, never a seed) ----
+      // ImportAuthenticationRequest.DocumentID is caller-assigned (not an identity), so the flow mints its own:
+      //   800000000 + (ms % 1e6) * 100 + SLOT * 10 + k
+      // SLOT is unique per collection (API 1, Auth File Status 2, Auth Lifecycle 3, Save Import Decisions 4,
+      // Mock Features 5), so collections running in parallel can never mint the same id; k (1-9) separates the
+      // requests of one run. Re-minted on the FIRST request of every run, so a runner that persists collection
+      // variables between runs (the Postman app) never re-inserts an id it already used.
+      var SLOT = 3, FIRST = '01-create-request-linked';
+      if (pm.info.requestName === FIRST || !pm.collectionVariables.get('docBase')) {
+          pm.collectionVariables.set('docBase', 800000000 + (Date.now() % 1000000) * 100 + SLOT * 10);
+          pm.collectionVariables.unset('fileId');
+      }
+      var docBase = Number(pm.collectionVariables.get('docBase'));
+      pm.collectionVariables.set('docLinked', docBase + 1);
+      pm.collectionVariables.set('docUnlinked', docBase + 2);
     language: text/javascript
   - type: http:afterResponse
     code: |-
@@ -40,43 +58,81 @@ scripts:
       pm.test('status is 200', function () { pm.response.to.have.status(200); });
 
       var name = pm.info.requestName;
-      var j = pm.response.json();
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      var docLinked = Number(pm.collectionVariables.get('docLinked'));
+      var docUnlinked = Number(pm.collectionVariables.get('docUnlinked'));
 
-      // A 404 here means the seed did not run. Say so explicitly rather than letting the suite look merely red.
+      // ---- flow: create this run's rows (captures first, so a failed assertion cannot break the chain) ----
+      var CREATED = { '01-create-request-linked': docLinked, '02-create-request-unlinked': docUnlinked };
+      if (CREATED[name] !== undefined) {
+          pm.test(name + ': the request was inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(CREATED[name]);
+          });
+      }
+      if (name === '03-create-file') {
+          if (j && j.id) { pm.collectionVariables.set('fileId', j.id); }
+          if (j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); pm.collectionVariables.set('fileDm', j.deliveryMethodId); }
+          pm.test('03-create-file: a new authentication file was created', function () {
+              pm.expect(j && j.id, 'id').to.be.a('number').and.above(0);
+              pm.expect(j.authenticationFileStatusId, 'a new file starts at WaitingForSendingLetter (1)').to.eql(1);
+          });
+      }
+      var fileId = Number(pm.collectionVariables.get('fileId'));
+
+      // A 404 here means a creation step above failed, so the row this scenario addresses does not exist.
       if (pm.response.code === 404) {
-          pm.test('SEED MISSING - run seed/seed_ImportAuthenticationRequests.sql', function () {
-              pm.expect.fail('seeded row not found; the seed script has not been applied to this database');
+          pm.test('FLOW BROKEN - the row this scenario reads was not created by 01-03', function () {
+              pm.expect.fail('not found; check the 01-create-* / 03-create-file results earlier in this run');
           });
       }
 
       if (name === '00-request-linked') {
-          pm.test('mapper returned the seeded request, attached to its file', function () {
-              pm.expect(j.documentId, 'documentId').to.eql(990101);
-              pm.expect(j.authenticationFileId, 'authenticationFileId').to.eql(990001);
+          pm.test('mapper returned the created request, attached to its file', function () {
+              pm.expect(j.documentId, 'documentId').to.eql(docLinked);
+              pm.expect(j.authenticationFileId, 'authenticationFileId').to.eql(fileId);
           });
       }
 
       if (name === '10-request-unlinked') {
           pm.test('mapper handles a request with no file', function () {
-              pm.expect(j.documentId, 'documentId').to.eql(990102);
+              pm.expect(j.documentId, 'documentId').to.eql(docUnlinked);
               pm.expect(j.authenticationFileId, 'authenticationFileId must stay null').to.be.oneOf([null, undefined]);
           });
       }
 
       if (name === '20-file-by-id') {
           pm.test('file resolves with its child requests', function () {
-              pm.expect(j.id, 'id').to.eql(990001);
-              pm.expect(j.importAuthenticationRequests || j.requests || [], 'child requests').to.be.an('array');
+              pm.expect(j.id, 'id').to.eql(fileId);
+              var kids = j.importAuthenticationRequests || j.requests || [];
+              pm.expect(kids, 'child requests').to.be.an('array');
+              pm.expect(kids.map(function (k) { return k.documentId; }), 'the linked request is a child').to.include(docLinked);
           });
       }
 
       if (name === '30-delivery-vendor' || name === '40-reminder-vendor') {
           // AdvanceDeliveryStatus returns the file's new status + delivery method; asserting they came back
-          // non-zero is the proof the status machine actually ran rather than exiting early on a missing file
-          // (which is what the pre-seed fixture did with id=1).
-          pm.test(name + ': the status machine returned a new state', function () {
-              pm.expect(j, 'response body').to.be.an('object');
-              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.be.a('number').and.above(0);
+          // non-zero is the proof the status machine actually ran rather than exiting early on a missing file.
+          // Each call is sent the state the step before left (fileStatus / fileDm): delivery (1,1) -> (2,2), then
+          // reminder (2,2) -> (3,2). The next call is sent what this one returned.
+          var WANT = { '30-delivery-vendor': [2, 2], '40-reminder-vendor': [3, 2] }[name];
+          pm.test(name + ': file moved to status ' + WANT[0] + ', delivery ' + WANT[1], function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(WANT[0]);
+              pm.expect(j.deliveryMethodId, 'deliveryMethodId').to.eql(WANT[1]);
+          });
+          if (j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); pm.collectionVariables.set('fileDm', j.deliveryMethodId); }
+      }
+
+      if (name === '35-first-contact-after-delivery' || name === '45-first-contact-after-reminder') {
+          // The reminder-ladder SP measures every rung from ISNULL(FirstProvideContactDate, LastDelivery), so the
+          // first vendor delivery must record the date and a reminder must leave it alone. The server stamps it with
+          // its LOCAL date (DateTime.Today), so compare against the local date, not toISOString (UTC).
+          var d = new Date();
+          var localToday = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+          pm.test(name + ': FirstProvideContactDate is today', function () {
+              pm.expect(j.firstProvideContactDate, 'firstProvideContactDate').to.be.a('string');
+              pm.expect(j.firstProvideContactDate.slice(0, 10), 'firstProvideContactDate (date part)').to.eql(localToday);
           });
       }
     language: text/javascript

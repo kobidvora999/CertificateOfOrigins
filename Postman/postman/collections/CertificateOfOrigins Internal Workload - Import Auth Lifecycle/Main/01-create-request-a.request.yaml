@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# R0: a new import authentication request (movement certificate, type 4) at decision NewAuthenticationRequest (1).
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{docA}},
+      "isNewInstance": true,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "decisionId": 1,
+      "leadDocumentId": {{docA}},
+      "documentIssuingDate": "{{today}}",
+      "documentNumber": "DN-{{docA}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "originCountryId": 32,
+      "number": 1,
+      "preferenceDocumentTypeId": 4,
+      "responseNameEmail": "flow@example.com",
+      "responsePhoneNum": "0500000000",
+      "organizationUnitId": 1,
+      "vendorId": {{vendorId}},
+      "vendorName": "Lifecycle Vendor",
+      "customerId": 888,
+      "importerId": {{importerId}},
+      "remarks": "lifecycle request A",
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": true,
+      "collaterals": []
+    }
+order: 1000

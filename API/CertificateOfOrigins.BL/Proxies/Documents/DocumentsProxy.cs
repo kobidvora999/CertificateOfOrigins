@@ -2,6 +2,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Proxy.Rest;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace CertificateOfOrigins.BL.Proxies;
 
@@ -15,7 +16,9 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Document/DocumentsByEntity/{entityId}/{entityTypeId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .WithResource("api/Document/DocumentsByEntity/{entityId}/{entityTypeId}") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .AddUrlSegmentParameter("entityId", entityId)
+            .AddUrlSegmentParameter("entityTypeId", entityTypeId);
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<DocumentDto>>();
     }
@@ -37,8 +40,10 @@ public class DocumentsProxy(IHttpProxy httpProxy)
     {
         var req = CreateRequestBuilder()
             .UseGetMethod()
-            .WithResource($"api/Document/{documentId}"); // TODO(blocking): confirm endpoint name/route with the Documents microservice
-        var response = await ExecuteAsync(req);
+            .WithResource("api/Document/{documentId}") // TODO(blocking): confirm endpoint name/route with the Documents microservice
+            .AddUrlSegmentParameter("documentId", documentId);
+        var response = await ExecuteWithoutValidationAsync(req);
+        response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<DocumentDto>();
     }
 
