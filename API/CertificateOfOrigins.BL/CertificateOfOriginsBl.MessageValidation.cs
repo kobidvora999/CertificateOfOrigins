@@ -666,8 +666,9 @@ public partial class CertificateOfOriginsBl
         // Legacy GetCountryGroupId: the value must parse AND the group id must exist in the CountryGroup table
         // (GetIdByCode<CountryGroup>(PropID, id) = Lookup.CountryGroup by id → TheValueInFieldNotExistsInSystem on a miss); on
         // failure the legacy returns 0 and skips the trade-agreement check.
+        Lookups.CountryGroup? countryGroup = null;
         if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId)
-            || !await lookupUtil.Exists<Lookups.CountryGroup>(countryGroupId))
+            || (countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId)) is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
             return;
@@ -688,8 +689,8 @@ public partial class CertificateOfOriginsBl
         }
 
         // Legacy rewrote Value to the resolved group id (already numeric here) and the display to its English name.
-        // Country-group id→name has no ILookupUtil type (SystemTables); display left as the id (rollout TODO).
-        field.Value = countryGroupId.ToString(CultureInfo.InvariantCulture);
+        field.Value = countryGroup.Id.ToString(CultureInfo.InvariantCulture);
+        field.DisplayedValue = countryGroup.EnglishName;
     }
 
     // Legacy CheckDeclarationDate: within [-5 days, today].

@@ -1239,6 +1239,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         (int)ECertificateDetailsType.CumulationCountry, (int)ECertificateDetailsType.DestinationCountry,
     ];
 
+    // Country-group detail types whose id → English name is resolved for display (legacy CheckIfCountryGroupIsInTradeAgreement).
+    private static readonly HashSet<int> CountryGroupDetailTypes =
+    [
+        (int)ECertificateDetailsType.TradeAgreementGroupOfCountries, (int)ECertificateDetailsType.OriginGroupOfCountries,
+        (int)ECertificateDetailsType.DestinationGroupOfCountries, (int)ECertificateDetailsType.CumulationGroupOfCountries,
+    ];
+
     private static readonly HashSet<int> CityDetailTypes =
     [
         (int)ECertificateDetailsType.CityOfDeclaration, (int)ECertificateDetailsType.PlaceOfManufacture,
@@ -1368,9 +1375,15 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 var city = await lookupUtil.Get<Lookup.City>(cityId);
                 detail.DisplayedValue = city?.EnglishName ?? value;
             }
+            else if (CountryGroupDetailTypes.Contains(typeId) && int.TryParse(value, out var countryGroupId))
+            {
+                // Legacy CheckIfCountryGroupIsInTradeAgreement: DisplayedValue = the group's English name.
+                var countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId);
+                detail.DisplayedValue = countryGroup?.EnglishName ?? value;
+            }
             else
             {
-                // Country-group + international-site id→name enrichment lands here for now (no ILookupUtil type; needs a
+                // International-site id→name enrichment lands here for now (no ILookupUtil type; needs a
                 // SystemTables proxy — rollout TODO), as do all text fields — displayed as-is.
                 detail.DisplayedValue = value;
             }

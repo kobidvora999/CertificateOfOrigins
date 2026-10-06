@@ -1,5 +1,6 @@
 using System.Reflection;
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.BL.Lookups;
 using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
@@ -102,6 +103,42 @@ public class SaveCertificateOfOriginQrCodeTests
         });
     }
 
+    // C F-09 regression (also exercises this harness with a detail row): legacy CheckIfCountryGroupIsInTradeAgreement
+    // wrote the group's English name as the detail's DisplayedValue. The migration left the numeric id there, so the id
+    // was persisted and printed. A group id that is not in the lookup keeps the raw value as its display.
+    [TestCase((int)ECertificateDetailsType.TradeAgreementGroupOfCountries)]
+    [TestCase((int)ECertificateDetailsType.OriginGroupOfCountries)]
+    [TestCase((int)ECertificateDetailsType.DestinationGroupOfCountries)]
+    [TestCase((int)ECertificateDetailsType.CumulationGroupOfCountries)]
+    public async Task ExistingCertificateCountryGroupDetailIsDisplayedByTheGroupEnglishName(int detailType)
+    {
+        const int existingId = 55;
+        var request = NewPublishedRequest(existingId, (int)ECertificateOfOriginStatus.Published);
+        request.CertificateOfOriginDetails =
+        [
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = detailType, Value = "5", DisplayedValue = "5" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = detailType, Value = "999", DisplayedValue = "999" },
+        ];
+        var lookups = Fake<ILookupUtil>((method, args) =>
+        {
+            if (method.Name != "Get" || method.ReturnType.GetGenericArguments()[0] != typeof(CountryGroup))
+            {
+                return null;
+            }
+
+            CountryGroup? group = (int)args![0]! == 5 ? new CountryGroup { Id = 5, EnglishName = "Europe" } : null;
+            return TaskFromResult(typeof(CountryGroup), group);
+        });
+
+        var captures = await RunSaveAsync(request, existingId, lookups);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(captures.StagedDetails!.Select(d => d.DisplayedValue), Is.EqualTo(new[] { "Europe", "999" }));
+            Assert.That(captures.StagedDetails!.Select(d => d.Value), Is.EqualTo(new[] { "5", "999" }), "the stored value stays the group id");
+        });
+    }
+
     private static SaveCertificateOfOriginRequestDto NewPublishedRequest(int id, int originalStatusId)
     {
         return new SaveCertificateOfOriginRequestDto
@@ -128,7 +165,7 @@ public class SaveCertificateOfOriginQrCodeTests
 
     // seedExistingId: null → a brand-new certificate (the save assigns the id). Non-null → seed that row first so the
     // update path has something to update.
-    private static async Task<Captures> RunSaveAsync(SaveCertificateOfOriginRequestDto request, int? seedExistingId)
+    private static async Task<Captures> RunSaveAsync(SaveCertificateOfOriginRequestDto request, int? seedExistingId, ILookupUtil? lookupUtil = null)
     {
         var captures = new Captures();
 
@@ -214,6 +251,9 @@ public class SaveCertificateOfOriginQrCodeTests
                 // SaveChangesAsync, which is what maps a concurrency conflict to 409 instead of letting it
                 // escape as a 500. Three steps because EF must assign the invoice ids before the items bind.
                 case "StageCertificateOfOriginDetails":
+                    captures.StagedDetails = (List<CertificateOfOriginDetails>)args![1]!;
+                    return Task.CompletedTask;
+
                 case "StageCertificateOfOriginInvoices":
                 case "StageCertificateOfOriginInvoiceItems":
                     return Task.CompletedTask;
@@ -274,7 +314,7 @@ public class SaveCertificateOfOriginQrCodeTests
 
         var bl = new CertificateOfOriginsBl(
             serviceProvider,
-            Fake<ILookupUtil>(),
+            lookupUtil ?? Fake<ILookupUtil>(),
             parametersUtil);
 
         captures.Returned = await bl.SaveCertificateOfOrigin(request);
@@ -302,6 +342,7 @@ public class SaveCertificateOfOriginQrCodeTests
         public Guid? GuidAtMainSave;
         public string? QrCodePathAtMainSave = "<not-captured>";
         public CertificateOfOriginDto? Returned;
+        public List<CertificateOfOriginDetails>? StagedDetails;
     }
 
     // Snapshots the certificate exactly as it is being written by the main upsert — the seam the fake DAL used to
