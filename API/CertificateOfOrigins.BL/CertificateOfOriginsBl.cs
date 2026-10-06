@@ -211,6 +211,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     await CancelCertificateOfOriginFromMessage(certificateToResponse);
                 }
 
+                // The same gate threw, and the legacy wrapper then answered with a FRESH response - empty feedback,
+                // ApplicationId 0, only the header exceptions - so a blocked cancellation must not echo the certificate
+                // it did not cancel (a consumer reading a non-zero ApplicationId would take it for success).
+                if (requestExceptions.Count > 0)
+                {
+                    certificateToResponse = null;
+                }
+
                 break;
 
             default:
