@@ -58,7 +58,78 @@ public class DeliveryAuditUserTests
         }));
     }
 
-    private static AuthenticationRequestBl Bl(List<string> calls)
+    // Parity finding G-F7: legacy echoed back the entity it received with what the server changed in it, and the legacy
+    // client kept the importer-reminder result as the selected request without re-reading it. The result carries every
+    // changed field, with the very stamps that were written.
+    [Test]
+    public async Task VendorDeliveryReturnsTheDatesItWrote()
+    {
+        var clocks = new List<DateTime>();
+
+        var result = await Bl([], clocks).HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent(new HandleDeliveryAndReminderForVendorSentRequestDto
+        {
+            Id = 11,
+            AuthenticationFileStatusId = (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend,
+            DeliveryMethodId = 1,
+            IsDelivery = true,
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.LastDelivery, Is.EqualTo(clocks.Single().Date));
+            Assert.That(result.UpdateDate, Is.EqualTo(clocks.Single().Date));
+        });
+    }
+
+    [Test]
+    public async Task ImporterReminderReturnsEveryFieldItChangedOnTheRequestAndTheFile()
+    {
+        var clocks = new List<DateTime>();
+
+        var result = await Bl([], clocks).HandleImportAuthenticationRequestDeliveryReminderForImporterSent(new HandleDeliveryOrReminderForImporterSentRequestDto
+        {
+            DocumentId = 21,
+            AuthenticationFileId = 11,
+            OrganizationUnitId = 1,
+            AuthenticationFileStatusId = (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend,
+            DeliveryMethodId = 1,
+        });
+
+        Assert.That(clocks.Distinct().Count(), Is.EqualTo(1), "one clock for the request and the file writes");
+        var now = clocks[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.DecisionId, Is.EqualTo((int)EAuthenticationRequestDecision.ReminderForImporterWasSent));
+            Assert.That(result.LastDeliveryForImporter, Is.EqualTo(now.Date));
+            Assert.That(result.UpdateDate, Is.EqualTo(now), "the file's loop over its requests overwrote it with the full timestamp");
+            Assert.That(result.FileLastDelivery, Is.EqualTo(now.Date));
+            Assert.That(result.FileUpdateDate, Is.EqualTo(now.Date));
+        });
+    }
+
+    [Test]
+    public async Task ImporterDeliveryWithoutAFileReturnsNoFileDates()
+    {
+        var clocks = new List<DateTime>();
+
+        var result = await Bl([], clocks).HandleImportAuthenticationRequestDeliveryForImporterSent(new HandleDeliveryOrReminderForImporterSentRequestDto
+        {
+            DocumentId = 21,
+            AuthenticationFileId = null,
+            OrganizationUnitId = 1,
+            AuthenticationFileStatusId = (int)EAuthenticationFileStatus.AuthenticationRequestReminderWasSend,
+            DeliveryMethodId = 1,
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.UpdateDate, Is.EqualTo(clocks.Single().Date));
+            Assert.That(result.FileLastDelivery, Is.Null);
+            Assert.That(result.FileUpdateDate, Is.Null);
+        });
+    }
+
+    private static AuthenticationRequestBl Bl(List<string> calls, List<DateTime>? clocks = null)
     {
         var dataLayer = Fake<ICertificateOfOriginsDal>((method, args) =>
         {
@@ -66,9 +137,11 @@ public class DeliveryAuditUserTests
             {
                 case "UpdateFileAfterDelivery":
                     calls.Add($"UpdateFileAfterDelivery(file={args![0]},user={args[3]})");
+                    clocks?.Add((DateTime)args[4]!);
                     return Task.FromResult(true);
                 case "UpdateRequestDecisionAfterDelivery":
                     calls.Add($"UpdateRequestDecisionAfterDelivery(document={args![0]},user={args[2]})");
+                    clocks?.Add((DateTime)args[3]!);
                     return Task.FromResult(true);
                 default:
                     return null;

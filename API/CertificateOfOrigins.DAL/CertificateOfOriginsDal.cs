@@ -1191,7 +1191,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
-    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, bool stampFirstContactDate = false)
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, DateTime now, bool stampFirstContactDate = false)
     {
         // The legacy saved through the infrastructure repository, which stamps the update user; the set-based writes below
         // do it explicitly, as every other writer in this DAL does (parity finding G F3).
@@ -1203,7 +1203,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // only while it is still empty. Legacy set it client-side (OnRequestDeliverNotificationCommand, "if null →
         // Today") and the full-entity save persisted it; the reminder-ladder SP measures every rung from
         // ISNULL(FirstProvideContactDate, LastDelivery), so without it the ladder restarts on each reminder.
-        var now = DateTime.Now;
+        // The clock comes from the BL, which returns the same stamps to the caller (the legacy echoed the mutated entity).
         var today = now.Date;
 
         await Context.CertificateOfOriginsImportAuthenticationFileDetails
@@ -1226,12 +1226,12 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return true;
     }
 
-    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId)
+    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId, DateTime now)
     {
         // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
         // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
         // which — matching the legacy loop — overrides this request's UpdateDate to "now".) Set-based, no row loaded.
-        var today = DateTime.Today;
+        var today = now.Date;
         await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .ExecuteUpdateAsync(s => s

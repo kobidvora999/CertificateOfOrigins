@@ -83,10 +83,10 @@ public partial class AuthenticationRequestBl
     // the same way.
     //
     // The six offsets were platform global params (UDF ids 1600/1148/1941/1149/1667/1668). A service-owned SP may
-    // not call that UDF, so they are read here and passed down. All six were already seeded as service parameters
-    // with no consumer, and four of them carry exactly the values the legacy SP documented for their UDF ids.
-    // TODO(confirm): the id→parameter pairing for 1600↔...Request3 and 1148↔...Request1 was inferred from those
-    // matching values, not from a mapping document — worth one look at the parameters table before go-live.
+    // not call that UDF, so they are read here and passed down. The id-to-name pairing is confirmed: five ids by the
+    // legacy DataScript inserts into Infrastructure.General_enum_GlobalParam, and 1148 by the legacy table itself
+    // (checked by the analyst on 2026-10-07: DaysForFirstReminderInAuthenticationRequest1, value 6). The values are
+    // months, despite the "Days..." names, as the legacy SP's DATEADD(MONTH, ...) used them.
     public async Task<List<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler()
     {
         var firstReminder = await parametersUtil.Get<int>(CertificateOfOriginsConsts.SchedulerFirstReminderParameter);

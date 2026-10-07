@@ -525,13 +525,16 @@ public partial class AuthenticationRequestBl(
 
         // A delivery (not a reminder) records the first-contact date if the file has none yet — legacy set it on the
         // "send notification" button (OnRequestDeliverNotificationCommand); the reminder button never touched it.
-        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, RequestMetadata.UserId ?? 0, request.IsDelivery);
+        var now = DateTime.Now;
+        await DataLayer.UpdateFileAfterDelivery(request.Id, status, deliveryMethod, RequestMetadata.UserId ?? 0, now, request.IsDelivery);
 
         return new HandleDeliveryAndReminderForVendorSentResultDto
         {
             Id = request.Id,
             AuthenticationFileStatusId = status,
             DeliveryMethodId = deliveryMethod,
+            LastDelivery = now.Date,
+            UpdateDate = now.Date,
         };
     }
 
@@ -565,14 +568,15 @@ public partial class AuthenticationRequestBl(
         HandleDeliveryOrReminderForImporterSentRequestDto request, int eventTypeId, int decisionId)
     {
         // 1. Stamp the request (DecisionID + LastDeliveryForImporter + UpdateDate).
-        await DataLayer.UpdateRequestDecisionAfterDelivery(request.DocumentId, decisionId, RequestMetadata.UserId ?? 0);
+        var now = DateTime.Now;
+        await DataLayer.UpdateRequestDecisionAfterDelivery(request.DocumentId, decisionId, RequestMetadata.UserId ?? 0, now);
 
         // 2. Advance the parent file's status machine + touch its child requests (only if the request has a file).
         var (status, deliveryMethod) = AdvanceDeliveryStatus(request.AuthenticationFileStatusId, request.DeliveryMethodId);
         if (request.AuthenticationFileId.HasValue)
         {
             // Importer letters never set the first-contact date (legacy: only the vendor/customs-house send did).
-            await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod, RequestMetadata.UserId ?? 0);
+            await DataLayer.UpdateFileAfterDelivery(request.AuthenticationFileId.Value, status, deliveryMethod, RequestMetadata.UserId ?? 0, now);
         }
 
         // 3. Raise the event on the request (after the save, as in the legacy). Related entity = the file, if any.
@@ -589,12 +593,19 @@ public partial class AuthenticationRequestBl(
 
         await eventUtil.RaiseEvent(builder.Build());
 
+        // Every field the flow changed (the legacy returned the mutated request): with a file, its loop over the child
+        // requests overwrote this request's UpdateDate with the full timestamp.
+        var hasFile = request.AuthenticationFileId.HasValue;
         return new HandleDeliveryOrReminderForImporterSentResultDto
         {
             DocumentId = request.DocumentId,
             DecisionId = decisionId,
+            LastDeliveryForImporter = now.Date,
+            UpdateDate = hasFile ? now : now.Date,
             AuthenticationFileStatusId = status,
             DeliveryMethodId = deliveryMethod,
+            FileLastDelivery = hasFile ? now.Date : null,
+            FileUpdateDate = hasFile ? now.Date : null,
         };
     }
 
@@ -1468,7 +1479,7 @@ public partial class AuthenticationRequestBl(
             "עודכן הסטאטוס ל{0} על ידי {1} בתאריך {2} ",
             name,
             RequestMetadata.Fullname,
-            DateTime.Today.ToShortDateString());
+            LegacyHostCulture.ToShortDate(DateTime.Today));
     }
 
     #region LEGACY_WCF

@@ -323,7 +323,7 @@ public class ExportDocumentAuthenticationRequestBl(
             "עודכן הסטאטוס ל{0} על ידי {1} בתאריך {2} ",
             await GetStatusName(statusId),
             RequestMetadata.Fullname,
-            DateTime.Today.ToShortDateString());
+            LegacyHostCulture.ToShortDate(DateTime.Today));
 
         var statusUpdate = eventUtil.CreatBuilder()
             .WithEventType((int)EEventType.ExportAuthenticationRequestFileStatusUpdate)

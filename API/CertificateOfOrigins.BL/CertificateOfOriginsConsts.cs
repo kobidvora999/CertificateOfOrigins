@@ -104,19 +104,19 @@ internal static class CertificateOfOriginsConsts
     // UDF 1534 — days since the importer letter before a reminder is due.
     public const string DaysForReminderForImporterSchedulerParameter = "DaysForReminderForImporterScheduler";
 
-    // UDF 1600 — months before the supplier letter is chased (value 3).
+    // UDF 1600 — months before the supplier letter is chased (value 3; DataScript 2.8.5 OriKo_126569, ID = 1600).
     public const string SchedulerFirstReminderParameter = "DaysForFirstReminderInAuthenticationRequest3";
 
-    // UDF 1148 — months before the 6-month reminder (value 6).
+    // UDF 1148 — months before the 6-month reminder (value 6; confirmed in the legacy General_enum_GlobalParam, 2026-10-07).
     public const string SchedulerSecondReminderParameter = "DaysForFirstReminderInAuthenticationRequest1";
 
-    // UDF 1941 — months before a final decision is due on a supplier file (value 9).
+    // UDF 1941 — months before a final decision is due on a supplier file (value 9; DataScript 3.1.6 157924).
     public const string SchedulerFinalDecisionParameter = "MonthForFinalReminderInAuthenticationRequest";
 
-    // UDF 1149 — months before a final decision is due on a customs-house file (value 10).
+    // UDF 1149 — months before a final decision is due on a customs-house file (value 10; DataScript 3.1.8 161713).
     public const string SchedulerFinalDecisionForCustomsHouseParameter = "DaysForFirstReminderInAuthenticationRequest2";
 
-    // UDF 1667 / 1668 — the export reminder windows, in months.
+    // UDF 1667 / 1668 — the export reminder windows, in months (values 6 / 10; DataScript 2.8.8 138666).
     public const string SchedulerExportFirstReminderParameter = "DaysForFirstReminderInExportAuthenticationRequest1";
 
     public const string SchedulerExportSecondReminderParameter = "DaysForSecondReminderInExportAuthenticationRequest2";

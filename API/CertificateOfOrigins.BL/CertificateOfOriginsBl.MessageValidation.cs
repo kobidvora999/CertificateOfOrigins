@@ -532,7 +532,7 @@ public partial class CertificateOfOriginsBl
             case ECertificateDetailsType.ImportDate:
                 // Legacy CheckImportDate(detail): reformat the display to a short date (parsing an unparseable value
                 // yields default(DateTime), exactly as the legacy). The range constraint itself is cross-field (stage 4).
-                field.DisplayedValue = (DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var importDate) ? importDate : default).ToShortDateString();
+                field.DisplayedValue = LegacyHostCulture.ToShortDate(DateTime.TryParse(field.Value, CultureInfo.InvariantCulture, out var importDate) ? importDate : default);
                 break;
 
             case ECertificateDetailsType.IsConsigneeForPrint:
@@ -718,7 +718,7 @@ public partial class CertificateOfOriginsBl
         }
         else
         {
-            field.DisplayedValue = date.ToShortDateString();
+            field.DisplayedValue = LegacyHostCulture.ToShortDate(date);
         }
     }
 
@@ -736,7 +736,7 @@ public partial class CertificateOfOriginsBl
         }
         else
         {
-            field.DisplayedValue = date.ToShortDateString();
+            field.DisplayedValue = LegacyHostCulture.ToShortDate(date);
         }
     }
 
@@ -754,7 +754,7 @@ public partial class CertificateOfOriginsBl
         }
         else
         {
-            field.DisplayedValue = date.ToShortDateString();
+            field.DisplayedValue = LegacyHostCulture.ToShortDate(date);
         }
     }
 
