@@ -389,6 +389,22 @@ public partial class AuthenticationRequestBl(
         }
 
         var first = importAuthenticationRequests[0];
+
+        // The file's organization unit is the first request's. Legacy read `OrganizationUnitIDNum.Value`, which throws when the request
+        // carries none - after the events were queued but before the file was saved or anything committed, so nothing happened at all.
+        // `?? 0` would instead insert the file and raise its event with no unit (parity finding F-11); it is rejected up front, with
+        // the field named, before any event or write.
+        //
+        // 0 is rejected too, which is stricter than the legacy (`.Value` accepted a stored 0): the .NET 10 event builder refuses
+        // WithOrganizationUnitId(0) (InvalidDataException), so a 0 would fail only AFTER the file was inserted, and the file's task is
+        // routed by this unit. The stored requests never carry 0 (checked on 4,820 rows: none), so this blocks no real flow.
+        if (first.OrganizationUnitIdNum is null or <= 0)
+        {
+            throw new RestValidationException(
+                $"{nameof(importAuthenticationRequests)}[0].{nameof(first.OrganizationUnitIdNum)}",
+                "OrganizationUnitIdNum is required on the first request and must be greater than 0: the new file takes its organization unit from it.");
+        }
+
         var userId = RequestMetadata.UserId ?? 0;
 
         // Build the new file from the first request (trust-client). "gg"/"ss" are the legacy placeholder literals,
@@ -422,7 +438,7 @@ public partial class AuthenticationRequestBl(
         }
 
         // OrganizationUnitId is a transient (non-column) field on the legacy entity — used for the file event only.
-        var organizationUnitId = first.OrganizationUnitIdNum ?? 0;
+        var organizationUnitId = first.OrganizationUnitIdNum.Value;
 
         // INSERT the file through BaseBL (ICloudEntity — CreateDate/CreateUserId/UpdateDate/UpdateUserId are stamped
         // server-side from RequestMetadata by SetEntityFields; see C12), then link the requests to it.
