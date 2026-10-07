@@ -7,11 +7,16 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // document-attach picker): the lead-document ids the client can attach documents to.
 public class GetExportDocumentAuthenticationRequestByIdResultDto
 {
-    // NOTE (temporary): 6 fields (State, CreateDate, CreateUserId, UpdateDate, UpdateUserId, OrganizationUnitId)
-    // are omitted because the platform MaxCountExceededInterceptor errors at >=30 result columns and the entity
-    // has 35. Restore them once a CertificateOfOrigins hash is added to InfrastructureCore's InterceptorList and
-    // the DAL switches to .Include(...) + .ExcludeInterceptor("<hash>").
+    // The platform MaxCountExceededInterceptor errors at >=30 result columns and the entity has 35, so the main read
+    // leaves out State, OrganizationUnitId, CreateDate, CreateUserId, UpdateDate and UpdateUserId; the BL reads those six
+    // in a second narrow query and fills them in, so the result carries the whole legacy entity (parity finding H-1).
     public int Id { get; set; }
+    public int State { get; set; }
+    public int OrganizationUnitId { get; set; }
+    public DateTime CreateDate { get; set; }
+    public int CreateUserId { get; set; }
+    public DateTime UpdateDate { get; set; }
+    public int UpdateUserId { get; set; }
     public int TypeId { get; set; }
     public string Title { get; set; } = null!;
     public byte[]? TimeStamp { get; set; }

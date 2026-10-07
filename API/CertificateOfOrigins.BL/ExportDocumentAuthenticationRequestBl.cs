@@ -64,9 +64,17 @@ public class ExportDocumentAuthenticationRequestBl(
         // Map entity + children. OriginalStatusId snapshots the status for the later optimistic dirty-check on
         // Save. ExportDeclarationIds replaces the legacy EntityTypeAndIDsToSearch dictionary (which only drove the
         // old WPF document-attach picker): the lead-document ids the client can attach documents to.
+        var storedColumns = await DataLayer.GetExportRequestProjectionColumns(id);
+
         var result = new GetExportDocumentAuthenticationRequestByIdResultDto
         {
             Id = entity.Id,
+            State = storedColumns?.State ?? 0,
+            OrganizationUnitId = storedColumns?.OrganizationUnitId ?? 0,
+            CreateDate = storedColumns?.CreateDate ?? default,
+            CreateUserId = storedColumns?.CreateUserId ?? 0,
+            UpdateDate = storedColumns?.UpdateDate ?? default,
+            UpdateUserId = storedColumns?.UpdateUserId ?? 0,
             TypeId = entity.TypeId,
             Title = entity.Title,
             TimeStamp = entity.TimeStamp,
@@ -169,8 +177,8 @@ public class ExportDocumentAuthenticationRequestBl(
             var preserved = await DataLayer.GetExportRequestProjectionColumns(entity.Id);
             if (preserved is not null)
             {
-                entity.State = preserved.Value.State;
-                entity.OrganizationUnitId = preserved.Value.OrganizationUnitId;
+                entity.State = preserved.State;
+                entity.OrganizationUnitId = preserved.OrganizationUnitId;
             }
 
             UpdateEntity(entity);
@@ -312,7 +320,7 @@ public class ExportDocumentAuthenticationRequestBl(
         var eventUtil = Resolve<IEventUtil>();
         var updateInfo = string.Format(
             "עודכן הסטאטוס ל{0} על ידי {1} בתאריך {2} ",
-            GetStatusName(statusId),
+            await GetStatusName(statusId),
             RequestMetadata.Fullname,
             DateTime.Today.ToShortDateString());
 
@@ -330,7 +338,7 @@ public class ExportDocumentAuthenticationRequestBl(
                 .WithEventType((int)specificEvent.Value)
                 .WithEntity((int)EEntityType.ExportDocumentAuthenticationRequest, id)
                 .WithTitle(id.ToString())
-                .WithAdditionalInfo(additionalInfo ?? string.Empty)
+                .WithAdditionalInfo(additionalInfo!)
                 .Build();
             await eventUtil.RaiseEvent(specific);
         }
@@ -344,25 +352,23 @@ public class ExportDocumentAuthenticationRequestBl(
         {
             RelatedEntity = relatedEntity,
             MessageTypeId = ImportRequestDecisionMessageTypeId,
-            MessageParameters = [id.ToString(), GetStatusName(statusId)],
+            MessageParameters = [id.ToString(), await GetStatusName(statusId)],
             MultipleMessageDestinations = [new MessageDestinationDto { UserId = RequestMetadata.UserId }],
         };
         await messageManagementProxy.SendMessage(message);
     }
 
-    // The status display name (legacy SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>.Name) — taken
-    // from the EExportAuthenticationRequestStatus [Display(Name)] attribute.
-    private static string GetStatusName(int? statusId)
+    // The status display name (legacy SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>.Name) — the Hebrew
+    // name from the enum table, so an edited row shows up as it did in legacy. A null status has no name.
+    private async Task<string> GetStatusName(int? statusId)
     {
         if (statusId is null)
         {
             return string.Empty;
         }
 
-        var status = (EExportAuthenticationRequestStatus)statusId.Value;
-        var member = typeof(EExportAuthenticationRequestStatus).GetMember(status.ToString()).FirstOrDefault();
-        var display = member?.GetCustomAttribute<DisplayAttribute>();
-        return display?.Name ?? status.ToString();
+        var name = await DataLayer.GetExportAuthenticationRequestStatusName(statusId.Value);
+        return name ?? string.Empty;
     }
 
     public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)

@@ -68,9 +68,11 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses();
 
+    Task<string?> GetExportAuthenticationRequestStatusName(int statusId);
+
     Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds);
 
-    Task<(int State, int OrganizationUnitId)?> GetExportRequestProjectionColumns(int requestId);
+    Task<ExportRequestStoredColumns?> GetExportRequestProjectionColumns(int requestId);
 
     Task MergeExportDocumentAuthenticationRequestChildren(
         ExportDocumentAuthenticationRequest request,

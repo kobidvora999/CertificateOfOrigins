@@ -52,6 +52,16 @@ public class ExportRequestRelatedEntityTests
         });
     }
 
+    // Parity finding H-11: legacy read the status name from the enum table (SystemTables), so an edited row shows up in the
+    // message; the migration took it from a hard-coded attribute.
+    [Test]
+    public async Task TheStatusMessageCarriesTheStatusNameFromTheStatusTable()
+    {
+        var captured = await Save();
+
+        Assert.That(captured.MessageParameters, Is.EqualTo(new[] { captured.AttachedEntity!.Id.ToString(), "שם מהטבלה" }));
+    }
+
     private static async Task<Captured> Save()
     {
         var captured = new Captured();
@@ -66,6 +76,7 @@ public class ExportRequestRelatedEntityTests
             "get_DbContext" => dbContext,
             "SaveChangesAsync" => dbContext.SaveChangesAsync(),
             "MergeExportDocumentAuthenticationRequestChildren" => Task.CompletedTask,
+            "GetExportAuthenticationRequestStatusName" => Task.FromResult<string?>("שם מהטבלה"),
             "GetExportDocumentAuthenticationRequestById" => Task.FromResult<ExportDocumentAuthenticationRequest?>(
                 dbContext.Set<ExportDocumentAuthenticationRequest>().AsNoTracking().FirstOrDefault(r => r.Id == (int)args![0]!)),
             _ => null,
@@ -86,6 +97,7 @@ public class ExportRequestRelatedEntityTests
             if (method.Name == "SendMessage")
             {
                 captured.MessageRelatedEntity = ((SendMessageDto)args![0]!).RelatedEntity;
+                captured.MessageParameters = ((SendMessageDto)args[0]!).MessageParameters;
             }
 
             return null;
@@ -133,6 +145,7 @@ public class ExportRequestRelatedEntityTests
     {
         public VirtualEntityDto? AttachedEntity;
         public VirtualEntityDto? MessageRelatedEntity;
+        public IEnumerable<string>? MessageParameters;
     }
 
     // --- Minimal dependency-free interface faking over System.Reflection.DispatchProxy (no mocking package). ---

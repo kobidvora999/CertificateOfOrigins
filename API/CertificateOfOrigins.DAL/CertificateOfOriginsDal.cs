@@ -633,6 +633,17 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<string?> GetExportAuthenticationRequestStatusName(int statusId)
+    {
+        // Legacy SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>(id).Name — the Hebrew name from the
+        // enum table, not filtered by State, as the SystemTables lookup was not.
+        var result = await ReadOnlyContext.ExportAuthenticationRequestStatuses
+            .Where(s => s.Id == statusId)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
     public async Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses()
     {
         // Legacy GetQuery<CertificateOfOriginsAuthenticationFileStatus>().ToList() — the full file-status lookup table.
@@ -789,13 +800,21 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     // DTO carries them as 0. Re-read the stored values so the BL can put them back on the entity before the update —
     // parity with the legacy full-entity round-trip. (Done as a read rather than an Entry().IsModified = false guard:
     // the parent is now tracked by the BL's DbContext, which is not necessarily this DAL's Context instance.)
-    public async Task<(int State, int OrganizationUnitId)?> GetExportRequestProjectionColumns(int requestId)
+    public async Task<ExportRequestStoredColumns?> GetExportRequestProjectionColumns(int requestId)
     {
         var row = await ReadOnlyContext.ExportDocumentAuthenticationRequests
             .Where(r => r.Id == requestId)
-            .Select(r => new { r.State, r.OrganizationUnitId })
+            .Select(r => new ExportRequestStoredColumns
+            {
+                State = r.State,
+                OrganizationUnitId = r.OrganizationUnitId,
+                CreateDate = r.CreateDate,
+                CreateUserId = r.CreateUserId,
+                UpdateDate = r.UpdateDate,
+                UpdateUserId = r.UpdateUserId,
+            })
             .FirstOrDefaultAsync();
-        return row is null ? null : (row.State, row.OrganizationUnitId);
+        return row;
     }
 
     // The PARENT row is persisted by the BL through BaseBL.AddEntity/UpdateEntity (ExportDocumentAuthenticationRequest
