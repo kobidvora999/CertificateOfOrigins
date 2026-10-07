@@ -13,7 +13,7 @@ public class ExportRequestTimeStampTests
     [Test]
     public void UpdatingWithoutATimeStampIsRejectedWithAClearMessage()
     {
-        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, TimeStamp = null });
+        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, StatusId = 1, TimeStamp = null });
 
         Assert.Multiple(() =>
         {
@@ -26,7 +26,7 @@ public class ExportRequestTimeStampTests
     [Test]
     public void AnEmptyTimeStampIsAlsoRejected()
     {
-        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, TimeStamp = [] });
+        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, StatusId = 1, TimeStamp = [] });
 
         Assert.That(result.IsValid, Is.False);
     }
@@ -34,7 +34,7 @@ public class ExportRequestTimeStampTests
     [Test]
     public void UpdatingWithTheRowVersionPasses()
     {
-        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, TimeStamp = [0, 0, 0, 0, 0, 0, 0, 1] });
+        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 5, StatusId = 1, TimeStamp = [0, 0, 0, 0, 0, 0, 0, 1] });
 
         Assert.That(result.IsValid, Is.True);
     }
@@ -43,7 +43,7 @@ public class ExportRequestTimeStampTests
     [Test]
     public void CreatingWithoutATimeStampPasses()
     {
-        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 0, TimeStamp = null });
+        var result = _validator.Validate(new SaveExportDocumentAuthenticationRequestRequestDto { Id = 0, StatusId = 1, TimeStamp = null });
 
         Assert.That(result.IsValid, Is.True);
     }

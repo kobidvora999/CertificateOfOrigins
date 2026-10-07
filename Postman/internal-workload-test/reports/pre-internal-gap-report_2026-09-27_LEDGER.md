@@ -7,12 +7,12 @@
 
 | סטטוס | משמעות | כמות |
 |---|---|---|
-| FIXED | תוקן בקוד | 55 |
+| FIXED | תוקן בקוד | 62 |
 | CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 37 |
-| NOT-A-DEFECT-DOC | תיעוד בלבד | 5 |
-| OPEN-DECISION | ממתין להחלטה של אדם | 11 |
+| NOT-A-DEFECT-DOC | תיעוד בלבד | 7 |
+| OPEN-DECISION | ממתין להחלטה של אדם | 13 |
 | OPEN-BLOCKED | נדחה לשלב נפרד: תלוי בשירות/חבילה שעוד לא קיימים (לא נספר כפתוח) | 18 |
-| OPEN-TODO | פער אמיתי שלא טופל | 11 |
+| OPEN-TODO | פער אמיתי שלא טופל | 0 |
 | UNVERIFIED | לא ניתן היה לאמת | 2 |
 
 ## A — Certificate core
@@ -36,9 +36,9 @@
 | A-15 | LOW | Auto-publish on released declaration not migrated | OPEN-BLOCKED | BL ~1117-1121 TODO(blocking) #2; MIGRATION-NOT-DONE.md:164 | Needs ExportDealFile service |
 | A-16 | LOW | Replacement texts / talk-back deferred | OPEN-BLOCKED | BL ~1669-1673, ~1689 TODO(migration)/TODO(confirm) | ValidationMessages/resx source and SendMessageToAgent missing |
 | A-17 | LOW | SendRequestFeedback MessageTypeId=0, no attachment | OPEN-BLOCKED | BL ~1542-1558 TODO(blocking) | Platform/product decision on channel |
-| A-18 | LOW | Hardcoded `?? 0` user fallback | OPEN-TODO | BL ~1695 `RequestMetadata.UserId ?? 0` still present | Negligible if auth always sets UserId |
+| A-18 | LOW | Hardcoded `?? 0` user fallback | OPEN-DECISION | RequestMetadata.UserId ?? 0 (ApproveUserId, audit, cancel writes) | Legacy UserUtil.Current.ID; for calls without a user (events, schedulers) legacy stamped a system user. Which id stands for the system user? |
 | A-19 | LOW | Title-mismatch validation dropped | CLOSED-OK | BL ~1462 TODO(migration); finding itself says no behavioural effect | Legacy list never thrown on the Internal path |
-| A-20 | LOW | QrCodePath stores ExternalId, not document path | OPEN-TODO | BL ~1274 `entity.QrCodePath = response.ExternalId` | Used as "already generated" flag; UNVERIFIED that no consumer reads the path |
+| A-20 | LOW | QrCodePath stores ExternalId, not document path | FIXED | round of 2026-10-07 (parity ledger fixes commit): QrCodePath = IDocumentUtil.GetFileUrl(response.FileResource), the file-server URL legacy's GetDocumentFile stored; tests updated | Not verified against a live Documents service / printed certificate |
 | A-21 | LOW | ExporterId DisplayedValue / site display fallback | FIXED | 1b4490e (ExporterId DisplayedValue left as sent) | - |
 | A-22 | LOW | Validation shape: 400 instead of InfException | CLOSED-OK | Appendix itself: acceptable | HTTP mapping change by design |
 | A-23 | LOW | GetById missing id returns 404 | CLOSED-OK | BL ~30-31 documented choice (RestNotFoundException) | Internal callers must handle 404 |
@@ -75,7 +75,7 @@
 | B-L12 | LOW | GetCertificateOfOriginID returns 404 vs legacy null | CLOSED-OK | Controller/BL 404 convention (RestNotFoundException) | Documented project convention; callers must handle 404 |
 | B-L13 | LOW | Convert: 404 vs InfException, new Customers dependency | CLOSED-OK | 404 convention; Customers enrichment via FillCustomersInformation | Convention; Customers outage now fails Convert (accepted) |
 | B-L14 | LOW | SaveCertificateOfOriginAttachments documented implementation changes | CLOSED-OK | Developer decisions commented in code (report verdict CONFIRMED/documented) | - |
-| B-L15 | LOW | GenerateTemplate (CR 194221) no legacy source; template id/format notes | OPEN-TODO | a49f285 added template/data contract; a9c44b2 marks .docx/.yml missing as internal TODO (Templates.cs:86) | South Korea .docx + .yml still absent; template id 1 confirm; LetterDate format |
+| B-L15 | LOW | GenerateTemplate (CR 194221) no legacy source; template id/format notes | NOT-A-DEFECT-DOC | Report notes only; template id 1 is TODO(confirm) | - |
 
 ## C — Incoming message 2280
 
@@ -101,9 +101,9 @@
 | C-F18 | LOW | Date detail Value stored as ISO "o" not culture format | OPEN-DECISION | NV:450 ToString("o"); the cloud reads (line ~524 invariant parse, ~637 he-IL parse) rely on it | culture-format Value would break the invariant parse at ~524; keep ISO or switch both ends? |
 | C-F19 | LOW | Null item/invoice text becomes "" | CLOSED-OK | MIGRATION-STATUS.md 2026-10-07: the columns are NOT NULL | Closed on that statement; not independently re-verified here |
 | C-F20 | LOW | Cancel reason hard-coded literal | CLOSED-OK | NB:~222 literal with explanatory comment | UIMessage catalogue unavailable |
-| C-F21 | LOW | Cancel write stamps UpdateUserId 0 without user context | OPEN-TODO | NB CancelCertificateOfOriginFromMessage `RequestMetadata.UserId ?? 0` | UNVERIFIED whether platform supplies agent user |
+| C-F21 | LOW | Cancel write stamps UpdateUserId 0 without user context | OPEN-DECISION | CancelCertificateOfOriginFromMessage: RequestMetadata.UserId ?? 0 | Same decision as A-18: legacy stamped the EAI system user; what CC-USER-ID does the gateway send for an agent message? |
 | C-F22 | LOW | QueryUrl empty when Guid null (legacy always formatted) | FIXED | 1b4490e; test ff134cd | - |
-| C-F23 | LOW | Latest-by-number/OriginCriterion lookups lack state filters | OPEN-TODO | DAL GetLatestCertificateByNumberForFeedback, GetOriginCriterion unchanged | UNVERIFIED vs legacy SP semantics |
+| C-F23 | LOW | Latest-by-number/OriginCriterion lookups lack state filters | FIXED | round of 2026-10-07 (parity ledger fixes commit): certificate by number State = 1 + newest CreateDate (legacy SP); OriginCriterion State == 1 (SystemTables default); tests LatestCertificateByNumberTests, SystemTableActiveRowsTests | Exact number match kept on purpose (legacy SP used LIKE %n%) |
 | C-F24 | LOW | Certificate number generated for reasons 6-9 | FIXED | 1b4490e (number generated only for reasons 1,2,10,4,5,12, as legacy's switch) | - |
 | C-F25 | LOW | Stale SKELETON header comment | NOT-A-DEFECT-DOC | NB:70-77 still says create branch deferred | comment cleanup only |
 | C-F26 | LOW | Mock proxies / TODO(blocking) deferrals | NOT-A-DEFECT-DOC | MIGRATION-NOT-DONE.md; CustomsBookProxy TODO | documented deferral |
@@ -118,8 +118,8 @@
 | D-F4 | MEDIUM | Proxy failures/missing config now HTTP errors instead of in-band error; reverse NRE cases silent | OPEN-DECISION | Controller unchanged; badb7ea only maps external failures to 502/503; DocumentsProxy.cs:19 TODO(blocking) | Deliberately left open; no in-band error for proxy failures, Documents route unconfirmed |
 | D-F5 | LOW | DocumentId now via Documents proxy; route unconfirmed, deleted-doc filtering may differ | OPEN-BLOCKED | DocumentsProxy.cs:19 TODO(blocking); MIGRATION-NOT-DONE decision #4 | Needs Documents service route confirmation |
 | D-F6 | LOW | Empty-string guid query binds to null so "Invalid Guid" becomes "No Matching Certificate" | FIXED | e151a03 (empty guid/number kept as empty string) | Not verified with a real call: [DisplayFormat(ConvertEmptyStringToNull=false)] to be checked in Postman with CertificateOfOriginGuid= |
-| D-F7 | LOW | CertificateOfOriginQueryURL seeded with DEV URL, insert-if-missing | OPEN-TODO | Scripts/API_20260716 - add params.sql:195-197 still DEV URL | Per-environment override must be set at deploy; nothing in repo/doc records that |
-| D-F8 | LOW | [NotFoundResponse] on action contradicts contract (no 404) | OPEN-TODO | CertificateOfOriginsController.cs:23 still has [NotFoundResponse] | Cosmetic Swagger only; remove attribute |
+| D-F7 | LOW | CertificateOfOriginQueryURL seeded with DEV URL, insert-if-missing | NOT-A-DEFECT-DOC | Scripts/API_20260716 - add params.sql:186-203 insert-if-missing | A per-environment value: set CertificateOfOriginQueryURL at deployment of each environment |
+| D-F8 | LOW | [NotFoundResponse] on action contradicts contract (no 404) | FIXED | round of 2026-10-07 (parity ledger fixes commit): [NotFoundResponse] removed from web RequestByGuid | Declared contract only; the behaviour (200 with exceptionDescription) is unchanged |
 | E-F1 | MEDIUM | ByFilter TOP (200) replaces ufn_GetMaxRows | CLOSED-OK | e8fcb47 (analyst check 2026-10-04: prod ufn_GetMaxRows()=200) | - |
 | E-F2 | MEDIUM | LeadDocumentTitle always NULL (ByFilter, ByLeadDocumentIDs) | OPEN-BLOCKED | AuthenticationRequestBl.cs:777,825 TODO(migration); SPs CAST(NULL ...) | Needs DealFile/lead-document title source from owning service |
 | E-F3 | HIGH | File read drops child-request fields (circumstances, remarks, tax differences, DocumentNumber, IsOldIndication) | FIXED | 476feb1 (CertificateOfOriginsDal.cs:594-630, 28 columns incl. all 8) | Still not projected: ResponsePhoneNum, OrganizationUnitTypeID, ItemDetailID, CreateUserID (documented as not on file screen) |
@@ -131,8 +131,8 @@
 | E-F9 | LOW | Invoice-number search: CONTAINS -> LIKE substring | CLOSED-OK | SP script header API_20260907180000 (no FTS catalog) | Deliberate, documented |
 | E-F10 | LOW | Cross-service INNER JOINs dropped, rows with dangling refs now returned | CLOSED-OK | Joins absent in API_20260907180000 (only local joins remain); design decision (INNER JOIN guard only for nullable FK) | Documented design choice |
 | E-F11 | LOW | ImporterName/OrganizationUnit name sources changed | OPEN-BLOCKED | Customers proxy route TODO(blocking) | Equivalence depends on proxy/lookup; UNVERIFIED |
-| E-F12 | LOW | Decision lookup omits EndDate and IsAutomatic | OPEN-TODO | CertificateOfOriginsDecisionDto.cs has no EndDate/IsAutomatic; DAL:467-490 unchanged | No functional loss found in legacy client; add 2 fields or close |
-| E-F13 | LOW | IsVendorByIssuingCountryId adds State != 99 guard | OPEN-TODO | CertificateOfOriginsDal.cs:~490 guard still present | Equivalent unless inactive config rows exist; analyst to confirm |
+| E-F12 | LOW | Decision lookup omits EndDate and IsAutomatic | FIXED | round of 2026-10-07 (parity ledger fixes commit): EndDate + IsAutomatic on the decision entity, DTO, DAL read and both BL maps; test DecisionLookupColumnsTests | - |
+| E-F13 | LOW | IsVendorByIssuingCountryId adds State != 99 guard | FIXED | round of 2026-10-07 (parity ledger fixes commit): IsSupplierDeliveryCountry reads State == 1 (SystemTables default); test SystemTableActiveRowsTests | Reopened: State defaults to 0, so State != 99 also matched inactive rows |
 | E-F14 | LOW | GetEntityDocuments null config/unknown TypeId silent instead of NRE | CLOSED-OK | AuthenticationRequestBl.cs:~622 treats null as empty filter (intentional) | Improvement over NRE |
 | E-F15 | LOW | ByLeadDocumentIDs empty input returns []; ImporterID/LastDeliveryForImporter DTO fields dropped | CLOSED-OK | Legacy fields never populated by SP | Behavior difference benign |
 | E-F16 | LOW | CheckIfExistsAdditionalRequestsForImporter: null importerId is 400, not false | CLOSED-OK | AuthenticationRequestController.cs:78 [BindRequired] importerId (vendorId/customerId nullable) | Stricter binding by design |
@@ -162,14 +162,14 @@
 | G-F6 | LOW | Importer reminder SP: Docs INNER JOIN existence filter gone | CLOSED-OK | SP 20260907101500 header note | Documented in the SP header. Rows without a Docs_Document are now returned. |
 | G-F7 | LOW | Delivery flows return bool/slim DTO instead of full entity | OPEN-DECISION | BL:463 | Contract change; the SPA must refetch. Needs a product call. |
 | G-F8 | LOW | CloseReminderTask Title is a literal | CLOSED-OK | BL:1301 FileEventTitle; F-06 review (partial:103-106) | The literal equals the legacy computed label. |
-| G-F9 | LOW | Reminder job swallows per-row exceptions (legacy aborted) | OPEN-TODO | Planar/...ReminderForImporterScheduler/Jobs/ReminderForImporterSchedulerJob.cs:46-63 | Still catches 4 types. The comment wrongly says legacy let the batch run. Fix the comment or the behaviour. |
+| G-F9 | LOW | Reminder job swallows per-row exceptions (legacy aborted) | FIXED | round of 2026-10-07 (parity ledger fixes commit): plain loop, no catch, effected rows = due count, as legacy ExecuteTask | Planar project builds |
 | G-F10 | LOW | Scheduler UDF id to parameter-name mapping inferred | OPEN-DECISION | BL.Schedulers.cs:88 TODO(confirm) | Needs confirmation of the 1600/1148 pairing. |
 | H-1 | MED | GetById omits 6 columns (CreateDate, CreateUserId, UpdateDate, UpdateUserId, State, OrganizationUnitId) | FIXED | e151a03 (the 6 columns read in the narrow second query) | Not checked against a live DB |
 | H-2 | MED | Optimistic concurrency added (legacy last-writer-wins) | OPEN-DECISION | c1b46d0 (partial) | A missing TimeStamp is now a 400. A stale TimeStamp still gives 409, which legacy did not. |
 | H-3 | MED | Child merge not atomic with the parent | FIXED | c1b46d0; DAL:870-875 | Deletes staged through the tracker, one commit. |
 | H-4 | MED | Attach/message VirtualEntity had no Title/CustomerId | FIXED | b7f2249; ExportBl ToRelatedEntity | OrganizationUnitId still not on VirtualEntityDto (open contract question, noted in code). |
 | H-5 | LOW | Events raised after the commit, not before | NOT-A-DEFECT-DOC | report text ("arguably an improvement") | |
-| H-6 | LOW | Null StatusId no longer throws after save | OPEN-TODO | ExportBl:325-337, no validator rule | Still silent: empty status name and events are raised. |
+| H-6 | LOW | Null StatusId no longer throws after save | FIXED | round of 2026-10-07 (parity ledger fixes commit): StatusId required by the save validator (400 before any write); test ExportRequestStatusRequiredTests | Stricter than legacy, which saved and raised the events before failing |
 | H-7 | LOW | Search INNER JOINs became IS NOT NULL guards | CLOSED-OK | DAL comment | Documented design choice. |
 | H-8 | LOW | Search names from Customer.Name vs legacy Customers.Title | UNVERIFIED | ExportBl FillExportRequestNames | Needs a data check of Title vs Name in the Customers service. |
 | H-9 | LOW | InvoiceIdNum CONTAINS became substring LIKE | CLOSED-OK | REWIRE-PLAN; DAL comment | Accepted loss of full-text. |
@@ -178,3 +178,10 @@
 | H-12 | LOW | OrganizationUnitId on insert taken from the client, no server default | CLOSED-OK | MIGRATION-STATUS.md 2026-10-07: legacy trusted the client; a server default is new behaviour | Closed on that statement |
 | H-13 | LOW | Specific-event AdditionalInfo is "" instead of null | FIXED | e151a03 + fe13750 (AdditionalInfo left unset = null) | - |
 | H-14 | LOW | Customer endpoints: 404 without the legacy domain message | FIXED | bdb1866, b720c6a | Now 400 with InvalidIdentificationNumber / NoCustomHouseForThisCountry. UIMessage text is still TODO(confirm). |
+
+## Found outside the report (2026-10-07)
+
+| ID | Severity | Title | Status | Evidence | Note |
+|---|---|---|---|---|---|
+| X-1 | LOW | Lookups that replaced SystemTablesUtil reads did not filter State == 1 | FIXED | round of 2026-10-07 (parity ledger fixes commit): `Get(id, ActiveState)` / `State == ActiveState` for Country, City, CountryGroup, CurrencyType, PackingType, MeasurementUnit, Site, InternationalSite, DataDictionaryField; test LookupActiveRowsTests | `ILookupUtil.Get(id)` and `Search` do not filter (Lookup 1.10.120). Whether the owning services' `lookup/{Type}` already returns active rows only is not verified; the filter is harmless if they do |
+| X-2 | LOW | The certificate-type name ignores the type's State | OPEN-DECISION | CertificateOfOriginsBl.cs `GetCertificateTypeName` ([Display] of the enum) | Legacy GetCodeById returned no name for an inactive type (and crashed in one place) |

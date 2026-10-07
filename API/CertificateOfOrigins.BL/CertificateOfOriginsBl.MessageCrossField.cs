@@ -126,12 +126,12 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var originCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.OriginCountry)).FirstOrDefault()?.Id ?? 0;
+        var originCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.OriginCountry && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id ?? 0;
 
         var destinationCountryId = 0;
         if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
         {
-            destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id ?? 0;
+            destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id ?? 0;
         }
 
         var exemptCsv = await parametersUtil.Get<string>("CountriesExemptedFromSendingThePlaceOfManufacture") ?? string.Empty;
@@ -168,7 +168,7 @@ public partial class CertificateOfOriginsBl
         // Legacy GetIdByCode<SiteLookup>(PropExternalSiteNumberForMessages): an unknown site number is
         // TheValueInFieldNotExistsInSystem (the private GetIdByCode wrapper added the lookup's miss exception). A site with no
         // org unit passes silently, as in legacy.
-        var site = (await lookupUtil.Search<Lookups.Site>(s => s.ExternalSiteNumberForMessages == customsHouseExternalNumber)).FirstOrDefault();
+        var site = (await lookupUtil.Search<Lookups.Site>(s => s.ExternalSiteNumberForMessages == customsHouseExternalNumber && s.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
         if (site is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CustomsHouse"));

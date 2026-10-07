@@ -42,24 +42,13 @@ public class ReminderForImporterSchedulerJob : BaseJob
         var due = await bl.GetImportAuthenticationRequestsForReminderForImporterScheduler();
         Logger.LogInformation("{Count} import authentication request(s) are due an importer reminder", due.Count);
 
-        var raised = 0;
+        // Legacy ExecuteTask raised the reminders in a plain loop - no catch, so the first failure aborted the batch - and
+        // returned the number of due requests, not the number raised (parity finding G-F9).
         foreach (var request in due)
         {
-            try
-            {
-                await bl.RaiseEventForReminderForImporterScheduler(request);
-                raised++;
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException or TaskCanceledException or TimeoutException)
-            {
-                // Legacy behaviour was to let the batch run to completion, so one unreachable broker or one bad row
-                // must not cost the rest of the night's reminders. The filter narrows the legacy catch-everything:
-                // an exception type outside this list WILL now abort the batch, which is the deliberate trade for
-                // staying inside Sonar S2221.
-                Logger.LogError(ex, "raising the importer reminder for document {DocumentId} failed; continuing", request.DocumentId);
-            }
+            await bl.RaiseEventForReminderForImporterScheduler(request);
         }
 
-        await SetEffectedRowsAsync(raised);
+        await SetEffectedRowsAsync(due.Count);
     }
 }

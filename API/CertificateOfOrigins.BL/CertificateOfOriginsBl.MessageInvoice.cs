@@ -197,7 +197,7 @@ public partial class CertificateOfOriginsBl
             return null;
         }
 
-        var id = (await lookupUtil.Search<Lookups.CurrencyType>(currency => currency.CurrencyCode == currencyCode)).FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.CurrencyType>(currency => currency.CurrencyCode == currencyCode && currency.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "CurrencyType"));
@@ -215,7 +215,7 @@ public partial class CertificateOfOriginsBl
             return null;
         }
 
-        var id = (await lookupUtil.Search<Lookups.PackingType>(packingType => packingType.CommonCode == code)).FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookups.PackingType>(packingType => packingType.CommonCode == code && packingType.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "PackageType"));
@@ -233,7 +233,7 @@ public partial class CertificateOfOriginsBl
             return null;
         }
 
-        var id = (await lookupUtil.Search<Lookup.MeasurementUnit>(unit => unit.ExternalIdnum == code)).FirstOrDefault()?.Id;
+        var id = (await lookupUtil.Search<Lookup.MeasurementUnit>(unit => unit.ExternalIdnum == code && unit.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id;
         if (id is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, "MeasureType"));

@@ -490,7 +490,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     private async Task<Dictionary<int, string?>> GetCurrencyCodes(List<int> currencyTypeIds)
     {
-        var currencies = await lookupUtil.Search<Lookups.CurrencyType>(currency => currencyTypeIds.Contains(currency.Id));
+        var currencies = await lookupUtil.Search<Lookups.CurrencyType>(currency => currencyTypeIds.Contains(currency.Id) && currency.State == CertificateOfOriginsConsts.ActiveState);
         var result = currencies.ToDictionary(currency => currency.Id, currency => currency.CurrencyCode);
         return result;
     }
@@ -693,7 +693,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // serves placeholder titles ("Field 20306"), not the real catalogue text.
     private async Task<Dictionary<int, string?>> GetFieldLabels(List<int> fieldIds)
     {
-        var fields = await lookupUtil.Search<Lookups.DataDictionaryField>(field => fieldIds.Contains(field.Id));
+        var fields = await lookupUtil.Search<Lookups.DataDictionaryField>(field => fieldIds.Contains(field.Id) && field.State == CertificateOfOriginsConsts.ActiveState);
         var result = fields.ToDictionary(field => field.Id, field => field.EnglishName);
         return result;
     }
@@ -1280,7 +1280,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             .WithOrganizationUnitId(organizationUnitId)
             .Build();
         var response = await documentUtil.UploadDocument(document);
-        entity.QrCodePath = response.ExternalId;
+
+        // QRCodePath is the QR image source of the printed certificate (usp_Template_INNER_CROSS_CertificateOfOrigin,
+        // Rpt.CertificateOfOrigin_GeneralData). Legacy stored GetDocumentFile(serverRelativeUrl): the file server's URL of the
+        // uploaded file. GetFileUrl builds the same URL from the uploaded file's relative resource (parity finding A-20).
+        entity.QrCodePath = documentUtil.GetFileUrl(response.FileResource).ToString();
         await DataLayer.UpdateCertificateQrCodePath(entity.Id, entity.QrCodePath, userId);
     }
 
@@ -1351,7 +1355,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
             if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.DestinationCountry)
             {
-                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value)).FirstOrDefault();
+                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
                 if (country is not null)
                 {
                     detail.Value = country.Id.ToString(CultureInfo.InvariantCulture);
@@ -1359,7 +1363,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
             else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)
             {
-                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value)).FirstOrDefault();
+                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value && s.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
                 if (site is not null)
                 {
                     detail.Value = site.Id.ToString(CultureInfo.InvariantCulture);
@@ -1430,18 +1434,18 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     await IsTradeAgreementForCountry(entity.TypeId, countryId, false);
                 }
 
-                var country = await lookupUtil.Get<Lookup.Country>(countryId);
+                var country = await lookupUtil.Get<Lookup.Country>(countryId, CertificateOfOriginsConsts.ActiveState);
                 detail.DisplayedValue = country?.EnglishName ?? value;
             }
             else if (CityDetailTypes.Contains(typeId) && int.TryParse(value, out var cityId))
             {
-                var city = await lookupUtil.Get<Lookup.City>(cityId);
+                var city = await lookupUtil.Get<Lookup.City>(cityId, CertificateOfOriginsConsts.ActiveState);
                 detail.DisplayedValue = city?.EnglishName ?? value;
             }
             else if (CountryGroupDetailTypes.Contains(typeId) && int.TryParse(value, out var countryGroupId))
             {
                 // Legacy CheckIfCountryGroupIsInTradeAgreement: DisplayedValue = the group's English name.
-                var countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId);
+                var countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId, CertificateOfOriginsConsts.ActiveState);
                 detail.DisplayedValue = countryGroup?.EnglishName ?? value;
             }
             else

@@ -17,5 +17,12 @@ public class SaveExportDocumentAuthenticationRequestRequestValidator : AbstractV
             .NotEmpty()
             .When(x => x.Id > 0)
             .WithMessage("TimeStamp is required to update an existing request: send back the value returned when it was read (optimistic concurrency).");
+
+        // Legacy SaveExportDocumentAuthenticationRequest ended with `entity.StatusID.Value`, so a request without a status
+        // failed every time - but only after it was saved and its status events raised. A status is a precondition: it is
+        // rejected up front, before any write, event or message (parity finding H-6; stricter than legacy, which saved first).
+        RuleFor(x => x.StatusId)
+            .NotNull()
+            .WithMessage("StatusId is required.");
     }
 }

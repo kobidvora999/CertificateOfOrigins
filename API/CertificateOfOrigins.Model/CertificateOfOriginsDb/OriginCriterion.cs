@@ -19,6 +19,9 @@ public class OriginCriterion
     [Column("CertificateOfOriginTypeCodeID")]
     public int CertificateOfOriginTypeCodeId { get; set; }
 
+    [Column("State")]
+    public int State { get; set; }
+
     [Column("EnglishName")]
     public string EnglishName { get; set; } = null!;
 }

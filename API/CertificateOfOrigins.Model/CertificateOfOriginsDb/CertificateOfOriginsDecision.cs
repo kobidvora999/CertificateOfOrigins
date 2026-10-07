@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CertificateOfOrigins.Model.CertificateOfOriginsDb;
 
 // CRM.CertificateOfOrigins_enum_Decision (EDMX: key = ID). The decision lookup table, read in full by
-// GetAuthenticationRequestByID (legacy GetQuery<CertificateOfOriginsDecision>().ToList()).
+// GetAuthenticationRequestByID (legacy GetQuery<CertificateOfOriginsDecision>().ToList(), every column).
 [Table("CertificateOfOrigins_enum_Decision", Schema = "CRM")]
 public class CertificateOfOriginsDecision
 {
@@ -30,10 +30,15 @@ public class CertificateOfOriginsDecision
     [Column("StartDate")]
     public DateTime? StartDate { get; set; }
 
+    [Column("EndDate")]
+    public DateTime? EndDate { get; set; }
+
+    [Column("IsAutomatic")]
+    public bool IsAutomatic { get; set; }
+
     // Audience flags — which screen's decision dropdown the value belongs to. The legacy WPF client filters on them
     // (AuthenticationRequestFilePresenter: Decisions.Where(d => d.IsForClaliMakorWorker); ImportProcessFormPresenter:
-    // Decisions.Where(d => d.IsForCoordinator)). Onboarded for CR 194221 so an API consumer can filter the same way —
-    // the file-status lookup already exposes its own IsAutomatic flag.
+    // Decisions.Where(d => d.IsForCoordinator)). Onboarded for CR 194221 so an API consumer can filter the same way.
     [Column("IsForCoordinator")]
     public bool IsForCoordinator { get; set; }
 

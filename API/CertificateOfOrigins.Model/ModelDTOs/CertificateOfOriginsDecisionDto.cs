@@ -17,6 +17,10 @@ public class CertificateOfOriginsDecisionDto
 
     public DateTime? StartDate { get; set; }
 
+    public DateTime? EndDate { get; set; }
+
+    public bool IsAutomatic { get; set; }
+
     // Which screen's decision dropdown this value belongs to (CR 194221). The legacy client filters on these; exposing
     // them lets an API consumer do the same instead of receiving the whole table unfiltered.
     public bool IsForCoordinator { get; set; }

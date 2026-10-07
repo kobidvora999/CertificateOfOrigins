@@ -10,6 +10,11 @@ internal static class CertificateOfOriginsConsts
     public const string CertificateNumberPrefixIl = "IL";
     public const string CertificateNumberFormat10Digit = "0000000000";
 
+    // Legacy SystemTablesUtil reads (GetCodeById / GetIdByCode / GetTablesSync, ignoreState = false) returned active rows only:
+    // the SystemTables QueryBuilder adds State == 1. ILookupUtil.Get(id) and Search do not filter, so lookups that replaced
+    // those reads pass this state (Get(id, ActiveState), or State == ActiveState in a Search predicate).
+    public const int ActiveState = 1;
+
     // Legacy ServicesAdapter.IsraelID — a country (not a group) that is Israel is always in the trade agreement.
     public const int IsraelCountryId = 376;
 

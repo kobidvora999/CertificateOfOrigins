@@ -198,7 +198,7 @@ public partial class CertificateOfOriginsBl
             int? destinationCountryId = null;
             if (!string.IsNullOrWhiteSpace(certificate.DestinationCountry))
             {
-                destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry)).FirstOrDefault()?.Id;
+                destinationCountryId = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == certificate.DestinationCountry && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()?.Id;
             }
 
             // Invoice/item shape pre-check + validation-and-conversion (stage 4b), mirroring the legacy
@@ -679,7 +679,7 @@ public partial class CertificateOfOriginsBl
         // failure the legacy returns 0 and skips the trade-agreement check.
         Lookups.CountryGroup? countryGroup = null;
         if (!int.TryParse(field.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countryGroupId)
-            || (countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId)) is null)
+            || (countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId, CertificateOfOriginsConsts.ActiveState)) is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
             return;
@@ -790,7 +790,7 @@ public partial class CertificateOfOriginsBl
             return;
         }
 
-        var city = await lookupUtil.Get<Lookup.City>(cityId);
+        var city = await lookupUtil.Get<Lookup.City>(cityId, CertificateOfOriginsConsts.ActiveState);
         if (city is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.CityOfDeclarationDoesNotExistInTheCitiesTable, cityId));
@@ -826,7 +826,7 @@ public partial class CertificateOfOriginsBl
     // GetIdByCode caught the lookup's miss exception and added it to the request exceptions.
     private async Task CheckIfInternationalSiteExist(MessageField field, MessageValidationContext context)
     {
-        var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == field.Value)).FirstOrDefault();
+        var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == field.Value && s.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
         if (site is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.TheValueInFieldNotExistsInSystem, field.DetailType));
@@ -843,7 +843,7 @@ public partial class CertificateOfOriginsBl
     // PropCountryAlphaCode_2) = Lookup.Country by CountryAlphaCode2); missing → country-not-in-table.
     private async Task<Lookup.Country?> ResolveCountry(string? alphaCode, MessageValidationContext context)
     {
-        var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == alphaCode)).FirstOrDefault();
+        var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == alphaCode && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
         if (country is null)
         {
             context.Exceptions.Add(BuildMessageException(EMessageCode.ExportCountryDoesNotExistInTheCountryTable, alphaCode));

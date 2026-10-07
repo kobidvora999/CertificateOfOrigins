@@ -269,7 +269,8 @@ public class UpdateCertificateOfOriginsDispatchTests
         {
             "CreateDocumentBuilder" => documentBuilder,
             "GetInvalidFilenameChars" => Array.Empty<char>(),
-            "UploadDocument" => Task.FromResult<IDocumentResponse>(new FakeDocumentResponse()),
+            "UploadDocument" => Task.FromResult<IDocumentResponse>(new FakeDocumentResponse { FileResource = "documents/qr/qr.jpg" }),
+            "GetFileUrl" => new Uri("http://files.example:91/documents/qr/qr.jpg"),
             _ => null,
         });
 

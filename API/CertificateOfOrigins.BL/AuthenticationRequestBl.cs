@@ -58,6 +58,8 @@ public partial class AuthenticationRequestBl(
                 EnglishName = d.EnglishName,
                 Enumeration = d.Enumeration,
                 StartDate = d.StartDate,
+                EndDate = d.EndDate,
+                IsAutomatic = d.IsAutomatic,
                 IsForCoordinator = d.IsForCoordinator,
                 IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
@@ -179,6 +181,8 @@ public partial class AuthenticationRequestBl(
                 EnglishName = decision.EnglishName,
                 Enumeration = decision.Enumeration,
                 StartDate = decision.StartDate,
+                EndDate = decision.EndDate,
+                IsAutomatic = decision.IsAutomatic,
                 IsForCoordinator = decision.IsForCoordinator,
                 IsForClaliMakorWorker = decision.IsForClaliMakorWorker,
             })

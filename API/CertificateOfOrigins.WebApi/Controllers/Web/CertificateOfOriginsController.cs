@@ -23,7 +23,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // the web-query response. The legacy in-band error contract is preserved: an invalid guid or no matching
     // certificate returns an HTTP 200 with ExceptionDescription set (not a 404), so the external portal is unaffected.
     [HttpGet("RequestByGuid")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
+    [BadRequestResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
     public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
     {
         var result = await BusinessLayer.GetCertificateRequestByGuid(request);

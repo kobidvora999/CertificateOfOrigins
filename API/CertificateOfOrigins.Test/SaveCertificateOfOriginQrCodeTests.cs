@@ -28,7 +28,9 @@ namespace CertificateOfOrigins.Test;
 public class SaveCertificateOfOriginQrCodeTests
 {
     private const string QueryUrlTemplate = "https://verify.example/{0}";
-    private const string UploadedExternalId = "documents/qr/resource-path";
+    private const string UploadedExternalId = "external-42";
+    private const string UploadedFileResource = "documents/qr/IL0000000001.jpg";
+    private const string FileServerUrl = "http://files.example:91/documents/qr/IL0000000001.jpg";
 
     // TimeStamp is the [Timestamp] concurrency token. An update must round-trip the stored row version or the save
     // fails the concurrency check (BaseBL maps that to RestConflictException) — so the seeded row and the update
@@ -68,11 +70,12 @@ public class SaveCertificateOfOriginQrCodeTests
             Assert.That(captures.GuidAtMainSave, Is.Not.Null.And.Not.EqualTo(Guid.Empty),
                 "the certificate Guid must be stamped and persisted with the main upsert");
 
-            // QrCodePath is persisted by the follow-up write, keyed by the saved id, with the upload's ExternalId.
+            // QrCodePath is persisted by the follow-up write, keyed by the saved id, with the uploaded file's URL: the print
+            // templates read it as the QR image source, as legacy's GetDocumentFile URL (parity finding A-20).
             Assert.That(captures.QrPathUpdateId, Is.EqualTo(savedId),
                 "QrCodePath must be persisted for the saved certificate id");
-            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(UploadedExternalId),
-                "the persisted QrCodePath must be the uploaded document's ExternalId");
+            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(FileServerUrl),
+                "the persisted QrCodePath must be the file-server URL of the uploaded file, not its ExternalId");
         });
     }
 
@@ -90,7 +93,7 @@ public class SaveCertificateOfOriginQrCodeTests
         {
             Assert.That(captures.QrDocumentEntityId, Is.EqualTo(existingId));
             Assert.That(captures.QrPathUpdateId, Is.EqualTo(existingId));
-            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(UploadedExternalId));
+            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(FileServerUrl));
 
             // CertificateOfOrigin is an ICloudEntity, so BaseBL.UpdateEntity marks CreateDate/CreateUserId
             // not-modified: the round-tripped DTO does not carry them, and without that guard the update would zero
@@ -218,7 +221,8 @@ public class SaveCertificateOfOriginQrCodeTests
         {
             "CreateDocumentBuilder" => documentBuilder,
             "GetInvalidFilenameChars" => Array.Empty<char>(),
-            "UploadDocument" => Task.FromResult<IDocumentResponse>(new FakeDocumentResponse { ExternalId = UploadedExternalId }),
+            "UploadDocument" => Task.FromResult<IDocumentResponse>(new FakeDocumentResponse { ExternalId = UploadedExternalId, FileResource = UploadedFileResource }),
+            "GetFileUrl" when args is [string resource] => new Uri("http://files.example:91/" + resource),
             _ => null,
         });
 

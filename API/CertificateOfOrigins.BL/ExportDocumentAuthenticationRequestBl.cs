@@ -140,7 +140,8 @@ public class ExportDocumentAuthenticationRequestBl(
     // EExportAuthenticationRequestStatus Display name (no ILookupUtil type exists, consistent with #26).
     public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> SaveExportDocumentAuthenticationRequest(SaveExportDocumentAuthenticationRequestRequestDto request)
     {
-        // An update without the row version cannot match the row: say so (400) instead of an unexplained 409.
+        // A malformed body is a 400 before anything runs: an update without the row version (which could not match the row:
+        // an unexplained 409 otherwise) or a request without a status (legacy failed on it only after saving, H-6).
         var validation = await new SaveExportDocumentAuthenticationRequestRequestValidator().ValidateAsync(request);
         if (!validation.IsValid)
         {

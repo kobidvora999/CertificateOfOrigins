@@ -24,10 +24,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber)
     {
         // GetPC_MSG2280_2281 (GetRequestStatus / CertificateCancellation): the latest certificate with this number,
-        // projected to the fields the feedback response + the cancel write need.
+        // projected to the fields the feedback response + the cancel write need. Legacy GetCertificateOfOriginByExternalId
+        // took the first row of usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter: active rows only (State = 1),
+        // newest CreateDate first, and the number matched as the SP did: LIKE '%' + number + '%', unescaped, so a number
+        // contained in a longer one also matches (parity finding C F-23).
         var result = await ReadOnlyContext.CertificateOfOrigins
-            .Where(c => c.CertificateNumber == certificateNumber)
-            .OrderByDescending(c => c.Id)
+            .Where(c => EF.Functions.Like(c.CertificateNumber, "%" + certificateNumber + "%") && c.State == 1)
+            .OrderByDescending(c => c.CreateDate)
+            .ThenByDescending(c => c.Id)
             .Select(c => new CertificateOfOrigin
             {
                 Id = c.Id,
@@ -62,8 +66,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // GetPC_MSG2280_2281 create branch: resolve an origin-criterion code scoped to a certificate type to its row
         // (legacy SystemTablesUtil.GetTablesSync<OriginCriterion> with a code + certificate-type predicate). Local C-table.
+        // SystemTables returned active rows only (QueryBuilder.BuildState: State == 1 unless IgnoreState) - parity C F-23.
         var result = await ReadOnlyContext.OriginCriterions
-            .Where(o => o.OriginCriterionCode == originCriterionCode && o.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId)
+            .Where(o => o.OriginCriterionCode == originCriterionCode && o.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId && o.State == 1)
             .FirstOrDefaultAsync();
         return result;
     }
@@ -519,6 +524,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 EnglishName = d.EnglishName,
                 Enumeration = d.Enumeration,
                 StartDate = d.StartDate,
+                EndDate = d.EndDate,
+                IsAutomatic = d.IsAutomatic,
                 IsForCoordinator = d.IsForCoordinator,
                 IsForClaliMakorWorker = d.IsForClaliMakorWorker,
             })
@@ -548,9 +555,10 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     public async Task<bool> IsSupplierDeliveryCountry(int countryId)
     {
         // Legacy IsVendor: GetIdByCode<...>("ConutryID", countryId) > 0 — true when the issuing country has an active
-        // supplier-delivery config row (soft-delete filter State != 99 per repo convention).
+        // supplier-delivery config row. GetIdByCode read SystemTables with ignoreState = false, i.e. State == 1 only; the
+        // column defaults to 0, so "not deleted" (State != 99) would also match inactive rows (parity finding E-F13).
         var result = await ReadOnlyContext.CertificateOfOriginsSupplierDeliveryCountryConfigs
-            .AnyAsync(c => c.ConutryId == countryId && c.State != 99);
+            .AnyAsync(c => c.ConutryId == countryId && c.State == 1);
         return result;
     }
 
