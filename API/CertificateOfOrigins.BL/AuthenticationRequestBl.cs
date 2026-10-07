@@ -918,13 +918,7 @@ public partial class AuthenticationRequestBl(
         // AuthenticationNeedless additionally raises a rejection event, assigning the opened task to the responder.
         if (request.DecisionId == (int)EAuthenticationRequestDecision.AuthenticationNeedless)
         {
-            var rejectedEvent = eventUtil.CreatBuilder()
-                .WithEventType((int)EEventType.AuthenticationRequestRejected)
-                .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
-                .WithTitle(request.DocumentId.ToString())
-                .WithTaskArguments(task => task.WithTaskAssignmentUser(request.UserResponseId))
-                .Build();
-            await eventUtil.RaiseEvent(rejectedEvent);
+            await RaiseAuthenticationNeedlessRejection(eventUtil, request);
         }
 
         // Persist. The caller says which it is — never the database. The coordinator's "new authentication request"
@@ -1225,6 +1219,32 @@ public partial class AuthenticationRequestBl(
                 CollateralRequestId = collateralId,
             });
         }
+    }
+
+    // Legacy raised this event with the request ENTITY itself (`new EventUtilArguments(AuthenticationRequestRejected, request)`),
+    // so it carried the entity's IEntity values: Title = DocumentID, OrganizationUnitID, and CustomerID (the entity's explicit
+    // IEntity.CustomerID returned -1 when the request had none). The migration sent only the id and the title, so the organization
+    // unit and the customer were missing from the event (parity finding F-07). The unit is sent when the caller supplies one (the
+    // builder takes only a real unit); the customer only when there is one - the legacy -1 stood for "none" and is not sent.
+    private static async Task RaiseAuthenticationNeedlessRejection(IEventUtil eventUtil, SaveImportAuthenticationRequestRequestDto request)
+    {
+        var rejectedEvent = eventUtil.CreatBuilder()
+            .WithEventType((int)EEventType.AuthenticationRequestRejected)
+            .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
+            .WithTitle(request.DocumentId.ToString())
+            .WithTaskArguments(task => task.WithTaskAssignmentUser(request.UserResponseId));
+
+        if (request.OrganizationUnitId > 0)
+        {
+            rejectedEvent = rejectedEvent.WithOrganizationUnitId(request.OrganizationUnitId);
+        }
+
+        if (request.CustomerId is > 0)
+        {
+            rejectedEvent = rejectedEvent.WithCustomerId(request.CustomerId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        await eventUtil.RaiseEvent(rejectedEvent.Build());
     }
 
     // The legacy file entity's Title was computed too (the same partial class): "  אימות מסמך מקור (יבוא) מספר פניה " + ID. The events
