@@ -1,4 +1,5 @@
 using CertificateOfOrigins.BL.Proxies;
+using CertificateOfOrigins.BL.Validations;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
@@ -131,6 +132,15 @@ public class ExportDocumentAuthenticationRequestBl(
     // EExportAuthenticationRequestStatus Display name (no ILookupUtil type exists, consistent with #26).
     public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> SaveExportDocumentAuthenticationRequest(SaveExportDocumentAuthenticationRequestRequestDto request)
     {
+        // An update without the row version cannot match the row: say so (400) instead of an unexplained 409.
+        var validation = await new SaveExportDocumentAuthenticationRequestRequestValidator().ValidateAsync(request);
+        if (!validation.IsValid)
+        {
+            throw new RestValidationException(
+                validation.Errors[0].PropertyName,
+                string.Join(" ", validation.Errors.Select(failure => failure.ErrorMessage)));
+        }
+
         var documentsProxy = Resolve<IDocumentsProxy>();
         var entity = BuildEntity(request);
 
@@ -167,12 +177,13 @@ public class ExportDocumentAuthenticationRequestBl(
             AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
         }
 
+        // The children are staged by the DAL (the deletes included) against the tracked parent, and ONE commit persists the
+        // parent and its three child collections together - as the legacy single Repository.Save + CommitAllChanges did - so a
+        // failing child (a missing row, a constraint) cannot leave the parent saved and the dropped children already deleted
+        // (parity finding H-3). A conflict maps to 409 rather than escaping as 500.
+        await DataLayer.MergeExportDocumentAuthenticationRequestChildren(entity, customsItems, leadDocuments, manufacturingAreas);
         await SaveChangesAsync();
         var id = entity.Id;
-
-        // Staged by the DAL, committed here so a child-merge conflict maps to 409 rather than escaping as 500.
-        await DataLayer.MergeExportDocumentAuthenticationRequestChildren(id, customsItems, leadDocuments, manufacturingAreas);
-        await SaveChangesAsync();
 
         // Status transition → status-update event (+ a status-specific event) and, for some statuses, a message.
         if (request.StatusId != request.OriginalStatusId)

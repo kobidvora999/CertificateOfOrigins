@@ -73,7 +73,7 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task<(int State, int OrganizationUnitId)?> GetExportRequestProjectionColumns(int requestId);
 
     Task MergeExportDocumentAuthenticationRequestChildren(
-        int requestId,
+        ExportDocumentAuthenticationRequest request,
         List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
         List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
         List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas);

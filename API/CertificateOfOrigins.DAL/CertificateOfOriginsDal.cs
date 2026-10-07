@@ -803,30 +803,37 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     // CHILD collections, which carry no audit columns: bind them to the (now known) parent id and DIFF-MERGE by
     // surrogate id — update round-tripped children in place, insert new ones, delete the dropped ones (reproducing
     // the legacy Self-Tracking-Entity Save, developer decision 2026-08-05).
+    //
+    // Everything here is only STAGED (the deletes included), so the BL's single SaveChangesAsync commits the parent and the
+    // three child collections together - the legacy Repository.Save + CommitAllChanges was one commit too (parity finding
+    // H-3). The parent is passed in already tracked: a stored parent (Id > 0) binds the children by id, a new one (Id == 0,
+    // its id assigned only by the save) by navigation, so EF fills the foreign key.
     public async Task MergeExportDocumentAuthenticationRequestChildren(
-        int requestId,
+        ExportDocumentAuthenticationRequest request,
         List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
         List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
         List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas)
     {
-        // Detach the parent nav so the merge touches only the child rows. Ids are preserved (NOT reset) so
-        // round-tripped children update in place.
+        var requestId = request.Id;
+        var isStoredParent = requestId != 0;
+
+        // Ids are preserved (NOT reset) so round-tripped children update in place.
         foreach (var item in customsItems)
         {
             item.ExportDocumentAuthenticationRequestId = requestId;
-            item.Request = null;
+            item.Request = isStoredParent ? null : request;
         }
 
         foreach (var leadDocument in leadDocuments)
         {
             leadDocument.ExportRequestId = requestId;
-            leadDocument.Request = null;
+            leadDocument.Request = isStoredParent ? null : request;
         }
 
         foreach (var area in manufacturingAreas)
         {
             area.ExportAuthenticationRequestId = requestId;
-            area.Request = null;
+            area.Request = isStoredParent ? null : request;
         }
 
         await MergeChildrenAsync(
@@ -857,12 +864,16 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         var keptIds = incoming.Where(child => getId(child) != 0).Select(getId).ToList();
 
-        // Delete existing rows under this parent that the client did not send back (empty keptIds → delete all).
-        await existingForParent
-            .Where(child => !keptIds.Contains(EF.Property<int>(child, "Id")))
-            .ExecuteDeleteAsync();
-
         var set = Context.Set<TChild>();
+
+        // Delete existing rows under this parent that the client did not send back (empty keptIds → delete all). They are
+        // loaded and removed through the change tracker - not ExecuteDeleteAsync, which hits the database at once - so the
+        // delete commits with the parent and the other children. A new parent has no stored children to drop.
+        var droppedChildren = await existingForParent
+            .Where(child => !keptIds.Contains(EF.Property<int>(child, "Id")))
+            .ToListAsync();
+        set.RemoveRange(droppedChildren);
+
         foreach (var child in incoming)
         {
             if (getId(child) == 0)
