@@ -24,6 +24,14 @@ public class CollateralProxy(IHttpProxy httpProxy)
 
     // Legacy: Container.Resolve<ICollateralServiceAdapter>().ChangeTempCollateralRequest(list) — converts the request's
     // temporary collaterals into permanent ones bound to the entity.
+    //
+    // TODO(blocking): the legacy call passed a second argument, `true` (ExternalProxy.ChangeTempCollateralRequest(list, true);
+    // other modules pass false). It is the Collateral service's `sendMessageOnChangeTempRequest`
+    // (FinanceInfr\Collateral\...\CollateralRequestBL.cs:1592): it reaches the CollateralRequestCreated event as
+    // AdditionalInfo = "True"/"False", and the event's handler (InternalHandleNewCollateralRequest) sends the collateral-request
+    // message (COLT_NG_8211_MSG10040) only when it is true. This payload carries no such flag, so whether the message goes out
+    // depends on the cloud Collateral service's default. Check, once that service exists in the cloud, whether its endpoint takes
+    // the flag (and where) and pass `true` for this caller (parity finding F-08, second half).
     public async Task ChangeTempCollateralRequest(List<ChangeTempCollateralRequestDto> requests)
     {
         var req = CreateRequestBuilder()

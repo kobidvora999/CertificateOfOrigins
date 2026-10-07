@@ -1039,12 +1039,24 @@ public partial class AuthenticationRequestBl(
     {
         var collateralProxy = Resolve<ICollateralProxy>();
 
+        // Legacy dereferenced `collateral.RelatedEntity.ID`, so a collateral without its related entity failed with a
+        // NullReferenceException before anything was saved. Binding it to entity 0 instead ("?? 0") would turn a temporary
+        // collateral into a permanent one attached to no real entity, so it is rejected up front with a message that names
+        // the field (parity finding F-08).
+        var withoutRelatedEntity = collaterals.FindIndex(collateral => collateral.RelatedEntity is null);
+        if (withoutRelatedEntity >= 0)
+        {
+            throw new RestValidationException(
+                $"{nameof(SaveImportAuthenticationRequestRequestDto.Collaterals)}[{withoutRelatedEntity}].RelatedEntity",
+                "RelatedEntity is required: a temporary collateral cannot be bound without the entity it belongs to.");
+        }
+
         var payload = collaterals
             .Select(collateral => new ChangeTempCollateralRequestDto
             {
                 CollateralRequestId = collateral.CollateralRequestId,
-                RelatedEntityId = collateral.RelatedEntity?.Id ?? 0,
-                EntityExternalId = (collateral.RelatedEntity?.Id ?? 0).ToString(),
+                RelatedEntityId = collateral.RelatedEntity!.Id,
+                EntityExternalId = collateral.RelatedEntity.Id.ToString(),
             })
             .ToList();
         await collateralProxy.ChangeTempCollateralRequest(payload);
