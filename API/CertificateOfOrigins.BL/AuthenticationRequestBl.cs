@@ -1227,6 +1227,21 @@ public partial class AuthenticationRequestBl(
         }
     }
 
+    // The legacy file entity computed its OrganizationUnitID: the getter returned the FIRST child request's organization unit
+    // whenever the file had requests, and only otherwise its own stored value (CertificateOfOriginsImportAuthenticationFile-
+    // DetailsPartial.OrganizationUnitID). The file-level events therefore always carried the child's unit, whatever the caller
+    // sent. The migration used the client-sent file value, which the by-id read never returns, so a caller that did not
+    // derive it sent 0 and the file's tasks opened or closed with no organization unit (parity finding F-05).
+    //
+    // A child that carries no unit (0) is not taken for a value - the file's own stays - so a caller that does not fill the
+    // child's field is no worse off than before.
+    private static int FileOrganizationUnitId(SaveAuthenticationRequestFileRequestDto request)
+    {
+        var firstChildUnit = request.Requests.Count > 0 ? request.Requests[0].OrganizationUnitId : 0;
+        var organizationUnitId = firstChildUnit > 0 ? firstChildUnit : request.OrganizationUnitId;
+        return organizationUnitId;
+    }
+
     private async Task ManageFileStatus(SaveAuthenticationRequestFileRequestDto request)
     {
         if (request.AuthenticationFileStatusId == request.OriginalAuthenticationFileStatusId)
@@ -1246,7 +1261,7 @@ public partial class AuthenticationRequestBl(
                 .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
                 .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
-                .WithOrganizationUnitId(request.OrganizationUnitId)
+                .WithOrganizationUnitId(FileOrganizationUnitId(request))
                 .Build();
             await eventUtil.RaiseEvent(closeFileTasks);
         }
@@ -1291,7 +1306,7 @@ public partial class AuthenticationRequestBl(
                 .WithEventType((int)EEventType.HandleImportAuthenticationRequest)
                 .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
-                .WithOrganizationUnitId(request.OrganizationUnitId)
+                .WithOrganizationUnitId(FileOrganizationUnitId(request))
                 .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
                 .Build();
             await eventUtil.RaiseEvent(handle);
@@ -1320,7 +1335,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType(eventTypeId)
             .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitId(FileOrganizationUnitId(request))
             .Build();
         await eventUtil.RaiseEvent(evt);
     }
