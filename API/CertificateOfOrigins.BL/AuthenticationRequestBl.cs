@@ -845,6 +845,14 @@ public partial class AuthenticationRequestBl(
     {
         var tasksProxy = Resolve<ITasksProxy>();
 
+        // An update of a request that does not exist is a 404 BEFORE the collaterals are made permanent and the events and the decision
+        // message go out; it used to surface only at the persist step, after those side effects (parity finding F-10). The persist step
+        // keeps its own 404 as the backstop for a row deleted in between. A new request has nothing to find.
+        if (!request.IsNewInstance && await DataLayer.GetImportAuthenticationRequestById(request.DocumentId) is null)
+        {
+            throw new RestNotFoundException();
+        }
+
         // The first collateral supplies CollateralId; all collaterals are converted from temporary to permanent.
         if (request.Collaterals.Count > 0)
         {
@@ -1072,6 +1080,15 @@ public partial class AuthenticationRequestBl(
     public async Task<GetAuthenticationRequestFileByIdResultDto> SaveAuthenticationRequestFile(SaveAuthenticationRequestFileRequestDto request)
     {
         var userId = RequestMetadata.UserId ?? 0;
+
+        // A missing file is a 404 BEFORE anything is written, raised or sent. Legacy wrote every row through one unit of work
+        // committed together, so a failed save left nothing behind; the set-based writes below commit one by one, and the 404 used
+        // to surface only at step 4, after the child rows were updated and the decision events and messages had gone out
+        // (parity finding F-10). Step 4 stays as the backstop for a row deleted in between.
+        if (await DataLayer.GetAuthenticationFileById(request.Id) is null)
+        {
+            throw new RestNotFoundException();
+        }
 
         // 1. Persist every child request's screen edits + the recomputed IsOldIndication (3+ years since issuing) —
         //    legacy UpdateAndSaveImportAuthenticationRequest, a full Repository.Save per child.
