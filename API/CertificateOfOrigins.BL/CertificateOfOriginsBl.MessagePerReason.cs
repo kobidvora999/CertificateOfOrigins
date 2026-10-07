@@ -151,7 +151,7 @@ public partial class CertificateOfOriginsBl
 
         if (certificate.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.Published or (int)ECertificateOfOriginStatus.Cancelled)
         {
-            context.Exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked, (ERequestReason)certificate.RequestReasonCode, (ECertificateOfOriginStatus)certificate.CertificateOfOriginStatusId));
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked, GetRequestReasonName(certificate.RequestReasonCode), GetCertificateStatusName(certificate.CertificateOfOriginStatusId)));
         }
 
         context.CertificateToUpdateId = certificate.Id;
@@ -179,7 +179,7 @@ public partial class CertificateOfOriginsBl
         if (certificate != null
             && certificate.CertificateOfOriginStatusId is (int)ECertificateOfOriginStatus.Published or (int)ECertificateOfOriginStatus.Cancelled)
         {
-            context.Exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked, (ERequestReason)certificate.RequestReasonCode, (ECertificateOfOriginStatus)certificate.CertificateOfOriginStatusId));
+            context.Exceptions.Add(BuildMessageException(EMessageCode.ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked, GetRequestReasonName(certificate.RequestReasonCode), GetCertificateStatusName(certificate.CertificateOfOriginStatusId)));
         }
     }
 

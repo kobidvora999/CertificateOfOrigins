@@ -102,7 +102,7 @@ public partial class CertificateOfOriginsBl
 
         // The certificate number: the supplied id, or a freshly-generated one (legacy ConvertMessageToCertificateOfOrigin
         // → GetCertificateNumber when certificateId is empty).
-        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId);
+        var certificateNumber = await ResolveCertificateNumber(agentRequest.CertificateId, agentRequest.RequestReasonCode);
 
         // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
         var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
@@ -217,11 +217,12 @@ public partial class CertificateOfOriginsBl
         return invoices;
     }
 
-    // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or a freshly
-    // generated one ("IL" + the 10-digit sequence numerator) when none was supplied.
-    private async Task<string> ResolveCertificateNumber(string? certificateId)
+    // Legacy ConvertMessageToCertificateOfOrigin: the certificate number is the supplied certificateId, or — only for the
+    // reasons that have a generating case in the legacy switch — a freshly generated one ("IL" + the 10-digit sequence
+    // numerator) when none was supplied. Every other reason keeps the number as sent.
+    private async Task<string?> ResolveCertificateNumber(string? certificateId, int requestReasonCode)
     {
-        if (!string.IsNullOrEmpty(certificateId))
+        if (!string.IsNullOrEmpty(certificateId) || !NumberGeneratingReasons.Contains(requestReasonCode))
         {
             return certificateId;
         }
@@ -230,11 +231,21 @@ public partial class CertificateOfOriginsBl
         return CertificateOfOriginsConsts.CertificateNumberPrefixIl + numerator.ToString(CertificateOfOriginsConsts.CertificateNumberFormat10Digit, CultureInfo.InvariantCulture);
     }
 
+    private static readonly HashSet<int> NumberGeneratingReasons =
+    [
+        (int)ERequestReason.NewCertificate,
+        (int)ERequestReason.RetrospectiveCertificate,
+        (int)ERequestReason.EmptyCertificate,
+        (int)ERequestReason.CertificateReplacement,
+        (int)ERequestReason.ImportCertificateReplacement,
+        (int)ERequestReason.Draft,
+    ];
+
     // Map the validated incoming message + resolved side-values onto SaveCertificateOfOriginRequestDto (legacy
     // ConvertMessageToCertificateOfOrigin) — including the per-reason cancel/replace ids and the invoice/item graph.
     // agentId is the message sender (legacy request.CustomerID of the EAI envelope). The agent never sends its own id in the
     // message body: the platform sets it from the MessageSenderId header, read here from RequestMetadata.MessageSenderId.
-    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string certificateNumber, List<CertificateOfOriginInvoiceDetail> invoices, int agentId)
+    private static SaveCertificateOfOriginRequestDto BuildSaveRequestFromMessage(CertificateOfOriginRequestMessageDto request, MessageValidationContext context, string? certificateNumber, List<CertificateOfOriginInvoiceDetail> invoices, int agentId)
     {
         var agentRequest = request.AgentRequest;
 

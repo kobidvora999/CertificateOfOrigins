@@ -261,7 +261,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // exceptions (not thrown), matching the legacy _requestExceptions contract.
     private async Task<CertificateOfOrigin?> GetSavedCertificateForMessage(CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginExceptionDto> requestExceptions)
     {
-        if (string.IsNullOrEmpty(agentRequest.CertificateId))
+        if (string.IsNullOrWhiteSpace(agentRequest.CertificateId))
         {
             requestExceptions.Add(BuildMessageException(EMessageCode.MustSendCertificateID));
             return null;
@@ -357,9 +357,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private async Task<CertificateOfOriginRequestFeedbackDto> BuildRequestFeedback(CertificateOfOrigin certificate)
     {
         var urlTemplate = await parametersUtil.Get<string>("CertificateOfOriginQueryURL");
-        var queryUrl = certificate.Guid.HasValue
-            ? string.Format(CultureInfo.InvariantCulture, urlTemplate ?? string.Empty, certificate.Guid)
-            : null;
+        var queryUrl = string.Format(CultureInfo.InvariantCulture, urlTemplate ?? string.Empty, certificate.Guid?.ToString());
 
         return new CertificateOfOriginRequestFeedbackDto
         {
@@ -772,10 +770,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         foreach (var item in goodsItemCerificateDTOs)
         {
-            if (item.CertificateNumber != null)
-            {
-                item.CertificateOfOriginId = await DataLayer.GetCertificateOfOriginIdByNumber(item.CertificateNumber);
-            }
+            // Legacy always overwrote the id: a null number matches no certificate, so the id is null.
+            item.CertificateOfOriginId = item.CertificateNumber == null
+                ? null
+                : await DataLayer.GetCertificateOfOriginIdByNumber(item.CertificateNumber);
         }
 
         return goodsItemCerificateDTOs;
@@ -1388,8 +1386,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                         detail.Value = resolvedExporterId.ToString(CultureInfo.InvariantCulture);
                     }
                 }
-
-                detail.DisplayedValue = detail.Value;
             }
             else if (typeId == (int)ECertificateDetailsType.CustomsHouse)
             {
@@ -2115,14 +2111,27 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // empty string rather than a bare number, so the task name degrades to the plain title instead of showing "(17)".
     private static string GetRequestReasonName(int requestReasonCode)
     {
-        if (!Enum.IsDefined(typeof(ERequestReason), requestReasonCode))
+        var result = GetEnumDisplayName<ERequestReason>(requestReasonCode);
+        return result;
+    }
+
+    // The status display name — the Hebrew `Name` of CRM.CertificateOfOrigins_enum_CertificateOfOriginStatusCode, as legacy
+    // put the table Name into a message parameter.
+    private static string GetCertificateStatusName(int statusId)
+    {
+        var result = GetEnumDisplayName<ECertificateOfOriginStatus>(statusId);
+        return result;
+    }
+
+    private static string GetEnumDisplayName<TEnum>(int value) where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(typeof(TEnum), value))
         {
             return string.Empty;
         }
 
-        var requestReason = (ERequestReason)requestReasonCode;
-        var memberName = requestReason.ToString();
-        var member = typeof(ERequestReason).GetMember(memberName).FirstOrDefault();
+        var memberName = Enum.GetName(typeof(TEnum), value)!;
+        var member = typeof(TEnum).GetMember(memberName).FirstOrDefault();
         var display = member?.GetCustomAttribute<DisplayAttribute>();
         return display?.Name ?? memberName;
     }
