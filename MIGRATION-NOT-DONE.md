@@ -239,6 +239,25 @@ CurrencyCode מומש דרך `ICurrencyTypeProxy` · נבדק חי end-to-end (G
 **כשזה יקרה:** להחליף את ה-projection ב-`.Include(...)` + `.ExcludeInterceptor("j4XSVK6Fl8")`, לאמת בריצה,
 ואז להחליט אם לחשוף את 6 השדות ב-`GetExportDocumentAuthenticationRequestByIdResultDto` (כרגע אינם בחוזה).
 
+### 🛑 נתיבי proxy לא מאומתים — Collateral / Tasks / MessageManagement (parity F-12, 2026-10-07)
+
+נתיבי ה-endpoint של שלושת ה-proxies נכתבו כ-best-guess וכולם נושאים `TODO(blocking): confirm endpoint name/route`.
+אין בסביבה שירותי ענן אלה, ולכן לא ניתן לאמת אותם כעת. עד אז הם עובדים רק תחת `x-mock-mode`; ב-rollout הקריאה תיכשל.
+
+| Proxy | מתודה | נתיב נוכחי |
+|---|---|---|
+| `CollateralProxy` | `GetCollateralRequest` | `GET api/Collateral/CollateralRequestByEntity/{entityType}/{entityId}` |
+| `CollateralProxy` | `ChangeTempCollateralRequest` | `POST api/Collateral/ChangeTempCollateralRequest` |
+| `CollateralProxy` | `GetCollateralRequestIdsByRelatedEntity` | `GET api/Collateral/CollateralRequestIdsByEntity/{entityType}/{entityId}` |
+| `CollateralProxy` | `GrantAllCollateralRequests` | `POST api/Collateral/GrantAllCollateralRequests` |
+| `CollateralProxy` | `DebitCreditCollateralRequest` | `POST api/Collateral/DebitCreditCollateralRequest` |
+| `TasksProxy` | `IsTaskExist`, `IsTaskExistsOnEntity` | `api/Task/...` |
+| `MessageManagementProxy` | `SendMessage` | `POST api/Message/SendMessage` |
+
+**לאמת כשהשירותים קמים:** שם ה-route, צורת ה-body/ה-query, ובקולטרל גם את הדגל `sendMessageOnChangeTempRequest`
+(לגסי מעביר `true` מ-CertificateOfOrigins; ראה ה-TODO ב-`CollateralProxy.ChangeTempCollateralRequest`, parity F-08).
+בעת האימות להסיר את ה-TODO(blocking) ולהוסיף בדיקה שמוודאת את הנתיב.
+
 ### ⚠️ "Pattern A" — סינון סטטוס משימה (`TODO(confirm)` בקוד)
 
 הלגסי סינן משימות ב-`TaskStatusID != 2` (כל מה שאינו סגור). ב-.NET 10 אין סינון בצד ה-SP
