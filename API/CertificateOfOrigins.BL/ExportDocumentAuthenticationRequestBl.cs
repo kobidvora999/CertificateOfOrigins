@@ -334,12 +334,19 @@ public class ExportDocumentAuthenticationRequestBl(
 
         if (specificEvent.HasValue)
         {
-            var specific = eventUtil.CreatBuilder()
+            var specificBuilder = eventUtil.CreatBuilder()
                 .WithEventType((int)specificEvent.Value)
                 .WithEntity((int)EEntityType.ExportDocumentAuthenticationRequest, id)
-                .WithTitle(id.ToString())
-                .WithAdditionalInfo(additionalInfo!)
-                .Build();
+                .WithTitle(id.ToString());
+
+            // Legacy sent a null AdditionalInfo for the AfterClosing / ChangeFileStatus events; the request's AdditionalInfo
+            // is null until set, so it is simply not set (the builder's parameter is annotated non-null).
+            if (additionalInfo is not null)
+            {
+                specificBuilder = specificBuilder.WithAdditionalInfo(additionalInfo);
+            }
+
+            var specific = specificBuilder.Build();
             await eventUtil.RaiseEvent(specific);
         }
     }
