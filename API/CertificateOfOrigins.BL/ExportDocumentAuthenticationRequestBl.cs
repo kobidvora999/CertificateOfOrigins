@@ -177,7 +177,7 @@ public class ExportDocumentAuthenticationRequestBl(
         // Status transition → status-update event (+ a status-specific event) and, for some statuses, a message.
         if (request.StatusId != request.OriginalStatusId)
         {
-            await CheckStatusAndNotify(id, entity.StatusId);
+            await CheckStatusAndNotify(id, entity.StatusId, ToRelatedEntity(entity));
         }
 
         // Post-save document attach (legacy IDocumentServiceAdapter.AttachDocumentsToEntity).
@@ -185,7 +185,7 @@ public class ExportDocumentAuthenticationRequestBl(
         {
             await documentsProxy.AttachDocumentsToEntity(new DocumentsToEntityDto
             {
-                Entity = new VirtualEntityDto { Id = id, EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest },
+                Entity = ToRelatedEntity(entity),
                 DocumentIds = request.ListOfAdditionalDocumentsIds,
             });
         }
@@ -251,15 +251,32 @@ public class ExportDocumentAuthenticationRequestBl(
         };
     }
 
+    // Legacy built the entity link of the document attach and of the status message with `new VirtualEntity(entity)` (the
+    // SendMessageDTO constructor wraps it the same way), whose constructor copies the entity's Title and CustomerID; the
+    // migration sent only the id and the type, so the Documents / MessageManagement services received no title and
+    // CustomerId 0 (parity finding H-4). The legacy link also carried the organization unit; VirtualEntityDto has no such
+    // field and adding it would also change the Convert output that shares the type - an open contract question.
+    private static VirtualEntityDto ToRelatedEntity(ExportDocumentAuthenticationRequest entity)
+    {
+        var relatedEntity = new VirtualEntityDto
+        {
+            Id = entity.Id,
+            Title = entity.Title,
+            EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest,
+            CustomerId = entity.CustomerId,
+        };
+        return relatedEntity;
+    }
+
     // Legacy CheckStatus: a switch on the new status decides which status-specific event to raise (in addition to the
     // always-raised status-update event), and whether to also send a status message to the current user.
-    private async Task CheckStatusAndNotify(int id, int? statusId)
+    private async Task CheckStatusAndNotify(int id, int? statusId, VirtualEntityDto relatedEntity)
     {
         switch (statusId)
         {
             case (int)EExportAuthenticationRequestStatus.ReadyForProfessionalTreatment:
                 await RaiseStatusEvents(id, statusId, EEventType.ExportNewAuthenticationRequest, id.ToString());
-                await SendStatusMessage(id, statusId);
+                await SendStatusMessage(id, statusId, relatedEntity);
                 break;
             case (int)EExportAuthenticationRequestStatus.ClosedValid:
             case (int)EExportAuthenticationRequestStatus.ClosedNotValid:
@@ -272,7 +289,7 @@ public class ExportDocumentAuthenticationRequestBl(
                 break;
             default:
                 await RaiseStatusEvents(id, statusId, null, null);
-                await SendStatusMessage(id, statusId);
+                await SendStatusMessage(id, statusId, relatedEntity);
                 break;
         }
     }
@@ -309,12 +326,12 @@ public class ExportDocumentAuthenticationRequestBl(
     }
 
     // Legacy RaiseStatusMessage: send the current user a message (file id + new status name) via Message-Management.
-    private async Task SendStatusMessage(int id, int? statusId)
+    private async Task SendStatusMessage(int id, int? statusId, VirtualEntityDto relatedEntity)
     {
         var messageManagementProxy = Resolve<IMessageManagementProxy>();
         var message = new SendMessageDto
         {
-            RelatedEntity = new VirtualEntityDto { Id = id, EntityType = (int)EEntityType.ExportDocumentAuthenticationRequest },
+            RelatedEntity = relatedEntity,
             MessageTypeId = ImportRequestDecisionMessageTypeId,
             MessageParameters = [id.ToString(), GetStatusName(statusId)],
             MultipleMessageDestinations = [new MessageDestinationDto { UserId = RequestMetadata.UserId }],
