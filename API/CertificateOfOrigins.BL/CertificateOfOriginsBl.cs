@@ -629,6 +629,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
     }
 
+    // The short-date display of a stored date detail value (legacy Check*Date: DateTime.TryParse, an unparseable value
+    // yields default(DateTime)). Parsed day-first like legacy's host culture: legacy-stored values are dd/MM/yyyy (an
+    // invariant parse flips day and month, or fails above day 12), and the ISO values the message path stores parse
+    // under any culture.
+    internal static string FormatStoredDate(string? value)
+    {
+        var date = DateTime.TryParse(value, LegacyHostCulture, DateTimeStyles.None, out var parsed) ? parsed : default;
+        var result = date.ToShortDateString();
+        return result;
+    }
+
     private static FieldDataDto? MapDateOfDeclarationField(CertificateOfOriginWebDetailDto detail)
     {
         if (!string.IsNullOrWhiteSpace(detail.Value) &&
@@ -1405,7 +1416,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             else if (DateDetailTypes.Contains(typeId))
             {
                 // Legacy Check*Date: the display is a short date (an unparseable value yields default(DateTime), as legacy).
-                detail.DisplayedValue = (DateTime.TryParse(value, CultureInfo.InvariantCulture, out var date) ? date : default).ToShortDateString();
+                detail.DisplayedValue = FormatStoredDate(value);
             }
             else if (BoolDetailTypes.Contains(typeId))
             {
