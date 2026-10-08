@@ -18,7 +18,7 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
         var result = customerIds.Select(id => new CustomerDto
         {
             Id = id,                          // TODO: dummy data
-            Name = "Test Customer " + id,     // TODO: dummy data
+            Title = "Test Customer " + id,     // TODO: dummy data
             ExternalIdNum = "000000000",
             IsActive = true,
         }).ToList();
@@ -35,7 +35,7 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
         var result = new CustomerDto
         {
             Id = customerId,                  // TODO: dummy data
-            Name = "Test Customer " + customerId,
+            Title = "Test Customer " + customerId,
             ExternalIdNum = "000000000",
             IsActive = true,
             Addresses =
@@ -58,7 +58,7 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
             new()
             {
                 Id = countryId * 100,                          // TODO: dummy data
-                Name = "Foreign Customs House " + countryId,   // TODO: dummy data
+                Title = "Foreign Customs House " + countryId,   // TODO: dummy data
                 ExternalIdNum = "000000000",
                 IsActive = true,
             },

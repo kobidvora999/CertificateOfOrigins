@@ -18,7 +18,7 @@ public class UserMockProxy(IProxyMockUtil mockUtil) : IUserProxy, IMockProxy
         var result = userIds.Select(id => new UserDto
         {
             Id = id,                      // TODO: dummy data
-            Name = "Test User " + id,     // TODO: dummy data
+            Title = "Test User " + id,     // TODO: dummy data
             OrganizationUnit = 6,         // TODO: dummy data (e.g. חיפה)
         }).ToList();
         return Task.FromResult<List<UserDto>?>(result);

@@ -7,13 +7,13 @@
 
 | סטטוס | משמעות | כמות |
 |---|---|---|
-| FIXED | תוקן בקוד | 66 |
+| FIXED | תוקן בקוד | 68 |
 | CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 45 |
 | NOT-A-DEFECT-DOC | תיעוד בלבד | 7 |
 | OPEN-DECISION | ממתין להחלטה של אדם | 3 |
 | OPEN-BLOCKED | נדחה לשלב נפרד: תלוי בשירות/חבילה שעוד לא קיימים (לא נספר כפתוח) | 19 |
 | OPEN-TODO | פער אמיתי שלא טופל | 0 |
-| UNVERIFIED | לא ניתן היה לאמת | 2 |
+| UNVERIFIED | לא ניתן היה לאמת | 0 |
 
 ## A — Certificate core
 
@@ -42,8 +42,8 @@
 | A-21 | LOW | ExporterId DisplayedValue / site display fallback | FIXED | 1b4490e (ExporterId DisplayedValue left as sent) | - |
 | A-22 | LOW | Validation shape: 400 instead of InfException | CLOSED-OK | Appendix itself: acceptable | HTTP mapping change by design |
 | A-23 | LOW | GetById missing id returns 404 | CLOSED-OK | BL ~30-31 documented choice (RestNotFoundException) | Internal callers must handle 404 |
-| A-24 | LOW | GetById milestones: INNER JOIN dropped, Name vs Title | CLOSED-OK | Decision 2026-10-08: keep every milestone row (empty name for an unknown user); Name until the Users contract names the display field | Comment at FillMilestoneUserNames |
-| A-25 | LOW | ByFilter date bounds inline instead of ufn_General_GetDate* | UNVERIFIED | Scripts/API_20260721 ...ByFilter.sql:90,96 inline DATEADD | Legacy function bodies not compared; presumed equivalent |
+| A-24 | LOW | GetById milestones: INNER JOIN dropped, Name vs Title | CLOSED-OK | Decision 2026-10-08: keep every milestone row (empty name for an unknown user); the name is UserDto.Title (legacy UserMng_User.Title, aliased UserName) | UserDto.Title carries TODO(blocking) until the Users service contract is published |
+| A-25 | LOW | ByFilter date bounds inline instead of ufn_General_GetDate* | FIXED | Legacy ufn_General_GetDateEnd = date + 86399 s (23:59:59.000; body read from the legacy DB 2026-10-08); new scripts API_20261008110054 / 110055 use it instead of 23:59:59.997 | GetDateStart (midnight) was already equal; scripts compiled on the local DB in a rolled-back transaction, not applied |
 | A-26 | LOW | ExternalIdExist legacy likely broken | NOT-A-DEFECT-DOC | Appendix A-26 text | Intended behaviour, not a regression |
 | A-27 | LOW | LoadDataFromExportDeclaration by-ref mutation dropped | CLOSED-OK | BL ~738-746 (decision 2026-07-27) | ExportDealFile real route still unconfirmed (shared with A-09/A-15) |
 
@@ -171,7 +171,7 @@
 | H-5 | LOW | Events raised after the commit, not before | NOT-A-DEFECT-DOC | report text ("arguably an improvement") | |
 | H-6 | LOW | Null StatusId no longer throws after save | FIXED | round of 2026-10-07 (parity ledger fixes commit): StatusId required by the save validator (400 before any write); test ExportRequestStatusRequiredTests | Stricter than legacy, which saved and raised the events before failing |
 | H-7 | LOW | Search INNER JOINs became IS NOT NULL guards | CLOSED-OK | DAL comment | Documented design choice. |
-| H-8 | LOW | Search names from Customer.Name vs legacy Customers.Title | UNVERIFIED | ExportBl FillExportRequestNames | Needs a data check of Title vs Name in the Customers service. |
+| H-8 | LOW | Search names from Customer.Name vs legacy Customers.Title | FIXED | CustomerDto / VendorDto: Name -> Title (legacy Customers_Customer.Title / Vendors_Vendor.Title in every SP; the cloud Customers CustomerDto has Title, no Name); 8 enrichment sites + mocks; test CustomerAndVendorTitleTests | Wider than reported: the guessed Name would have left every customer/vendor name null. CustomersByIds / VendorsByIds still unconfirmed (route TODO(blocking)) |
 | H-9 | LOW | InvoiceIdNum CONTAINS became substring LIKE | CLOSED-OK | REWIRE-PLAN; DAL comment | Accepted loss of full-text. |
 | H-10 | LOW | Filter field renames / HTTP verb | CLOSED-OK | report (parity criterion by criterion) | Semantics match the SP. |
 | H-11 | LOW | Status name from the enum Display attribute, not the DB lookup | FIXED | e151a03 (status name from the ExportAuthenticationRequestStatus table row) | - |

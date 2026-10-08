@@ -18,7 +18,7 @@ public class VendorMockProxy(IProxyMockUtil mockUtil) : IVendorProxy, IMockProxy
         var result = vendorIds.Select(id => new VendorDto
         {
             Id = id,                       // TODO: dummy data
-            Name = "Test Vendor " + id,    // TODO: dummy data
+            Title = "Test Vendor " + id,    // TODO: dummy data
         }).ToList();
         return Task.FromResult<List<VendorDto>?>(result);
     }

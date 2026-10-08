@@ -410,12 +410,12 @@ public class ExportDocumentAuthenticationRequestBl(
                 {
                     if (result.CustomerId.HasValue && customersById.TryGetValue(result.CustomerId.Value, out var foreignCustomsHouse))
                     {
-                        result.ForeignCustomsHouseName = foreignCustomsHouse.Name;
+                        result.ForeignCustomsHouseName = foreignCustomsHouse.Title;
                     }
 
                     if (result.ExporterCustomerId.HasValue && customersById.TryGetValue(result.ExporterCustomerId.Value, out var issuer))
                     {
-                        result.RequestIssuerName = issuer.Name;
+                        result.RequestIssuerName = issuer.Title;
                     }
                 }
             }

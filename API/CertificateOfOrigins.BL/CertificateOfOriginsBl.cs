@@ -36,8 +36,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Decided (parity A-24, 2026-10-08): every milestone row is kept, with an empty name for a user the Users service does
-    // not know - legacy's INNER JOIN on UserMng_User dropped such rows. Legacy showed the user's Title; Name is used until
-    // the Users service contract says which of its fields is the display name.
+    // not know - legacy's INNER JOIN on UserMng_User dropped such rows. The name is the user's Title, as legacy read it (the
+    // Users service contract is not published yet: UserDto.Title carries a TODO(blocking)).
     private async Task FillMilestoneUserNames(CertificateOfOriginDto certificate)
     {
         var userProxy = Resolve<IUserProxy>();
@@ -62,7 +62,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             if (milestone.UserId.HasValue && usersById.TryGetValue(milestone.UserId.Value, out var user))
             {
-                milestone.UserName = user.Name;
+                milestone.UserName = user.Title;
             }
         }
     }
@@ -834,13 +834,13 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             if (customersById.TryGetValue(certificate.ExporterId, out var exporter))
             {
-                certificate.ExporterTitle = exporter.Name;
+                certificate.ExporterTitle = exporter.Title;
                 certificate.ExporterExternalIdNum = exporter.ExternalIdNum;
             }
 
             if (customersById.TryGetValue(certificate.CustomesAgentId, out var agent))
             {
-                certificate.CustomesAgentTitle = agent.Name;
+                certificate.CustomesAgentTitle = agent.Title;
                 certificate.CustomesAgentExternalIdNum = agent.ExternalIdNum;
             }
         }

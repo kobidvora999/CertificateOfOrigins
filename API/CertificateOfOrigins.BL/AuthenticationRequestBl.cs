@@ -753,7 +753,7 @@ public partial class AuthenticationRequestBl(
                 {
                     if (request.CustomerId.HasValue && customersById.TryGetValue(request.CustomerId.Value, out var importer))
                     {
-                        request.ImporterName = importer.Name;
+                        request.ImporterName = importer.Title;
                     }
                 }
             }
@@ -771,7 +771,7 @@ public partial class AuthenticationRequestBl(
                 {
                     if (request.VendorId.HasValue && vendorsById.TryGetValue(request.VendorId.Value, out var vendor))
                     {
-                        request.VendorName = vendor.Name;
+                        request.VendorName = vendor.Title;
                     }
                 }
             }
