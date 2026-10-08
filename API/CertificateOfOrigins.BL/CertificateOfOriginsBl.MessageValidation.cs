@@ -456,6 +456,9 @@ public partial class CertificateOfOriginsBl
     // the client omitted the date (default 0001-01-01) — which therefore always flowed into the per-field date validator
     // (CheckDeclarationDate/CheckExportDate/…), never the "mandatory blank" branch. Render unconditionally to preserve
     // that: a missing/default date is rejected by the date-range check, not silently allowed as an optional blank.
+    // Decided (parity C-F18, 2026-10-08): the stored Value is ISO ("o"), not legacy's host-culture string. Every reader of a date
+    // detail's Value parses it with DateTime.TryParse (this service, the legacy client and server), which reads ISO under any
+    // culture; the print SPs read DisplayedValue, which keeps the legacy dd/MM/yyyy (LegacyHostCulture).
     private static string ToStringValue(DateTime value)
     {
         return value.ToString("o", CultureInfo.InvariantCulture);

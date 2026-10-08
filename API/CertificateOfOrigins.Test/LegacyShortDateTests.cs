@@ -29,15 +29,4 @@ public class LegacyShortDateTests
             System.Globalization.CultureInfo.CurrentCulture = previous;
         }
     }
-
-    // Types 10 and 11 exist in the type table; without enum members their name fell back to the number.
-    [TestCase(ECertificateOfOriginType.Guatemala, "Guatemala")]
-    [TestCase(ECertificateOfOriginType.Eur1Accumulation, "EUR1-ACCUMULATION")]
-    public void TheNewCertificateTypesHaveTheirTableName(ECertificateOfOriginType type, string expected)
-    {
-        var member = typeof(ECertificateOfOriginType).GetMember(type.ToString()).Single();
-        var display = (System.ComponentModel.DataAnnotations.DisplayAttribute)Attribute.GetCustomAttribute(member, typeof(System.ComponentModel.DataAnnotations.DisplayAttribute))!;
-
-        Assert.That(display.Name, Is.EqualTo(expected));
-    }
 }

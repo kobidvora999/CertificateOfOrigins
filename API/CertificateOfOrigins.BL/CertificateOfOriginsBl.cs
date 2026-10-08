@@ -35,6 +35,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return certificate;
     }
 
+    // Decided (parity A-24, 2026-10-08): every milestone row is kept, with an empty name for a user the Users service does
+    // not know - legacy's INNER JOIN on UserMng_User dropped such rows. Legacy showed the user's Title; Name is used until
+    // the Users service contract says which of its fields is the display name.
     private async Task FillMilestoneUserNames(CertificateOfOriginDto certificate)
     {
         var userProxy = Resolve<IUserProxy>();
@@ -853,9 +856,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         var documentsProxy = Resolve<IDocumentsProxy>();
 
-        // Legacy: SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>(CertificateTypeID).Name. No ILookupUtil
-        // type exists for this SystemTable, so the certificate-type display name is taken from the
-        // ECertificateOfOriginType enum instead (developer decision 2026-08-02).
+        // Legacy: SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>(CertificateTypeID).Name - see GetCertificateTypeName.
         var certificateTypeName = GetCertificateTypeName(request.CertificateTypeId);
 
         var isDraft = request.CertificateRequestReasonCode == (int)ERequestReason.Draft ||
@@ -923,8 +924,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return users?.FirstOrDefault()?.OrganizationUnit ?? 0;
     }
 
-    // The certificate-type display name (replaces SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>.Name)
-    // — taken from the ECertificateOfOriginType [Display(Name)] attribute, falling back to the member name.
+    // The certificate-type name (legacy SystemTablesUtil.GetCodeById<CertificateOfOriginTypeCodeEnum>(id).Name), from the
+    // ECertificateOfOriginType [Display(Name)] - a recorded decision (developer, 2026-08-02; reconfirmed by the analyst for
+    // parity X-2, 2026-10-08): the type table is small and changes only when a type is added, and no lookup type exists for it.
+    // The enum is a copy of the table's Name column, kept in step by CertificateTypeEnumMatchesSeedTests (types 10 and 11 were
+    // missing and printed as numbers). Falls back to the member name / number for an id outside the enum.
     private static string GetCertificateTypeName(int certificateTypeId)
     {
         var certificateType = (ECertificateOfOriginType)certificateTypeId;
@@ -1753,7 +1757,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // submission-succeeded case reconciles and returns errors, so the other branches return an empty list.
     // Legacy opened with `if (!IsExportDeclarationActive) return;` — that parameter is obsolete and always true (the same
     // developer decision that dropped the RaiseNewCertificateOfOriginCreated guard, 2026-08-23), so the gate is a no-op
-    // and is not reproduced. TODO(confirm): drop the gate for good, or reinstate it if the parameter can return false.
+    // and is not reproduced. Decided (parity B-L1, 2026-10-08): the gate stays dropped - the analyst confirmed the flag is
+    // permanently true (2026-09-23), and the three other legacy places it gated are dropped on the same premise.
     public async Task<List<CertificateOfOriginExceptionDto>> UpdateCertificateOfOrigins(UpdateCertificateOfOriginsRequestDto request)
     {
         switch (request.EventType)
@@ -1892,9 +1897,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // PendingRelease certificate becomes Published — persist the status with the link, generate + upload its QR, and
     // publish its attachments; a certificate-replacement request cancels the replaced certificate. Finally reconcile the
     // freshly-linked certificates against the declaration.
-    // TODO(confirm): the legacy release-publish also sent the request-feedback message with the rendered attachments.
-    // It is omitted here to match the migrated SaveCertificateOfOrigin publish flow (no feedback message on Published) —
-    // confirm this is the intended behaviour for the release path too.
+    // TODO(blocking): the legacy release-publish also sent the request-feedback message (2281) with the rendered certificate PDF.
+    // It is the same blocker as SaveCertificateOfOrigin TODO(blocking) #1 (parity B-L6): the outgoing EAI channel that carried the
+    // PDF was removed from the platform. Do not send it without the PDF; when the channel returns, send it from PublishAttachments
+    // so the save and the release paths get it together.
     private async Task<List<CertificateOfOriginExceptionDto>> DeclarationReleased(UpdateCertificateOfOriginsRequestDto request)
     {
         if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)

@@ -9,6 +9,10 @@ namespace CertificateOfOrigins.BL.Validations;
 //
 // The optimistic concurrency stays - it is the platform convention and a stale TimeStamp is still a 409 - but a missing one
 // is a malformed request, answered as such: a 400 that names the field.
+//
+// Decided (parity H-2, 2026-10-08) - the client contract: send back the TimeStamp of the LAST response (every Save returns
+// the entity with its new row version, as the legacy WPF screen kept the returned entity; the screen saves twice in a row
+// after the send-letter dialog), and treat a 409 as "changed by someone else, reload".
 public class SaveExportDocumentAuthenticationRequestRequestValidator : AbstractValidator<SaveExportDocumentAuthenticationRequestRequestDto>
 {
     public SaveExportDocumentAuthenticationRequestRequestValidator()

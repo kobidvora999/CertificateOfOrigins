@@ -7,11 +7,11 @@
 
 | סטטוס | משמעות | כמות |
 |---|---|---|
-| FIXED | תוקן בקוד | 65 |
-| CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 40 |
+| FIXED | תוקן בקוד | 66 |
+| CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 45 |
 | NOT-A-DEFECT-DOC | תיעוד בלבד | 7 |
-| OPEN-DECISION | ממתין להחלטה של אדם | 10 |
-| OPEN-BLOCKED | נדחה לשלב נפרד: תלוי בשירות/חבילה שעוד לא קיימים (לא נספר כפתוח) | 18 |
+| OPEN-DECISION | ממתין להחלטה של אדם | 3 |
+| OPEN-BLOCKED | נדחה לשלב נפרד: תלוי בשירות/חבילה שעוד לא קיימים (לא נספר כפתוח) | 19 |
 | OPEN-TODO | פער אמיתי שלא טופל | 0 |
 | UNVERIFIED | לא ניתן היה לאמת | 2 |
 
@@ -42,7 +42,7 @@
 | A-21 | LOW | ExporterId DisplayedValue / site display fallback | FIXED | 1b4490e (ExporterId DisplayedValue left as sent) | - |
 | A-22 | LOW | Validation shape: 400 instead of InfException | CLOSED-OK | Appendix itself: acceptable | HTTP mapping change by design |
 | A-23 | LOW | GetById missing id returns 404 | CLOSED-OK | BL ~30-31 documented choice (RestNotFoundException) | Internal callers must handle 404 |
-| A-24 | LOW | GetById milestones: INNER JOIN dropped, Name vs Title | OPEN-DECISION | BL FillMilestoneUserNames ~38-65 (user.Name, NULL for unknown) | UNVERIFIED whether Name equals legacy Title; low impact, needs sign-off |
+| A-24 | LOW | GetById milestones: INNER JOIN dropped, Name vs Title | CLOSED-OK | Decision 2026-10-08: keep every milestone row (empty name for an unknown user); Name until the Users contract names the display field | Comment at FillMilestoneUserNames |
 | A-25 | LOW | ByFilter date bounds inline instead of ufn_General_GetDate* | UNVERIFIED | Scripts/API_20260721 ...ByFilter.sql:90,96 inline DATEADD | Legacy function bodies not compared; presumed equivalent |
 | A-26 | LOW | ExternalIdExist legacy likely broken | NOT-A-DEFECT-DOC | Appendix A-26 text | Intended behaviour, not a regression |
 | A-27 | LOW | LoadDataFromExportDeclaration by-ref mutation dropped | CLOSED-OK | BL ~738-746 (decision 2026-07-27) | ExportDealFile real route still unconfirmed (shared with A-09/A-15) |
@@ -61,12 +61,12 @@
 | B-M5 | MED | Release publish on partial projection (QrCodePath, issue-queue fields, ReportId) | FIXED | bb36fe2 (QrCodePath, Guid, CreateCustomerId, InternalApplication, FeedbackRemark loaded) + 507f43c (ReportId in payload/gate) | - |
 | B-M6 | MED | Replacement cancel clears IsLastVersion / appends reason | FIXED | bb67197 (CancelCertificate replaces reason, keeps IsLastVersion) | CertificateReplaced text still TODO(confirm), see L8 |
 | B-M7 | MED | Explicit null lists give 400 instead of legacy null handling | FIXED | 6f99d26 (null-safe BL guards, DTO nullable) | - |
-| B-L1 | LOW | IsExportDeclarationActive gate dropped | OPEN-DECISION | CertificateOfOriginsBl.cs:1765 TODO(confirm) | Confirm param is always true, or reinstate gate |
+| B-L1 | LOW | IsExportDeclarationActive gate dropped | CLOSED-OK | Decision 2026-10-08: the gate stays dropped (analyst: flag permanently true, 2026-09-23; three other gated places dropped on the same premise) | Not checked per environment |
 | B-L2 | LOW | Legacy accumulated exceptions across certificates; new evaluates each separately | CLOSED-OK | Report recommends keeping new behaviour (silent fix); no code change needed | Not documented in code/MIGRATION-NOT-DONE; add a note if desired |
-| B-L3 | LOW | Destination-group check edge cases differ (non-numeric group, null country) | OPEN-DECISION | CertificateOfOriginsBl.cs ~2240 (TryParse skip; null country flagged) | Report verdict PLAUSIBLE; no one decided; legacy edge cases are probable throws |
+| B-L3 | LOW | Destination-group check edge cases differ (non-numeric group, null country) | CLOSED-OK | Decision 2026-10-08: keep. A null destination country crashed legacy (empty predicate); a non-numeric group cannot reach this point (message 2280 converts or rejects it) | - |
 | B-L4 | LOW | Warnings-task assignment lacks profession/org-unit type | OPEN-BLOCKED | CertificateOfOriginsBl.cs:2148 TODO(migration) | Needs SingleUserAssignmentFilter support in event util |
 | B-L5 | LOW | Exception texts placeholders, ExceptionType=0 | OPEN-BLOCKED | CertificateOfOriginsBl.cs:2177, 2551, 2560 TODO | Waits on ValidationMessages/resx package |
-| B-L6 | LOW | Release publish does not send request-feedback message | OPEN-DECISION | CertificateOfOriginsBl.cs:1904 TODO(confirm) | Confirm drop or implement feedback send |
+| B-L6 | LOW | Release publish does not send request-feedback message | OPEN-BLOCKED | Relabelled TODO(blocking) in DeclarationReleased: same blocker as SaveCertificateOfOrigin #1 (EAI outgoing channel removed) | Do not send without the PDF; when the channel returns, send from PublishAttachments for both paths |
 | B-L7 | LOW | Cancellation branch: agent message deferred, reason literal | OPEN-BLOCKED | CertificateOfOriginsConsts.cs:70-72; Bl.cs:1992 TODO | Needs resx text (EServerTerms.CanceledDeclaration) + agent message |
 | B-L8 | LOW | HandleCertificateReplacement: FeedbackRemark, SendMessageToAgent, CertificateReplaced text deferred | OPEN-BLOCKED | CertificateOfOriginsBl.cs:1669, 1689 TODO | Reason now a literal (bb67197); UIMessage text and agent message remain |
 | B-L9 | LOW | CR 194221: event 642 AdditionalInfo always the request-reason name | OPEN-DECISION | CertificateOfOriginsBl.cs:2085 TODO(blocking) | Two claimants for {2}; needs decision (intentional CR) |
@@ -98,7 +98,7 @@
 | C-F15 | LOW | De-duplicated error emissions | CLOSED-OK | NB:264-270, NR:36-43 | fewer duplicate errors; harmless |
 | C-F16 | LOW | Message params use enum identifiers not Hebrew table names | FIXED | 1b4490e + e151a03 (Hebrew table names); tests ff134cd | IllegalFirstCountryInAgreement params have no placeholder in the text, nothing to render |
 | C-F17 | LOW | Whitespace certificateID gives CertificateDoesntExist | FIXED | 1b4490e; test ff134cd | - |
-| C-F18 | LOW | Date detail Value stored as ISO "o" not culture format | OPEN-DECISION | NV:450 ToString("o"); the cloud reads (line ~524 invariant parse, ~637 he-IL parse) rely on it | culture-format Value would break the invariant parse at ~524; keep ISO or switch both ends? |
+| C-F18 | LOW | Date detail Value stored as ISO "o" not culture format | CLOSED-OK | Decision 2026-10-08: keep ISO. Every Value reader uses DateTime.TryParse (ISO under any culture); print SPs read DisplayedValue | Comment at ToStringValue(DateTime) |
 | C-F19 | LOW | Null item/invoice text becomes "" | CLOSED-OK | MIGRATION-STATUS.md 2026-10-07: the columns are NOT NULL | Closed on that statement; not independently re-verified here |
 | C-F20 | LOW | Cancel reason hard-coded literal | CLOSED-OK | NB:~222 literal with explanatory comment | UIMessage catalogue unavailable |
 | C-F21 | LOW | Cancel write stamps UpdateUserId 0 without user context | CLOSED-OK | Decision (Kobi, via the analyst, 2026-10-07): CC-USER-ID always carries the acting user | A 0 seen locally (no header) is acceptable; no system-user default is substituted |
@@ -165,7 +165,7 @@
 | G-F9 | LOW | Reminder job swallows per-row exceptions (legacy aborted) | FIXED | round of 2026-10-07 (parity ledger fixes commit): plain loop, no catch, effected rows = due count, as legacy ExecuteTask | Planar project builds |
 | G-F10 | LOW | Scheduler UDF id to parameter-name mapping inferred | CLOSED-OK | Pairing confirmed: 5 ids by legacy DataScript inserts, 1148 = DaysForFirstReminderInAuthenticationRequest1 (value 6) checked by the analyst in the legacy General_enum_GlobalParam, 2026-10-07 | TODO(confirm) removed; comments in Schedulers.cs and Consts.cs cite the sources |
 | H-1 | MED | GetById omits 6 columns (CreateDate, CreateUserId, UpdateDate, UpdateUserId, State, OrganizationUnitId) | FIXED | e151a03 (the 6 columns read in the narrow second query) | Not checked against a live DB |
-| H-2 | MED | Optimistic concurrency added (legacy last-writer-wins) | OPEN-DECISION | c1b46d0 (partial) | A missing TimeStamp is now a 400. A stale TimeStamp still gives 409, which legacy did not. |
+| H-2 | MED | Optimistic concurrency added (legacy last-writer-wins) | CLOSED-OK | Decision 2026-10-08: keep optimistic concurrency; client contract in the validator comment (send the last returned TimeStamp, 409 = reload) | Only writer is the edit screen's Save |
 | H-3 | MED | Child merge not atomic with the parent | FIXED | c1b46d0; DAL:870-875 | Deletes staged through the tracker, one commit. |
 | H-4 | MED | Attach/message VirtualEntity had no Title/CustomerId | FIXED | b7f2249; ExportBl ToRelatedEntity | OrganizationUnitId still not on VirtualEntityDto (open contract question, noted in code). |
 | H-5 | LOW | Events raised after the commit, not before | NOT-A-DEFECT-DOC | report text ("arguably an improvement") | |
@@ -184,5 +184,5 @@
 | ID | Severity | Title | Status | Evidence | Note |
 |---|---|---|---|---|---|
 | X-1 | LOW | Lookups that replaced SystemTablesUtil reads did not filter State == 1 | FIXED | round of 2026-10-07 (parity ledger fixes commit): `Get(id, ActiveState)` / `State == ActiveState` for Country, City, CountryGroup, CurrencyType, PackingType, MeasurementUnit, Site, InternationalSite, DataDictionaryField; test LookupActiveRowsTests | `ILookupUtil.Get(id)` and `Search` do not filter (Lookup 1.10.120). Whether the owning services' `lookup/{Type}` already returns active rows only is not verified; the filter is harmless if they do |
-| X-2 | LOW | The certificate-type name ignores the type's State | OPEN-DECISION | CertificateOfOriginsBl.cs GetCertificateTypeName ([Display] of the enum); enum members 10 Guatemala and 11 EUR1-ACCUMULATION added (names were '10'/'11') | The seed has no inactive type today; reading the name from the table with State == 1 is the remaining option |
+| X-2 | LOW | The certificate-type name ignores the type's State | FIXED | Name from ECertificateOfOriginType [Display] (recorded decision 2026-08-02, reconfirmed 2026-10-08); members 10 and 11 added; CertificateTypeEnumMatchesSeedTests pins every type row and its Name to the seed script | State not checked: no inactive type exists and the name is display-only |
 | X-3 | MED | Short dates printed in the container's culture | FIXED | LegacyHostCulture (he-IL, dd/MM/yyyy, '/'): every ToShortDateString in the BL; test LegacyShortDateTests | Under ICU even he-IL prints 25.9.2025; legacy printed 25/09/2025 |

@@ -47,10 +47,9 @@ public enum ECertificateOfOriginType
     [Description("Vietnam")]
     Vietnam = 9,
 
-    // Types 10 and 11 are rows of the table (seed data) that the legacy enum, generated in 2022, predates. Legacy read the
-    // type name from the table (SystemTablesUtil.GetCodeById(...).Name), so it showed these names; the name here comes from
-    // [Display], and without these members it fell back to "10" / "11" on the document title, file name, issue-queue payload
-    // and the type-change message. Not referenced by name: only GetCertificateTypeName reads them.
+    // Types 10 and 11 are rows of the table (seed data) that the legacy enum, generated in 2022, predates; legacy read the name from
+    // the table, the migration reads it from [Display] (GetCertificateTypeName), so without them the name was the number (parity X-2).
+    // CertificateTypeEnumMatchesSeedTests keeps every table row and its Name in this enum. Not referenced by name.
     [Display(Name = "Guatemala", Description = "Guatemala")]
     [Description("Guatemala")]
     Guatemala = 10,
