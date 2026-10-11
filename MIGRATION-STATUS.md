@@ -47,6 +47,26 @@
 > **מניעה:** הלקחים נכנסו לסקילים — ארבעה כללים ב-`_shared/bl-rules.md` (פרסור לפי מקור הערך · שם מטבלה ולא מ-enum · אין קוד בלי מקבילה לגאסית ·
 > `""` ב-binding), ארבע סריקות ב-`net10-code-review` (חלק א) ושורה לאזהרות תרבות (חלק ב), ושש קטגוריות ב-`parity-review`.
 
+> ## ⚙️ Workers — הנפקת תעודה ע"י worker (2026-10-11, commit `2a3a98e`)
+>
+> | פרויקט | תפקיד |
+> |---|---|
+> | `Workers/CertificateOfOriginsWorkers` | **ה-host היחיד** של כל ה-workers של השירות (exe). רק בו: `Program` (CloudWorkerApp + `SetMicroService(CertificateOfOrigins)` + migration של התורים), `ServiceConfiguration` (מקטע לכל worker) וכל קבצי ה-`appsettings` |
+> | `Workers/IssueCertificateOfOrigin.Worker` | ספרייה. מקבל מה-exchange `IssueCertificateOfOrigin` תעודה לפרסום: מפיק את דוח ה-SSRS (WCF CommonServices), שומר את המסמך (WCF Documents, מוחק קודמים), מאפס `IsInPublishingProcess` ושולח משוב 2281 לסוכן דרך שירות Common (`OutgoingMessage`) |
+>
+> - **הזרימה:** ה-API (`SaveCertificateOfOrigin`, בפרסום) שולח ל-exchange רק כשהפרמטר `IssueCertificateOfOriginByWorker` = True. **ב-seed הוא `False`** — עד שמדליקים אותו בסביבה, ה-worker לא מקבל הודעות וההנפקה נשארת בתוך ה-API.
+> - **התורים:** `IssueCertificateOfOrigin` (dead-letter ל-`IssueCertificateOfOrigin.Errors`), exchange מסוג direct — נוצרים ע"י ה-host בעלייה.
+> - **גרסאות:** InfrastructureCore כמו ב-API (Worker 1.10.109, BL 1.10.97, Proxy 1.10.108, Utils 1.10.134). השדרוג חייב 4 התאמות בקוד ה-worker שהתקבל (`CreateLoggerScope`, שם שירות ההודעה כקבוע, `CommonCloudProxy` על `BaseCustomsProxy`, הסרת `AddOutgoingMessageService` שלא היה בשימוש).
+>
+> **נבדק:** עלייה מקומית — ה-host עלה, יצר את התורים, וה-worker האזין לתור. **לא נבדק:** טיפול בהודעה אמיתית (קורא ל-WCF Documents / CommonServices שאינם זמינים מקומית).
+>
+> **לבדוק בהרצה הראשונה בסביבה:**
+> 1. **שמות השדות בהודעה:** ה-API שולח `CertificateTypeId`, `CreateCustomerId`, `Guid`, `OrganizationUnitId`, וה-worker מצפה ל-`CertificateTypeID`, `CreateCustomerID`, `GUID`, `OrganizationUnitID`. אם קריאת ה-CloudEvent רגישה לאותיות — ארבעתם יגיעו ריקים.
+> 2. **`CertificateOfOriginQueryURL` משני מקורות:** ה-API קורא אותו מ-`Infrastructure.Parameters`, וה-worker מ-`appsettings.{Environment}.json` של ה-host. ערך שמשתנה צריך להשתנות בשניהם.
+> 3. **worker נוסף בעתיד:** ב-`appsettings.json` מוגדר `Queue:SingleQueue` (תור אחד). צריך לברר איך הפלטפורמה מגדירה כמה תורים ב-host אחד לפני שמוסיפים worker שני.
+>
+> **לפני deploy:** ה-host הוא יחידת deploy חדשה — צריך לוודא שיש לו pipeline והגדרות סביבה (קבצי ה-deploy אינם ב-repo, גם לא של ה-API, ולכן זה לא נבדק מכאן).
+
 > ## 🛑 פעולות פתוחות לפני merge / deploy (2026-09-07)
 >
 > שלושת אלה **אינם** נתפסים ע"י בילד או בדיקה, והם כבר על master. הועברו לכאן מקובץ חותמת הקונבנציות
