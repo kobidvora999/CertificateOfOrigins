@@ -1,0 +1,71 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <!-- A library: the worker's code only. It is hosted by Workers/CertificateOfOriginsWorkers, which holds the Program,
+       the ServiceConfiguration and the appsettings of every CertificateOfOrigins worker. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- The host registers this worker's internal types (handler, DAL, generated WCF contracts). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="CertificateOfOriginsWorkers" />
+  </ItemGroup>
+	<PropertyGroup>
+		<SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss:fffZ"))</SourceRevisionId>
+	</PropertyGroup>
+	<PropertyGroup>
+		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CustomsCloud.InfrastructureCore.BL" Version="1.10.97" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Parameters" Version="1.10.111" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Proxy" Version="1.10.108" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.134" />
+    <PackageReference Include="CustomsCloud.InfrastructureCore.Worker" Version="1.10.109" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.ServiceModel.Http" Version="8.1.2" />
+    <!-- Pins the transitive 8.0.2 (known high-severity vulnerabilities), as the Planar projects do. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ConnectedServices\ConnectedServices.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>ConnectedServices.txt</LastGenOutput>
+    </None>
+    <None Update="ConnectedServices\ConnectedServices.txt">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ConnectedServices.tt</DependentUpon>
+    </None>
+    <None Update="CustomsDb.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>CustomsDb.txt</LastGenOutput>
+    </None>
+    <None Update="CustomsDb.txt">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>CustomsDb.tt</DependentUpon>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+</Project>

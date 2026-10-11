@@ -1,0 +1,42 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Runtime" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".txt" #>
+
+<#
+    try
+    {
+        System.Reflection.Assembly assembly = null;
+
+        var files = new []
+        {
+            @"\\10.25.218.157\Builds\CustomsCloud\YamlDotNet.dll",
+            @"\\10.25.218.157\Builds\CustomsCloud\CustomsCloud.Infrastructure.CodeGenerator.dll"
+        };
+
+        foreach(var f in files)
+        {
+            var bytes = System.IO.File.ReadAllBytes(f);
+            assembly = System.Reflection.Assembly.Load(bytes);
+        }
+
+        var type = assembly.GetType("CustomsCloud.Infrastructure.CodeGenerator.EFWorkerGenerator");
+        var method = type.GetMethod("Generate");
+        var instance = System.Activator.CreateInstance(type);
+        var result = method.Invoke(instance, new object[] { Host.TemplateFile });
+        WriteLine(result.ToString());
+		
+		method = type.GetMethod("GenerateExtension");
+        instance = System.Activator.CreateInstance(type);
+        result = method.Invoke(instance, new object[] { Host.TemplateFile });
+        WriteLine(result.ToString());
+    }
+    catch(Exception ex)
+    {
+        WriteLine(ex.ToString());
+    }
+
+ #>

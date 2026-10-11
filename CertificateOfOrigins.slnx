@@ -12,7 +12,10 @@
     <Project Path="Planar/CertificateOfOrigins.Planar.AuthenticationRequestReminder/CertificateOfOrigins.Planar.AuthenticationRequestReminder.csproj" />
     <Project Path="Planar/CertificateOfOrigins.Planar.ReminderForImporterScheduler/CertificateOfOrigins.Planar.ReminderForImporterScheduler.csproj" />
   </Folder>
-  <Folder Name="/Workers/" />
+  <Folder Name="/Workers/">
+    <Project Path="Workers/CertificateOfOriginsWorkers/CertificateOfOriginsWorkers.csproj" />
+    <Project Path="Workers/IssueCertificateOfOrigin.Worker/IssueCertificateOfOrigin.Worker.csproj" />
+  </Folder>
   <Folder Name="/Postman/">
     <Folder Name="/Postman/Environments/">
       <File Path="Postman/Environments/CertificateOfOrigins.Development.postman_environment.json" />
