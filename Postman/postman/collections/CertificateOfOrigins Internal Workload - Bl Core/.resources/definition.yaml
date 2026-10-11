@@ -114,7 +114,8 @@ scripts:
       if (name === '10-webquery-eurmed' && j) {
           var body = pm.response.text();
           pm.test('10: the certificate resolved by guid', function () {
-              pm.expect(j.exceptionDescription, 'exceptionDescription must be empty on a hit').to.be.oneOf([null, undefined, '']);
+              pm.expect(j.ExeptionDescription, 'ExeptionDescription must be empty on a hit').to.be.oneOf([null, undefined, '']);
+              pm.expect(j.CertificateNumber, 'CertificateNumber').to.be.a('string').and.not.empty;
           });
           pm.test('10: BuildHeaderFields emitted its retrospective + replacement + export-declaration rows', function () {
               pm.expect(body).to.include('Issued Retrospectively');
@@ -125,7 +126,8 @@ scripts:
       }
       if (name === '30-webquery-mercosur' && j) {
           pm.test('30: resolved by guid', function () {
-              pm.expect(j.exceptionDescription).to.be.oneOf([null, undefined, '']);
+              pm.expect(j.ExeptionDescription).to.be.oneOf([null, undefined, '']);
+              pm.expect(j.CertificateNumber, 'CertificateNumber').to.be.a('string').and.not.empty;
           });
           // MapConsigneeField's non-EUR arm prints the consignee rows; the EURMED read above must not.
           pm.test('30: the consignee rows are printed for a non-EUR type', function () {

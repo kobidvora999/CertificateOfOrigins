@@ -9,6 +9,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 {
     Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber);
 
+    Task<List<string?>> GetLiveCertificateNumbersByIds(List<int> certificateIds);
+
     Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters);
 
     Task<List<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters);

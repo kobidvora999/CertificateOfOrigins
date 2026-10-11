@@ -72,6 +72,11 @@ internal static class CertificateOfOriginsConsts
     // exactly) — set on a rejected reconciliation.
     public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה להצהרה";
 
+    // UIMessage 6541 (EMessages.AdditionalCertificatesToExportDeclaration) — appended after the request reason in the
+    // new-certificate-check task's AdditionalInfo; {0} is the other certificate numbers. Text from the legacy DB
+    // (confirmed by the developer, 2026-10-11).
+    public const string AdditionalCertificatesToExportDeclarationMessage = "שים לב: להצהרת היצוא קיימות תעודות מקור נוספות {0}";
+
     // Legacy EServerTerms.CanceledDeclaration — the reject/cancel reason stamped when an export declaration's
     // cancellation is committed (ExportDeclarationCancellationRequestCommited).
     public const string CanceledDeclarationReason = "ההצהרה בוטלה"; // TODO(migration): source the exact text from ValidationMessages/resx (EServerTerms.CanceledDeclaration).

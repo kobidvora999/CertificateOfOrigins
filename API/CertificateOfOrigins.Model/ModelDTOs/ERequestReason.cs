@@ -5,6 +5,9 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // Generated from CRM.CertificateOfOrigins_enum_RequestReasonCode. Display/Description texts are the Hebrew
 // names from the legacy enum (source of truth — not invented).
+// Exactly the rows of the table: 6-9 (market committees, random, comprehensive testing) were deleted from it as not
+// relevant (developer, 2026-10-11), so legacy CheckRequestReasonCodeEnum rejected them; with no member here, message
+// 2280 answers RequestReasonNotExist for them too. RequestReasonEnumMatchesSeedTests pins the two together.
 [Flags]
 public enum ERequestReason
 {
@@ -27,22 +30,6 @@ public enum ERequestReason
     [Display(Name = "החלפת תעודה ביבוא", Description = "החלפת תעודה ביבוא")]
     [Description("החלפת תעודה ביבוא")]
     ImportCertificateReplacement = 5,
-
-    [Display(Name = "החלטה של וועדת שוק אזורית", Description = "החלטה של וועדת שוק אזורית")]
-    [Description("החלטה של וועדת שוק אזורית")]
-    ResolutionOfRegionalMarketCommittee = 6,
-
-    [Display(Name = "החלטה של וועדת שוק עליונה", Description = "החלטה של וועדת שוק עליונה")]
-    [Description("החלטה של וועדת שוק עליונה")]
-    DecisionOfSupremeMarketCommission = 7,
-
-    [Display(Name = "אקראי", Description = "אקראי")]
-    [Description("אקראי")]
-    Random = 8,
-
-    [Display(Name = "בדיקה מקיפה", Description = "בדיקה מקיפה")]
-    [Description("בדיקה מקיפה")]
-    ComprehensiveTesting = 9,
 
     [Display(Name = "תעודה ריקה", Description = "תעודה ריקה")]
     [Description("תעודה ריקה")]

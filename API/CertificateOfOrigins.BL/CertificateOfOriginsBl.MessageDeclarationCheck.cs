@@ -61,7 +61,7 @@ public partial class CertificateOfOriginsBl
     // Legacy CheckDeclarationStatus (BL.cs:648) with isNeedToReturn:true. Resolve the export declaration for the
     // certificate (by its lead-document id / export-declaration number), then fetch the full declaration info used for
     // the reconciliation. The legacy lead-document repoint (ChangeCertificateOfOriginIDForLeadDocument) is NOT repeated
-    // here — SaveCertificateOfOrigin's SupersedePreviousVersion already repointed the lead document during the save.
+    // here — SaveCertificateOfOrigin's LinkLeadDocument already repointed the lead document during the save.
     private async Task<ExportDeclarationInfoDto?> GetDeclarationInfoForReconciliation(CertificateOfOriginDto certificate, MessageValidationContext context)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();

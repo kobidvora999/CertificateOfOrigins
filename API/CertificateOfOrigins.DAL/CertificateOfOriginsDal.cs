@@ -21,6 +21,22 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         return result;
     }
 
+    public async Task<List<string?>> GetLiveCertificateNumbersByIds(List<int> certificateIds)
+    {
+        // Legacy GetCertificateOfOriginByDeclaration: the numbers of the given certificates that are not Cancelled,
+        // Rejected or Error (no State filter, as legacy). Ordered by id — the order the legacy query (no ORDER BY) returned
+        // in practice — because the caller shows the first and the last.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => certificateIds.Contains(c.Id)
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Rejected
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Error)
+            .OrderBy(c => c.Id)
+            .Select(c => c.CertificateNumber)
+            .ToListAsync();
+        return result;
+    }
+
     public async Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber)
     {
         // GetPC_MSG2280_2281 (GetRequestStatus / CertificateCancellation): the latest certificate with this number,

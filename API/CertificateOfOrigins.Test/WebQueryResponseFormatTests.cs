@@ -40,15 +40,42 @@ public class WebQueryResponseFormatTests
 
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         var root = json.RootElement;
-        var issuingDate = root.GetProperty("certificateOfOriginDetails").EnumerateArray()
-            .Single(field => field.GetProperty("label").GetString() == CertificateOfOriginsConsts.IssuingDateLabel)
-            .GetProperty("value").GetString();
-        var invoiceDate = root.GetProperty("certificateOfOriginInvoiceDetails")[0].GetProperty("invoiceDate").GetString();
+        var issuingDate = root.GetProperty("CertificateOfOriginDetails").EnumerateArray()
+            .Single(field => field.GetProperty("Label").GetString() == CertificateOfOriginsConsts.IssuingDateLabel)
+            .GetProperty("Value").GetString();
+        var invoiceDate = root.GetProperty("CertificateOfOriginInvoiceDetails")[0].GetProperty("InvoiceDate").GetString();
 
         Assert.Multiple(() =>
         {
             Assert.That(issuingDate, Is.EqualTo("2026-03-01"));
             Assert.That(invoiceDate, Is.EqualTo("2026-03-01"));
+        });
+    }
+
+    // D-F1: the portal reads the legacy wire names, including the legacy spelling ExeptionDescription — under the web
+    // serializer defaults (camelCase) as well, since the names are pinned per member.
+    [Test]
+    public void TheWebResponseUsesTheLegacyWireNames()
+    {
+        var response = new CertificateOfOriginsResponseDto
+        {
+            ExceptionDescription = CertificateOfOriginsConsts.InvalidGuid,
+            CertificateOfOriginInvoiceDetails = [new CertificateOfOriginWebInvoiceDetailDto()],
+        };
+
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var root = json.RootElement;
+        var names = root.EnumerateObject().Select(p => p.Name).ToList();
+        var invoiceNames = root.GetProperty("CertificateOfOriginInvoiceDetails")[0].EnumerateObject().Select(p => p.Name).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(names, Is.EquivalentTo(new[]
+            {
+                "CertificateNumber", "QueryURL", "DocumentID", "CertificateOfOriginDetails", "CertificateOfOriginInvoiceDetails", "ExeptionDescription",
+            }));
+            Assert.That(root.GetProperty("ExeptionDescription").GetString(), Is.EqualTo(CertificateOfOriginsConsts.InvalidGuid));
+            Assert.That(invoiceNames, Does.Contain("CertificateOfOriginItemDetailDTOs"));
         });
     }
 

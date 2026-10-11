@@ -151,9 +151,10 @@ scripts:
       var certNumber = pm.collectionVariables.get('certNumber');
       if (name === '70-web-query-by-guid') {
           pm.test('70: the web verification resolves THIS certificate by its Guid', function () {
-              pm.expect(j.certificateNumber, 'certificateNumber').to.eql(certNumber);
-              pm.expect(j.queryUrl, 'queryUrl').to.contain(pm.collectionVariables.get('certGuid'));
-              pm.expect(j.certificateOfOriginDetails, 'details').to.be.an('array').that.is.not.empty;
+              // Legacy wire names on the portal contract (parity D-F1).
+              pm.expect(j.CertificateNumber, 'CertificateNumber').to.eql(certNumber);
+              pm.expect(j.QueryURL, 'QueryURL').to.contain(pm.collectionVariables.get('certGuid'));
+              pm.expect(j.CertificateOfOriginDetails, 'details').to.be.an('array').that.is.not.empty;
           });
       }
       if (name === '71-id-by-number') {

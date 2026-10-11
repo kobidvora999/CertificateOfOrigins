@@ -95,23 +95,25 @@ scripts:
       // --- the actual coverage target ---
       if (name === '20-request-by-guid') {
           pm.test('resolves the certificate by guid', function () {
-              pm.expect(j.certificateNumber, 'certificateNumber').to.be.a('string').and.not.empty;
-              pm.expect(j.queryUrl || '', 'queryUrl must embed the guid').to.contain(pm.collectionVariables.get('webQueryGuid'));
+              // The portal contract keeps the legacy wire names (parity D-F1): PascalCase, QueryURL, ExeptionDescription.
+              pm.expect(j.CertificateNumber, 'CertificateNumber').to.be.a('string').and.not.empty;
+              pm.expect(j.QueryURL || '', 'QueryURL must embed the guid').to.contain(pm.collectionVariables.get('webQueryGuid'));
           });
           // This is the branch proof: an empty details array means the mapping loop never ran, which is exactly
           // the state the collection exists to prevent regressing to.
           pm.test('the field-mapping loop produced details', function () {
-              pm.expect(j.certificateOfOriginDetails, 'certificateOfOriginDetails').to.be.an('array').that.is.not.empty;
+              pm.expect(j.CertificateOfOriginDetails, 'CertificateOfOriginDetails').to.be.an('array').that.is.not.empty;
           });
           pm.test('mapped details carry labels', function () {
-              pm.expect(j.certificateOfOriginDetails.filter(function (d) { return d.label; }).length).to.be.above(0);
+              pm.expect(j.CertificateOfOriginDetails.filter(function (d) { return d.Label; }).length).to.be.above(0);
           });
       }
 
       if (name === '30-request-by-number') {
-          // In-band not-found contract: 200 + ExceptionDescription, never a 404.
+          // In-band not-found contract: 200 + ExeptionDescription (legacy spelling), never a 404.
           pm.test('unknown number+date answers in-band, not 404', function () {
               pm.expect(pm.response.code).to.eql(200);
+              pm.expect(j.ExeptionDescription, 'ExeptionDescription').to.eql('No Matching Certificate');
           });
       }
     language: text/javascript

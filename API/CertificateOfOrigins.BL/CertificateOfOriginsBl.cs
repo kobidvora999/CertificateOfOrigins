@@ -74,11 +74,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // response is exposed here as a direct REST return (developer decision: mirrors the legacy *Sync contract and the
     // migrated sibling GetCertificateRequestByGuid).
     //
-    // SKELETON (developer decision): only the read/cancel branches (GetRequestStatus, CertificateCancellation) are
-    // migrated here. The create/update branch (map message → SaveCertificateOfOrigin → post-save declaration-submitted
-    // check) is deferred and delivered together with the FluentValidation unit — because the legacy field validation
-    // ALSO resolves the exporter / destination-country / org-unit / cert-to-update values the save consumes (the same
-    // proxy checks produce them), so it cannot be wired faithfully without that unit. See the default-branch TODO.
+    // Branches by request reason: GetRequestStatus and CertificateCancellation read/cancel the saved certificate; every
+    // other reason is the create/update branch (ProcessCreateCertificateBranch: message validation, which also resolves
+    // the exporter / destination-country / org-unit / cert-to-update values → SaveCertificateOfOrigin → declaration
+    // check and reconciliation).
     //
     // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
     // EVERYTHING the message does - reading the config, taking the lock, processing, a failed external service - runs
@@ -253,8 +252,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // Legacy: an unresolved certificate leaves the feedback body empty (the response header still carries the
         // accumulated exceptions). The read/cancel branches surface not-found this way rather than as a 404. All
-        // exceptions — validation, not-found, and (once wired) declaration reconciliation — flow through the single
-        // requestExceptions channel.
+        // exceptions — validation, not-found and declaration reconciliation — flow through the single requestExceptions
+        // channel.
         var response = await BuildRequestFeedbackResponse(certificateToResponse, requestExceptions, reasonCode);
         return response;
     }
@@ -373,9 +372,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             QueryUrl = queryUrl,
             RequestReasonCode = certificate.RequestReasonCode,
 
-            // IssueDateIfReleased / IssueDateIfNotReleased: the legacy split is driven by IsDeclarationReleased, which is
-            // computed only in the create/save + declaration-check flow (deferred). For the read/cancel branches it is
-            // not computed, so both stay null — faithful (the legacy sets them only when IsDeclarationReleased.HasValue).
+            // IssueDateIfReleased / IssueDateIfNotReleased stay null in every branch, as legacy: its
+            // CreateCertificateOfOriginRequestFeedback sets them only when IsDeclarationReleased.HasValue, and that
+            // unmapped flag is set only by LoadDataFromExportDeclaration (the edit screen), never in the message flow.
         };
     }
 
@@ -2079,11 +2078,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // when the "IsExportDeclarationActive" parameter is FALSE, and that parameter is always TRUE (confirmed with the
     // analyst, 2026-09-23) — so 599 is unreachable in the legacy too, not just here. See RaiseStatusEvents.
     //
-    // 🛑 TODO(blocking): {2} has TWO claimants. The legacy put the "additional certificates on this declaration"
-    // message (EMessages.AdditionalCertificatesToExportDeclaration + GetCertificateOfOriginByDeclaration) in
-    // AdditionalInfo; that message is still deferred (resx) and therefore never written, which is why the slot was
-    // free to take. Whoever restores it MUST reconcile the two — replace, or concatenate — rather than simply
-    // reinstating the legacy assignment and silently dropping the request reason from the task name.
+    // The AdditionalInfo follows the legacy as updated with CR 194221 (B-L9, 2026-10-11): the request-reason name,
+    // followed by ". " and the "additional certificates on this declaration" message when the declaration carries other
+    // live certificates.
     private async Task RaiseCertificatePreferredAssessorEvent(CertificateOfOrigin certificate, IEventUtil eventUtil, int eventTypeId)
     {
         var assessorUserId = await ResolveAssessorUserId(certificate.LeadDocumentId, certificate.OrganizationUnitId);
@@ -2097,14 +2094,78 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder = builder.WithTaskArguments(task => task.WithPreferredUserId(assessorUserId.Value));
         }
 
-        // CR 194221 — the request reason, rendered into {2} of the task title.
-        var requestReasonName = GetRequestReasonName(certificate.RequestReasonCode);
-        if (!string.IsNullOrEmpty(requestReasonName))
+        // CR 194221 — rendered into {2} of the task title.
+        var additionalInfo = await BuildNewCertificateCheckAdditionalInfo(certificate);
+        if (!string.IsNullOrEmpty(additionalInfo))
         {
-            builder = builder.WithAdditionalInfo(requestReasonName);
+            builder = builder.WithAdditionalInfo(additionalInfo);
         }
 
         await eventUtil.RaiseEvent(builder.Build());
+    }
+
+    // Legacy RaiseTaskNewCertificateOfOriginCheck (CR 194221): the other live certificates on the declaration → "reason. "
+    // + AdditionalCertificatesToExportDeclaration filled with one number, two numbers, or ". לדוגמה:" + first and last;
+    // none → the reason name alone.
+    private async Task<string?> BuildNewCertificateCheckAdditionalInfo(CertificateOfOrigin certificate)
+    {
+        var requestReasonName = GetRequestReasonName(certificate.RequestReasonCode);
+        var certificateNumbers = await GetOtherCertificateNumbersOnDeclaration(certificate);
+        var result = FormatNewCertificateCheckAdditionalInfo(requestReasonName, certificateNumbers);
+        return result;
+    }
+
+    private static string FormatNewCertificateCheckAdditionalInfo(string requestReasonName, List<string> certificateNumbers)
+    {
+        if (certificateNumbers.Count == 0)
+        {
+            return requestReasonName;
+        }
+
+        var messageParameter = certificateNumbers.Count switch
+        {
+            1 => certificateNumbers[0],
+            2 => certificateNumbers[0] + ", " + certificateNumbers[1],
+            _ => ". לדוגמה:" + certificateNumbers[0] + ", " + certificateNumbers[^1],
+        };
+        var message = string.Format(CultureInfo.InvariantCulture, CertificateOfOriginsConsts.AdditionalCertificatesToExportDeclarationMessage, messageParameter);
+        var result = requestReasonName + ". " + message;
+        return result;
+    }
+
+    // Legacy GetCertificateOfOriginByDeclaration + the caller's filter: the certificates on the export declaration's goods
+    // items, not Cancelled / Rejected / Error, other than this one's number. No declaration, or no declaration info, gives
+    // none (the legacy `?.` of CR 194221). A null number is skipped: legacy's cn.Equals would have thrown on it.
+    private async Task<List<string>> GetOtherCertificateNumbersOnDeclaration(CertificateOfOrigin certificate)
+    {
+        if (certificate.LeadDocumentId == null && certificate.ExportDeclarationNumber == null)
+        {
+            return [];
+        }
+
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
+        var declarationDetails = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(certificate.LeadDocumentId, certificate.ExportDeclarationNumber);
+        if (declarationDetails == null)
+        {
+            return [];
+        }
+
+        var declarationInfo = await exportDealFileProxy.GetExportDeclarationInfoForPc(declarationDetails.LeadDocumentId);
+        if (declarationInfo == null)
+        {
+            return [];
+        }
+
+        var certificateIds = declarationInfo.ExportInvoiceInfoList
+            .SelectMany(invoice => invoice.ExportGoodsItemInfoList ?? [])
+            .Select(goodsItem => goodsItem.CertificateOfOriginId)
+            .ToList();
+        var certificateNumbers = await DataLayer.GetLiveCertificateNumbersByIds(certificateIds);
+        var result = certificateNumbers
+            .Where(number => number != null && !number.Equals(certificate.CertificateNumber, StringComparison.Ordinal))
+            .Select(number => number!)
+            .ToList();
+        return result;
     }
 
     // The request-reason display name — taken from the ERequestReason [Display(Name)] attribute (the Hebrew names of

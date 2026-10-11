@@ -1,4 +1,4 @@
-# Parity ledger — מצב ממצאי הפאריטי (2026-10-07)
+# Parity ledger — מצב ממצאי הפאריטי (2026-10-07, עודכן 2026-10-11)
 
 נבדק מחדש מול master (`ff134cd`) ב-2026-10-07 אחרי שסבב תיקונים נוסף נכנס (`1b4490e`, `729df1b`, `e151a03`, `fe13750`). נבנה מ-8 הנספחים `parity-A..H` מול הקוד הנוכחי ומול הקומיטים מאז 27.9. כל סטטוס נבדק בקוד ולא רק לפי שם קומיט; ממצאים שלא ניתן היה לאמת מסומנים UNVERIFIED.
 שמות המזהים הם של הנספח המקורי (ב-C נוספה הקידומת C-, ב-F המזהים F-xx כבמקור, ב-D/E/G נוספה אות הנספח).
@@ -7,10 +7,10 @@
 
 | סטטוס | משמעות | כמות |
 |---|---|---|
-| FIXED | תוקן בקוד | 68 |
-| CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 45 |
+| FIXED | תוקן בקוד | 71 |
+| CLOSED-OK | נסגר: החלטת אנליסט / פאריטי מאומת / החלטת תכנון מתועדת | 46 |
 | NOT-A-DEFECT-DOC | תיעוד בלבד | 7 |
-| OPEN-DECISION | ממתין להחלטה של אדם | 3 |
+| OPEN-DECISION | ממתין להחלטה של אדם | 0 |
 | OPEN-BLOCKED | נדחה לשלב נפרד: תלוי בשירות/חבילה שעוד לא קיימים (לא נספר כפתוח) | 19 |
 | OPEN-TODO | פער אמיתי שלא טופל | 0 |
 | UNVERIFIED | לא ניתן היה לאמת | 0 |
@@ -69,7 +69,7 @@
 | B-L6 | LOW | Release publish does not send request-feedback message | OPEN-BLOCKED | Relabelled TODO(blocking) in DeclarationReleased: same blocker as SaveCertificateOfOrigin #1 (EAI outgoing channel removed) | Do not send without the PDF; when the channel returns, send from PublishAttachments for both paths |
 | B-L7 | LOW | Cancellation branch: agent message deferred, reason literal | OPEN-BLOCKED | CertificateOfOriginsConsts.cs:70-72; Bl.cs:1992 TODO | Needs resx text (EServerTerms.CanceledDeclaration) + agent message |
 | B-L8 | LOW | HandleCertificateReplacement: FeedbackRemark, SendMessageToAgent, CertificateReplaced text deferred | OPEN-BLOCKED | CertificateOfOriginsBl.cs:1669, 1689 TODO | Reason now a literal (bb67197); UIMessage text and agent message remain |
-| B-L9 | LOW | CR 194221: event 642 AdditionalInfo always the request-reason name | OPEN-DECISION | CertificateOfOriginsBl.cs:2085 TODO(blocking) | Two claimants for {2}; needs decision (intentional CR) |
+| B-L9 | LOW | CR 194221: event 642 AdditionalInfo always the request-reason name | FIXED | 2026-10-11: legacy RaiseTaskNewCertificateOfOriginCheck was updated by the developer (CR 194221): reason name, then ". " + UIMessage 6541 ("שים לב: להצהרת היצוא קיימות תעודות מקור נוספות {0}") when the declaration has other live certificates; ported in BuildNewCertificateCheckAdditionalInfo + DAL GetLiveCertificateNumbersByIds; test NewCertificateCheckAdditionalInfoTests | The other two methods sent (RaiseNewCertificateOfOriginCreatedEvent, UpdateCertrificateOfOrigins) were diffed: identical to the local legacy. Not run against a live ExportDealFile service |
 | B-L10 | LOW | Audit user falls back to 0 without user header | CLOSED-OK | RequestMetadata.UserId ?? 0 (project convention; no hardcoded 1) | Guard accepted pattern |
 | B-L11 | LOW | GetGoodsItemCerificateDTO keeps client id when number is null | FIXED | 1b4490e (null certificate number yields a null id) | - |
 | B-L12 | LOW | GetCertificateOfOriginID returns 404 vs legacy null | CLOSED-OK | Controller/BL 404 convention (RestNotFoundException) | Documented project convention; callers must handle 404 |
@@ -93,7 +93,7 @@
 | C-F10 | MED | Blocked cancel echoes feedback and ApplicationId | FIXED | d9792cc; NB cancel branch sets certificateToResponse=null | - |
 | C-F11 | MED | Lock/null-agent/validator failures return HTTP 400 not in-band | FIXED | 81ccfe9, 89fe992, aa2cdaf; NB:79-150 | - |
 | C-F12 | MED | Agent customer id client-supplied in body | FIXED | cd94c42; NV:108 uses RequestMetadata.MessageSenderId | - |
-| C-F13 | MED | Lead-document repoint by title not ported | FIXED | e3a65f8; NB LinkLeadDocument ~1470-1482 calls ChangeCertificateOfOriginIdForLeadDocument | ND comment at :60 still says "not repeated" (stale comment only) |
+| C-F13 | MED | Lead-document repoint by title not ported | FIXED | e3a65f8; NB LinkLeadDocument ~1470-1482 calls ChangeCertificateOfOriginIdForLeadDocument | The MessageDeclarationCheck comment named SupersedePreviousVersion as the repoint; corrected to LinkLeadDocument (2026-10-08) |
 | C-F14 | LOW | Error accumulation/ordering differs from legacy hard-stops | CLOSED-OK | documented developer decision in code comment (NI:17-41) | response exception order differs, accepted |
 | C-F15 | LOW | De-duplicated error emissions | CLOSED-OK | NB:264-270, NR:36-43 | fewer duplicate errors; harmless |
 | C-F16 | LOW | Message params use enum identifiers not Hebrew table names | FIXED | 1b4490e + e151a03 (Hebrew table names); tests ff134cd | IllegalFirstCountryInAgreement params have no placeholder in the text, nothing to render |
@@ -105,19 +105,19 @@
 | C-F22 | LOW | QueryUrl empty when Guid null (legacy always formatted) | FIXED | 1b4490e; test ff134cd | - |
 | C-F23 | LOW | Latest-by-number/OriginCriterion lookups lack state filters | FIXED | round of 2026-10-07 (parity ledger fixes commit): certificate by number State = 1 + newest CreateDate (legacy SP); OriginCriterion State == 1 (SystemTables default); tests LatestCertificateByNumberTests, SystemTableActiveRowsTests | Exact number match kept on purpose (legacy SP used LIKE %n%) |
 | C-F24 | LOW | Certificate number generated for reasons 6-9 | FIXED | 1b4490e (number generated only for reasons 1,2,10,4,5,12, as legacy's switch) | - |
-| C-F25 | LOW | Stale SKELETON header comment | NOT-A-DEFECT-DOC | NB:70-77 still says create branch deferred | comment cleanup only |
+| C-F25 | LOW | Stale SKELETON header comment | NOT-A-DEFECT-DOC | Cleaned 2026-10-08: the header describes the three branches; the "(once wired) reconciliation" note and the "deferred" issue-date note were rewritten too (legacy never set IsDeclarationReleased in the message flow, so both issue dates are null in every branch) | comment cleanup only |
 | C-F26 | LOW | Mock proxies / TODO(blocking) deferrals | NOT-A-DEFECT-DOC | MIGRATION-NOT-DONE.md; CustomsBookProxy TODO | documented deferral |
 
 ## D+E — Web GUID and authentication reads
 
 | ID | Severity | Title | Status | Evidence | Note |
 |---|---|---|---|---|---|
-| D-F1 | MEDIUM | Web response member names changed (exceptionDescription spelling, envelope fields dropped) | OPEN-DECISION | CertificateOfOriginsResponseDto.cs (ExceptionDescription, QueryUrl, DocumentId, no base envelope) | Deliberately left open (portal interface); needs a rename/shape decision with the portal owner |
+| D-F1 | MEDIUM | Web response member names changed (exceptionDescription spelling, envelope fields dropped) | FIXED | Decision 2026-10-11: keep the legacy wire names. [JsonPropertyName] on the four web DTOs (ExeptionDescription, QueryURL, DocumentID, CertificateOfOriginItemDetailDTOs, PascalCase throughout); OpenAPI contract first; test TheWebResponseUsesTheLegacyWireNames; Postman web-query checks updated | Verified live 2026-10-11. The BaseWebResponse envelope (Status, TechnicalInformation, SevriceInstanceID, CallID) is not reproduced; a null member is omitted, where legacy DCJS wrote it as null |
 | D-F2 | MEDIUM | Dates serialized as ISO datetime instead of yyyy-MM-dd | FIXED | b1cc78a (WebDateJsonConverter, CertificateOfOriginsBl.cs:564) | - |
 | D-F3 | MEDIUM | DateOfDeclaration parsed with container culture | FIXED | b1cc78a (LegacyHostCulture he-IL / day-first fallback, CertificateOfOriginsBl.cs:617-630) | - |
-| D-F4 | MEDIUM | Proxy failures/missing config now HTTP errors instead of in-band error; reverse NRE cases silent | OPEN-DECISION | Controller unchanged; badb7ea only maps external failures to 502/503; DocumentsProxy.cs:19 TODO(blocking) | Deliberately left open; no in-band error for proxy failures, Documents route unconfirmed |
+| D-F4 | MEDIUM | Proxy failures/missing config now HTTP errors instead of in-band error; reverse NRE cases silent | CLOSED-OK | Decision 2026-10-11: a technical failure is an HTTP 5xx (502/503 from ProxyFailureExceptionFilter, else 500), not an in-band error; recorded at the web controller and in the OpenAPI contract (502/503 declared) | Legacy answered in-band because the ESB channel required a reply. The reverse cases (legacy NRE → now a silent null) are kept |
 | D-F5 | LOW | DocumentId now via Documents proxy; route unconfirmed, deleted-doc filtering may differ | OPEN-BLOCKED | DocumentsProxy.cs:19 TODO(blocking); MIGRATION-NOT-DONE decision #4 | Needs Documents service route confirmation |
-| D-F6 | LOW | Empty-string guid query binds to null so "Invalid Guid" becomes "No Matching Certificate" | FIXED | e151a03 (empty guid/number kept as empty string) | Not verified with a real call: [DisplayFormat(ConvertEmptyStringToNull=false)] to be checked in Postman with CertificateOfOriginGuid= |
+| D-F6 | LOW | Empty-string guid query binds to null so "Invalid Guid" becomes "No Matching Certificate" | FIXED | e151a03 (empty guid/number kept as empty string) | Verified live 2026-10-11 (local service): `?CertificateOfOriginGuid=` → 200 "Invalid Guid", also with a number alongside; no parameters → "No Matching Certificate"; a valid guid returns the certificate |
 | D-F7 | LOW | CertificateOfOriginQueryURL seeded with DEV URL, insert-if-missing | NOT-A-DEFECT-DOC | Scripts/API_20260716 - add params.sql:186-203 insert-if-missing | A per-environment value: set CertificateOfOriginQueryURL at deployment of each environment |
 | D-F8 | LOW | [NotFoundResponse] on action contradicts contract (no 404) | FIXED | round of 2026-10-07 (parity ledger fixes commit): [NotFoundResponse] removed from web RequestByGuid | Declared contract only; the behaviour (200 with exceptionDescription) is unchanged |
 | E-F1 | MEDIUM | ByFilter TOP (200) replaces ufn_GetMaxRows | CLOSED-OK | e8fcb47 (analyst check 2026-10-04: prod ufn_GetMaxRows()=200) | - |
@@ -164,7 +164,7 @@
 | G-F8 | LOW | CloseReminderTask Title is a literal | CLOSED-OK | BL:1301 FileEventTitle; F-06 review (partial:103-106) | The literal equals the legacy computed label. |
 | G-F9 | LOW | Reminder job swallows per-row exceptions (legacy aborted) | FIXED | round of 2026-10-07 (parity ledger fixes commit): plain loop, no catch, effected rows = due count, as legacy ExecuteTask | Planar project builds |
 | G-F10 | LOW | Scheduler UDF id to parameter-name mapping inferred | CLOSED-OK | Pairing confirmed: 5 ids by legacy DataScript inserts, 1148 = DaysForFirstReminderInAuthenticationRequest1 (value 6) checked by the analyst in the legacy General_enum_GlobalParam, 2026-10-07 | TODO(confirm) removed; comments in Schedulers.cs and Consts.cs cite the sources |
-| H-1 | MED | GetById omits 6 columns (CreateDate, CreateUserId, UpdateDate, UpdateUserId, State, OrganizationUnitId) | FIXED | e151a03 (the 6 columns read in the narrow second query) | Not checked against a live DB |
+| H-1 | MED | GetById omits 6 columns (CreateDate, CreateUserId, UpdateDate, UpdateUserId, State, OrganizationUnitId) | FIXED | e151a03 (the 6 columns read in the narrow second query) | Verified live 2026-10-11 against the local DB: GET ui/ExportDocumentAuthenticationRequest/1 returns State, OrganizationUnitId, CreateDate, CreateUserId (1), UpdateDate, UpdateUserId (5) equal to the row (a row whose create and update values differ) |
 | H-2 | MED | Optimistic concurrency added (legacy last-writer-wins) | CLOSED-OK | Decision 2026-10-08: keep optimistic concurrency; client contract in the validator comment (send the last returned TimeStamp, 409 = reload) | Only writer is the edit screen's Save |
 | H-3 | MED | Child merge not atomic with the parent | FIXED | c1b46d0; DAL:870-875 | Deletes staged through the tracker, one commit. |
 | H-4 | MED | Attach/message VirtualEntity had no Title/CustomerId | FIXED | b7f2249; ExportBl ToRelatedEntity | OrganizationUnitId still not on VirtualEntityDto (open contract question, noted in code). |
@@ -185,4 +185,5 @@
 |---|---|---|---|---|---|
 | X-1 | LOW | Lookups that replaced SystemTablesUtil reads did not filter State == 1 | FIXED | round of 2026-10-07 (parity ledger fixes commit): `Get(id, ActiveState)` / `State == ActiveState` for Country, City, CountryGroup, CurrencyType, PackingType, MeasurementUnit, Site, InternationalSite, DataDictionaryField; test LookupActiveRowsTests | `ILookupUtil.Get(id)` and `Search` do not filter (Lookup 1.10.120). Whether the owning services' `lookup/{Type}` already returns active rows only is not verified; the filter is harmless if they do |
 | X-2 | LOW | The certificate-type name ignores the type's State | FIXED | Name from ECertificateOfOriginType [Display] (recorded decision 2026-08-02, reconfirmed 2026-10-08); members 10 and 11 added; CertificateTypeEnumMatchesSeedTests pins every type row and its Name to the seed script | State not checked: no inactive type exists and the name is display-only |
+| X-4 | LOW | Message 2280 accepted request reasons 6-9 that legacy rejected | FIXED | 2026-10-11: legacy CheckRequestReasonCodeEnum validated against CertificateOfOrigins_enum_RequestReasonCode, which has no 6-9 (deleted as not relevant, developer 2026-10-11); the migration validated against ERequestReason, which still had them. Members 6-9 removed; RequestReasonEnumMatchesSeedTests pins the enum to the seed both ways | Verified live: reason 8 → "סיבת בקשה לא קיימת במערכת" (5020) |
 | X-3 | MED | Short dates printed in the container's culture | FIXED | LegacyHostCulture (he-IL, dd/MM/yyyy, '/'): every ToShortDateString in the BL; test LegacyShortDateTests | Under ICU even he-IL prints 25.9.2025; legacy printed 25/09/2025 |

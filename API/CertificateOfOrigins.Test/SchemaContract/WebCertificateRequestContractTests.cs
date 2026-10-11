@@ -28,7 +28,7 @@ public class WebCertificateRequestContractTests
     }
 
     // The in-band error contract is the whole reason the portal can rely on this endpoint: nothing matched still
-    // answers 200, carrying exceptionDescription. A 404 here would be a breaking change for the portal.
+    // answers 200, carrying ExeptionDescription. A 404 here would be a breaking change for the portal.
     [Test]
     public void ContractAnswers200WhenNothingMatchedRatherThan404()
     {
@@ -40,7 +40,7 @@ public class WebCertificateRequestContractTests
         {
             Assert.That(responses.TryGetProperty("200", out _), Is.True, "200 must be declared");
             Assert.That(responses.TryGetProperty("404", out _), Is.False,
-                "a 404 must NOT be declared - an unknown guid returns 200 with exceptionDescription set");
+                "a 404 must NOT be declared - an unknown guid returns 200 with ExeptionDescription set");
         });
     }
 

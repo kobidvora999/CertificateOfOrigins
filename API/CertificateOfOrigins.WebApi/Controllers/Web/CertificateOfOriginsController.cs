@@ -21,7 +21,11 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Incoming/portal WCF: GetCertificateRequestByGuid (GetPC_Web_9096_CertificateRequest) — certificate
     // verification for the public portal, located by guid or by CertificateOfOriginNumber + IssuingDate. Returns
     // the web-query response. The legacy in-band error contract is preserved: an invalid guid or no matching
-    // certificate returns an HTTP 200 with ExceptionDescription set (not a 404), so the external portal is unaffected.
+    // certificate returns an HTTP 200 with ExeptionDescription set (not a 404), so the external portal is unaffected.
+    // A technical failure is NOT answered in-band (parity D-F4, decided 2026-10-11): a failed call to Documents /
+    // DataDictionaryField / CurrencyType is a 502/503 from [ProxyFailureExceptionFilter], and anything else (e.g. a
+    // missing CertificateOfOriginQueryURL) a 500. Legacy put every failure into the response header because the ESB
+    // channel required an answer; a REST caller gets the HTTP status instead.
     [HttpGet("RequestByGuid")]
     [BadRequestResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
     public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
