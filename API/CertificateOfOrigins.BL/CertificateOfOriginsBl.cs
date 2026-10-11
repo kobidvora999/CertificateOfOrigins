@@ -1267,6 +1267,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // QRCodePath is the QR image source of the printed certificate (usp_Template_INNER_CROSS_CertificateOfOrigin,
         // Rpt.CertificateOfOrigin_GeneralData). Legacy stored GetDocumentFile(serverRelativeUrl): the file server's URL of the
         // uploaded file. GetFileUrl builds the same URL from the uploaded file's relative resource (parity finding A-20).
+        // TODO(confirm live): not verified against a real Documents service — check that the stored URL opens the QR
+        // image and that the printed certificate (SSRS) shows it. No real Documents service is reachable yet.
         entity.QrCodePath = documentUtil.GetFileUrl(response.FileResource).ToString();
         await DataLayer.UpdateCertificateQrCodePath(entity.Id, entity.QrCodePath, userId);
     }
@@ -2136,6 +2138,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // Legacy GetCertificateOfOriginByDeclaration + the caller's filter: the certificates on the export declaration's goods
     // items, not Cancelled / Rejected / Error, other than this one's number. No declaration, or no declaration info, gives
     // none (the legacy `?.` of CR 194221). A null number is skipped: legacy's cn.Equals would have thrown on it.
+    // TODO(confirm live): B-L9 is covered by unit tests only — run a reconcile match against a real ExportDealFile service
+    // with a declaration that carries other certificates, and check the task name. No real ExportDealFile is reachable yet.
     private async Task<List<string>> GetOtherCertificateNumbersOnDeclaration(CertificateOfOrigin certificate)
     {
         if (certificate.LeadDocumentId == null && certificate.ExportDeclarationNumber == null)
