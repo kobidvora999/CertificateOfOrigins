@@ -69,7 +69,7 @@ public partial class AuthenticationRequestBl
             .WithEventType((int)EEventType.NewReminderForImporterCreated)
             .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId)
             .WithOrganizationUnitTypeId(CustomsCloud.InfrastructureCore.Interfaces.Shared.OrganizationUnitTypes.ClaliMakor)
             .AddRelatedEntity(request.AuthenticationFileId, (int)EEntityType.AuthenticationRequestFile)
             .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
@@ -182,7 +182,7 @@ public partial class AuthenticationRequestBl
             .WithEventType((int)eventType)
             .WithEntity((int)entityType, request.Id)
             .WithTitle(request.Id.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId)
             .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
             .Build();
         await eventUtil.RaiseEvent(reminderEvent);

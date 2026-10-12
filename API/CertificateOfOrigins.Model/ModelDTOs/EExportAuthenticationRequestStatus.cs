@@ -4,9 +4,8 @@ using System.ComponentModel.DataAnnotations;
 namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // Generated from CRM.CertificateOfOrigins_enum_ExportAuthenticationRequestStatus. Values + Hebrew names are the
-// source of truth (not invented). The Display name is used for the status-update event / message text (legacy read
-// it from SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>.Name — no ILookupUtil type exists for it,
-// so the enum Display name is used instead, consistent with #26).
+// source of truth (not invented). The status-update event / message text reads the name from the status table row, as
+// legacy did (SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>.Name, parity finding H-11), not from here.
 public enum EExportAuthenticationRequestStatus
 {
     [Display(Name = "ממתין לשליחת מכתב")]

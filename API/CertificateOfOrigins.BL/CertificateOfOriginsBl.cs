@@ -12,6 +12,7 @@ using CustomsCloud.InfrastructureCore.Queue;
 using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
@@ -965,8 +966,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // + diff-merge its details, link the DealFile lead document, raise the status-change events, send the request-
     // feedback message, and on publish generate the template attachments + handle replacement. Returns the full
     // re-read graph (GetCertificateOfOriginById) — the established save-return convention.
-    // TODO(migration): country-group + international-site id→name (no ILookupUtil type — need a SystemTables proxy) and
-    // the exact EAI feedback-message mapping are deferred (inline TODOs).
+    // The EAI feedback-message mapping is deferred (inline TODO(blocking)).
     public async Task<CertificateOfOriginDto> SaveCertificateOfOrigin(SaveCertificateOfOriginRequestDto request)
     {
         // The SPA save passes no certificate-to-update id, exactly as the legacy internal call site did.
@@ -1000,21 +1000,19 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var details = BuildDetails(request);
         var isNewInstance = entity.Id == 0; // captured before the save assigns the real id
 
-        // New instance (not a cancellation): supersede the latest existing certificate with the same number.
-        var replacementOldId = 0;
-        CertificateOfOrigin? previous = null;
-        string? previousCancelReason = null;
-        if (isNewInstance && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled)
-        {
-            (replacementOldId, previous, previousCancelReason) = await SupersedePreviousVersion(entity);
-        }
-
-        byte[]? qrCodeToUpload = null;
+        // Everything that calls another service or can reject the request runs BEFORE the first write — legacy did all of
+        // it before its single UoW commit, so a failure here wrote nothing (parity finding AN-01).
         if (entity.RequestReasonCode != (int)ERequestReason.CertificateCancellation)
         {
-            // Generate the QR — it stamps QrImage and Guid onto the entity BEFORE the save so they persist with the
-            // upsert. The returned bytes are uploaded as a document AFTER the save, once the certificate id is assigned.
-            qrCodeToUpload = await CreateQrCodeIfNeeded(entity);
+            // Generate + upload the QR: stamps QrImage, Guid and QrCodePath onto the entity so they persist with the upsert
+            // (legacy CreateQRCodeIfNeededAndUpload, before the commit). The QR document is linked to no entity (AN-02), so
+            // the upload does not need the certificate id.
+            var qrCodeToUpload = await CreateQrCodeIfNeeded(entity);
+            if (qrCodeToUpload is not null)
+            {
+                await UploadQrCode(entity, qrCodeToUpload);
+            }
+
             await EnrichAndValidateDetails(entity, details);
         }
 
@@ -1023,33 +1021,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             entity.ApproveUserId = userId;
         }
 
-        // Persist the certificate through BaseBL (ICloudEntity — the audit columns are stamped server-side from
-        // RequestMetadata by SetEntityFields, and UpdateEntity marks CreateDate/CreateUserId not-modified so a
-        // round-tripped DTO cannot overwrite them; see C12). Then diff-merge the detail rows and the invoice/item
-        // graph when supplied by the incoming-message create branch (the SPA save path sends no invoices).
-        if (entity.Id == 0)
-        {
-            AddEntity(entity);
-            AuditUserStamp.ForInsert(entity, RequestMetadata.UserId);
-        }
-        else
-        {
-            UpdateEntity(entity);
-            AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
-        }
-
-        await SaveChangesAsync();
-
-        await PersistCertificateChildren(entity.Id, details, request.CertificateOfOriginInvoiceDetails);
-
-        // Upload the QR document now that the save assigned the certificate id — the document is linked to the real id
-        // (for a brand-new certificate published in one save, entity.Id was still 0 during generation) and QrCodePath is
-        // persisted. Legacy uploaded before its single UoW commit; the migration's per-mutation writes move it after the
-        // upsert so the id-linked upload sees the assigned id.
-        if (qrCodeToUpload is not null)
-        {
-            await UploadQrCodeDocument(entity, qrCodeToUpload, userId);
-        }
+        var (replacementOldId, previous, previousCancelReason) = await PersistCertificateInOneTransaction(entity, details, request.CertificateOfOriginInvoiceDetails, isNewInstance);
 
         // Supersede events — raised here (not in SupersedePreviousVersion) because ApplicationCorrected references the
         // new certificate's id, which is only assigned by the save above. Legacy raised both when a previous existed.
@@ -1112,6 +1084,58 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // which queries the ExportDealFile service (not yet stood up; mock only). Wire when ExportDealFile is available
         // (same dependency as the GetPC CheckDeclarationStatus reconciliation gap).
         return await GetCertificateOfOriginById(entity.Id);
+    }
+
+    // One transaction for the writes legacy committed together: cancelling the superseded version, the certificate upsert
+    // and its child rows. A failure in any of them leaves the previous version as it was — never cancelled without a
+    // successor (parity finding AN-01). Returns what SupersedePreviousVersion returned (zeros/nulls when nothing was superseded).
+    private async Task<(int ReplacementOldId, CertificateOfOrigin? Previous, string? PreviousCancelReason)> PersistCertificateInOneTransaction(
+        CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices, bool isNewInstance)
+    {
+        (int ReplacementOldId, CertificateOfOrigin? Previous, string? PreviousCancelReason) superseded = (0, null, null);
+        var attempt = new SaveAttemptSnapshot(entity, details, invoices);
+        var isRetry = false;
+        await InTransaction(async () =>
+        {
+            // A transient failure retries this whole block after the rollback. The previous attempt left the ids, the row
+            // version and the tracked entries it assigned, which would turn the retry into a 409; a retry starts from the
+            // values the request carried. The first attempt clears nothing (a caller may have staged rows to commit here).
+            if (isRetry)
+            {
+                DataLayer.DbContext.ChangeTracker.Clear();
+                attempt.Restore();
+            }
+
+            isRetry = true;
+
+            // New instance (not a cancellation): supersede the latest existing certificate with the same number.
+            superseded = (0, null, null);
+            if (isNewInstance && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled)
+            {
+                superseded = await SupersedePreviousVersion(entity);
+            }
+
+            // Persist the certificate through BaseBL (ICloudEntity — the audit columns are stamped server-side from
+            // RequestMetadata by SetEntityFields, and UpdateEntity marks CreateDate/CreateUserId not-modified so a
+            // round-tripped DTO cannot overwrite them; see C12). Then diff-merge the detail rows and the invoice/item
+            // graph when supplied by the incoming-message create branch (the SPA save path sends no invoices).
+            if (entity.Id == 0)
+            {
+                AddEntity(entity);
+                AuditUserStamp.ForInsert(entity, RequestMetadata.UserId);
+            }
+            else
+            {
+                UpdateEntity(entity);
+                AuditUserStamp.ForUpdate(entity, RequestMetadata.UserId);
+            }
+
+            await SaveChangesAsync();
+
+            await PersistCertificateChildren(entity.Id, details, invoices);
+        });
+
+        return superseded;
     }
 
     // The child rows are staged by the DAL and committed here, so a concurrency conflict raised during a child
@@ -1221,11 +1245,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Legacy CreateQRCodeIfNeededAndUpload (generation half) — on publish (and only when no QR path yet), generate the
-    // QR from the certificate's query URL and stamp QrImage + Guid so they persist with the main upsert. The document
-    // upload is split out into UploadQrCodeDocument, which runs AFTER the save: the QR document is linked to the
-    // certificate id, and that id is only assigned by the save (a brand-new certificate published in one save still has
-    // Id == 0 here — linking now would attach the QR to certificate id 0). Returns the freshly-generated QR bytes to
-    // upload post-save, or null when nothing was created (path already set / not Published / empty CreateQrCode result).
+    // QR from the certificate's query URL and stamp QrImage + Guid. The upload is UploadQrCode (save path, before the
+    // upsert) / UploadQrCodeDocument (release path, with its own write). Returns the freshly-generated QR bytes to upload,
+    // or null when nothing was created (path already set / not Published / empty CreateQrCode result).
     private async Task<byte[]?> CreateQrCodeIfNeeded(CertificateOfOrigin entity)
     {
         var commonServicesProxy = Resolve<ICommonServicesProxy>();
@@ -1243,12 +1265,24 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return qrBytes is { Length: > 0 } ? qrBytes : null;
     }
 
-    // Legacy CreateQRCodeIfNeededAndUpload (upload half) — upload the generated QR image as a document (legacy
-    // DocumentRepositoryUtil.UploadFile → GetDocumentFile) linked to the SAVED certificate, keep the returned resource
-    // path on QrCodePath, and persist it. Runs AFTER the main upsert so the document is linked to the real certificate
-    // id (not 0); QrImage + Guid were persisted by the upsert, but QrCodePath — unknown until this upload — needs its
-    // own write.
+    // Legacy CreateQRCodeIfNeededAndUpload (upload half), release path (DeclarationReleased): upload the generated QR image
+    // (legacy DocumentRepositoryUtil.UploadFile(fileName, Other, -1, stream) → GetDocumentFile) and persist QrCodePath with
+    // its own write — this path has no main upsert (the Guid and image get their own write in UpdateCertificateQrCode).
+    // The save path calls UploadQrCode before its upsert instead, so QrCodePath persists with the certificate.
+    //
+    // The image is NOT linked to the certificate. Legacy uploaded a bare file-server file, attached to no entity, so the
+    // publish step that replaces the certificate's documents (GetDocumentsByEntity + DeleteDocuments, inline and in the
+    // IssueCertificateOfOrigin worker) never saw it. Linked to the certificate, that same step deleted the QR document the
+    // publish had just created, leaving QrCodePath on a deleted file (parity finding AN-02). IDocumentUtil has no bare
+    // file upload, so this is a document with no entity.
     private async Task UploadQrCodeDocument(CertificateOfOrigin entity, byte[] qrBytes, int userId)
+    {
+        await UploadQrCode(entity, qrBytes);
+        await DataLayer.UpdateCertificateQrCodePath(entity.Id, entity.QrCodePath, userId);
+    }
+
+    // Uploads the QR image and stamps QrCodePath on the entity (not persisted here).
+    private async Task UploadQrCode(CertificateOfOrigin entity, byte[] qrBytes)
     {
         var documentUtil = Resolve<IDocumentUtil>();
         var organizationUnitId = await GetCurrentUserOrganizationUnitId();
@@ -1258,8 +1292,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             .WithTitle(entity.CertificateNumber)
             .WithContent(qrBytes)
             .WithTypeId(DocumentType.Other)
-            .WithEntityId(entity.Id)
-            .WithEntityTypeId((int)EEntityType.CertificateOfOrigin)
             .WithOrganizationUnitId(organizationUnitId)
             .Build();
         var response = await documentUtil.UploadDocument(document);
@@ -1267,22 +1299,57 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // QRCodePath is the QR image source of the printed certificate (usp_Template_INNER_CROSS_CertificateOfOrigin,
         // Rpt.CertificateOfOrigin_GeneralData). Legacy stored GetDocumentFile(serverRelativeUrl): the file server's URL of the
         // uploaded file. GetFileUrl builds the same URL from the uploaded file's relative resource (parity finding A-20).
-        // TODO(confirm live): not verified against a real Documents service — check that the stored URL opens the QR
-        // image and that the printed certificate (SSRS) shows it. No real Documents service is reachable yet.
+        // TODO(confirm live): not verified against a real Documents service — check that it accepts a document with no
+        // entity, that the stored URL opens the QR image, and that the printed certificate (SSRS) shows it, also after a
+        // re-publish. No real Documents service is reachable yet.
         entity.QrCodePath = documentUtil.GetFileUrl(response.FileResource).ToString();
-        await DataLayer.UpdateCertificateQrCodePath(entity.Id, entity.QrCodePath, userId);
     }
 
-    // Country detail types whose id → English name is resolved for display (legacy CheckSpecificField country cases).
-    private static readonly HashSet<int> CountryDetailTypes =
-    [
-        (int)ECertificateDetailsType.ExporterCountry, (int)ECertificateDetailsType.TradeAgreementCountry1,
-        (int)ECertificateDetailsType.TradeAgreementCountry2, (int)ECertificateDetailsType.ConsigneeCountry,
-        (int)ECertificateDetailsType.OriginCountry, (int)ECertificateDetailsType.DestinationCountry,
-        (int)ECertificateDetailsType.CumulationCountry, (int)ECertificateDetailsType.IssuingCountry,
-        (int)ECertificateDetailsType.CountryOfDeclaration, (int)ECertificateDetailsType.ExportCountry,
-        (int)ECertificateDetailsType.TransirCountry,
-    ];
+    // The keys and the row version a save attempt assigns (the certificate, its detail rows, its invoices and their items),
+    // as the request carried them, so a retried attempt can start over (see PersistCertificateInOneTransaction).
+    private sealed class SaveAttemptSnapshot
+    {
+        private readonly CertificateOfOrigin entity;
+        private readonly int id;
+        private readonly byte[] timeStamp;
+        private readonly List<(CertificateOfOriginDetails Row, int Id)> details;
+        private readonly List<(CertificateOfOriginInvoiceDetail Row, int Id)> invoices;
+        private readonly List<(CertificateOfOriginItemDetail Row, int Id)> items;
+
+        public SaveAttemptSnapshot(CertificateOfOrigin entity, List<CertificateOfOriginDetails> details, List<CertificateOfOriginInvoiceDetail> invoices)
+        {
+            this.entity = entity;
+            id = entity.Id;
+            timeStamp = entity.TimeStamp;
+            this.details = details.Select(row => (row, row.Id)).ToList();
+            this.invoices = invoices.Select(row => (row, row.Id)).ToList();
+            items = invoices.SelectMany(invoice => invoice.CertificateOfOriginItemDetail).Select(row => (row, row.Id)).ToList();
+        }
+
+        public void Restore()
+        {
+            entity.Id = id;
+            entity.TimeStamp = timeStamp;
+            details.ForEach(saved => saved.Row.Id = saved.Id);
+            invoices.ForEach(saved => saved.Row.Id = saved.Id);
+            items.ForEach(saved => saved.Row.Id = saved.Id);
+        }
+    }
+
+    // Runs the action in one database transaction on the write context. The platform enables EF's retrying execution
+    // strategy, which refuses a user-initiated transaction outside the strategy, so the transaction runs inside it (a
+    // transient failure retries the whole unit). Only database work belongs in the action — no calls to other services.
+    private async Task InTransaction(Func<Task> action)
+    {
+        var database = DataLayer.DbContext.Database;
+        var strategy = database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await database.BeginTransactionAsync();
+            await action();
+            await transaction.CommitAsync();
+        });
+    }
 
     // The subset of country types whose value is also checked for trade-agreement membership (legacy
     // CheckIfCountryIsInTradeAgreement / CheckAgreementFirstCountry).
@@ -1305,12 +1372,24 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         (int)ECertificateDetailsType.CityOfDeclaration, (int)ECertificateDetailsType.PlaceOfManufacture,
     ];
 
-    // Date detail types whose display is a short date (legacy CheckSpecificField: CheckDeclarationDate / CheckExportDate /
-    // CheckImportDate / CheckExpectedExitDate all set DisplayedValue = date.ToShortDateString()).
-    private static readonly HashSet<int> DateDetailTypes =
+    // International-site id detail types (legacy CheckIfSiteExist; PortOfShipment via CheckIfInternationalSiteExist, see below).
+    private static readonly HashSet<int> SiteIdDetailTypes =
     [
-        (int)ECertificateDetailsType.DateOfDeclaration, (int)ECertificateDetailsType.ExportDate,
-        (int)ECertificateDetailsType.ImportDate, (int)ECertificateDetailsType.ExpectedExitDate,
+        (int)ECertificateDetailsType.ExportPort, (int)ECertificateDetailsType.PortOfEntrance, (int)ECertificateDetailsType.ExitPort,
+        (int)ECertificateDetailsType.PortOfShipment,
+    ];
+
+    // The free-text detail types legacy CheckSpecificField displayed as entered (DisplayedValue = Value).
+    private static readonly HashSet<int> TextDetailTypes =
+    [
+        (int)ECertificateDetailsType.ExporterName, (int)ECertificateDetailsType.ExporterAddress,
+        (int)ECertificateDetailsType.ConsigneeName, (int)ECertificateDetailsType.ConsigneeAddress,
+        (int)ECertificateDetailsType.ConsigneeRemarks, (int)ECertificateDetailsType.Transport,
+        (int)ECertificateDetailsType.ZipCodeOfManufacture, (int)ECertificateDetailsType.Observations,
+        (int)ECertificateDetailsType.Feedback, (int)ECertificateDetailsType.ImportBillOfLadingNum,
+        (int)ECertificateDetailsType.GoodsDescription, (int)ECertificateDetailsType.DeclaringCompany,
+        (int)ECertificateDetailsType.DeclaringPerson, (int)ECertificateDetailsType.DeclaringPosition,
+        (int)ECertificateDetailsType.ManifestNum, (int)ECertificateDetailsType.ExportBillOFLadingNum,
     ];
 
     // Bool detail types whose display is Yes/No (legacy CheckSpecificField → ConvertBoolFieldToYesNo).
@@ -1321,14 +1400,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         (int)ECertificateDetailsType.IsDeclaredByExporter,
     ];
 
-    // Legacy CheckSpecificField (reduced core): the proxy-backed field validations (exporter existence via Customers,
-    // trade-agreement membership via CustomsBook, customs-house via OrgUnit) + the SystemTables id→name display
-    // enrichment for country + city detail types (via ILookupUtil). Text fields pass through.
-    // TODO(migration): country-group id→name has no ILookupUtil type yet; the not-in-system / not-in-agreement validation exceptions + date/format checks are deferred (resx).
     // Legacy new-instance branch (CertificateOfOriginsBL.cs:984-1000): a brand-new certificate's DestinationCountry /
     // PortOfShipment details arrive from the SPA as an alpha-2 country code / locode; resolve them to the internal id
-    // (Country by alpha-2, InternationalSite by locode). Unresolved values are left as-is (an existing instance never
-    // reaches here, so no id is overwritten with a code).
+    // (Country by alpha-2, InternationalSite by locode). An unknown code is a 400, as legacy failed the save on it.
     private async Task ResolveNewInstanceDetailCodes(List<CertificateOfOriginDetails> details)
     {
         foreach (var detail in details)
@@ -1338,21 +1412,21 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 continue;
             }
 
+            // Legacy SystemTablesUtil.GetIdByCode threw TheValueInFieldNotExistsInSystem for a code it did not find, so the
+            // save failed with nothing written (parity finding AN-04). This runs before the first write (AN-01).
+            // TODO(confirm): the message text. Legacy filled {0} with the table's DataDictionaryTable.Description (Hebrew) —
+            // IdByCodeLogicGetter.cs:77-79 — which lives in the infrastructure DB; the field name stands in until it is known.
             if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.DestinationCountry)
             {
-                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
-                if (country is not null)
-                {
-                    detail.Value = country.Id.ToString(CultureInfo.InvariantCulture);
-                }
+                var country = (await lookupUtil.Search<Lookup.Country>(c => c.CountryAlphaCode2 == detail.Value && c.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()
+                    ?? throw new RestValidationException(nameof(ECertificateDetailsType.DestinationCountry), $"הערך בשדה {nameof(ECertificateDetailsType.DestinationCountry)} לא קיים במערכת");
+                detail.Value = country.Id.ToString(CultureInfo.InvariantCulture);
             }
             else if (detail.CertificateDetailsTypeCodeId == (int)ECertificateDetailsType.PortOfShipment)
             {
-                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value && s.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault();
-                if (site is not null)
-                {
-                    detail.Value = site.Id.ToString(CultureInfo.InvariantCulture);
-                }
+                var site = (await lookupUtil.Search<Lookups.InternationalSite>(s => s.Locode == detail.Value && s.State == CertificateOfOriginsConsts.ActiveState)).FirstOrDefault()
+                    ?? throw new RestValidationException(nameof(ECertificateDetailsType.PortOfShipment), $"הערך בשדה {nameof(ECertificateDetailsType.PortOfShipment)} לא קיים במערכת");
+                detail.Value = site.Id.ToString(CultureInfo.InvariantCulture);
             }
         }
     }
@@ -1402,43 +1476,101 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     detail.DisplayedValue = value;
                 }
             }
-            else if (DateDetailTypes.Contains(typeId))
-            {
-                // Legacy Check*Date: the display is a short date (an unparseable value yields default(DateTime), as legacy).
-                detail.DisplayedValue = FormatStoredDate(value);
-            }
-            else if (BoolDetailTypes.Contains(typeId))
-            {
-                // Legacy ConvertBoolFieldToYesNo.
-                detail.DisplayedValue = bool.TryParse(value, out var boolValue) && boolValue ? "Yes" : "No";
-            }
-            else if (CountryDetailTypes.Contains(typeId) && int.TryParse(value, out var countryId))
-            {
-                if (TradeAgreementCountryDetailTypes.Contains(typeId))
-                {
-                    await IsTradeAgreementForCountry(entity.TypeId, countryId, false);
-                }
-
-                var country = await lookupUtil.Get<Lookup.Country>(countryId, CertificateOfOriginsConsts.ActiveState);
-                detail.DisplayedValue = country?.EnglishName ?? value;
-            }
-            else if (CityDetailTypes.Contains(typeId) && int.TryParse(value, out var cityId))
-            {
-                var city = await lookupUtil.Get<Lookup.City>(cityId, CertificateOfOriginsConsts.ActiveState);
-                detail.DisplayedValue = city?.EnglishName ?? value;
-            }
-            else if (CountryGroupDetailTypes.Contains(typeId) && int.TryParse(value, out var countryGroupId))
-            {
-                // Legacy CheckIfCountryGroupIsInTradeAgreement: DisplayedValue = the group's English name.
-                var countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId, CertificateOfOriginsConsts.ActiveState);
-                detail.DisplayedValue = countryGroup?.EnglishName ?? value;
-            }
             else
             {
-                // International-site id→name enrichment lands here for now (no ILookupUtil type; needs a
-                // SystemTables proxy — rollout TODO), as do all text fields — displayed as-is.
-                detail.DisplayedValue = value;
+                await ApplyLegacyDisplayedValue(entity, detail);
             }
+        }
+    }
+
+    // The DisplayedValue that legacy CheckSpecificField gave the detail of an EXISTING certificate, CertificateOfOriginsBL.cs lines 1452-1545,
+    // case by case. A case legacy did not touch leaves the client-sent DisplayedValue as it is: the four Israel-only country
+    // types, an out-of-range date, a non-numeric id and any type the switch does not list. Parity finding AN-03.
+    // The certificate report (the GeneralData procedure) prints DisplayedValue, so a rewrite here changes the printed text.
+    private async Task ApplyLegacyDisplayedValue(CertificateOfOrigin entity, CertificateOfOriginDetails detail)
+    {
+        var value = detail.Value;
+        var typeId = detail.CertificateDetailsTypeCodeId;
+        var today = DateTime.Today;
+
+        if (BoolDetailTypes.Contains(typeId))
+        {
+            // Legacy ConvertBoolFieldToYesNo.
+            detail.DisplayedValue = bool.TryParse(value, out var boolValue) && boolValue ? "Yes" : "No";
+        }
+        else if (typeId == (int)ECertificateDetailsType.DateOfDeclaration)
+        {
+            // Legacy CheckDeclarationDate: the short date only when today-5 days <= date <= today.
+            SetShortDateWhenInRange(detail, today.AddDays(-5), today);
+        }
+        else if (typeId is (int)ECertificateDetailsType.ExportDate or (int)ECertificateDetailsType.ExpectedExitDate)
+        {
+            // Legacy CheckExportDate / CheckExpectedExitDate: the short date only when today <= date <= today+3 months.
+            SetShortDateWhenInRange(detail, today, today.AddMonths(3));
+        }
+        else if (typeId == (int)ECertificateDetailsType.ImportDate)
+        {
+            // Legacy CheckImportDate: always the short date (an unparseable value yields default(DateTime)).
+            detail.DisplayedValue = FormatStoredDate(value);
+        }
+        else if (TradeAgreementCountryDetailTypes.Contains(typeId) && int.TryParse(value, out var countryId))
+        {
+            // Legacy CheckIfCountryIsInTradeAgreement: the trade-agreement check (its exceptions never reach the save), then
+            // the country's English name.
+            await IsTradeAgreementForCountry(entity.TypeId, countryId, false);
+            var country = await lookupUtil.Get<Lookup.Country>(countryId, CertificateOfOriginsConsts.ActiveState);
+            SetDisplayedValueWhenFound(detail, country?.EnglishName);
+        }
+        else if (CityDetailTypes.Contains(typeId) && int.TryParse(value, out var cityId))
+        {
+            // Legacy CheckCityOfDeclaration.
+            var city = await lookupUtil.Get<Lookup.City>(cityId, CertificateOfOriginsConsts.ActiveState);
+            SetDisplayedValueWhenFound(detail, city?.EnglishName);
+        }
+        else if (CountryGroupDetailTypes.Contains(typeId) && int.TryParse(value, out var countryGroupId))
+        {
+            // Legacy CheckIfCountryGroupIsInTradeAgreement: the group's English name.
+            var countryGroup = await lookupUtil.Get<Lookups.CountryGroup>(countryGroupId, CertificateOfOriginsConsts.ActiveState);
+            SetDisplayedValueWhenFound(detail, countryGroup?.EnglishName);
+        }
+        else if (typeId == (int)ECertificateDetailsType.ExportCountry && int.TryParse(value, out var exportCountryId))
+        {
+            // Legacy CheckExportCountry (CertificateOfOriginsBL.cs:1857-1874): the Israel checks (never thrown on the save),
+            // then the country's English name.
+            var country = await lookupUtil.Get<Lookup.Country>(exportCountryId, CertificateOfOriginsConsts.ActiveState);
+            SetDisplayedValueWhenFound(detail, country?.EnglishName);
+        }
+        else if (SiteIdDetailTypes.Contains(typeId) && int.TryParse(value, out var siteId))
+        {
+            // Legacy CheckIfSiteExist: the value is an international-site id → the site's English name (parity finding A-21).
+            // PortOfShipment too: legacy CheckIfInternationalSiteExist went through the private GetIdByCode wrapper, which
+            // returns the parsed value itself (not the looked-up id), so a stored numeric id got the site's name and a
+            // non-numeric value was left alone (CertificateOfOriginsBL.cs:1876-1905).
+            var site = await lookupUtil.Get<Lookups.InternationalSite>(siteId, CertificateOfOriginsConsts.ActiveState);
+            SetDisplayedValueWhenFound(detail, site?.EnglishName);
+        }
+        else if (TextDetailTypes.Contains(typeId))
+        {
+            // Legacy: the free-text types are displayed as entered.
+            detail.DisplayedValue = value;
+        }
+    }
+
+    private static void SetShortDateWhenInRange(CertificateOfOriginDetails detail, DateTime from, DateTime to)
+    {
+        var date = DateTime.TryParse(detail.Value, LegacyHostCulture.Culture, DateTimeStyles.None, out var parsed) ? parsed : default;
+        if (date >= from && date <= to)
+        {
+            detail.DisplayedValue = LegacyHostCulture.ToShortDate(date);
+        }
+    }
+
+    // Legacy dereferenced the lookup row directly (a missing row crashed the save); here a missing row leaves the display.
+    private static void SetDisplayedValueWhenFound(CertificateOfOriginDetails detail, string? englishName)
+    {
+        if (englishName is not null)
+        {
+            detail.DisplayedValue = englishName;
         }
     }
 
@@ -2106,9 +2238,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await eventUtil.RaiseEvent(builder.Build());
     }
 
-    // Legacy RaiseTaskNewCertificateOfOriginCheck (CR 194221): the other live certificates on the declaration → "reason. "
-    // + AdditionalCertificatesToExportDeclaration filled with one number, two numbers, or ". לדוגמה:" + first and last;
-    // none → the reason name alone.
+    // Legacy RaiseTaskNewCertificateOfOriginCheck (CR 194221): with other live certificates on the declaration the text is the
+    // reason name, a period and a space, then AdditionalCertificatesToExportDeclaration filled with one number, two numbers, or
+    // the words לדוגמה with the first and the last number. With none it is the reason name alone.
     private async Task<string?> BuildNewCertificateCheckAdditionalInfo(CertificateOfOrigin certificate)
     {
         var requestReasonName = GetRequestReasonName(certificate.RequestReasonCode);
@@ -2406,7 +2538,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         var isCustomsItemMandatory = await DataLayer.GetCertificateTypeIsCustomsItemMandatory(certificate.TypeId) ?? false;
 
         // Resolve the 6-digit tariff classification of every customs item on both sides in one batch.
-        var certificateCustomsItemIds = invoices.SelectMany(invoice => invoice.CustomsItemIds);
+        var certificateCustomsItemIds = invoices
+            .SelectMany(invoice => invoice.GoodsItemCustomsItemIds)
+            .Where(customsItemId => customsItemId.HasValue)
+            .Select(customsItemId => customsItemId!.Value);
         var declarationCustomsItemIds = declarationInvoices
             .SelectMany(invoice => invoice.ExportGoodsItemInfoList ?? [])
             .Select(goodsItem => goodsItem.CustomsItemId);
@@ -2471,7 +2606,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 .Select(goodsItem => goodsItem.CustomsItemId)
                 .ToList();
 
-            foreach (var certificateCustomsItemId in invoice.CustomsItemIds)
+            // Every goods item, with or without a customs item (legacy CertificateOfOriginsBL.cs:809, parity finding BN-01):
+            // the origin-country, country-group and deal-file checks do not depend on the customs item.
+            foreach (var certificateCustomsItemId in invoice.GoodsItemCustomsItemIds)
             {
                 await ValidateCertificateGoodsItem(certificate, declarationGoodsItems, invoice.InvoiceNumber, certificateCustomsItemId, declarationCustomsItemIdsForInvoice, originCountry, originGroup, sixDigitByCustomsItemId, isCustomsItemMandatory, builder);
             }
@@ -2486,7 +2623,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         CertificateOfOrigin certificate,
         List<ExportGoodsItemInfoDto> declarationGoodsItems,
         string? invoiceNumber,
-        int certificateCustomsItemId,
+        int? certificateCustomsItemId,
         List<int> declarationCustomsItemIdsForInvoice,
         string? originCountry,
         string? originGroup,
@@ -2538,9 +2675,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 "The certificate number does not match the certificate number in the export deal file."));
         }
 
-        // Customs-item 6-digit classification match, forward (Error) — only when the type requires it.
+        // Customs-item 6-digit classification match, forward (Error) — only when the type requires it. A goods item without
+        // a customs item has no 6 digits, so legacy skipped it here (!customsItemBy6Digits.IsNullOrEmpty()).
         if (isCustomsItemMandatory
-            && sixDigitByCustomsItemId.TryGetValue(certificateCustomsItemId, out var certificateSixDigits)
+            && certificateCustomsItemId is int customsItemId
+            && sixDigitByCustomsItemId.TryGetValue(customsItemId, out var certificateSixDigits)
             && !string.IsNullOrEmpty(certificateSixDigits)
             && !declarationCustomsItemIdsForInvoice.Any(declarationCustomsItemId =>
                 sixDigitByCustomsItemId.TryGetValue(declarationCustomsItemId, out var declarationSixDigits)
@@ -2580,13 +2719,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
 
             var certificateCustomsItemIdsForInvoice = invoices
-                .FirstOrDefault(invoice => invoice.InvoiceNumber == declarationInvoice.ExternalIdNum)?.CustomsItemIds ?? [];
+                .FirstOrDefault(invoice => invoice.InvoiceNumber == declarationInvoice.ExternalIdNum)?.GoodsItemCustomsItemIds ?? [];
             foreach (var goodsItem in declarationInvoice.ExportGoodsItemInfoList.Where(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
             {
                 if (sixDigitByCustomsItemId.TryGetValue(goodsItem.CustomsItemId, out var declarationSixDigits)
                     && !string.IsNullOrEmpty(declarationSixDigits)
                     && !certificateCustomsItemIdsForInvoice.Any(certificateCustomsItemId =>
-                        sixDigitByCustomsItemId.TryGetValue(certificateCustomsItemId, out var certificateSixDigits)
+                        certificateCustomsItemId is int customsItemId
+                        && sixDigitByCustomsItemId.TryGetValue(customsItemId, out var certificateSixDigits)
                         && !string.IsNullOrEmpty(certificateSixDigits)
                         && certificateSixDigits == declarationSixDigits))
                 {

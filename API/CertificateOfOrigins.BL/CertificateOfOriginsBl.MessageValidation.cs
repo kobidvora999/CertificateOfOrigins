@@ -140,10 +140,16 @@ public partial class CertificateOfOriginsBl
         var certificate = request.CertificateOfOrigin;
         var nonManipulation = request.NonManipulationCertificate;
 
+        // Legacy ran the cross-field pass (CheckFields) only when the message produced details AND the reason is neither
+        // GetRequestStatus nor CertificateCancellation (IncomingMessageServicePartial.cs:95-98). A status query is validated
+        // field by field like any message, but never cross-field (parity finding CN-01).
+        var runCrossFieldChecks = agentRequest.RequestReasonCode is not ((int)ERequestReason.GetRequestStatus or (int)ERequestReason.CertificateCancellation);
+
         var bodyMissing = isNonManipulation ? nonManipulation is null : certificate is null;
         if (bodyMissing && agentRequest.RequestReasonCode is not ((int)ERequestReason.EmptyCertificate or (int)ERequestReason.GetRequestStatus))
         {
-            var missingBodyName = isNonManipulation ? nameof(request.NonManipulationCertificate) : nameof(request.CertificateOfOrigin);
+            // The legacy parameter texts (IncomingMessageServicePartial.cs:160, 172), not the JSON names (parity finding CN-02).
+            var missingBodyName = isNonManipulation ? "request.Content.NonManipulationCertificate" : "request.Content.CertificateOfOrigin";
             requestExceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, missingBodyName));
             return null;
         }
@@ -185,7 +191,7 @@ public partial class CertificateOfOriginsBl
             {
                 await ValidateAndBuildNonManipulationDetails(certificateTypeId, nonManipulation, perCertificate, context);
                 AddCustomsHouseDetail(certificate, context);
-                if (context.Details.Count > 0)
+                if (context.Details.Count > 0 && runCrossFieldChecks)
                 {
                     await CheckMessageCrossFields(certificate, nonManipulation, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
                 }
@@ -208,7 +214,7 @@ public partial class CertificateOfOriginsBl
 
             // Per-field validation + detail construction (stages 2+3), then the cross-field pass (stage 4a).
             await ValidateAndBuildCertificateDetails(certificateTypeId, certificate, perCertificate, destinationCountryId, context);
-            if (context.Details.Count > 0)
+            if (context.Details.Count > 0 && runCrossFieldChecks)
             {
                 await CheckMessageCrossFields(certificate, nonManipulation, agentRequest, context.Details, agentRequest.IsZipcodeMandatory, context);
             }

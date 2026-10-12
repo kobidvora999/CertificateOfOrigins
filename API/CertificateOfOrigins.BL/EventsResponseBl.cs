@@ -1,6 +1,6 @@
 using CertificateOfOrigins.DAL;
-using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
+using CustomsCloud.InfrastructureCore.Utils.Events;
 
 namespace CertificateOfOrigins.BL;
 
@@ -17,10 +17,10 @@ public class EventsResponseBl(IServiceProvider serviceProvider)
     // External WCF: HandleAuthenticationRequestDeliverySent(raiseEventArgs) — an Events-subsystem callback fired on
     // a delivery-sent event for an authentication file. Delegates to AuthenticationRequestBl, which owns the
     // behaviour (a pure existence check, faithful to the legacy whose status-write is commented out).
-    public async Task<bool> HandleAuthenticationRequestDeliverySent(RaiseEventArgsDto request)
+    public async Task<bool> HandleAuthenticationRequestDeliverySent(EventResponseArgs args)
     {
         var authenticationRequestBl = Resolve<AuthenticationRequestBl>();
-        var result = await authenticationRequestBl.HandleAuthenticationRequestDeliverySent(request);
+        var result = await authenticationRequestBl.HandleAuthenticationRequestDeliverySent(args);
         return result;
     }
 }

@@ -3,8 +3,7 @@ using System.Text.Json.Serialization;
 namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // An invoice line of the web-query response (legacy CertificateOfOriginInvoiceDetailDTO — the web contract, not
-// the internal one). CurrencyCode was resolved from a currency-type lookup in the legacy; that lookup type is
-// not available in the platform, so it is deferred (see the BL — TODO(blocking)).
+// the internal one). CurrencyCode is resolved from the currency-type lookup, as legacy (the local CurrencyType lookup).
 // CertificateOfOriginItemDetails is always empty (legacy quirk, developer-confirmed 2026-07-28).
 // Legacy wire names (parity D-F1), including the legacy field name CertificateOfOriginItemDetailDTOs.
 public class CertificateOfOriginWebInvoiceDetailDto

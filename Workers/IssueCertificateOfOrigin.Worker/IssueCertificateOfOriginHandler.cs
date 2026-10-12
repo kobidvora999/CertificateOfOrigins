@@ -4,6 +4,7 @@ using IssueCertificateOfOrigin.Worker.Dal;
 using IssueCertificateOfOrigin.Worker.Dto;
 using IssueCertificateOfOrigin.Worker.Enums;
 using IssueCertificateOfOrigin.Worker.Proxies;
+using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Utils.Customers;
 using CustomsCloud.InfrastructureCore.Worker;
 using malam.com.customs;
@@ -22,7 +23,10 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
 
     private readonly IIssueCertificateDal dataLayer = provider.GetRequiredService<IIssueCertificateDal>();
     private readonly ICustomerUtil _customerUtil = provider.GetRequiredService<ICustomerUtil>();
-    private readonly IAppSettings appSettings = provider.GetRequiredService<IAppSettings>();
+    private readonly IParametersUtil parametersUtil = provider.GetRequiredService<IParametersUtil>();
+
+    // Read once, before any side effect (see Handle).
+    private string? queryUrlTemplate;
 
     public async Task Handle(CloudEvent? cloudEvent)
     {
@@ -37,6 +41,10 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
 
         if (issueCertificateDto != null && issueCertificateDto.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatusCode.Published && issueCertificateDto.IsInPublishingProcess)
         {
+            // The feedback's query URL is read before the document is replaced and the publishing flag reset: a failed read
+            // then leaves nothing half-done, and a dead-lettered message replays cleanly.
+            await LoadQueryUrlTemplate();
+
             var generateResponse = await issueCertificateOfOriginBL.GenerateReport(issueCertificateDto.ReportId, issueCertificateDto.CertificateOfOriginId);
             if (generateResponse != null)
             {
@@ -65,7 +73,7 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
 
     public async Task SendRequestFeedbackAsync(IssueCertificateDto issueCertificateDto, Dto.Attachment? attachment)
     {
-        var certificateOfOriginRequestFeedback = CreateCertificateOfOriginRequestFeedbackAsync(issueCertificateDto);
+        var certificateOfOriginRequestFeedback = await CreateCertificateOfOriginRequestFeedback(issueCertificateDto);
 
         var requestFeedback = new PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback()
         {
@@ -106,6 +114,14 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
         await commonProxy.SendOutgoingMessage(request);
     }
 
+    // The CertificateOfOriginQueryURL parameter (a format string with {0} for the guid). A missing parameter fails here.
+    private async Task<string> LoadQueryUrlTemplate()
+    {
+        queryUrlTemplate ??= await parametersUtil.Get<string>(IssueCertificateOfOriginConsts.CertificateOfOriginQueryURL)
+            ?? throw new InvalidOperationException($"Parameter {IssueCertificateOfOriginConsts.CertificateOfOriginQueryURL} is not set.");
+        return queryUrlTemplate;
+    }
+
     private static XmlElement? SerializeItem(object message)
     {
         var ser = new XmlSerializer(message.GetType());
@@ -118,9 +134,12 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
         return doc.DocumentElement;
     }
 
-    public CertificateOfOriginRequestFeedback CreateCertificateOfOriginRequestFeedbackAsync(IssueCertificateDto issueCertificateDto)
+    public async Task<CertificateOfOriginRequestFeedback> CreateCertificateOfOriginRequestFeedback(IssueCertificateDto issueCertificateDto)
     {
-        var queryURLFormat = string.Format(CultureInfo.InvariantCulture, appSettings.CertificateOfOriginQueryURL, issueCertificateDto.GUID.ToString());
+        // The same Infrastructure.Parameters row the API reads (legacy Configuration.GetConfig, CertificateOfOriginsUtil.cs:46) —
+        // one source, so the QR on the certificate and the feedback's query URL cannot drift apart (parity finding GN-04).
+        var urlTemplate = await LoadQueryUrlTemplate();
+        var queryURLFormat = string.Format(CultureInfo.InvariantCulture, urlTemplate, issueCertificateDto.GUID.ToString());
 
         var requestFeedback = new CertificateOfOriginRequestFeedback
         {
@@ -133,6 +152,15 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
             QueryURL = queryURLFormat,
             RequestReasonCode = issueCertificateDto.RequestReasonCode,
         };
+
+        // Legacy CertificateOfOriginsUtil.cs:62-69 (parity finding GN-02).
+        if (issueCertificateDto.IssuingDate.HasValue && issueCertificateDto.IsDeclarationReleased.HasValue)
+        {
+            requestFeedback.IssueDateIfReleased = issueCertificateDto.IsDeclarationReleased.Value ? issueCertificateDto.IssuingDate : null;
+            requestFeedback.IssueDateIfReleasedSpecified = requestFeedback.IssueDateIfReleased != null;
+            requestFeedback.IssueDateIfNotReleased = !issueCertificateDto.IsDeclarationReleased.Value ? issueCertificateDto.IssuingDate : null;
+            requestFeedback.IssueDateIfNotReleasedSpecified = requestFeedback.IssueDateIfNotReleased != null;
+        }
 
         return requestFeedback;
     }

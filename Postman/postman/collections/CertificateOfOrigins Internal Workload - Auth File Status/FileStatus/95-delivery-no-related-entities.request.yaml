@@ -1,6 +1,6 @@
 $kind: http-request
 url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
-method: POST
+method: PATCH
 headers:
   Content-Type: application/json
 # No related entities at all -> the first guard returns false. The stock fixture always sent one.

@@ -2,6 +2,7 @@ using CommonServicesExternal;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
 using CustomsCloud.InfrastructureCore.Interfaces.General;
+using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Queue.Migration;
 using IssueCertificateOfOrigin.Worker;
 using IssueCertificateOfOrigin.Worker.Dal;
@@ -30,7 +31,7 @@ internal class ServiceConfiguration : IServicesConfiguration
         services.AddScoped<IssueCertificateOfOriginHandler>();
         services.AddScoped<IssueCertificateOfOriginBL>();
         services.AddScoped<IIssueCertificateDal, IssueCertificateDal>();
-        services.AddAppSettings<IAppSettings, AppSettings>();
+        services.AddParametersUtil();
         services.AddScoped<ICommonExternalProxy, CommonExternalProxy>();
         services.AddScoped<IDocumentsExternalProxy, DocumentsExternalProxy>();
         services.AddScoped<ICommonCloudProxy, CommonCloudProxy>();

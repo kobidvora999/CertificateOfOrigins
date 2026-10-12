@@ -21,11 +21,13 @@ public class CertificateOfOriginsResponseDto
     [JsonPropertyName("DocumentID")]
     public int DocumentId { get; set; }
 
+    // Null on the "Invalid Guid" / "No Matching Certificate" answers, as legacy (the lists were never set there), so a portal
+    // that tells an error by a null list does not read the answer as an empty success (parity finding DN-01).
     [JsonPropertyName("CertificateOfOriginDetails")]
-    public List<FieldDataDto> CertificateOfOriginDetails { get; set; } = [];
+    public List<FieldDataDto>? CertificateOfOriginDetails { get; set; }
 
     [JsonPropertyName("CertificateOfOriginInvoiceDetails")]
-    public List<CertificateOfOriginWebInvoiceDetailDto> CertificateOfOriginInvoiceDetails { get; set; } = [];
+    public List<CertificateOfOriginWebInvoiceDetailDto>? CertificateOfOriginInvoiceDetails { get; set; }
 
     [JsonPropertyName("ExeptionDescription")]
     public string? ExceptionDescription { get; set; }

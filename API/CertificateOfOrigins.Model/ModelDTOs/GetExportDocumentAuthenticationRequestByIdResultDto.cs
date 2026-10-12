@@ -7,9 +7,7 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // document-attach picker): the lead-document ids the client can attach documents to.
 public class GetExportDocumentAuthenticationRequestByIdResultDto
 {
-    // The platform MaxCountExceededInterceptor errors at >=30 result columns and the entity has 35, so the main read
-    // leaves out State, OrganizationUnitId, CreateDate, CreateUserId, UpdateDate and UpdateUserId; the BL reads those six
-    // in a second narrow query and fills them in, so the result carries the whole legacy entity (parity finding H-1).
+    // The result carries the whole legacy entity, the audit columns, State and OrganizationUnitId included (parity finding H-1).
     public int Id { get; set; }
     public int State { get; set; }
     public int OrganizationUnitId { get; set; }

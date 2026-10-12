@@ -8,5 +8,8 @@ public class CertificateReconcileInvoiceDto
 
     public string? InvoiceNumber { get; set; }
 
-    public List<int> CustomsItemIds { get; set; } = [];
+    // One entry per goods item, null when the item has no customs item. Legacy ran the per-goods-item checks once for
+    // every goods item of the invoice (CertificateOfOriginsBL.cs:809), with or without a customs item, so the items
+    // without one are kept here (parity finding BN-01).
+    public List<int?> GoodsItemCustomsItemIds { get; set; } = [];
 }

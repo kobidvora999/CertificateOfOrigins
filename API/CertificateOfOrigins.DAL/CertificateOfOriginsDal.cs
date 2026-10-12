@@ -32,7 +32,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Rejected
                 && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Error)
             .OrderBy(c => c.Id)
-            .Select(c => c.CertificateNumber)
+            .Select(c => (string?)c.CertificateNumber)
             .ToListAsync();
         return result;
     }
@@ -271,9 +271,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
             {
                 CertificateOfOriginId = invoice.CertificateOfOriginId,
                 InvoiceNumber = invoice.InvoiceNumber,
-                CustomsItemIds = ReadOnlyContext.CertificateOfOriginItemDetails
-                    .Where(item => item.CertificateOfOriginInvoiceDetailId == invoice.Id && item.CustomsItemId.HasValue)
-                    .Select(item => item.CustomsItemId!.Value)
+                GoodsItemCustomsItemIds = ReadOnlyContext.CertificateOfOriginItemDetails
+                    .Where(item => item.CertificateOfOriginInvoiceDetailId == invoice.Id)
+                    .Select(item => item.CustomsItemId)
                     .ToList(),
             })
             .ToListAsync();
@@ -437,14 +437,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // GetAuthenticationRequestByID SP result-set #1 (main row), local table only — the legacy CRP.DealFile
         // LEFT JOIN (LeadDocumentSubmissionDate) is dropped (cross-service, deferred). Missing → null (404 in the BL).
         //
-        // Read in TWO passes on purpose. The platform MaxCountExceededInterceptor errors at >= 30 result columns,
-        // and the columns this method has to return no longer fit in one projection: 21 here plus the 10 restored
-        // by CHECK 2 (2026-09-07) is 31. The interceptor counts columns PER QUERY, so two projections of 21 and 10
-        // are both legal and the caller still gets one complete row.
-        //
-        // Splitting rather than dropping columns is deliberate. The save writes those 10, so a read that omitted
-        // them would make the natural GET → POST round-trip send nulls and ERASE them — strictly worse than the
-        // bug being fixed. Read and write must cover the same set; that invariant is what forces the second pass.
+        // 31 columns: the save writes the coordinator-edited ones too (CHECK 2, 2026-09-07), so the read returns them, or
+        // the GET → POST round-trip would send nulls and erase them. That is over the platform MaxCountExceededInterceptor
+        // default of 30; the hash j4XSVK6Fl8 (InfrastructureCore.DAL 1.10.83+: columns error at 50) lets one query carry them.
         var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == documentId)
             .Select(r => new CertificateOfOriginsImportAuthenticationRequest
@@ -470,45 +465,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 ImporterId = r.ImporterId,
                 LastDeliveryForImporter = r.LastDeliveryForImporter,
                 InvoiceNumber = r.InvoiceNumber,
+                UserId = r.UserId,
+                UserResponseId = r.UserResponseId,
+                DecisionCircumstences = r.DecisionCircumstences,
+                CirumstanceDetails = r.CirumstanceDetails,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                Remarks = r.Remarks,
+                ResponsePhoneNum = r.ResponsePhoneNum,
+                DocumentNumber = r.DocumentNumber,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference,
             })
+            .ExcludeInterceptor("j4XSVK6Fl8")
             .FirstOrDefaultAsync();
-        if (result is null)
-        {
-            return null;
-        }
-
-        // Pass 2 — the coordinator-edited columns plus UserId/UserResponseId. Every one of these is in the save
-        // set-list, so they have to come back out.
-        var editable = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
-            .Where(r => r.DocumentId == documentId)
-            .Select(r => new
-            {
-                r.UserId,
-                r.UserResponseId,
-                r.DecisionCircumstences,
-                r.CirumstanceDetails,
-                r.RequestCircumstancesId,
-                r.Remarks,
-                r.ResponsePhoneNum,
-                r.DocumentNumber,
-                r.InvoiceGoodsItemTaxDifference,
-                r.AllInvoiceGoodsItemTaxDifference,
-            })
-            .FirstOrDefaultAsync();
-        if (editable is not null)
-        {
-            result.UserId = editable.UserId;
-            result.UserResponseId = editable.UserResponseId;
-            result.DecisionCircumstences = editable.DecisionCircumstences;
-            result.CirumstanceDetails = editable.CirumstanceDetails;
-            result.RequestCircumstancesId = editable.RequestCircumstancesId;
-            result.Remarks = editable.Remarks;
-            result.ResponsePhoneNum = editable.ResponsePhoneNum;
-            result.DocumentNumber = editable.DocumentNumber;
-            result.InvoiceGoodsItemTaxDifference = editable.InvoiceGoodsItemTaxDifference;
-            result.AllInvoiceGoodsItemTaxDifference = editable.AllInvoiceGoodsItemTaxDifference;
-        }
-
         return result;
     }
 
@@ -820,9 +789,8 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
     }
 
-    // The GetById read projection omits State + OrganizationUnitId (29-column interceptor limit), so a round-tripped
-    // DTO carries them as 0. Re-read the stored values so the BL can put them back on the entity before the update —
-    // parity with the legacy full-entity round-trip. (Done as a read rather than an Entry().IsModified = false guard:
+    // The stored State + OrganizationUnitId, which the update puts back on the entity — parity with the legacy
+    // full-entity round-trip. (Done as a read rather than an Entry().IsModified = false guard:
     // the parent is now tracked by the BL's DbContext, which is not necessarily this DAL's Context instance.)
     public async Task<ExportRequestStoredColumns?> GetExportRequestProjectionColumns(int requestId)
     {
@@ -1111,55 +1079,29 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
 
     public async Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id)
     {
-        // Single request by id + its three child collections (mirrors the legacy Single + 3x LoadProperty).
-        // TEMPORARY: the entity has 35 columns but the platform MaxCountExceededInterceptor errors at >=30 result
-        // columns. Until a CertificateOfOrigins entry is added to InfrastructureCore's InterceptorList (then use
-        // .Include(...) + .ExcludeInterceptor("<hash>") with the full column set), we project to 29 columns and
-        // drop 6 fields: State, CreateDate, CreateUserId, UpdateDate, UpdateUserId, OrganizationUnitId.
-        // Verified 2026-08-18 still enforced on InfrastructureCore.DAL 1.10.53 (a 35-column probe threw
-        // DbInterceptionException "Result fields count (35) exceeded max eror level of 30").
-        // RE-TESTED 2026-09-15 on InfrastructureCore.DAL 1.10.58 (the newest version published on the feed) with the
-        // full 35-column read + .ExcludeInterceptor("j4XSVK6Fl8"): STILL FAILS at runtime. The tag is emitted into the
-        // SQL ("-- j4XSVK6Fl8") but the interceptor ignores it and throws anyway, so opting out per query does not work
-        // in this version. Keep the 29-column workaround; re-test after the next InfrastructureCore.DAL bump.
+        // Single request by id + its three child collections, as the legacy Single + 3x LoadProperty: four queries.
+        // The row has 35 columns, over the platform MaxCountExceededInterceptor default of 30. The hash j4XSVK6Fl8 is
+        // registered in InfrastructureCore.DAL's InterceptorList (since 1.10.83: columns warn 40 / error 50, rows 250),
+        // so the full row is read with it. The children are separate queries, not a JOIN: three collections joined
+        // would multiply their rows toward the 250-row limit.
         var result = await ReadOnlyContext.ExportDocumentAuthenticationRequests
             .Where(r => r.Id == id)
-            .Select(r => new ExportDocumentAuthenticationRequest
-            {
-                Id = r.Id,
-                TypeId = r.TypeId,
-                Title = r.Title,
-                TimeStamp = r.TimeStamp,
-                CustomerId = r.CustomerId,
-                AuthenticationDocumentTypeId = r.AuthenticationDocumentTypeId,
-                ExporterCustomerId = r.ExporterCustomerId,
-                StatusId = r.StatusId,
-                CountryId = r.CountryId,
-                CustomsHouseAddress = r.CustomsHouseAddress,
-                VendorId = r.VendorId,
-                AuthenticationRequestArrivalDate = r.AuthenticationRequestArrivalDate,
-                AuthenticationRequestedByName = r.AuthenticationRequestedByName,
-                AuthenticationRequestedByEmail = r.AuthenticationRequestedByEmail,
-                AuthenticationRequestedByPhone = r.AuthenticationRequestedByPhone,
-                AuthenticationRequestNotes = r.AuthenticationRequestNotes,
-                ExportLeadDocumentId = r.ExportLeadDocumentId,
-                DocumentId = r.DocumentId,
-                MainDocumentTitle = r.MainDocumentTitle,
-                LastDeliveryDate = r.LastDeliveryDate,
-                DeliveryMethodId = r.DeliveryMethodId,
-                InvoiceNumbers = r.InvoiceNumbers,
-                DetailedDecision = r.DetailedDecision,
-                ReferenceNumber = r.ReferenceNumber,
-                CommentForCustomsHouseLetter = r.CommentForCustomsHouseLetter,
-                TotalDocuments = r.TotalDocuments,
-                TotalInvoices = r.TotalInvoices,
-                DocumentDate = r.DocumentDate,
-                InvoiceDate = r.InvoiceDate,
-                CustomsItems = r.CustomsItems.ToList(),
-                LeadDocuments = r.LeadDocuments.ToList(),
-                ManufacturingAreas = r.ManufacturingAreas.ToList(),
-            })
+            .ExcludeInterceptor("j4XSVK6Fl8")
             .FirstOrDefaultAsync();
+        if (result is null)
+        {
+            return null;
+        }
+
+        result.CustomsItems = await ReadOnlyContext.Set<CustomsItemToExportDocumentAuthenticationRequest>()
+            .Where(c => c.ExportDocumentAuthenticationRequestId == id)
+            .ToListAsync();
+        result.LeadDocuments = await ReadOnlyContext.Set<ExportDocumentAuthenticationRequestLeadDocument>()
+            .Where(l => l.ExportRequestId == id)
+            .ToListAsync();
+        result.ManufacturingAreas = await ReadOnlyContext.Set<ExportAuthenticationRequestManufacturingArea>()
+            .Where(m => m.ExportAuthenticationRequestId == id)
+            .ToListAsync();
         return result;
     }
 
@@ -1266,23 +1208,43 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // the preference-document type and issuing date, and clears InvoiceNumber or DocumentNumber in code — so those
         // are written here. The fields that screen shows read-only are not.
         //
-        // A null from the caller keeps the stored value (value-from-row overload), so a caller sending only the base
-        // fields does not wipe the rest. DocumentIssuingDate is part of the base contract (the file read returns it and
-        // IsOldIndication is computed from it), so it is written as sent. Set-based, no row loaded.
+        // Legacy saved the entity the client sent back, so a nullable column is written as sent — a null clears it, as the
+        // screen's "clear" did (parity finding FN-03); the file read returns every one of these columns, so a round-trip
+        // keeps them. The NOT NULL columns (countries, preference-document type) keep the stored value on a null.
+        // DocumentIssuingDate is written as sent (IsOldIndication is computed from it).
+        //
+        // Only a row whose values actually change is written, so an unchanged child keeps its UpdateDate/UpdateUserId: the
+        // legacy self-tracking entity was Modified only when a setter received a different value (parity finding FN-05).
+        // Set-based, no row loaded.
         var now = DateTime.Now;
         await Context.CertificateOfOriginsImportAuthenticationRequests
-            .Where(r => r.DocumentId == child.DocumentId)
+            .Where(r => r.DocumentId == child.DocumentId
+                && (r.DecisionId != child.DecisionId
+                    || r.IsOldIndication != isOldIndication
+                    || r.DecisionCircumstences != child.DecisionCircumstences
+                    || r.CirumstanceDetails != child.CirumstanceDetails
+                    || r.Remarks != child.Remarks
+                    || r.DocumentNumber != child.DocumentNumber
+                    || r.InvoiceNumber != child.InvoiceNumber
+                    || r.VendorId != child.VendorId
+                    || r.CustomerId != child.CustomerId
+                    || r.ImporterId != child.ImporterId
+                    || (child.ImportCountryId != null && r.ImportCountryId != child.ImportCountryId)
+                    || (child.OriginCountryId != null && r.OriginCountryId != child.OriginCountryId)
+                    || (child.IssuingCountryId != null && r.IssuingCountryId != child.IssuingCountryId)
+                    || (child.PreferenceDocumentTypeId != null && r.PreferenceDocumentTypeId != child.PreferenceDocumentTypeId)
+                    || r.DocumentIssuingDate != child.DocumentIssuingDate))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.DecisionId, child.DecisionId)
                 .SetProperty(r => r.IsOldIndication, isOldIndication)
-                .SetProperty(r => r.DecisionCircumstences, r => child.DecisionCircumstences ?? r.DecisionCircumstences)
-                .SetProperty(r => r.CirumstanceDetails, r => child.CirumstanceDetails ?? r.CirumstanceDetails)
-                .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
-                .SetProperty(r => r.DocumentNumber, r => child.DocumentNumber ?? r.DocumentNumber)
-                .SetProperty(r => r.InvoiceNumber, r => child.InvoiceNumber ?? r.InvoiceNumber)
-                .SetProperty(r => r.VendorId, r => child.VendorId ?? r.VendorId)
-                .SetProperty(r => r.CustomerId, r => child.CustomerId ?? r.CustomerId)
-                .SetProperty(r => r.ImporterId, r => child.ImporterId ?? r.ImporterId)
+                .SetProperty(r => r.DecisionCircumstences, child.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, child.CirumstanceDetails)
+                .SetProperty(r => r.Remarks, child.Remarks)
+                .SetProperty(r => r.DocumentNumber, child.DocumentNumber)
+                .SetProperty(r => r.InvoiceNumber, child.InvoiceNumber)
+                .SetProperty(r => r.VendorId, child.VendorId)
+                .SetProperty(r => r.CustomerId, child.CustomerId)
+                .SetProperty(r => r.ImporterId, child.ImporterId)
                 .SetProperty(r => r.ImportCountryId, r => child.ImportCountryId ?? r.ImportCountryId)
                 .SetProperty(r => r.OriginCountryId, r => child.OriginCountryId ?? r.OriginCountryId)
                 .SetProperty(r => r.IssuingCountryId, r => child.IssuingCountryId ?? r.IssuingCountryId)
@@ -1296,9 +1258,24 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     {
         // SaveAuthenticationRequestFile step 4: persist the file's editable scalar columns + update-audit. Set-based
         // (the repo write convention) — CreateDate/CreateUserId/State/TimeStamp are left untouched. Missing row → false.
+        //
+        // Only a row whose values actually change is written, so an unchanged file keeps its UpdateDate/UpdateUserId: the
+        // legacy self-tracking entity was Modified only when a setter received a different value (parity finding FN-05).
         var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationFileDetails
-            .Where(f => f.Id == file.Id)
+            .Where(f => f.Id == file.Id
+                && (f.AuthenticationFileStatusId != file.AuthenticationFileStatusId
+                    || f.Notes != file.Notes
+                    || f.PostalAdress != file.PostalAdress
+                    || f.DeliveryMethodId != file.DeliveryMethodId
+                    || f.EmailAdress != file.EmailAdress
+                    || f.ReminderMethodId != file.ReminderMethodId
+                    || f.RequestCountryId != file.RequestCountryId
+                    || f.UserId != file.UserId
+                    || f.UserNameIssuingLetter != file.UserNameIssuingLetter
+                    || f.LastDelivery != file.LastDelivery
+                    || f.ImporterContactingReasonId != file.ImporterContactingReasonId
+                    || f.FirstProvideContactDate != file.FirstProvideContactDate))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(f => f.AuthenticationFileStatusId, file.AuthenticationFileStatusId)
                 .SetProperty(f => f.Notes, file.Notes)
@@ -1314,7 +1291,14 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
                 .SetProperty(f => f.UpdateDate, now)
                 .SetProperty(f => f.UpdateUserId, userId));
-        return affected > 0;
+        if (affected > 0)
+        {
+            return true;
+        }
+
+        // Nothing changed, or no such file: only the second is a miss.
+        var exists = await Context.CertificateOfOriginsImportAuthenticationFileDetails.AnyAsync(f => f.Id == file.Id);
+        return exists;
     }
 
     public async Task UnlinkAllRequestsFromFile(int fileId, int userId)

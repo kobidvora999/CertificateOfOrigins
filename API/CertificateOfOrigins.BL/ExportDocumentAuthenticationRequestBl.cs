@@ -64,17 +64,15 @@ public class ExportDocumentAuthenticationRequestBl(
         // Map entity + children. OriginalStatusId snapshots the status for the later optimistic dirty-check on
         // Save. ExportDeclarationIds replaces the legacy EntityTypeAndIDsToSearch dictionary (which only drove the
         // old WPF document-attach picker): the lead-document ids the client can attach documents to.
-        var storedColumns = await DataLayer.GetExportRequestProjectionColumns(id);
-
         var result = new GetExportDocumentAuthenticationRequestByIdResultDto
         {
             Id = entity.Id,
-            State = storedColumns?.State ?? 0,
-            OrganizationUnitId = storedColumns?.OrganizationUnitId ?? 0,
-            CreateDate = storedColumns?.CreateDate ?? default,
-            CreateUserId = storedColumns?.CreateUserId ?? 0,
-            UpdateDate = storedColumns?.UpdateDate ?? default,
-            UpdateUserId = storedColumns?.UpdateUserId ?? 0,
+            State = entity.State,
+            OrganizationUnitId = entity.OrganizationUnitId,
+            CreateDate = entity.CreateDate,
+            CreateUserId = entity.CreateUserId,
+            UpdateDate = entity.UpdateDate,
+            UpdateUserId = entity.UpdateUserId,
             TypeId = entity.TypeId,
             Title = entity.Title,
             TimeStamp = entity.TimeStamp,
@@ -136,8 +134,8 @@ public class ExportDocumentAuthenticationRequestBl(
     // authentication request + its three child collections (replace-all, developer decision 2026-08-05); on a status
     // transition raises the status events and (for some statuses) sends the status message; finally attaches any
     // additional documents. Returns the freshly-saved graph. current-user = RequestMetadata.UserId, DisplayName =
-    // RequestMetadata.Fullname. The legacy status name came from a SystemTable lookup — resolved here from the
-    // EExportAuthenticationRequestStatus Display name (no ILookupUtil type exists, consistent with #26).
+    // RequestMetadata.Fullname. The legacy status name came from a SystemTable lookup — read here from the
+    // ExportAuthenticationRequestStatus table row (GetStatusName, parity finding H-11).
     public async Task<GetExportDocumentAuthenticationRequestByIdResultDto> SaveExportDocumentAuthenticationRequest(SaveExportDocumentAuthenticationRequestRequestDto request)
     {
         // A malformed body is a 400 before anything runs: an update without the row version (which could not match the row:
@@ -172,9 +170,9 @@ public class ExportDocumentAuthenticationRequestBl(
         }
         else
         {
-            // The read projection (GetById) omits State + OrganizationUnitId (29-column interceptor limit), so the
-            // round-tripped DTO carries them as 0 — restore the stored values before the update, or it would zero
-            // both columns on every save of an existing record (parity with the legacy full-entity round-trip).
+            // State + OrganizationUnitId are taken from the row, so a body without them cannot zero both columns. GetById returns
+            // them (H-1), so a client that round-trips the read sends the stored values anyway; the screen never edits either
+            // one, so this saves what the legacy full-entity round-trip saved.
             var preserved = await DataLayer.GetExportRequestProjectionColumns(entity.Id);
             if (preserved is not null)
             {

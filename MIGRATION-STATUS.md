@@ -8,6 +8,21 @@
 > `NavigationPath` + שירות-מקור שיחשוף `GET /lookup/NavigationPath` (בפנים — ראה INTERNAL_INTEGRATION.md).
 > מושמטת אחת בלבד: `TempSync` (stub מת בלגסי, NotImplementedException — לא נדרשת).
 
+> ## 🔁 סבב אימות חוזר — repo-complete-check 2026-10-11
+>
+> ריצה חוזרת מלאה (`pre-internal-gap-report_2026-10-11.md` + נספחים `_parity-A…H`). כל ממצאי ה-FIXED מהסבב הקודם אומתו בקוד: **0 רגרסיות**.
+> נמצאו ממצאים חדשים — כולם רשומים ב-LEDGER תחת "Re-check of 2026-10-11", כל אחד עם **שורש** ו**מניעה**:
+>
+> | סטטוס | ממצאים |
+> |---|---|
+> | ✅ תוקן (קוד + בדיקת יחידה שערכה הצפוי נגזר מהלגאסי + מבחן מוטציה) | **HIGH:** BN-01 (Reconcile דילג על פריטי טובין בלי פרט מכס), GN-01 (XML של משוב 2281 ב-worker). **MED:** AN-01 (שמירת תעודה בטרנזקציה), AN-02 (מסמך ה-QR נמחק בפרסום), CN-01, FN-01, FN-02, GN-02, GN-03, GN-04, CR-N1. **LOW:** A-21, AN-03, AN-04, BN-02, BN-03, CN-02, DN-01, DN-04, FN-03, FN-05, GN-07, HN-02 |
+> | 🟠 ממתין להחלטה | **EN-01** — ‏ById מחזיר `LastDeliveryForImporter`; בלגאסי ה-SP לא החזיר אותו ושמירת הפופאפ איפסה את העמודה (נראה כבאג לגאסי) |
+> | ⛔ חסום / לא ניתן לאימות מהקוד | CN-03 (header `MessageSenderId` — אימות חי), CN-04 (קוד framework), DN-05, GN-06 (אין קוד worker מקורי), HN-01 |
+> | ⚪ לא פער / תואם | DN-02, DN-03, EN-02, EN-03, FN-04, GN-05 |
+>
+> **לא אומת חי:** ה-SQL של FN-03/FN-05 (כתיבת בנים "כמו שנשלח" ורק לשורות שהשתנו), הטרנזקציה של AN-01 מול SQL Server, העלאת QR בלי ישות (AN-02) מול Documents אמיתי.
+> ריצת ה-coverage של Postman לא הצליחה (סביבה — ראה דוח 6a).
+
 > ## 🔎 סטטוס אי-תאימויות מול הלגאסי (פאריטי) — 2026-10-11
 >
 > **מקור האמת לסטטוס פר-ממצא:** [`pre-internal-gap-report_2026-09-27_LEDGER.md`](Postman/internal-workload-test/reports/pre-internal-gap-report_2026-09-27_LEDGER.md) (143 ממצאים, כולל X-1..X-4 שנמצאו מחוץ לדוחות).
@@ -137,7 +152,7 @@
 | מתודה | סטטוס | הערה |
 |---|---|---|
 | Convert | ✅ הומרה | |
-| HandleAuthenticationRequestDeliverySent | ✅ הומרה | |
+| HandleAuthenticationRequestDeliverySent | ✅ הומרה | גוף `EventResponseArgs` ב-`PATCH` (2026-10-12). ⚠️ לא רשום לאף אירוע ב-`Events_EventTypeResponse` — ראו MIGRATION-NOT-DONE |
 | GetCertificateOfOriginID | ✅ הומרה | |
 | GetGoodsItemCerificateDTO | ✅ הומרה | |
 | SaveCertificateOfOriginAttachments | ✅ הומרה | |
@@ -180,7 +195,7 @@
 | מתודה | סטטוס | הערה |
 |---|---|---|
 | GetPC_MSG2280_2281_CertificateOfOriginRequest | ✅ הומרה | 2026-08-17. כל 4 החסמים העסקיים נסגרו: per-reason resolution+supersession · שמירת invoices/items · declaration-check+amendment · NonManipulation (מיפוי 15 שדות + CustomsHouse). אודיט פאריטי אדוורסרי מול הלגסי + אימות DB; תוקנו org-unit-0 באירועים ו-`EnrichAndValidateDetails` (תאריכים→short date · בוליאני→Yes/No · CustomsHouse→org-unit id+שם). פירוט: [MIGRATION-NOT-DONE.md](MIGRATION-NOT-DONE.md) |
-| GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים דרך proxy ל-SystemTables (+mock) — אין להם lookup type בפלטפורמה. נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. ‏**DocumentID נפתר** דרך `IDocumentsProxy.GetDocumentsByEntity` (ה-JOIN החוצה-סכמה הוסר מה-SP) ונשאר 0 רק כשאין מסמך תואם — *תוקן 2026-09-15 באודיט: הרישום הקודם כאן טען "חוסם שנותר: DocumentID (NULL)" וזה היה מיושן*. Rollout: אימות נתיבי endpoint (Documents + SystemTables: CurrencyTypesByIds, DataDictionaryFieldsByIds). |
+| GetCertificateRequestByGuid | ✅ הומרה | 2026-07-28. נחשפה כ-GET ב-CertificateOfOriginsController (לא Incoming controller — הקונבנציה: controller לפי BL). SP רב-תוצאות `dbo.GetCertificateOfOriginDataForWebQuery` (5 result sets, QueryMultiple ידני) — הוחל ואומת מול DB חי + סקריפט גרסה ב-Scripts/. 3 quirks לגאסי נשמרו bug-for-bug (קדימות פילטר חשבוניות · result-set-5 בלי IsToPrint → Consignee EUR1/EURMED לא מודפס · רשימת פריטי חשבונית תמיד ריקה). QueryURL נפתר מ-Infrastructure.Parameters (קיים ומאומת). CurrencyCode ו-DataDictionaryField labels נפתרים מ-local lookups (`TODO(internal)` — אין להם lookup type בפלטפורמה). נבדק חי (GET מול השירות): GUID אמיתי→200 עם currencyCode; GUID לא קיים→200 עם exceptionDescription. ‏**DocumentID נפתר** דרך `IDocumentsProxy.GetDocumentsByEntity` (ה-JOIN החוצה-סכמה הוסר מה-SP) ונשאר 0 רק כשאין מסמך תואם — *תוקן 2026-09-15 באודיט: הרישום הקודם כאן טען "חוסם שנותר: DocumentID (NULL)" וזה היה מיושן*. Rollout: אימות ה-route של Documents ומקור ה-local lookups (INTERNAL_INTEGRATION.md §3a). |
 
 *(מאז פיצול ה-controllers לפי דומיין-צרכן (2026-09-05), מתודות Incoming נחשפות תחת הדומיין שלהן —
 `Web/` ל-`GetCertificateRequestByGuid` ו-`Community/` ל-`GetPC_MSG2280_2281_CertificateOfOriginRequest` —

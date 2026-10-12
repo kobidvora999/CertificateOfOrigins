@@ -1,6 +1,6 @@
 $kind: http-request
 url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
-method: POST
+method: PATCH
 headers:
   Content-Type: application/json
 # Related entities present but none of them is an AuthenticationRequestFile -> the SingleOrDefault comes
@@ -9,5 +9,5 @@ headers:
 body:
   type: json
   content: |-
-    { "relatedEntities": [ { "id": {{fileId}}, "entityType": 999 } ] }
+    { "relatedEntities": [ { "entityId": {{fileId}}, "entityType": 999 } ] }
 order: 31010

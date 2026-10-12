@@ -18,7 +18,7 @@ public partial class CertificateOfOriginsBl
     {
         if (certificate.InvoiceDetails.Count == 0)
         {
-            context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, nameof(certificate.InvoiceDetails)));
+            context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, "CertificateOfOriginRequestInvoiceDetail"));
             return;
         }
 
@@ -30,7 +30,7 @@ public partial class CertificateOfOriginsBl
         {
             if (invoice.ItemDetails.Count == 0)
             {
-                context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, "ItemDetails"));
+                context.Exceptions.Add(BuildMessageException(EMessageCode.MandatoryValue, "CertificateOfOriginRequestItemDetail"));
             }
             else if (invoice.ItemDetails.Exists(item => string.IsNullOrEmpty(item.MarksAndNumbers)))
             {

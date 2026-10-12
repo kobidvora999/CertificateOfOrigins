@@ -104,8 +104,8 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddLookup<Country>();
         services.AddLookup<OrganizationUnit>();
 
-        // Detail id→name display enrichment for SaveCertificateOfOrigin (city via ILookupUtil). No lookup type exists
-        // for country-group / international-site — those id→name lookups need a SystemTables proxy (rollout TODO).
+        // Detail id→name display enrichment for SaveCertificateOfOrigin (city; country-group and international-site are the
+        // local lookups registered below).
         services.AddLookup<City>();
 
         // Document-type names for GetEntityDocuments (was SystemTablesUtil.GetCodeById<DocumentType>.Name).

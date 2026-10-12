@@ -5,8 +5,9 @@ headers:
   Content-Type: application/json
 # The coordinator's edits to a child request on the file screen (legacy UpdateAndSaveImportAuthenticationRequest,
 # a full Repository.Save per child). The file status is left unchanged (10 -> 10, after 70), so only the child
-# write runs. The first request (docFileA) carries edits; the second (docFileB) carries ONLY the base fields,
-# which must leave its stored values alone.
+# write runs. The client always sends back every child as it read it (legacy saved that entity, null included —
+# parity finding FN-03): docFileB round-trips its stored values unchanged; docFileA carries edits and omits
+# importerId, which legacy cleared.
 body:
   type: json
   content: |-
@@ -26,6 +27,8 @@ body:
           "remarks": "PM remarks 80", "documentNumber": "DN-80", "vendorId": 779,
           "preferenceDocumentTypeId": 4 },
         { "documentId": {{docFileB}}, "authenticationFileId": {{fileId}}, "decisionId": {{decB}}, "originalRequestDecisionId": {{decB}},
-          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5,
+          "vendorId": 778, "customerId": null, "importerId": 279367, "remarks": "flow file request B",
+          "importCountryId": 32, "issuingCountryId": 32, "originCountryId": 32, "preferenceDocumentTypeId": 1 }]
     }
 order: 30070

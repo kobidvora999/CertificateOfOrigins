@@ -22,7 +22,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginsResponseDto" } } }
           },
           "400": { "description": "Malformed request." },
-          "502": { "description": "A service this endpoint calls (Documents, DataDictionaryField, CurrencyType) answered with an error." },
+          "502": { "description": "The Documents service answered with an error." },
           "503": { "description": "A service this endpoint calls is unavailable." }
         }
       }

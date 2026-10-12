@@ -198,24 +198,23 @@
    **הוכרע: לשמר bug-for-bug** — Consignee ב-EUR1/EURMED לעולם לא מודפס.
 2. **FieldID של ExportDeclarationNumber** — טענת ה-NRE הייתה שגויה: `[FieldID(20661)]` קיים בישות.
    הערכים (20306/20310/20661) נכתבו כקבועים ב-BL (ה-DTO ביעד לא נושא attributes → אין reflection).
-3. **lookups** — אומת ב-reflection ש-`CurrencyType` ו-`DataDictionaryField` **לא קיימים** כ-lookup type בפלטפורמה
-   (`ILookup` אף לא מכיל `CurrencyCode`). לכן ההחלטה המקורית "ILookupUtil.Get<T>" בלתי-אפשרית. **הוכרע (2026-07-28):
-   שניהם דרך proxy ל-`CustomsMicroServices.SystemTables` + MockProxy** — `IDataDictionaryFieldProxy` (תוויות
-   EnglishName) ו-`ICurrencyTypeProxy` (CurrencyCode). CurrencyCode מאוכלס בפועל (נבדק חי מול mock → "ILS").
+3. **lookups** — `CurrencyType` ו-`DataDictionaryField` לא קיימים כ-lookup type בחבילת הפלטפורמה. ההחלטה המקורית
+   (2026-07-28) הייתה proxy ל-SystemTables; **מאז הם הוחלפו ב-local lookups** (`AddLocalLookup<Lookups.CurrencyType>` /
+   `<Lookups.DataDictionaryField>`, ‏`TODO(internal)`), שיוחלפו ב-`AddLookup` כשהפלטפורמה תוסיף אותם. ה-proxies הוסרו.
 4. **DocumentID** — נפתר במקור ב-SP מ-Infrastructure.Docs_* (חוצה-סכמה). **הוכרע: 0/NULL + TODO(blocking)**;
-   ה-JOIN הוסר מה-SP (מחזיר NULL). לפתור עתידית דרך שירות Documents.
+   ה-JOIN הוסר מה-SP; ה-BL פותר אותו דרך שירות Documents (המסמך החדש ביותר מסוג 329/461).
 5. **באג קדימות אופרטורים** בפילטר החשבוניות (blocker #5 המקורי) — **הוכרע: לשמר bug-for-bug**
    (IsToPrint מגביל רק MERCOSUR). נוספו סוגריים מפורשים שמשמרים את ההתנהגות (דרישת SA1408).
 6. **CertificateOfOriginItemDetailDTOs** — תמיד רשימה ריקה (dead-init לגאסי). **הוכרע: לשמר.**
 
 **נפתר מאז (2026-07-28):** SP הוחל ואומת מול DB חי (פרמטרים תואמים) + סקריפט גרסה ב-Scripts/ ·
 `CertificateOfOriginQueryURL` קיים ומאומת ב-Infrastructure.Parameters (ה-TODO השגוי הוסר) ·
-CurrencyCode מומש דרך `ICurrencyTypeProxy` · נבדק חי end-to-end (GET מול השירות).
+CurrencyCode נפתר מה-lookup המקומי `CurrencyType` · נבדק חי end-to-end (GET מול השירות).
 
 **חוסרים חוסמים שנותרו (Manual follow-up — blocking):** ראה TODO(blocking) בקוד —
-(1) **DocumentID** מוחזר NULL/0 (ה-JOIN ל-Infrastructure.Docs_* הוסר מה-SP) — לפתור דרך שירות Documents.
-(2) **אימות נתיבי endpoint ב-SystemTables לפני rollout:** `CurrencyType/CurrencyTypesByIds` ו-
-`DataDictionaryField/DataDictionaryFieldsByIds` (נכתבו כ-best-guess).
+(1) **DocumentID** נפתר דרך שירות Documents (`IDocumentsProxy.GetDocumentsByEntity`) — אימות ה-route מול השירות האמיתי.
+(2) **מקור ה-local lookups** (`CurrencyType`, `DataDictionaryField`) — לאשר מול הפלטפורמה מי מגיש `GET lookup/{Type}`
+(ראה INTERNAL_INTEGRATION.md §3a). בלי מקור, תוויות 20306/20310/20661 יוצאות בלי תווית (DN-05).
 
 ## חוצה-מתודות: פריטים פתוחים מאודיט הנאמנות (2026-09-14/15)
 
@@ -273,9 +272,18 @@ CurrencyCode מומש דרך `ICurrencyTypeProxy` · נבדק חי end-to-end (G
 הפעיל את ה-side-effect הזה מול שירות ה-Collateral. זה תוקן במכוון (`8d46e33`, "Restore the file-level collateral
 outcome"), אך מדובר בשינוי מול ההתנהגות בפועל — ראוי ל-sign-off מפורש.
 
-### ⚠️ `HandleAuthenticationRequestDeliverySent` — סטייה לא-מוכחת
+### ⚠️ `HandleAuthenticationRequestDeliverySent` — callback שאינו רשום לאף אירוע (2026-10-12)
 
-הלגסי איתר את הישות הקשורה לפי `EntityType` **או** `TypeID` (שני שדות נפרדים ולא-מסונכרנים על `IEntity`).
-המומר בודק `EntityType` בלבד, ול-`VirtualEntityDto` אין `TypeId` כלל. אם שירות ה-Events מאכלס רק `TypeID`,
-ההתאמה תיכשל בשקט והמתודה תחזיר `false` היכן שהלגסי החזיר `true`. לא ניתן להוכיח מהרפו — המפיק חיצוני;
-דורש בדיקה מול חוזה שירות ה-Events.
+**החוזה יושר לפלטפורמה:** ה-endpoint מקבל את `EventResponseArgs` של הפלטפורמה ב-`PATCH api/EventsResponse/HandleDeliverySent`
+(לפי `_shared/controller-template.md`), ומזהה את הקובץ לפי `RelatedEntity.EntityType == AuthenticationRequestFile` (12385)
+וטוען לפי `EntityId`. ה-DTO העצמאי `RaiseEventArgsDto` נמחק: הוא קרא `id` במקום `entityId`, ולכן מול הפלטפורמה הקובץ
+לא נמצא אף פעם והמתודה החזירה תמיד `false`. החלופה הלגסית `|| TypeID == 12385` לא שוחזרה: `TypeID` של `VirtualEntity`
+הוא הסוג העסקי של הישות ולא סוג הישות, ול-`RelatedEntity` של הפלטפורמה אין שדה כזה.
+
+**אין רישום:** בטבלה `Infrastructure.Events_EventTypeResponse` (נבדק 2026-10-12) אין שורה שמפעילה את
+`HandleAuthenticationRequestDeliverySent`. השורה היחידה של השירות מסוג הפעלת מתודה היא **5458** (אירוע 870,
+`DistributionDeliveryCreatedFromClient`, `RelatedEntityTypeId=12386`), והיא מפנה ל-`HandleExportAuthenticationRequestDeliverySent` —
+מתודה שאינה קיימת בקוד הלגסי. כלומר ה-callback לא רץ גם בלגסי.
+
+**החלטה נדרשת (קובי / צוות הפלטפורמה):** האם לרשום את ה-endpoint לאירוע כלשהו, ואם כן — לאיזה אירוע, באיזה verb וב-route
+איזה. עד אז ה-endpoint קיים אך אינו נקרא; ההתנהגות שלו (בדיקת קיום בלבד, כתיבת הסטטוס בהערה בלגסי) לא השתנתה.

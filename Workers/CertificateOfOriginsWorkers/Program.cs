@@ -39,7 +39,7 @@ public class Program
         var builder = util.CreateBuilder();
 
         // === IssueCertificateOfOrigin ===
-        // The API publishes a certificate to issue to this exchange (CertificateOfOriginsConsts.IssueCertificateOfOriginExchange);
+        // The API publishes a certificate to issue to this exchange, named by CertificateOfOriginsConsts.IssueCertificateOfOriginExchange,
         // a failed message is dead-lettered to the Errors queue.
         builder
             .WithQueue(b => b.WithName("IssueCertificateOfOrigin")

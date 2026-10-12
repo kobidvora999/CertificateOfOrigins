@@ -12,8 +12,8 @@ namespace CertificateOfOrigins.BL;
 // chain extended and two more SystemTables lookups.
 public partial class CertificateOfOriginsBl
 {
-    // Legacy CheckFields: the two cross-field passes. Runs only for the create/update reasons (the caller gates it on a
-    // non-empty details list, i.e. not GetRequestStatus/CertificateCancellation).
+    // Legacy CheckFields: the two cross-field passes. Runs only for the create/update reasons: the caller gates it on a
+    // non-empty details list AND on the reason not being GetRequestStatus/CertificateCancellation (CN-01).
     private async Task CheckMessageCrossFields(CertificateOfOriginMessageDto? certificate, NonManipulationCertificateMessageDto? nonManipulation, CertificateOfOriginAgentRequestDto agentRequest, List<CertificateOfOriginDetails> details, bool isZipcodeMandatory, MessageValidationContext context)
     {
         await CheckConditionalFields(certificate, nonManipulation, agentRequest, details, isZipcodeMandatory, context);

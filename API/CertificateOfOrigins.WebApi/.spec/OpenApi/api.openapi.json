@@ -395,7 +395,7 @@
                                                                        }
                                                           },
                   "/api/EventsResponse/HandleDeliverySent":  {
-                                                                 "post":  {
+                                                                 "patch":  {
                                                                               "tags":  [
                                                                                            "EventsResponse"
                                                                                        ],
@@ -412,17 +412,17 @@
                                                                                                   "content":  {
                                                                                                                   "application/json":  {
                                                                                                                                            "schema":  {
-                                                                                                                                                          "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                                          "$ref":  "#/components/schemas/EventResponseArgs"
                                                                                                                                                       }
                                                                                                                                        },
                                                                                                                   "text/json":  {
                                                                                                                                     "schema":  {
-                                                                                                                                                   "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                                   "$ref":  "#/components/schemas/EventResponseArgs"
                                                                                                                                                }
                                                                                                                                 },
                                                                                                                   "application/*+json":  {
                                                                                                                                              "schema":  {
-                                                                                                                                                            "$ref":  "#/components/schemas/RaiseEventArgsDto"
+                                                                                                                                                            "$ref":  "#/components/schemas/EventResponseArgs"
                                                                                                                                                         }
                                                                                                                                          }
                                                                                                               },
@@ -436,24 +436,6 @@
                                                                                                                                                      "schema":  {
                                                                                                                                                                     "$ref":  "#/components/schemas/RestBadRequestResult"
                                                                                                                                                                 }
-                                                                                                                                                 }
-                                                                                                                        }
-                                                                                                        },
-                                                                                                "404":  {
-                                                                                                            "description":  "Not Found",
-                                                                                                            "content":  {
-                                                                                                                            "text/plain":  {
-                                                                                                                                               "schema":  {
-                                                                                                                                                              "type":  "string"
-                                                                                                                                                          }
-                                                                                                                                           },
-                                                                                                                            "application/octet-stream":  {
-                                                                                                                                                             "schema":  {
-                                                                                                                                                                            "type":  "string"
-                                                                                                                                                                        }
-                                                                                                                                                         },
-                                                                                                                            "application/json":  {
-
                                                                                                                                                  }
                                                                                                                         }
                                                                                                         },
@@ -624,17 +606,8 @@
                                                                                                                    }
                                                                                      }
                                                                   },
-                                       "RaiseEventArgsDto":  {
-                                                                 "type":  "object",
-                                                                 "properties":  {
-                                                                                    "relatedEntities":  {
-                                                                                                            "type":  "array",
-                                                                                                            "items":  {
-                                                                                                                          "$ref":  "#/components/schemas/VirtualEntityDto"
-                                                                                                                      }
-                                                                                                        }
-                                                                                }
-                                                             },
+                                       "EventResponseArgs":  { "type": "object", "description": "The platform event-response body (CustomsCloud.InfrastructureCore.Utils.Events.EventResponseArgs). HandleDeliverySent reads only relatedEntities; the other platform fields are accepted and ignored.", "properties": { "entityId": { "type": "integer", "format": "int32", "nullable": true }, "entityType": { "type": "integer", "format": "int32" }, "eventType": { "type": "integer", "format": "int32" }, "relatedEntities": { "type": "array", "nullable": true, "items": { "$ref": "#/components/schemas/RelatedEntity" } } } },
+                                       "RelatedEntity":  { "type": "object", "description": "A related entity of the event. The authentication file is the one whose entityType is AuthenticationRequestFile (12385), loaded by entityId.", "properties": { "entityId": { "type": "integer", "format": "int32" }, "entityType": { "type": "integer", "format": "int32" }, "organizationUnitId": { "type": "integer", "format": "int32" }, "organizationUnitType": { "type": "integer", "format": "int32" }, "title": { "type": "string", "nullable": true } } },
                                        "RestBadRequestError":  {
                                                                    "required":  [
                                                                                     "field",

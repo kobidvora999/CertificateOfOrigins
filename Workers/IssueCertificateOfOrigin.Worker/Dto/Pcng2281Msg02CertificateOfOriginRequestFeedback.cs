@@ -22,7 +22,8 @@ namespace IssueCertificateOfOrigin.Worker.Dto
         [XmlElement(Order = 0)]
         public CertificateOfOriginRequestFeedback? CertificateOfOriginRequestFeedback { get; set; }
 
-        [XmlElement(IsNullable = true, Order = 1)]
+        // Not nillable: legacy carried an Attachment[] (no IsNullable), so a missing attachment is omitted, not sent as nil.
+        [XmlElement(Order = 1)]
         public Attachment? Attachment { get; set; }
     }
 }

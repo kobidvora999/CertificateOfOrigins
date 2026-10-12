@@ -5,6 +5,7 @@ using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Interfaces.Http;
 using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
@@ -19,11 +20,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CertificateOfOrigins.Test;
 
-// Regression coverage for the QR-document ordering bug in SaveCertificateOfOrigin (#33): the QR image is uploaded as a
-// document linked to the certificate id, but on publish the generation used to run BEFORE the save assigned that id — so
-// a brand-new certificate published in one save (request.Id == 0, empty QrCodePath) linked the QR document to id 0.
-// The fix generates the QR (stamping QrImage + Guid so they persist with the main upsert) before the save, then uploads
-// the document AFTER the save — once entity.Id is the real certificate id — and persists QrCodePath in a follow-up write.
+// The QR of a published certificate, as legacy CreateQRCodeIfNeededAndUpload: generated and uploaded BEFORE the commit,
+// as a file attached to no entity (UploadFile(..., -1, ...)), with QrImage, Guid and QrCodePath persisted together with the
+// certificate (parity findings AN-01, AN-02, A-20). Linked to the certificate, the publish's replace-the-documents step
+// deleted the QR document it had just created.
 [TestFixture]
 public class SaveCertificateOfOriginQrCodeTests
 {
@@ -38,7 +38,7 @@ public class SaveCertificateOfOriginQrCodeTests
     private static readonly byte[] SeedRowVersion = [0, 0, 0, 0, 0, 0, 0, 1];
 
     [Test]
-    public async Task NewCertificatePublishedInOneSaveLinksQrDocumentToSavedIdNotZero()
+    public async Task NewCertificatePublishedInOneSaveUploadsQrUnlinkedAndPersistsPathForSavedId()
     {
         var request = NewPublishedRequest(0, 0);
 
@@ -50,50 +50,41 @@ public class SaveCertificateOfOriginQrCodeTests
 
         Assert.Multiple(() =>
         {
-            // The bug: the QR document was linked to certificate id 0. The fix links it to the real saved id.
             Assert.That(savedId, Is.Not.Zero, "the save must assign a real certificate id");
-            Assert.That(captures.QrDocumentEntityId, Is.EqualTo(savedId),
-                "the QR document must be linked to the saved certificate id, not 0");
-            Assert.That(captures.QrDocumentEntityId, Is.Not.Zero);
 
-            // The id-linked upload only becomes possible after the save, so at the main upsert the resource path was
-            // not yet known. (EntityIdAtMainSave is deliberately NOT asserted to be 0: identity-value timing is
-            // provider-specific — SQL Server assigns it on INSERT, the in-memory provider already at Add — so it
-            // would test the provider, not this ordering fix.)
-            Assert.That(captures.QrCodePathAtMainSave, Is.Null.Or.Empty,
-                "QrCodePath is only resolved by the post-save upload, so it must be empty at the main upsert");
+            // Legacy uploaded the QR as a bare file attached to no entity (UploadFile(..., -1, ...)); linked to the
+            // certificate, the publish's replace-the-documents step deleted it (parity finding AN-02).
+            Assert.That(captures.QrDocumentEntityId, Is.EqualTo(int.MinValue),
+                "the QR document must not be linked to the certificate");
 
-            // QrImage + Guid are stamped before the save so they persist with the main upsert (matching legacy, which
-            // committed them together with the certificate).
+            // QrImage, Guid and QrCodePath all persist with the main upsert, as legacy committed them together with the
+            // certificate. QrCodePath is the uploaded file's URL, which the print templates read as the QR image source
+            // (legacy GetDocumentFile, parity finding A-20).
             Assert.That(captures.QrImageAtMainSave, Is.Not.Null.And.Not.Empty,
                 "the QR image bytes must persist with the main upsert");
             Assert.That(captures.GuidAtMainSave, Is.Not.Null.And.Not.EqualTo(Guid.Empty),
                 "the certificate Guid must be stamped and persisted with the main upsert");
-
-            // QrCodePath is persisted by the follow-up write, keyed by the saved id, with the uploaded file's URL: the print
-            // templates read it as the QR image source, as legacy's GetDocumentFile URL (parity finding A-20).
-            Assert.That(captures.QrPathUpdateId, Is.EqualTo(savedId),
-                "QrCodePath must be persisted for the saved certificate id");
-            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(FileServerUrl),
-                "the persisted QrCodePath must be the file-server URL of the uploaded file, not its ExternalId");
+            Assert.That(captures.QrCodePathAtMainSave, Is.EqualTo(FileServerUrl),
+                "QrCodePath must be the file-server URL of the uploaded file, persisted with the main upsert");
+            Assert.That(captures.QrPathUpdateId, Is.EqualTo(int.MinValue), "no separate QrCodePath write after the commit");
         });
     }
 
     [Test]
-    public async Task UpdateExistingPublishedLinksQrDocumentToExistingId()
+    public async Task UpdateExistingPublishedUploadsQrUnlinkedAndPersistsPathForExistingId()
     {
         const int existingId = 55;
-        // An update (Id != 0) publishing with an empty QrCodePath still generates + uploads the QR; the document must be
-        // linked to the existing id and QrCodePath persisted (the fix keeps the update path working too).
+        // An update (Id != 0) publishing with an empty QrCodePath still generates + uploads the QR, and QrCodePath is
+        // persisted with the upsert.
         var request = NewPublishedRequest(existingId, (int)ECertificateOfOriginStatus.Published);
 
         var captures = await RunSaveAsync(request, existingId);
 
         Assert.Multiple(() =>
         {
-            Assert.That(captures.QrDocumentEntityId, Is.EqualTo(existingId));
-            Assert.That(captures.QrPathUpdateId, Is.EqualTo(existingId));
-            Assert.That(captures.QrPathUpdateValue, Is.EqualTo(FileServerUrl));
+            Assert.That(captures.QrDocumentEntityId, Is.EqualTo(int.MinValue), "the QR document must not be linked to the certificate");
+            Assert.That(captures.QrCodePathAtMainSave, Is.EqualTo(FileServerUrl));
+            Assert.That(captures.QrPathUpdateId, Is.EqualTo(int.MinValue), "no separate QrCodePath write after the commit");
 
             // CertificateOfOrigin is an ICloudEntity, so BaseBL.UpdateEntity marks CreateDate/CreateUserId
             // not-modified: the round-tripped DTO does not carry them, and without that guard the update would zero
@@ -142,6 +133,86 @@ public class SaveCertificateOfOriginQrCodeTests
         });
     }
 
+    // A-21 / AN-03: the existing-certificate display follows legacy CheckSpecificField case by case. The three site-id port
+    // types show the international site's English name (CheckIfSiteExist); the Israel-only country types, an out-of-range
+    // declaration date and a type outside the switch keep the client-sent display (legacy never touched them).
+    [Test]
+    public async Task ExistingCertificateDisplayFollowsTheLegacyCaseForEachDetailType()
+    {
+        const int existingId = 55;
+        var request = NewPublishedRequest(existingId, (int)ECertificateOfOriginStatus.Published);
+        request.CertificateOfOriginDetails =
+        [
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.ExportPort, Value = "1", DisplayedValue = "1" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.PortOfEntrance, Value = "1", DisplayedValue = "1" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.ExitPort, Value = "1", DisplayedValue = "1" },
+            // PortOfShipment of an existing certificate is the stored site id (legacy GetIdByCode returned the parsed value).
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.PortOfShipment, Value = "1", DisplayedValue = "1" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.PortOfShipment, Value = "ILHFA", DisplayedValue = "as sent" },
+            // ExportCountry: legacy CheckExportCountry set the country's English name.
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.ExportCountry, Value = "376", DisplayedValue = "stale" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.ExporterCountry, Value = "376", DisplayedValue = "Israel (as sent)" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.DateOfDeclaration, Value = "01/01/2020", DisplayedValue = "as sent" },
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = (int)ECertificateDetailsType.ExporterName, Value = "Acme", DisplayedValue = "old" },
+        ];
+        var lookups = Fake<ILookupUtil>((method, args) =>
+        {
+            if (method.Name == "Get" && method.ReturnType.GetGenericArguments()[0] == typeof(InternationalSite))
+            {
+                var site = (int)args![0]! == 1 ? new InternationalSite { Id = 1, EnglishName = "Haifa" } : null;
+                return TaskFromResult(typeof(InternationalSite), site);
+            }
+
+            if (method.Name == "Get" && method.ReturnType.GetGenericArguments()[0] == typeof(Lookup.Country))
+            {
+                var country = (int)args![0]! == 376 ? new Lookup.Country(376, "ישראל", 1, null, "Israel", "IL", "ISR", true, 376) : null;
+                return TaskFromResult(typeof(Lookup.Country), country);
+            }
+
+            return null;
+        });
+
+        var captures = await RunSaveAsync(request, existingId, lookups);
+
+        Assert.That(captures.StagedDetails!.Select(d => d.DisplayedValue), Is.EqualTo(new[]
+        {
+            "Haifa", "Haifa", "Haifa",
+            "Haifa", "as sent",
+            "Israel",
+            "Israel (as sent)",
+            "as sent",
+            "Acme",
+        }));
+    }
+
+    // AN-04: a new certificate converts its DestinationCountry alpha-2 / PortOfShipment locode to an id. Legacy
+    // SystemTablesUtil.GetIdByCode threw TheValueInFieldNotExistsInSystem for a code it did not find, and the save failed
+    // with nothing written; the new code answers 400 before the first write (AN-01), never keeping the raw code.
+    [TestCase((int)ECertificateDetailsType.DestinationCountry, "XX")]
+    [TestCase((int)ECertificateDetailsType.PortOfShipment, "XXXXX")]
+    public void NewCertificateWithAnUnknownCodeIsRejectedBeforeAnyWrite(int detailType, string unknownCode)
+    {
+        var request = NewPublishedRequest(0, 0);
+        request.CertificateOfOriginDetails =
+        [
+            new CertificateOfOriginDetailDto { CertificateDetailsTypeCodeId = detailType, Value = unknownCode, DisplayedValue = unknownCode },
+        ];
+        // Every code lookup finds nothing.
+        var lookups = Fake<ILookupUtil>((method, _) =>
+        {
+            if (method.Name != "Search")
+            {
+                return null;
+            }
+
+            var rowType = method.ReturnType.GetGenericArguments()[0].GetGenericArguments()[0];
+            var empty = Array.CreateInstance(rowType, 0);
+            return TaskFromResult(method.ReturnType.GetGenericArguments()[0], empty);
+        });
+
+        Assert.ThrowsAsync<RestValidationException>(() => RunSaveAsync(request, null, lookups));
+    }
+
     private static SaveCertificateOfOriginRequestDto NewPublishedRequest(int id, int originalStatusId)
     {
         return new SaveCertificateOfOriginRequestDto
@@ -178,6 +249,8 @@ public class SaveCertificateOfOriginQrCodeTests
         // generated by the save, exactly as in production, instead of being injected by the fake.
         var dbOptions = new DbContextOptionsBuilder<CertificateOfOriginsDbContext>()
             .UseInMemoryDatabase($"coo-qr-{Guid.NewGuid()}")
+            // The save runs in a transaction (AN-01); the in-memory store has none, so the warning must not throw.
+            .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .AddInterceptors(new UpsertSnapshotInterceptor(captures))
             .Options;
         using var dbContext = new CertificateOfOriginsDbContext(dbOptions);

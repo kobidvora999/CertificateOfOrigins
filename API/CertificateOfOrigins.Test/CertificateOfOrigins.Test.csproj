@@ -31,6 +31,7 @@
 		<ProjectReference Include="..\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
 		<ProjectReference Include="..\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
 		<ProjectReference Include="..\CertificateOfOrigins.DAL\CertificateOfOrigins.DAL.csproj" />
+		<ProjectReference Include="..\..\Workers\IssueCertificateOfOrigin.Worker\IssueCertificateOfOrigin.Worker.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

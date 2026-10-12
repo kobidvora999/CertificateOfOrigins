@@ -1,16 +1,17 @@
 $kind: http-request
 url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
-method: POST
+method: PATCH
 headers:
   Content-Type: application/json
 # F8: the delivery-sent event names THIS file as a related AuthenticationRequestFile (12385) -> true.
+# The body is the platform EventResponseArgs: the related entity id is "entityId" (BN-02).
 body:
   type: json
   content: |-
     {
       "relatedEntities": [
         {
-          "id": {{fileId}},
+          "entityId": {{fileId}},
           "entityType": 12385
         }
       ]

@@ -153,6 +153,42 @@ public class UpdateCertificateOfOriginsDispatchTests
         });
     }
 
+    // --- BN-01: legacy ran the per-goods-item checks for EVERY goods item of a matched invoice (CertificateOfOriginsBL.cs:809),
+    // also one without a customs item (a type that does not require it). Golden value from legacy: the declaration's goods
+    // items are not linked to this certificate → CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile (an Error)
+    // → the certificate is Rejected, never DeclarationMatch. ---
+    [Test]
+    public async Task GoodsItemWithoutCustomsItemStillRunsTheDealFileCheck()
+    {
+        var certs = new[]
+        {
+            Cert(71, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null),
+        };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [71], "SUB-DEC");
+        request.ExportInvoiceInfoList =
+        [
+            new ExportInvoiceInfoDto
+            {
+                ExternalIdNum = "INV-1",
+                ExportGoodsItemInfoList = [new ExportGoodsItemInfoDto { CertificateOfOriginId = 999, CustomsItemId = 5 }],
+            },
+        ];
+        var invoices = new List<CertificateReconcileInvoiceDto>
+        {
+            new() { CertificateOfOriginId = 71, InvoiceNumber = "INV-1", GoodsItemCustomsItemIds = [null] },
+        };
+
+        var cap = await RunDispatchAsync(request, certs, invoices);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.Reconciliations.Any(r => r.Id == 71 && r.StatusId == (int)ECertificateOfOriginStatus.Rejected),
+                Is.True, "the deal-file check runs for the goods item without a customs item and rejects the certificate");
+            Assert.That(cap.RaisedEventTypes, Does.Not.Contain((int)EEventType.CertificateOfOriginCertificateMatchDeclaration),
+                "no match event");
+        });
+    }
+
     // ------------------------------------------------------------------------------------------------------------------
 
     private static CertificateOfOrigin Cert(
@@ -190,7 +226,7 @@ public class UpdateCertificateOfOriginsDispatchTests
         };
     }
 
-    private static async Task<Captures> RunDispatchAsync(UpdateCertificateOfOriginsRequestDto request, IReadOnlyList<CertificateOfOrigin> seededCerts)
+    private static async Task<Captures> RunDispatchAsync(UpdateCertificateOfOriginsRequestDto request, IReadOnlyList<CertificateOfOrigin> seededCerts, List<CertificateReconcileInvoiceDto>? invoices = null)
     {
         var cap = new Captures();
         var byId = seededCerts.ToDictionary(c => c.Id);
@@ -214,7 +250,7 @@ public class UpdateCertificateOfOriginsDispatchTests
                     return Task.FromResult(new List<CertificateOfOriginDetails>());
 
                 case "GetCertificateInvoiceDetailsByCertificateIds":
-                    return Task.FromResult(new List<CertificateReconcileInvoiceDto>());
+                    return Task.FromResult(invoices ?? []);
 
                 case "CancelCertificate":
                     cap.Cancelled.Add(((int)args![0]!, (string)args[1]!));

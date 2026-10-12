@@ -79,6 +79,21 @@ public class WebQueryResponseFormatTests
         });
     }
 
+    // DN-01: the error answers ("Invalid Guid" / "No Matching Certificate") carry null lists, as legacy (which never set
+    // them there), not empty ones a portal could read as an empty success.
+    [Test]
+    public async Task TheNoMatchingCertificateAnswerCarriesNullLists()
+    {
+        var response = await Query(null!);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.ExceptionDescription, Is.EqualTo(CertificateOfOriginsConsts.NoMatchingCertificate));
+            Assert.That(response.CertificateOfOriginDetails, Is.Null);
+            Assert.That(response.CertificateOfOriginInvoiceDetails, Is.Null);
+        });
+    }
+
     // 25/09/2025 only parses day-first; 05/09/2025 is 5 September (he-IL), not 9 May. The tests run under en-US (the
     // container is not he-IL), so they do not depend on the culture of the machine that runs them.
     [SetCulture("en-US")]
@@ -102,7 +117,7 @@ public class WebQueryResponseFormatTests
             ],
         });
 
-        var field = response.CertificateOfOriginDetails.SingleOrDefault(f => f.Label == "Date of declaration");
+        var field = response.CertificateOfOriginDetails!.SingleOrDefault(f => f.Label == "Date of declaration");
 
         Assert.That(field?.Value, Is.EqualTo(expected));
     }
@@ -127,7 +142,7 @@ public class WebQueryResponseFormatTests
             ],
         });
 
-        Assert.That(response.CertificateOfOriginDetails.Single(f => f.Label == "Date of declaration").Value, Is.EqualTo("25 September 2025"));
+        Assert.That(response.CertificateOfOriginDetails!.Single(f => f.Label == "Date of declaration").Value, Is.EqualTo("25 September 2025"));
     }
 
     private static async Task<CertificateOfOriginsResponseDto> Query(CertificateOfOriginWebQueryDto certificate)

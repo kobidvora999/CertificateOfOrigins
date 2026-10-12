@@ -40,3 +40,18 @@ _uow.Repository.LoadProperty(result, ...ManufacturingArea...);
 לתעד ב-`_shared/dal-rules.md`: (א) מה עושה `ExcludeInterceptor` בפועל (מעלה ספים, לא מבטל),
 (ב) הספים בברירת מחדל (30 עמודות / 250 שורות), (ג) שכל שירות שקורא ישות רחבה צריך רשומת hash משלו
 ב-`InterceptorList` ב-CORE, (ד) רשימת/מיקום ה-hashes הקיימים כדי שמפתחים לא ינחשו.
+
+## ✅ נפתר (2026-10-12)
+ב-`CustomsCloud.InfrastructureCore.DAL` **1.10.83** (הגרסה בפרויקט) ה-hash `j4XSVK6Fl8` רשום ב-`InterceptorList._exclusionHash`
+(עמודות warn 40 / error 50, שורות warn 201 / error 250). ב-1.10.58 הוא לא היה רשום, ולכן הבדיקה מ-2026-09-15 נכשלה
+והסיקה בטעות שה-interceptor "מתעלם" מה-tag. לא נדרש עדכון NuGet.
+
+- `GetExportDocumentAuthenticationRequestById` — הרשומה המלאה (35 עמודות) עם `.ExcludeInterceptor("j4XSVK6Fl8")`,
+  ו-3 אוספי-הבן בשאילתות נפרדות (כמו `LoadProperty` בלגאסי; JOIN של שלושה אוספים מכפיל שורות לעבר 250).
+  ה-BL לוקח את State, OrganizationUnitId ועמודות ה-audit מהישות עצמה.
+- `GetImportAuthenticationRequestById` — הקריאה הכפולה (21+10) אוחדה לשאילתה אחת של 31 עמודות עם אותו hash.
+- נשאר במכוון: `GetExportRequestProjectionColumns` משמש את ה-Save בלבד, כדי לשמור את State/OrganizationUnitId מהשורה
+  (החלטת בטיחות נפרדת, לא חלק מהמעקף).
+- **אומת מול SQL Server מקומי** עם ה-interceptor של הפלטפורמה: בלי ה-hash שתי השאילתות נכשלות
+  (`Result fields count (35/31) exceeded max eror level of 30`), עם ה-hash שתיהן עוברות ומחזירות את כל השדות והבנים.
+- הכלל נוסף לסקיל `_shared/dal-rules.md`.

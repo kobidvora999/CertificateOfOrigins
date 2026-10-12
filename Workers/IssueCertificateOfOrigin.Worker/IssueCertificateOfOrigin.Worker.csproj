@@ -12,6 +12,7 @@
   <!-- The host registers this worker's internal types (handler, DAL, generated WCF contracts). -->
   <ItemGroup>
     <InternalsVisibleTo Include="CertificateOfOriginsWorkers" />
+    <InternalsVisibleTo Include="CertificateOfOrigins.Test" />
   </ItemGroup>
 	<PropertyGroup>
 		<SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss:fffZ"))</SourceRevisionId>

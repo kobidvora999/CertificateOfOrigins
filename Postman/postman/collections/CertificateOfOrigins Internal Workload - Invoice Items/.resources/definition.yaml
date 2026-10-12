@@ -54,8 +54,8 @@ scripts:
       // MandatoryValue(2387) is raised by three different guards here and by other validators elsewhere, so the
       // code alone would not say which one fired. The message carries the field name; assert that too.
       var MUST_SAY = {
-          '10-no-invoices':      'InvoiceDetails',
-          '20-invoice-no-items': 'ItemDetails',
+          '10-no-invoices':      'CertificateOfOriginRequestInvoiceDetail',  // the legacy parameter text (CN-02)
+          '20-invoice-no-items': 'CertificateOfOriginRequestItemDetail',
           '30-item-no-marks':    'MarksAndNumbers'
       };
       // The two "correct answer is silence" cases.

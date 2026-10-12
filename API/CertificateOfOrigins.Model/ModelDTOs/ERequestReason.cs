@@ -8,7 +8,6 @@ namespace CertificateOfOrigins.Model.ModelDTOs;
 // Exactly the rows of the table: 6-9 (market committees, random, comprehensive testing) were deleted from it as not
 // relevant (developer, 2026-10-11), so legacy CheckRequestReasonCodeEnum rejected them; with no member here, message
 // 2280 answers RequestReasonNotExist for them too. RequestReasonEnumMatchesSeedTests pins the two together.
-[Flags]
 public enum ERequestReason
 {
     [Display(Name = "הוספת תעודה חדשה", Description = "הוספת תעודה חדשה")]

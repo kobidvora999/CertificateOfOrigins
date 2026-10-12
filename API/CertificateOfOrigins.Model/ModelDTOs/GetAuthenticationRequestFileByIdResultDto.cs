@@ -45,6 +45,12 @@ public class GetAuthenticationRequestFileByIdResultDto
     // The file's child requests.
     public List<AuthenticationFileRequestDto> Requests { get; set; } = [];
 
+    // Legacy CertificateOfOriginsImportAuthenticationFileDetailsPartial.OrganizationUnitID, a [DataMember] whose getter
+    // returns the first child request's unit (0 for a file with none). The client got it on every read and sent it back on
+    // the file calls (SaveFile, ChangeStatusAfterDeliverySent, CloseReminderTask), so the file's events carried that unit
+    // (parity findings FN-02, GN-03).
+    public int OrganizationUnitId { get; set; }
+
     // True when the current user (RequestMetadata.UserId) owns an open task on the file (Tasks service).
     public bool IsCurrentUserHandleFile { get; set; }
 

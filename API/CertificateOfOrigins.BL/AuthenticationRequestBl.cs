@@ -231,6 +231,8 @@ public partial class AuthenticationRequestBl(
             result.Requests.Add(await BuildFileRequestDto(request, decisions, allItemDetails));
         }
 
+        result.OrganizationUnitId = result.Requests.Count > 0 ? result.Requests[0].OrganizationUnitId : 0;
+
         // File-level related entity ids: all child requests' lead documents.
         result.EntityTypeAndIdsToSearch = new Dictionary<int, List<int>>
         {
@@ -351,21 +353,25 @@ public partial class AuthenticationRequestBl(
     // status change / event is performed — faithful to production (developer decision 2026-08-02). The file-existence
     // is checked via the DAL header read (null on missing) rather than GetAuthenticationRequestFileByID, to preserve
     // the legacy "not found → false" (the migrated BL read throws 404 instead) and skip the unused full enrichment.
-    public async Task<bool> HandleAuthenticationRequestDeliverySent(RaiseEventArgsDto request)
+    // The file is matched on the platform RelatedEntity.EntityType only. Legacy also accepted VirtualEntity.TypeID == 12385,
+    // but TypeID carried the entity's business type, not its entity type, and the platform RelatedEntity has no such
+    // field — that alternative could never match (parity finding BN-02).
+    public async Task<bool> HandleAuthenticationRequestDeliverySent(EventResponseArgs args)
     {
-        if (request.RelatedEntities is null || request.RelatedEntities.Count == 0)
+        var relatedEntities = args.RelatedEntities?.ToList() ?? [];
+        if (relatedEntities.Count == 0)
         {
             return false;
         }
 
-        var fileEntity = request.RelatedEntities
-            .SingleOrDefault(entity => entity.EntityType == (int)EEntityType.AuthenticationRequestFile);
+        var fileEntity = relatedEntities
+            .SingleOrDefault(entity => entity.EntityType == CustomsCloud.InfrastructureCore.Interfaces.Shared.EntityType.AuthenticationRequestFile);
         if (fileEntity is null)
         {
             return false;
         }
 
-        var file = await DataLayer.GetAuthenticationFileById(fileEntity.Id);
+        var file = await DataLayer.GetAuthenticationFileById(fileEntity.EntityId);
         return file is not null;
     }
 
@@ -487,7 +493,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
             .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(request.Id.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId)
             .Build();
         await eventUtil.RaiseEvent(eventRequest);
         return true;
@@ -504,7 +510,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType((int)EEventType.CloseTaskReminderNotice3Months)
             .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(FileEventTitle(request.Id))
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId)
             .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
             .Build();
         await eventUtil.RaiseEvent(eventRequest);
@@ -585,7 +591,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType(eventTypeId)
             .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId);
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId);
         if (request.AuthenticationFileId.HasValue)
         {
             builder = builder.AddRelatedEntity(request.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
@@ -993,7 +999,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType((int)EEventType.NewAuthenticationRequest)
             .WithEntity((int)EEntityType.ImportAuthenticationRequest, request.DocumentId)
             .WithTitle(request.DocumentId.ToString())
-            .WithOrganizationUnitId(request.OrganizationUnitId)
+            .WithOrganizationUnitIdWhenKnown(request.OrganizationUnitId)
             .WithAdditionalInfo(request.DocumentId.ToString());
         if (request.AuthenticationFileId.HasValue)
         {
@@ -1169,7 +1175,7 @@ public partial class AuthenticationRequestBl(
                     .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequest)
                     .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                     .WithTitle(child.DocumentId.ToString())
-                    .WithOrganizationUnitId(child.OrganizationUnitId);
+                    .WithOrganizationUnitIdWhenKnown(child.OrganizationUnitId);
                 if (child.AuthenticationFileId.HasValue)
                 {
                     closeTasks = closeTasks.AddRelatedEntity(child.AuthenticationFileId.Value, (int)EEntityType.AuthenticationRequestFile);
@@ -1352,18 +1358,25 @@ public partial class AuthenticationRequestBl(
                 .WithEventType((int)EEventType.CloseAllTaskForImportAuthenticationRequestFile)
                 .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(request.Id.ToString())
-                .WithOrganizationUnitId(FileOrganizationUnitId(request))
+                .WithOrganizationUnitIdWhenKnown(FileOrganizationUnitId(request))
                 .Build();
             await eventUtil.RaiseEvent(closeFileTasks);
         }
 
-        foreach (var child in request.Requests.Where(c => c.DecisionId == (int)EAuthenticationRequestDecision.Rejection))
+        // Legacy ran this loop over the file's child collection AFTER CheckStatusAndOpenTask had detached every child of a
+        // cancelled file (AuthenticationFileID = null, a reverse loop because the self-tracking fixup removes each child from
+        // the collection). For a cancelled file the collection was therefore empty and no rejection task opened (parity
+        // finding FN-01). The request still carries the children the client sent, so the cancellation is excluded here.
+        var childrenStillLinked = request.AuthenticationFileStatusId == (int)EAuthenticationFileStatus.CancelledFile
+            ? []
+            : request.Requests;
+        foreach (var child in childrenStillLinked.Where(c => c.DecisionId == (int)EAuthenticationRequestDecision.Rejection))
         {
             var rejected = eventUtil.CreatBuilder()
                 .WithEventType((int)EEventType.AuthenticationRequestRejected)
                 .WithEntity((int)EEntityType.ImportAuthenticationRequest, child.DocumentId)
                 .WithTitle(child.DocumentId.ToString())
-                .WithOrganizationUnitId(child.OrganizationUnitId)
+                .WithOrganizationUnitIdWhenKnown(child.OrganizationUnitId)
                 .AddRelatedEntity(request.Id, (int)EEntityType.AuthenticationRequestFile)
                 .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
                 .Build();
@@ -1397,7 +1410,7 @@ public partial class AuthenticationRequestBl(
                 .WithEventType((int)EEventType.HandleImportAuthenticationRequest)
                 .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
                 .WithTitle(FileEventTitle(request.Id))
-                .WithOrganizationUnitId(FileOrganizationUnitId(request))
+                .WithOrganizationUnitIdWhenKnown(FileOrganizationUnitId(request))
                 .WithTaskArguments(t => t.WithOpenTaskBehaviour(OpenTaskBehaviour.CloseOld))
                 .Build();
             await eventUtil.RaiseEvent(handle);
@@ -1426,7 +1439,7 @@ public partial class AuthenticationRequestBl(
             .WithEventType(eventTypeId)
             .WithEntity((int)EEntityType.AuthenticationRequestFile, request.Id)
             .WithTitle(FileEventTitle(request.Id))
-            .WithOrganizationUnitId(FileOrganizationUnitId(request))
+            .WithOrganizationUnitIdWhenKnown(FileOrganizationUnitId(request))
             .Build();
         await eventUtil.RaiseEvent(evt);
     }

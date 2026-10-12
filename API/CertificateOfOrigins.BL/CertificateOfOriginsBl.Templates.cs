@@ -98,7 +98,7 @@ public partial class CertificateOfOriginsBl
             // An id this service does not render is a bad request, not a missing resource — and keeping the two
             // distinct is what lets a test tell "this template is not registered" apart from "that entity has no
             // data", which a shared 404 cannot.
-            _ => throw new RestValidationException($"Unsupported templateId {templateId}."),
+            _ => throw new RestValidationException(nameof(templateId), $"Unsupported templateId {templateId}."),
         };
     }
 }

@@ -18,10 +18,10 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // ForeignCustomsHouseName and RequestIssuerName are enriched in the BL via the Country lookup and Customers
     // proxy, while the DocumentType, RequestStatus and ExportDeclaration names come from local joins.
     // Internal WCF: GetCustomerInformation(customerId) — fetch a single customer's information (incl. addresses)
-    // from the Customers service by id. Missing id → 404 (BL throws RestNotFoundException). The SPA picks the
+    // from the Customers service by id. Missing customer → 400 InvalidIdentificationNumber (legacy business error, H-14). The SPA picks the
     // Authentication-purpose address (else the first) from Addresses as the customs-house address.
     [HttpGet("CustomerInformation/{customerId}")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CustomerDto))]
+    [BadRequestResponse][OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformation([FromRoute] int customerId)
     {
         var result = await BusinessLayer.GetCustomerInformation(customerId);
@@ -29,10 +29,10 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     }
 
     // Internal WCF: GetCustomerInformationByCountry(countryId) — the foreign customs-house for a country
-    // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 404
-    // (BL throws RestNotFoundException). Returns the first matching customer.
+    // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 400
+    // NoCustomHouseForThisCountry (legacy business error, H-14). Returns the first matching customer.
     [HttpGet("CustomerInformationByCountry/{countryId}")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CustomerDto))]
+    [BadRequestResponse][OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformationByCountry([FromRoute] int countryId)
     {
         var result = await BusinessLayer.GetCustomerInformationByCountry(countryId);

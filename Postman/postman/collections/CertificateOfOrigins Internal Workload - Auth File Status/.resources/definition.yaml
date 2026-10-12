@@ -146,9 +146,11 @@ scripts:
               pm.expect(a.documentNumber, 'documentNumber').to.eql('DN-80');
               pm.expect(a.vendorId, 'vendorId').to.eql(779);
               pm.expect(a.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(4);
+              // Not sent → cleared, as legacy saved the client entity (FN-03); it was 279366 from 01-create-request-a.
+              pm.expect(a.importerId, 'importerId cleared').to.eql(null);
           });
-          // "Stored" = what 02-create-request-b inserted earlier in this run.
-          pm.test('80-child-edits: fields docFileB did not send kept their stored values', function () {
+          // docFileB sent back what 02-create-request-b inserted earlier in this run: an unchanged round-trip (FN-03).
+          pm.test('80-child-edits: a round-tripped child keeps its values', function () {
               var b = byId(docFileB);
               pm.expect(b, 'request docFileB in the response').to.not.be.undefined;
               pm.expect(b.vendorId, 'vendorId').to.eql(778);

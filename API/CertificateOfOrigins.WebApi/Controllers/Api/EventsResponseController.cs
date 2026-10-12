@@ -1,6 +1,6 @@
 using CertificateOfOrigins.BL;
 using CertificateOfOrigins.WebApi.Filters;
-using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.Utils.Events;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +19,14 @@ public class EventsResponseController(IServiceProvider serviceProvider)
 {
     // External WCF: HandleAuthenticationRequestDeliverySent(raiseEventArgs) — an Events-subsystem callback fired on a
     // delivery-sent event for an authentication file. As shipped it is a pure existence check (the legacy status-write
-    // is commented out): it verifies the file exists and returns true/false. A callback with a body → POST.
-    [HttpPost("HandleDeliverySent")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
-    public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] RaiseEventArgsDto request)
+    // is commented out): it verifies the file exists and returns true/false. The body is the platform's
+    // EventResponseArgs and the verb is PATCH, as every event response (_shared/controller-template.md).
+    // No Events_EventTypeResponse row invokes this operation, in legacy or here (MIGRATION-NOT-DONE).
+    [HttpPatch("HandleDeliverySent")]
+    [BadRequestResponse][OkJsonResponse(typeof(bool))]
+    public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] EventResponseArgs args)
     {
-        var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(request);
+        var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(args);
         return Ok(result);
     }
 }

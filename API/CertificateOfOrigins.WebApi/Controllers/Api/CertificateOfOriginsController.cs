@@ -72,8 +72,8 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
 
     // CR 194221: render a template through the Templates microservice and return the document. This is the surface the
     // distribution ("דיוור") flow calls — it names the template and the entity, this service fetches the data and
-    // hands back the rendered file. Route-style read of a derived resource → GET. Unregistered template id or an
-    // entity with no data → 404 (the BL throws RestNotFoundException).
+    // hands back the rendered file. Route-style read of a derived resource → GET. Unregistered template id → 400
+    // (RestValidationException); an entity with no data → 404 (RestNotFoundException).
     [HttpGet("Template/{templateId}/{entityId}")]
     [BadRequestResponse][NotFoundResponse]
     public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId)
