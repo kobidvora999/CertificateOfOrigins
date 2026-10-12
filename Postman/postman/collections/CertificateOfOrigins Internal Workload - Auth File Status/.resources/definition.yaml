@@ -147,7 +147,8 @@ scripts:
               pm.expect(a.vendorId, 'vendorId').to.eql(779);
               pm.expect(a.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(4);
               // Not sent → cleared, as legacy saved the client entity (FN-03); it was 279366 from 01-create-request-a.
-              pm.expect(a.importerId, 'importerId cleared').to.eql(null);
+              // The API omits null fields from the JSON, so a cleared value comes back missing (undefined), not null.
+              pm.expect(a.importerId == null, 'importerId cleared (got ' + a.importerId + ')').to.be.true;
           });
           // docFileB sent back what 02-create-request-b inserted earlier in this run: an unchanged round-trip (FN-03).
           pm.test('80-child-edits: a round-tripped child keeps its values', function () {

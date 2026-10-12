@@ -1210,7 +1210,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         //
         // Legacy saved the entity the client sent back, so a nullable column is written as sent — a null clears it, as the
         // screen's "clear" did (parity finding FN-03); the file read returns every one of these columns, so a round-trip
-        // keeps them. The NOT NULL columns (countries, preference-document type) keep the stored value on a null.
+        // keeps them. The NOT NULL columns (Remarks, the countries, the preference-document type) keep the stored value on a null.
         // DocumentIssuingDate is written as sent (IsOldIndication is computed from it).
         //
         // Only a row whose values actually change is written, so an unchanged child keeps its UpdateDate/UpdateUserId: the
@@ -1223,7 +1223,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                     || r.IsOldIndication != isOldIndication
                     || r.DecisionCircumstences != child.DecisionCircumstences
                     || r.CirumstanceDetails != child.CirumstanceDetails
-                    || r.Remarks != child.Remarks
+                    || (child.Remarks != null && r.Remarks != child.Remarks)
                     || r.DocumentNumber != child.DocumentNumber
                     || r.InvoiceNumber != child.InvoiceNumber
                     || r.VendorId != child.VendorId
@@ -1239,7 +1239,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(r => r.IsOldIndication, isOldIndication)
                 .SetProperty(r => r.DecisionCircumstences, child.DecisionCircumstences)
                 .SetProperty(r => r.CirumstanceDetails, child.CirumstanceDetails)
-                .SetProperty(r => r.Remarks, child.Remarks)
+                .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
                 .SetProperty(r => r.DocumentNumber, child.DocumentNumber)
                 .SetProperty(r => r.InvoiceNumber, child.InvoiceNumber)
                 .SetProperty(r => r.VendorId, child.VendorId)
