@@ -353,6 +353,8 @@ which is what stops a validator that fires on everything from looking equally gr
 ## Three things the live service taught us
 
 ### 1. The message lock is never released — a certificate id is single-use for five minutes
+> ✅ Resolved 2026-10-12: the cause is the platform package (it locks in Redis DB 2 and releases in DB 0, still in 1.10.53);
+> the service now releases its own lock in DB 2 (`LockReleaseInLockDatabase`), and `Main/90-retransmit-status-query` passes.
 `GetPC22802281CertificateOfOriginRequest` takes an `ILockUtil` lease keyed on `AgentRequest.CertificateId`
 (`CertificateOfOriginsBl.cs:88`) whenever that id is non-empty, and releases it with `SafeReleaseAsync` in a
 `finally`. **It does not release.** Reproduced directly against the live service with a fresh id:

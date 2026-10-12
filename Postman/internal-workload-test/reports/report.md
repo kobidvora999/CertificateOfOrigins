@@ -37,7 +37,8 @@ port 9034 · branch `feature/internal-workload-lifecycle` · מקביליות 6 
 | בקשת אימות יצוא | `Export Auth Lifecycle` | X0→X1→X2→X3→X4→X5(6), X5(7), X6(9) | — |
 
 **BLOCKED:**
-1. **`Main/90-retransmit-status-query` — באג פלטפורמה.** `CustomsCloud.InfrastructureCore.Lock` ‏(1.10.38, וגם 1.10.42 האחרונה):
+1. ✅ **נפתר (2026-10-12)** — העוקף `LockReleaseInLockDatabase` משחרר את הנעילה ב-DB 2; בקשה 90 היא בדיקה רגילה שעוברת. ההיסטוריה:
+   **`Main/90-retransmit-status-query` — באג פלטפורמה.** `CustomsCloud.InfrastructureCore.Lock` ‏(1.10.38, וגם 1.10.42 האחרונה):
    `LockUntilAsync` כותב ל-Redis DB 2, `SafeReleaseAsync`/`ReleaseAsync` קוראים ומוחקים ב-DB 0 → הנעילה לא משתחררת 5 דקות;
    שידור חוזר של אותה תעודה מקבל 400 "locked". דורש תיקון בצוות InfrastructureCore.
 2. **`Main/75-template-letter`** — שירות Templates / קובץ התבנית לא זמינים (INTERNAL_INTEGRATION.md §4). כרגע 500 (proxy connection refused).

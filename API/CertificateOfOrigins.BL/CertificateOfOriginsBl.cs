@@ -5,6 +5,7 @@ using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
+using CustomsCloud.InfrastructureCore.Interfaces.Redis;
 using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
@@ -145,6 +146,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             if (lockState is { IsAcquired: true })
             {
                 await lockUtil.SafeReleaseAsync(lockKey!, lockState);
+                await LockReleaseInLockDatabase.Release(Resolve<IRedisConnection>(), lockKey!, lockState);
             }
         }
     }

@@ -93,8 +93,10 @@
 **מה הומר ונבדק חי (2026-08, endpoint `POST CertificateOfOrigins/CertificateOfOriginRequest`):**
 - **חוזה סינכרוני** — הכרעת מפתח: ה-callback/MSMQ החד-כיווני הוחלף ב-endpoint סינכרוני שמחזיר את הפידבק
   ישירות (כמו האחות GetCertificateRequestByGuid). שגיאות מוחזרות **in-band** (HTTP 200 + exceptions), לא נזרקות.
-- **נעילה מבוזרת** — `ILockUtil` (חבילת `CustomsCloud.InfrastructureCore.Lock` 1.10.11), מגודר בפרמטר
-  `IsNeedToLockCertificateOfOrigin` — נאמן ל-LockFactory הלגסי.
+- **נעילה מבוזרת** — `ILockUtil` (חבילת `CustomsCloud.InfrastructureCore.Lock` 1.10.51), מגודר בפרמטר
+  `IsNeedToLockCertificateOfOrigin` — נאמן ל-LockFactory הלגסי. ⚠️ באג בחבילה (גם ב-1.10.53, האחרונה בפיד): נועלת ב-Redis DB 2
+  ומשחררת ב-DB 0, כך שהנעילה לא שוחררה עד תום 5 הדקות. **עוקף אצלנו (2026-10-12):** `LockReleaseInLockDatabase` משחרר את
+  הנעילה ב-DB 2 (Redis `LockRelease` — מוחק רק אם הערך עדיין של הבקשה הזו). לדווח לצוות InfrastructureCore; כשיתוקן, העוקף לא עושה כלום.
 - **ענפי read/cancel** — GetRequestStatus + CertificateCancellation (‏DAL set-based write + IEventUtil).
 - **מנוע הוולידציה המלא** (הכרעת מפתח: מתודת BL processing, לא FluentValidation — כי כל שדה גם *פותר* ערך async
   וגם *בונה* detail): לולאה מונעת-DB (`DetailsPerCertificate`), ~30 field-validators (country/Israel/agreement/
@@ -285,5 +287,6 @@ outcome"), אך מדובר בשינוי מול ההתנהגות בפועל — �
 `DistributionDeliveryCreatedFromClient`, `RelatedEntityTypeId=12386`), והיא מפנה ל-`HandleExportAuthenticationRequestDeliverySent` —
 מתודה שאינה קיימת בקוד הלגסי. כלומר ה-callback לא רץ גם בלגסי.
 
-**החלטה נדרשת (קובי / צוות הפלטפורמה):** האם לרשום את ה-endpoint לאירוע כלשהו, ואם כן — לאיזה אירוע, באיזה verb וב-route
-איזה. עד אז ה-endpoint קיים אך אינו נקרא; ההתנהגות שלו (בדיקת קיום בלבד, כתיבת הסטטוס בהערה בלגסי) לא השתנתה.
+**הוכרע (2026-10-12): לא רושמים.** בלגסי ה-callback לא נקרא אף פעם (אין לו שורת רישום), וגם כשנקרא הוא רק בדק שהקובץ קיים
+(כתיבת הסטטוס בהערה). רישום עכשיו היה מוסיף התנהגות שלא הייתה, בלי שום תוצאה. ה-endpoint נשאר מוכן (`EventResponseArgs`, PATCH)
+למקרה שירצו לחבר אותו. שורה 5458 (אירוע 870 → מתודה שלא קיימת) נכשלת גם היום בלגסי — לא שייכת לשירות הזה.

@@ -59,7 +59,7 @@
 | לקוח CRM (בקשות אימות ותיקים) | Internal: 17 פעולות AuthenticationRequest | `ui/AuthenticationRequest/*` | להפנות ל-REST החדש |
 | לקוח CRM (מסמכי יצוא) | Internal: 5 פעולות ExportDocumentAuthenticationRequest | `ui/ExportDocumentAuthenticationRequest/*` | להפנות ל-REST החדש |
 | ExportDealFile (שחרור / שינוי הצהרה) | External: UpdateCetrificateOfOrigins | `POST api/CertificateOfOrigins/Reconcile` | להפנות. **לבירור בפנים** מי השולח המדויק |
-| Events (משלוח) | External: HandleAuthenticationRequestDeliverySent | `PATCH api/EventsResponse/HandleDeliverySent` (גוף: `EventResponseArgs`) | **אין רישום**: אף שורה ב-`Infrastructure.Events_EventTypeResponse` לא מפעילה אותה; שורה 5458 (אירוע 870) מפנה למתודה שאינה קיימת בלגסי. להחליט אם לרשום, לאיזה אירוע וב-verb איזה (MIGRATION-NOT-DONE) |
+| Events (משלוח) | External: HandleAuthenticationRequestDeliverySent | `PATCH api/EventsResponse/HandleDeliverySent` (גוף: `EventResponseArgs`) | **לא רושמים** (הוכרע 2026-10-12): בלגסי היא לא נקראה אף פעם — אין שורה ב-`Infrastructure.Events_EventTypeResponse` (שורה 5458 מפנה למתודה שאינה קיימת). ה-endpoint מוכן אם ירצו לחבר (MIGRATION-NOT-DONE) |
 | מודולים חיצוניים | External: GetCertificateOfOriginID / GetGoodsItemCerificateDTO / Convert / SaveCertificateOfOriginAttachments | `GET api/CertificateOfOrigins/ID/{n}`, `POST .../GoodsItemCerificateDTO`, `/Convert`, `/SaveAttachments` | **לבירור בפנים**: רשימת הצרכנים |
 | שער EAI (סוכני מכס) | Incoming: GetPC_MSG2280_2281 | `POST community/CertificateOfOrigins/Request` | להפנות. לוודא שה-header `MessageSenderId` מגיע (CN-03) |
 | פורטל Web | Incoming: GetCertificateRequestByGuid | `GET web/CertificateOfOrigins/RequestByGuid` | להפנות. שמות השדות הלגאסיים נשמרו (D-F1) |

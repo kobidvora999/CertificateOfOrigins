@@ -4,7 +4,7 @@ method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# C13 on the same certificate id, seconds after 80. BLOCKED on a platform defect: InfrastructureCore.Lock RedisLockUtil takes the lock in Redis DB 2 but SafeReleaseAsync looks in DB 0, so the lease is never released and any retransmission within 5 minutes answers 400 locked. Skipped (visible) while that holds; asserts the Cancelled status once it is fixed.
+# C13 on the same certificate id, seconds after 80: the lock 80 took was released (in Redis DB 2, LockReleaseInLockDatabase - the platform package releases in DB 0), so this is answered with the Cancelled status.
 body:
   type: json
   content: |-

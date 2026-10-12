@@ -55,17 +55,16 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
 
-      // ---- the one BLOCKED step: shown as skipped, never failing the run, until the platform lock is fixed ----
+      // ---- a retransmission of the same certificate id within the 5-minute lease ----
+      // The platform lock never released (InfrastructureCore.Lock locks in Redis DB 2, releases in DB 0); the service now
+      // releases it in DB 2 itself (LockReleaseInLockDatabase), so a retransmission is answered, not ConcurrencyErrorTryAgain.
       if (name === '90-retransmit-status-query') {
-          // Since 81ccfe9 (2026-10-06) the lock failure is answered in-band: 200 with ConcurrencyErrorTryAgain (1402474).
-          var lockedTypes = ((j && j.exceptions) || []).map(function (e) { return e.exceptionType; });
-          var locked = (pm.response.code === 400 && pm.response.text().indexOf('locked') >= 0) || lockedTypes.indexOf(1402474) >= 0;
-          (locked ? pm.test.skip : pm.test)(
-              'BLOCKED (InfrastructureCore.Lock releases in Redis DB 0, locks in DB 2): a retransmitted certificate id is answered',
-              function () {
-                  pm.response.to.have.status(200);
-                  pm.expect((j.feedback || {}).certificateOfOriginStatusCode, 'status of the cancelled certificate').to.eql(4);
-              });
+          pm.test('90: a retransmitted certificate id is answered (the lock was released)', function () {
+              pm.response.to.have.status(200);
+              var types = ((j && j.exceptions) || []).map(function (e) { return e.exceptionType; });
+              pm.expect(types, 'no ConcurrencyErrorTryAgain (1402474)').to.not.include(1402474);
+              pm.expect((j.feedback || {}).certificateOfOriginStatusCode, 'status of the cancelled certificate').to.eql(4);
+          });
           return;
       }
 

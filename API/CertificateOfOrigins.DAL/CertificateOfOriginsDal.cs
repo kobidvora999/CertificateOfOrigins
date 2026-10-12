@@ -690,6 +690,10 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // DocumentID is a non-identity, externally-assigned key. This method edits an existing request only; no
         // matching row → false (404 in the BL). A new request is inserted by AddImportAuthenticationRequest, chosen by
         // the caller's IsNewInstance — never by this method's result.
+        //
+        // LastDeliveryForImporter is written as sent — a deliberate deviation (EN-01, decided 2026-10-12). Legacy's ById SP
+        // did not return it, so every popup save wrote NULL and silently cancelled the importer reminder (its scheduler
+        // needs it NOT NULL). The read returns it, so a round-trip keeps the date and the reminder.
         var now = DateTime.Now;
         var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
             .Where(r => r.DocumentId == request.DocumentId)
