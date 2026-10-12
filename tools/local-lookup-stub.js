@@ -77,11 +77,16 @@ const EXTRA = {
 
 // Extra fields on rows of PLATFORM lookup types (merged into the 1..RANGE rows).
 // Country: the alpha-2 codes the Postman collections send, on the ids the retired CountryMockProxy gave them
-// (IL = 376, the CountryIsrael parameter; DE = 138).
+// (IL = 376, the CountryIsrael parameter; DE = 138; AR = 148; AT = 32).
 const OVERRIDES = {
   Country: {
     376: { countryAlphaCode2: 'IL', englishName: 'Israel', isCountry: true },
     138: { countryAlphaCode2: 'DE', englishName: 'Germany', isCountry: true },
+    // A new certificate sends its destination country as an alpha-2 code, resolved to the id (legacy GetIdByCode, AN-04).
+    // AR = 148, as the retired CountryMockProxy gave it (Reconcile Outcomes compares against 148); AT = 32, the id the
+    // Bl Core reconcile scenarios compare against.
+    148: { countryAlphaCode2: 'AR', englishName: 'Argentina', isCountry: true },
+    32: { countryAlphaCode2: 'AT', englishName: 'Austria', isCountry: true },
   },
   // MeasurementUnit: the measure-type code the collections send, on the id the retired MeasurementUnitMockProxy gave it.
   MeasurementUnit: {

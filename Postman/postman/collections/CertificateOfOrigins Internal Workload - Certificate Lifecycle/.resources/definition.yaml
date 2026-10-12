@@ -57,7 +57,9 @@ scripts:
 
       // ---- the one BLOCKED step: shown as skipped, never failing the run, until the platform lock is fixed ----
       if (name === '90-retransmit-status-query') {
-          var locked = pm.response.code === 400 && pm.response.text().indexOf('locked') >= 0;
+          // Since 81ccfe9 (2026-10-06) the lock failure is answered in-band: 200 with ConcurrencyErrorTryAgain (1402474).
+          var lockedTypes = ((j && j.exceptions) || []).map(function (e) { return e.exceptionType; });
+          var locked = (pm.response.code === 400 && pm.response.text().indexOf('locked') >= 0) || lockedTypes.indexOf(1402474) >= 0;
           (locked ? pm.test.skip : pm.test)(
               'BLOCKED (InfrastructureCore.Lock releases in Redis DB 0, locks in DB 2): a retransmitted certificate id is answered',
               function () {
@@ -210,7 +212,10 @@ scripts:
           pm.test('cb-30: refused in-band with ItIsNotPossibleToTransmitACorrection (14027036)', function () {
               var types = (j.exceptions || []).map(function (e) { return e.exceptionType; });
               pm.expect(types, 'exceptionType').to.include(14027036);
-              pm.expect(j.feedback.certificateOfOriginStatusCode, 'status unchanged').to.eql(6);
+              // A blocked cancellation answers with the legacy wrapper's fresh response - an empty feedback, ApplicationId 0 -
+              // not the certificate (d9792cc, 2026-10-06). The certificate itself stays at 6: cb-40 reads it back.
+              pm.expect(j.applicationId || 0, 'applicationId').to.eql(0);
+              pm.expect(j.feedback.certificateOfOriginStatusCode || 0, 'empty feedback').to.eql(0);
           });
       }
       // ---- C-03: a status query on a published certificate carries no attachment ----

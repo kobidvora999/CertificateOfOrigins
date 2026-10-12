@@ -3,6 +3,7 @@ url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
 method: POST
 headers:
   Content-Type: application/json
+# A collateral carries its related entity (the request, ImportAuthenticationRequest 12384): without it the save is a 400 (F-08).
 # decision 7 (AuthenticationNeedless) does three things at once that nothing else reached: it falls to the DEFAULT switch arm (NewDecisionBeforeAssociation event + SendDecisionMessage), it then raises the rejection event with a task assignment, and vendorId 0 exercises the 0 -> null normalisation. A non-empty collaterals list also drives CollateralId = the first collateral + ChangeTempCollateralRequest.
 body:
   type: json
@@ -34,6 +35,7 @@ body:
       "collaterals": [
         { "collateralRequestId": 9901, "customerId": 777, "collateralType": 1, "amountToGrant": 1000,
           "relatedEntityType": 1, "collateralRequestStatus": 1, "organizationUnitId": 1, "organizationUnitType": 1,
-          "initiatorUserId": 5 }]
+          "initiatorUserId": 5,
+          "relatedEntity": { "id": {{docDecisionA}}, "entityType": 12384 } }]
     }
 order: 10600

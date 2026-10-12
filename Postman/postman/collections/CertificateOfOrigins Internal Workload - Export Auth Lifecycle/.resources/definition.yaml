@@ -112,7 +112,8 @@ scripts:
       if (name === '66-foreign-customs-house') {
           pm.test('66: a foreign customs house resolves for the request country', function () {
               pm.expect(j.id, 'id').to.be.a('number').and.above(0);
-              pm.expect(j.name, 'name').to.be.a('string').and.not.empty;
+              // The customer's name is the legacy Title (ede6113), not Name.
+              pm.expect(j.title, 'title').to.be.a('string').and.not.empty;
           });
       }
     language: text/javascript
