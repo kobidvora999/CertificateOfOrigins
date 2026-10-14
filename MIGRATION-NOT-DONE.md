@@ -153,7 +153,7 @@
 `TODO(blocking)`: מעבר ל-proxy האמיתי + אימות שם ה-endpoint כשיוקם שירות ExportDealFile
 (הערך `CustomsMicroServices.ExportDealFile` קיים ב-enum ומקומפל).
 
-## Internal: SaveCertificateOfOrigin — 🟡 הומר, פער פתוח אחד חסום + שניים לא חסומים (אודיט נאמנות 2026-09-14, עודכן 2026-10-14)
+## Internal: SaveCertificateOfOrigin — 🟡 הומר, פער חסום אחד (אודיט נאמנות 2026-09-14, עודכן 2026-10-14)
 
 הזרימה מומרת בפועל (הסימון 🔴 הקודם ב-MIGRATION-STATUS היה מיושן). אודיט אדוורסרי מול הלגסי תיקן שניים
 (org-unit+reason באירוע ה-supersede; המרת code→ID ל-DestinationCountry/PortOfShipment בישות חדשה) והשאיר שלושה
@@ -162,27 +162,31 @@
 1. **פידבק+צרופה על Publish לא נשלח.** לגסי `CreateAttacmentsAndSendFeedBackMessage` → `SendRequestFeedback(cert, attachments)`
    (`CertificateOfOriginsBL.cs:397-418`) שלח ללקוח את התעודה המרונדרת. הערוץ (`OutgoingMessageProxy`, EAI) **הוסר
    מהפלטפורמה** (InfrastructureCore.Utils ≥ 1.10.105) ואין תחליף — ראה `_shared/outgoing-message-pattern.md`.
-2. **אין פרסום-אוטומטי כשההצהרה כבר משוחררת — לא חסום, פשוט טרם מומש (בדיקה 2026-10-14).** לגסי
-   `CheckCertificateOfOriginOnDeclarationReleased` (`CertificateOfOriginsBL.cs:671-694`, נקרא מ-
-   `CertificateOfOriginsInternalServicePartial.cs:61-64`): כשהסטטוס השתנה ל-PendingRelease → `CheckDeclarationStatus(cert, true)`
-   (`:648-667`) → `GetExportDeclarationInfoForPC`; אם מצב המסמך המוביל Released/Paroled/Closed → `DeclarationReleased` (`:310-352`).
-   כל החלקים כבר קיימים ב-.NET 10: `IExportDealFileProxy.GetExportDeclarationInfoForPc` (אמיתי + mock), ה-repoint ב-`LinkLeadDocument`,
-   ו-`DeclarationReleased` הפרטי המלא; דפוס להעתקה: `GetDeclarationInfoForReconciliation` (`CertificateOfOriginsBl.MessageDeclarationCheck.cs`).
-   "ExportDealFile טרם הוקם" חל באותה מידה על זרימות שכבר הומרו — חסר אימות חי, לא חסם. **הכרעות סדר פתוחות:**
-   (א) בלגסי הבדיקה רצה **לפני** שער הפידבק, כך שתעודה שפורסמה אוטומטית לא קיבלה פידבק PendingRelease;
-   (ב) בלגסי `HandleCertificateReplacement` נקרא פעמיים (בתוך `DeclarationReleased` ושוב בענף ה-Published של ה-service).
-   הערכה: 4–6 ש'.
-   **בדיקת אי-התאמת הכותרת** (לגסי `CertificateOfOriginsBL.cs:1012-1023`, `CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile`)
-   גם היא אינה חסומה: `LeadDocumentTitle` כבר חוזר מה-proxy, וההודעה קיימת כ-`EReconciliationMessage.CertificateNumberNotInDealFile`.
-   בלגסי היא השפיעה רק במסלול GetPC (Incoming): ה-exception נצבר ב-`_requestExceptions` ונקרא ב-reconciliation (`:513`) → hasErrors →
-   Rejected; במסלול ה-Internal save הוא נזרק לפח. הבדיקה רצה **לפני** ה-backfill, ולכן נכשלת גם כשלתעודה אין מספר וה-title לא null
-   (קוואירק — להכריע אם לשמר). הערכה: 3–5 ש'.
+2. **✅ פרסום-אוטומטי כשההצהרה כבר משוחררת — מומש (2026-10-14).** בלגסי הוא רץ **בתוך אירועי הסטטוס**:
+   `RaiseEventUtil.RaiseEventCertificateOfOriginUserApprovedCertificate` (`RaiseEventUtil.cs:165-196`, למעבר ל-PendingRelease) →
+   פרטי ההצהרה → `GetExportDeclarationInfoForPC` → אם Released/Paroled/Closed → `DeclarationReleased`. הקריאה השנייה ב-service partial
+   (`CertificateOfOriginsInternalServicePartial.cs:61-64` → `CheckCertificateOfOriginOnDeclarationReleased`) לא ירתה בפועל: Save החזיר את
+   אותו מופע (`CertificateOfOriginsBL.cs:1029`), שכבר היה Published. ב-.NET 10: `PublishIfDeclarationAlreadyReleased`, מיד אחרי
+   `RaiseStatusEvents`, דרך `DeclarationReleased` הקיים. **הכרעות:** (א) כמו בלגסי — תעודה שפורסמה אוטומטית לא מקבלת פידבק PendingRelease;
+   (ב) ענף ה-Published של השמירה **לא** רץ שוב אחרי פרסום אוטומטי — בלגסי `HandleCertificateReplacement` רץ שם פעם שנייה ושלח
+   `CertificateReplaced` כפול; כאן פעם אחת. תעודה בלי מסמך מוביל ובלי מספר הצהרה — אין חיפוש. בדיקות:
+   `SaveCertificateOfOriginAutoPublishTests` (6). Postman: תיקייה `AutoPublish` ב-Certificate Lifecycle; ארבע בקשות ה-approve הקיימות
+   מקבלות `DealFile.NotReleased` (בלעדיו ה-mock מחזיר Released והן היו מתפרסמות מיד). נשאר: אימות חי מול ExportDealFile (שלב 3).
+   **✅ בדיקת אי-התאמת הכותרת — מומשה (2026-10-14)** (לגסי `CertificateOfOriginsBL.cs:1014-1017`,
+   `CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile`). בלגסי היא השפיעה רק במסלול GetPC (Incoming): ה-exception נצבר
+   ב-`_requestExceptions` ונקרא ב-reconciliation (`:513`) → hasErrors → Rejected, והטקסט יצא ברשימת הממצאים (`:125,129` ב-IncomingPartial);
+   במסלול ה-Internal save הוא נזרק לפח. ב-.NET 10: `LinkLeadDocument` רושם `MessageValidationContext.IsLeadDocumentTitleMismatch` (רק כשיש
+   context — מסלול ההודעה), ו-`ValidateReconciliation` מוסיף את הממצא ראשון — כך שהוא שורד גם את היציאות המוקדמות (אין חשבוניות בהצהרה / אין
+   שורות חשבונית בתעודה) ומנצח בהסרת הכפילות מול בדיקת קישור פריט-הטובין שמדווחת באותה הודעה. **הקוואירק נשמר:** הבדיקה רצה לפני ה-backfill,
+   ולכן תעודה בלי מספר הצהרה מול כותרת לא-ריקה נחשבת אי-התאמה, כמו בלגסי. ה-mock מחזיר עכשיו כותרת "260146" (כותרת null הייתה אי-התאמה
+   מול כל מספר); feature חדש `DealFile.LeadDocumentTitleMismatch`. בדיקות: 4 ב-`UpdateCertificateOfOriginsDispatchTests`; Postman
+   `Mock Features/Reconcile/25-lead-document-title-mismatch`; `BackfillLink/00` מקבל `DealFile.NoLeadDocument`.
 3. **guards אי-כפילות — לא שינוי סכימה (תיקון 2026-10-14).** `IsCreateAttachments` / `IsMessageSent` אינם עמודות בלגסי: אלה
    properties בזיכרון בלבד ב-`Customs.CRM.Entities\CertificateOfOriginsPartial\CertificateOfOriginPartial.cs:149-185` (בלי `[DataMember]`,
    לא ב-EDMX, לא ב-SP). הם מנעו הפקה כפולה **בתוך אותה בקשה** — כשהפרסום האוטומטי (סעיף 2) הפך את אותו אובייקט ל-Published, ענף
    ה-Published שאחריו לא הפיק שוב (`CertificateOfOriginsBL.cs:381,417,424,442`). משמירה חוזרת הם לא הגנו גם בלגסי (וגם Published→Published
-   אינו שינוי סטטוס). לכן אין מה לשחזר כרגע; כשסעיף 2 ימומש דרך `DeclarationReleased` (שקורא את התעודות מחדש מה-DB) — לכל היותר bool
-   מקומי. העמודות שקיימות ב-DB המקומי באו מסקריפט שנמחק (`API_20260707`) — drift בלבד.
+   אינו שינוי סטטוס). את תפקידם בתוך הבקשה ממלא ה-bool המקומי `isAutoPublished` (סעיף 2). העמודות שקיימות ב-DB המקומי באו מסקריפט
+   שנמחק (`API_20260707`) — drift בלבד.
 
 ## External: UpdateCetrificateOfOrigins — ✅ הומר (2026-07-07, branch `feature/migrate-update-cetrificate-of-origins`)
 

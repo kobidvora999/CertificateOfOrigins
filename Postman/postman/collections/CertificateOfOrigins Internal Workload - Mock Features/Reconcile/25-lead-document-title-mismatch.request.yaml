@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+method: POST
+headers:
+  MessageSenderId: "1"
+  Content-Type: application/json
+  x-mock-feature--DealFile.NoDeclarationInvoices: "true"
+  x-mock-feature--DealFile.LeadDocumentTitleMismatch: "true"
+# The lead document's title differs from the certificate's declaration number (legacy CertificateOfOriginsBL.cs:1014-1017). With no
+# invoices the reconciliation raises nothing of its own (see 20), so the deal-file mismatch text can only come from the save's title check.
+body:
+  type: json
+  content: |-
+    {
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "invoiceDetails": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "invoiceSum": 100, "currencyType": "USD",
+            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+      }
+    }
+order: 20250

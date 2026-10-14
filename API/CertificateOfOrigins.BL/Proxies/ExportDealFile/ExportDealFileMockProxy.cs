@@ -42,7 +42,10 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
         return Task.FromResult<DateTime?>(new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Unspecified)); // TODO: dummy data
     }
 
-    // Default = a linked lead document whose title matches (no mismatch); feature "DealFile.NoLeadDocument" returns none.
+    // Default = a linked lead document whose title is the declaration number the Postman messages send ("260146"), so a
+    // certificate carrying that number is not flagged. A real lead document always has a title (its declaration number):
+    // a null title would count as a mismatch against any number, as in legacy. Feature "DealFile.NoLeadDocument" returns none,
+    // and "DealFile.LeadDocumentTitleMismatch" returns a title that matches no certificate.
     public Task<LeadDocumentByCertificateOfOriginDto?> GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(int oldCertificateOfOriginId, int newCertificateOfOriginId)
     {
         if (mockUtil.HasMockFeature("DealFile.NoLeadDocument"))
@@ -53,7 +56,7 @@ public class ExportDealFileMockProxy(IProxyMockUtil mockUtil) : IExportDealFileP
         return Task.FromResult<LeadDocumentByCertificateOfOriginDto?>(new LeadDocumentByCertificateOfOriginDto
         {
             LeadDocumentId = (newCertificateOfOriginId * 10) + 7, // TODO: dummy data
-            LeadDocumentTitle = null,                             // null → the BL does not flag a title mismatch
+            LeadDocumentTitle = mockUtil.HasMockFeature("DealFile.LeadDocumentTitleMismatch") ? "999999" : "260146", // TODO: dummy data
         });
     }
 

@@ -39,7 +39,7 @@ scripts:
           pm.collectionVariables.set('approveBody', withStatus('certDto', 7));
       }
       var APPROVE = { 'sqp-30-approve': ['sqpDto', 'sqpApproveBody'], 'ror-15-approve-a': ['rorADto', 'rorApproveABody'],
-                      'ror-50-approve-b': ['rorBDto', 'rorApproveBBody'] };
+                      'ror-50-approve-b': ['rorBDto', 'rorApproveBBody'], 'ap-30-approve': ['apDto', 'apApproveBody'] };
       if (APPROVE[name]) { pm.collectionVariables.set(APPROVE[name][1], withStatus(APPROVE[name][0], 7)); }
       if (name === '20-reject') {
           pm.collectionVariables.set('rejectBody', withStatus('rejCertDto', 3, { rejectCancelReason: 'PM lifecycle reject' }));
@@ -74,13 +74,13 @@ scripts:
       var CREATE = { '00-create-received': ['certId', 'certNumber'], '00-reject-create': ['rejCertId', null],
                      '00-sq-create': [null, 'sqCertNumber'], 'cb-00-create': ['cbId', 'cbNumber'],
                      'sqp-00-create': ['sqpId', 'sqpNumber'], 'ror-00-create-a': ['rorA', 'rorANumber'],
-                     'ror-30-create-b': ['rorB', 'rorBNumber'] };
+                     'ror-30-create-b': ['rorB', 'rorBNumber'], 'ap-00-create': ['apId', 'apNumber'] };
       if (CREATE[name] && j) {
           if (CREATE[name][0]) { pm.collectionVariables.set(CREATE[name][0], j.applicationId); }
           if (CREATE[name][1]) { pm.collectionVariables.set(CREATE[name][1], (j.feedback || {}).certificateId); }
       }
       var READ = { '30-read-match': 'certDto', '10-reject-read': 'rejCertDto', 'sqp-20-read-match': 'sqpDto',
-                   'ror-10-read-a-match': 'rorADto', 'ror-45-read-b-match': 'rorBDto' };
+                   'ror-10-read-a-match': 'rorADto', 'ror-45-read-b-match': 'rorBDto', 'ap-20-read-match': 'apDto' };
       if (READ[name] && j) { pm.collectionVariables.set(READ[name], JSON.stringify(j)); }
       if (name === '60-read-published' && j) { pm.collectionVariables.set('certGuid', j.guid); }
 
@@ -101,11 +101,12 @@ scripts:
                               '85-read-cancelled': 4, '10-reject-read': 2, '30-reject-read-rejected': 3,
                               'cb-20-read-match': 6, 'cb-40-read-unchanged': 6, 'sqp-20-read-match': 6, 'sqp-50-read-published': 8,
                               'ror-10-read-a-match': 6, 'ror-25-read-a-published': 8, 'ror-35-read-b': 2, 'ror-45-read-b-match': 6,
-                              'ror-60-read-b-published': 8, 'ror-65-read-a-cancelled': 4 };
+                              'ror-60-read-b-published': 8, 'ror-65-read-a-cancelled': 4,
+                              'ap-20-read-match': 6, 'ap-40-read-published': 8 };
       var READ_ID = { 'cb-20-read-match': 'cbId', 'cb-40-read-unchanged': 'cbId', 'sqp-20-read-match': 'sqpId',
                       'sqp-50-read-published': 'sqpId', 'ror-10-read-a-match': 'rorA', 'ror-25-read-a-published': 'rorA',
                       'ror-35-read-b': 'rorB', 'ror-45-read-b-match': 'rorB', 'ror-60-read-b-published': 'rorB',
-                      'ror-65-read-a-cancelled': 'rorA' };
+                      'ror-65-read-a-cancelled': 'rorA', 'ap-20-read-match': 'apId', 'ap-40-read-published': 'apId' };
       if (READ_ID[name] && j) {
           pm.test(name + ': read the certificate this folder created', function () {
               pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get(READ_ID[name])));
@@ -242,8 +243,21 @@ scripts:
               pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(7);
           });
       }
+      // ---- auto-publish: an approve whose declaration is already released publishes at once ----
+      if (name === 'ap-30-approve' && j) {
+          pm.test('ap-30: the approve published the certificate at once - Published (8), no release event', function () {
+              pm.expect(j.id, 'id').to.eql(Number(pm.collectionVariables.get('apId')));
+              pm.expect(j.certificateOfOriginStatusId, 'status').to.eql(8);
+          });
+      }
+      if (name === 'ap-40-read-published' && j) {
+          pm.test('ap-40: the auto-publish stamped Guid and issuing date', function () {
+              pm.expect(j.guid, 'guid').to.be.a('string').and.not.empty;
+              pm.expect(j.issuingDate, 'issuingDate').to.be.a('string').and.not.empty;
+          });
+      }
       if (['cb-10-reconcile-match', 'sqp-10-reconcile-match', 'sqp-40-release', 'ror-05-reconcile-a', 'ror-20-release-a',
-           'ror-40-reconcile-b', 'ror-55-release-b'].indexOf(name) >= 0) {
+           'ror-40-reconcile-b', 'ror-55-release-b', 'ap-10-reconcile-match'].indexOf(name) >= 0) {
           pm.test(name + ': no reconciliation findings', function () { pm.expect(j, 'findings').to.be.an('array').that.is.empty; });
       }
     language: text/javascript

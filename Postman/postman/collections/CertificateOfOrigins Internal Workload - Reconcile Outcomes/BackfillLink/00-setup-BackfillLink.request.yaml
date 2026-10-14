@@ -3,6 +3,8 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
+  x-mock-feature--DealFile.NoLeadDocument: "true"
+# No lead document is linked to the new certificate either, so the save leaves the link empty for the reconcile to fill.
 # B-H1 (35aa7fd): a certificate with NO declaration link (no exportDeclarationNumber) - the reconcile must backfill it.
 body:
   type: json

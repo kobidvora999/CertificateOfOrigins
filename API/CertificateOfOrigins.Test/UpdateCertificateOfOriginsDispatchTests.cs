@@ -189,6 +189,84 @@ public class UpdateCertificateOfOriginsDispatchTests
         });
     }
 
+    // --- The save's lead-document title check (legacy CertificateOfOriginsBL.cs:1014-1017): on the incoming-message path
+    // the mismatch was already in the BL's _requestExceptions when the reconciliation ran, so it counted as an Error (:513)
+    // and its text went out with the reconciliation's findings. ---
+    private const string DealFileMismatchText = "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא";
+
+    [Test]
+    public async Task TitleMismatchRejectsACertificateThatOtherwiseMatches()
+    {
+        var certs = new[] { Cert(81, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null) };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [81], "SUB-DEC");
+        request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
+
+        var cap = await RunDispatchAsync(request, certs, titleMismatchCertificateId: 81);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.Reconciliations.Any(r => r.Id == 81 && r.StatusId == (int)ECertificateOfOriginStatus.Rejected), Is.True,
+                "the mismatch is an Error, so the certificate is Rejected");
+            Assert.That(cap.RaisedEventTypes, Does.Contain((int)EEventType.CertificateOfOriginCertificateDeclarationMismatch));
+            Assert.That(cap.Returned.Select(e => e.ExceptionDescription), Is.EqualTo(new[] { DealFileMismatchText }));
+        });
+    }
+
+    [Test]
+    public async Task TitleMismatchIsReturnedEvenWhenTheDeclarationHasNoInvoices()
+    {
+        var certs = new[] { Cert(82, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null) };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [82], "SUB-DEC");
+
+        var cap = await RunDispatchAsync(request, certs, titleMismatchCertificateId: 82);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.Reconciliations.Any(r => r.Id == 82 && r.StatusId == (int)ECertificateOfOriginStatus.Rejected), Is.True);
+            Assert.That(cap.Returned.Select(e => e.ExceptionDescription), Is.EqualTo(new[] { DealFileMismatchText }),
+                "legacy listed _requestExceptions in this branch too");
+        });
+    }
+
+    [Test]
+    public async Task TitleMismatchOfAnotherCertificateDoesNotAffectThisOne()
+    {
+        var certs = new[] { Cert(83, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null) };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [83], "SUB-DEC");
+        request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
+
+        var cap = await RunDispatchAsync(request, certs, titleMismatchCertificateId: 999);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.RaisedEventTypes, Does.Contain((int)EEventType.CertificateOfOriginCertificateMatchDeclaration));
+            Assert.That(cap.Returned, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task TitleMismatchAndTheGoodsItemCheckReportTheSameMessageOnce()
+    {
+        var certs = new[] { Cert(84, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null) };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [84], "SUB-DEC");
+        request.ExportInvoiceInfoList =
+        [
+            new ExportInvoiceInfoDto
+            {
+                ExternalIdNum = "INV-1",
+                ExportGoodsItemInfoList = [new ExportGoodsItemInfoDto { CertificateOfOriginId = 999, CustomsItemId = 5 }],
+            },
+        ];
+        var invoices = new List<CertificateReconcileInvoiceDto>
+        {
+            new() { CertificateOfOriginId = 84, InvoiceNumber = "INV-1", GoodsItemCustomsItemIds = [null] },
+        };
+
+        var cap = await RunDispatchAsync(request, certs, invoices, titleMismatchCertificateId: 84);
+
+        Assert.That(cap.Returned.Count(e => e.ExceptionDescription == DealFileMismatchText), Is.EqualTo(1));
+    }
+
     // ------------------------------------------------------------------------------------------------------------------
 
     private static CertificateOfOrigin Cert(
@@ -226,7 +304,9 @@ public class UpdateCertificateOfOriginsDispatchTests
         };
     }
 
-    private static async Task<Captures> RunDispatchAsync(UpdateCertificateOfOriginsRequestDto request, IReadOnlyList<CertificateOfOrigin> seededCerts, List<CertificateReconcileInvoiceDto>? invoices = null)
+    // titleMismatchCertificateId: when set, the reconciliation is called directly (as the incoming-message path does) with
+    // the save's lead-document title mismatch for that certificate, instead of through the event dispatcher.
+    private static async Task<Captures> RunDispatchAsync(UpdateCertificateOfOriginsRequestDto request, IReadOnlyList<CertificateOfOrigin> seededCerts, List<CertificateReconcileInvoiceDto>? invoices = null, int? titleMismatchCertificateId = null)
     {
         var cap = new Captures();
         var byId = seededCerts.ToDictionary(c => c.Id);
@@ -349,12 +429,23 @@ public class UpdateCertificateOfOriginsDispatchTests
 
         var bl = new CertificateOfOriginsBl(serviceProvider, Fake<ILookupUtil>(), parametersUtil);
 
-        await bl.UpdateCertificateOfOrigins(request);
+        if (titleMismatchCertificateId is null)
+        {
+            cap.Returned = await bl.UpdateCertificateOfOrigins(request);
+        }
+        else
+        {
+            cap.Returned = await (Task<List<CertificateOfOriginExceptionDto>>)typeof(CertificateOfOriginsBl)
+                .GetMethod("ReconcileCertificatesAgainstDeclaration", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(bl, [request, titleMismatchCertificateId])!;
+        }
+
         return cap;
     }
 
     private sealed class Captures
     {
+        public List<CertificateOfOriginExceptionDto> Returned { get; set; } = [];
         public List<(int Id, string Reason)> Cancelled { get; } = [];
         public List<int> DeclarationLinkIds { get; } = [];
         public List<(int Id, int StatusId)> Reconciliations { get; } = [];

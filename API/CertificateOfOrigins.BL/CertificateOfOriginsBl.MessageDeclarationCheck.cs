@@ -38,7 +38,8 @@ public partial class CertificateOfOriginsBl
             ExportInvoiceInfoList = declarationInfo.ExportInvoiceInfoList,
         };
 
-        var exceptions = await ReconcileCertificatesAgainstDeclaration(updateRequest);
+        // The save's lead-document title mismatch joins this reconciliation, as legacy's shared _requestExceptions did.
+        var exceptions = await ReconcileCertificatesAgainstDeclaration(updateRequest, context.IsLeadDocumentTitleMismatch ? certificate.Id : null);
         return exceptions;
     }
 

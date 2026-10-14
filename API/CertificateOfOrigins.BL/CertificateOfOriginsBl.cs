@@ -978,8 +978,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // certificateToUpdateId is legacy's SaveCertificateOfOrigin(certificateToUpdateId) argument: the id of the existing
     // certificate a CertificateUpdate message targets. Only the incoming-message path supplies it; it becomes the related
-    // entity of the Received-status ApplicationCorrected event.
-    private async Task<CertificateOfOriginDto> SaveCertificateOfOriginCore(SaveCertificateOfOriginRequestDto request, int? certificateToUpdateId)
+    // entity of the Received-status ApplicationCorrected event. messageContext is that path's context too: the save records
+    // the lead-document title mismatch on it for the reconciliation that follows.
+    private async Task<CertificateOfOriginDto> SaveCertificateOfOriginCore(SaveCertificateOfOriginRequestDto request, int? certificateToUpdateId, MessageValidationContext? messageContext = null)
     {
         // Guard the DB-required fields before anything reaches the context. Without this a malformed body (e.g. an
         // empty "{}") produced an entity with zeroed keys, the INSERT failed on a foreign key, and the
@@ -1037,7 +1038,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
 
         // Link the DealFile lead document (repoint from the superseded certificate to this one).
-        await LinkLeadDocument(entity, replacementOldId, userId);
+        await LinkLeadDocument(entity, replacementOldId, userId, messageContext);
 
         // Status-change side effects. Legacy CheckIfStatusChangedAndHandleChanges: the self-tracking entity records an
         // original status only when the status was changed, and a recorded original compares against the current one.
@@ -1051,12 +1052,21 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 && originalStatusId != entity.CertificateOfOriginStatusId)
             || entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Received;
 
+        var isAutoPublished = false;
         if (isStatusChanged)
         {
             await RaiseStatusEvents(entity, eventUtil, certificateToUpdateId);
+
+            // Legacy ran this inside the status events (RaiseEventUtil.RaiseEventCertificateOfOriginUserApprovedCertificate),
+            // so it comes before the feedback gate below. The service partial's own call (CertificateOfOriginsInternalServicePartial.cs:61-64)
+            // never fired a second time: SaveCertificateOfOrigin returned the same instance, already Published by then.
+            if (entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.PendingRelease)
+            {
+                isAutoPublished = await PublishIfDeclarationAlreadyReleased(entity);
+            }
         }
 
-        // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin (#1 is blocked on the platform; #2 is below):
+        // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin (#1 is blocked on the platform):
         //  (#1) On Publish, legacy CreateAttacmentsAndSendFeedBackMessage sent the customer a request-feedback message
         //       carrying the rendered certificate PDF (SendRequestFeedback(cert, attachments), CertificateOfOriginsBL.cs:397-418).
         //       It is NOT sent here — the feedback gate below excludes Published, and the outgoing-message (EAI) channel
@@ -1064,15 +1074,18 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         //       when the channel returns.
         //  (#3) Not a gap: legacy IsCreateAttachments / IsMessageSent (CertificateOfOriginsBL.cs:381,417,424,442) were
         //       in-memory properties on the entity partial (CertificateOfOriginPartial.cs:149-185), never DB columns.
-        //       They only stopped a second publish within the SAME request, after the auto-publish (#2) flipped the
-        //       object to Published; a retried save was never guarded. When #2 is wired through DeclarationReleased
-        //       (which reloads the certificates from the DB) a local bool is enough, if anything.
+        //       They only stopped a second publish within the SAME request, after the auto-publish flipped the object to
+        //       Published; a retried save was never guarded. isAutoPublished below plays that role.
+        // An auto-published certificate is Published by now, so — as in legacy — it gets no PendingRelease feedback.
         if (isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
             await SendRequestFeedback(entity);
         }
 
-        if (isStatusChanged && entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published)
+        // Legacy reached its Published branch again after an auto-publish: the attachments were skipped by IsCreateAttachments,
+        // but HandleCertificateReplacement ran a second time (a second CertificateReplaced event for the same replacement).
+        // DeclarationReleased already did both, so neither is repeated here.
+        if (isStatusChanged && !isAutoPublished && entity.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published)
         {
             await PublishAttachments(entity, eventUtil, userId, request.IsDeclarationReleased);
             if (entity.RequestReasonCode == (int)ERequestReason.CertificateReplacement)
@@ -1081,14 +1094,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
         }
 
-        // TODO(migration) (#2): legacy called CheckCertificateOfOriginOnDeclarationReleased here (via the service partial,
-        // CertificateOfOriginsInternalServicePartial.cs:61-64): a certificate saved to PendingRelease whose export
-        // declaration is ALREADY released (lead-document state Released/Paroled/Closed) auto-published (DeclarationReleased).
-        // Not blocked — every piece exists: IExportDealFileProxy.GetExportDeclarationInfoForPc (real + mock), the repoint in
-        // LinkLeadDocument, and the private DeclarationReleased; copy GetDeclarationInfoForReconciliation
-        // (CertificateOfOriginsBl.MessageDeclarationCheck.cs). Two ordering decisions are owed: legacy ran this BEFORE the
-        // feedback gate (an auto-published certificate got no PendingRelease feedback), and legacy called
-        // HandleCertificateReplacement twice (inside DeclarationReleased and again in the service's Published branch).
         return await GetCertificateOfOriginById(entity.Id);
     }
 
@@ -1582,11 +1587,22 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy: repoint the DealFile lead document to this certificate; backfill LeadDocumentId/ExportDeclarationNumber
     // when the certificate has none; then CheckDeclarationStatus.
-    private async Task LinkLeadDocument(CertificateOfOrigin entity, int replacementOldId, int userId)
+    private async Task LinkLeadDocument(CertificateOfOrigin entity, int replacementOldId, int userId, MessageValidationContext? messageContext)
     {
         var exportDealFileProxy = Resolve<IExportDealFileProxy>();
         var oldId = replacementOldId != 0 ? replacementOldId : entity.Id;
         var leadDocument = await exportDealFileProxy.GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId(oldId, entity.Id);
+
+        // Legacy title check (CertificateOfOriginsBL.cs:1014-1017): the lead document's title against the certificate's
+        // export-declaration number, compared BEFORE the backfill below — so a certificate with no number counts as a
+        // mismatch when the title is set, as in legacy. Legacy added it to the BL's _requestExceptions, which only the
+        // incoming message's reconciliation read; the internal save discarded it. Hence it is recorded on the message
+        // context only.
+        if (leadDocument is not null && messageContext is not null && leadDocument.LeadDocumentTitle != entity.ExportDeclarationNumber)
+        {
+            messageContext.IsLeadDocumentTitleMismatch = true;
+        }
+
         if (leadDocument is not null && string.IsNullOrEmpty(entity.ExportDeclarationNumber))
         {
             entity.LeadDocumentId = leadDocument.LeadDocumentId;
@@ -1594,11 +1610,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
             // The backfill is stamped after the main upsert (this method needs the new certificate id), so it needs its
             // own explicit write to persist.
-            // TODO(migration): the title-mismatch validation is deferred (not blocked). Legacy (CertificateOfOriginsBL.cs:1012-1023)
-            // added CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile when LeadDocumentTitle != ExportDeclarationNumber,
-            // checked BEFORE this backfill. It only had an effect on the incoming GetPC path, where the reconciliation read
-            // _requestExceptions (:513) and the mismatch forced Rejected; on the internal save it was discarded. To port: carry
-            // the mismatch into the reconciliation as EReconciliationMessage.CertificateNumberNotInDealFile, de-duplicated by code.
             await DataLayer.UpdateCertificateDeclarationLink(entity.Id, entity.LeadDocumentId, entity.ExportDeclarationNumber, userId);
         }
 
@@ -1619,6 +1630,54 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             await exportDealFileProxy.ChangeCertificateOfOriginIdForLeadDocument(declarationDetails.LeadDocumentId, previousCertificateId.Value, entity.Id);
         }
+    }
+
+    // Legacy RaiseEventCertificateOfOriginUserApprovedCertificate (RaiseEventUtil.cs:165-196, run for a status change to
+    // PendingRelease): when the certificate's export declaration is ALREADY released (lead-document state Released, Paroled
+    // or Closed), publish it at once through DeclarationReleased, exactly as the release event would. Returns true when it
+    // published; the entity is then marked Published, as legacy's shared instance was.
+    // The legacy IsExportDeclarationActive gate is dropped (always true, parity B-L1). Legacy passed no organization unit
+    // on this path, and the release path ignores the other declaration fields beyond the number and lead document.
+    // A certificate with neither a lead document nor a declaration number has no declaration to look up; legacy queried
+    // with both null here, and the lookup finds nothing.
+    private async Task<bool> PublishIfDeclarationAlreadyReleased(CertificateOfOrigin entity)
+    {
+        if (!entity.LeadDocumentId.HasValue && string.IsNullOrEmpty(entity.ExportDeclarationNumber))
+        {
+            return false;
+        }
+
+        var exportDealFileProxy = Resolve<IExportDealFileProxy>();
+        var declarationDetails = await exportDealFileProxy.GetExportDeclarationDetailsForCertificateOfOrigion(entity.LeadDocumentId, entity.ExportDeclarationNumber);
+        if (declarationDetails is null)
+        {
+            return false;
+        }
+
+        var declarationInfo = await exportDealFileProxy.GetExportDeclarationInfoForPc(declarationDetails.LeadDocumentId);
+        if (declarationInfo is null
+            || declarationInfo.LeadDocumentState is not ((int)ELeadDocumentState.Released
+                or (int)ELeadDocumentState.Paroled
+                or (int)ELeadDocumentState.Closed))
+        {
+            return false;
+        }
+
+        // Legacy called DeclarationReleased directly (isFromDealFile:false), not the event dispatcher, so EventType stays
+        // unset. Its reconciliation result was discarded (void), and so is it here.
+        var releaseRequest = new UpdateCertificateOfOriginsRequestDto
+        {
+            CertificateOfOriginsIds = [entity.Id],
+            DestinationCountryId = declarationInfo.DestinationCountryId,
+            ExporterCustomerId = declarationInfo.ExporterCustomerId,
+            ExportDeclarationNum = entity.ExportDeclarationNumber,
+            LeadDocumentId = declarationInfo.LeadDocumentId,
+            ExportInvoiceInfoList = declarationInfo.ExportInvoiceInfoList,
+        };
+        await DeclarationReleased(releaseRequest);
+
+        entity.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Published;
+        return true;
     }
 
     // Legacy RaiseCertificateOfOriginEvents: the status-driven event for the new status. The legacy also raised a
@@ -1931,7 +1990,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // the assessor), re-print the draft, and append the error rows. Returns the reconciliation errors.
     // TODO(migration): only the exception text + EMessages code + Error/Warning level source (ValidationMessages/resx,
     // legacy GetUIMessageWithEnglishAndLevel) is still deferred — the checks themselves are migrated.
-    private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request)
+    // titleMismatchCertificateId: the certificate whose save found a lead-document title mismatch (incoming message path only).
+    private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request, int? titleMismatchCertificateId = null)
     {
         var exceptions = new List<CertificateOfOriginExceptionDto>();
         if (request.CertificateOfOriginsIds == null || request.CertificateOfOriginsIds.Count == 0)
@@ -1977,7 +2037,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
 
             var details = detailsByCertificate.GetValueOrDefault(certificate.Id) ?? [];
-            var reconciliation = await ValidateReconciliation(request, certificate, details);
+            var reconciliation = await ValidateReconciliation(request, certificate, details, certificate.Id == titleMismatchCertificateId);
             var certificateExceptions = reconciliation.Exceptions;
             exceptions.AddRange(certificateExceptions);
 
@@ -2364,9 +2424,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         if (assessorUserId.HasValue)
         {
             // Legacy set a SingleUserAssignmentFilter with EProfession.Marech + the Export organization-unit type besides the
-            // user id. The platform used only the user id when it was set (AssignToUserBySingleUserAssignmentFilter.GetFilter;
-            // the other fields fed the assignment log text), so assigning by the resolved assessor user id is parity. The
-            // Export unit type is set on the event above.
+            // user id. The platform used only the user id when it was set, in AssignToUserBySingleUserAssignmentFilter.GetFilter,
+            // and the other fields only fed the assignment log text. So assigning by the resolved assessor user id is parity.
+            // The Export unit type is set on the event above.
             builder = builder.WithTaskArguments(task => task.WithTaskAssignmentUser(assessorUserId.Value));
         }
 
@@ -2396,19 +2456,27 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // checks are warnings). Returns the exceptions + whether the certificate is now linked to an import declaration.
     // TODO(migration): the localized + English exception texts and their EMessages codes are placeholders here — source
     // them from ValidationMessages/resx (legacy SystemTablesUtil.GetUIMessageWithEnglishAndLevel gives text+english+level).
+    // isLeadDocumentTitleMismatch: the save's title check failed (legacy: already in _requestExceptions when this ran). It is
+    // the first finding, so it survives every early return below and wins the de-duplication against the goods-item check
+    // that reports under the same message.
     private async Task<ReconciliationResult> ValidateReconciliation(
         UpdateCertificateOfOriginsRequestDto request,
         CertificateOfOrigin certificate,
-        List<CertificateOfOriginDetails> details)
+        List<CertificateOfOriginDetails> details,
+        bool isLeadDocumentTitleMismatch = false)
     {
-        // No invoices in the declaration → Rejected. Legacy set hasErrors = true with NO exception: no error row, no
-        // AdditionalInfo on the mismatch event, nothing returned to the caller.
-        if (request.ExportInvoiceInfoList == null || request.ExportInvoiceInfoList.Count == 0)
+        var builder = new List<ReconciliationFinding>();
+        if (isLeadDocumentTitleMismatch)
         {
-            return new ReconciliationResult([], false, true);
+            builder.Add(CertificateNumberNotInDealFileFinding());
         }
 
-        var builder = new List<ReconciliationFinding>();
+        // No invoices in the declaration → Rejected. Legacy set hasErrors = true with no exception of its own: no error row,
+        // no AdditionalInfo on the mismatch event, nothing returned to the caller — beyond a title mismatch already found.
+        if (request.ExportInvoiceInfoList == null || request.ExportInvoiceInfoList.Count == 0)
+        {
+            return new ReconciliationResult(BuildReconciliationResult(builder, false).Exceptions, false, true);
+        }
 
         // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
         // decision, 2026-09-28): legacy ValidateExportDeclarationInfoForPCIsMatch collected the detail and
@@ -2681,11 +2749,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // The certificate must be linked to at least one declaration goods item (Error).
         if (!declarationGoodsItems.Any(goodsItem => goodsItem.CertificateOfOriginId == certificate.Id))
         {
-            builder.Add(new ReconciliationFinding(
-                EReconciliationMessage.CertificateNumberNotInDealFile,
-                (int)EExceptionLevel.Error,
-                "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא",
-                "The certificate number does not match the certificate number in the export deal file."));
+            builder.Add(CertificateNumberNotInDealFileFinding());
         }
 
         // Customs-item 6-digit classification match, forward (Error) — only when the type requires it. A goods item without
@@ -2751,6 +2815,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 }
             }
         }
+    }
+
+    // EMessages.CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile — raised by the goods-item link check and by the
+    // save's lead-document title check.
+    private static ReconciliationFinding CertificateNumberNotInDealFileFinding()
+    {
+        return new ReconciliationFinding(
+            EReconciliationMessage.CertificateNumberNotInDealFile,
+            (int)EExceptionLevel.Error,
+            "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא",
+            "The certificate number does not match the certificate number in the export deal file.");
     }
 
     private static string? GetDetailValue(List<CertificateOfOriginDetails> details, ECertificateDetailsType detailType)

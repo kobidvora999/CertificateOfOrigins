@@ -67,6 +67,11 @@ public partial class CertificateOfOriginsBl
         // amendment guard + the per-reason CheckExportDeclarationNumber use the identical (null, number) key); the cache
         // collapses those to one call. The declaration does not change within a request.
         public Dictionary<string, ExportDeclarationDetailsDto?> DeclarationDetailsCache { get; } = [];
+
+        // Set by the save when the DealFile lead document's title differs from the certificate's export-declaration number
+        // (legacy CertificateOfOriginsBL.cs:1014-1017 added CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile to
+        // the BL's _requestExceptions). Only this path's reconciliation read it (:513), as an Error.
+        public bool IsLeadDocumentTitleMismatch { get; set; }
     }
 
     // Stage 5: the create/update branch. Legacy GetPC_MSG2280_2281_CertificateOfOriginRequestInner default case —
@@ -106,7 +111,7 @@ public partial class CertificateOfOriginsBl
 
         // Map the validated message + resolved side-values onto the save request (incl. the invoice/item graph) and persist.
         var saveRequest = BuildSaveRequestFromMessage(request, context, certificateNumber, invoices, RequestMetadata.MessageSenderId ?? 0);
-        var saved = await SaveCertificateOfOriginCore(saveRequest, context.CertificateToUpdateId);
+        var saved = await SaveCertificateOfOriginCore(saveRequest, context.CertificateToUpdateId, context);
 
         // Legacy: post-save, if the linked declaration is submitted/released, reconcile the certificate against it
         // (CheckCertificateOfOriginOnDeclarationSubmited) — only for a real certificate (not EmptyCertificate) that is

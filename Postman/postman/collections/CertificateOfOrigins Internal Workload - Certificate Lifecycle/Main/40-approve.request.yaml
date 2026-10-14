@@ -3,6 +3,8 @@ url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: POST
 headers:
   Content-Type: application/json
+  x-mock-feature--DealFile.NotReleased: "true"
+# The declaration is not released yet, so the approve stays at PendingRelease (7) instead of auto-publishing; the release comes later in the chain.
 # C4: the worker approves - the full certificate read at 30, status 7 with the original status 6, so the status side effects run (ApproveUserId stamped, event 637).
 body:
   type: json

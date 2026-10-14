@@ -203,6 +203,8 @@ scripts:
           // NOT the 6-digit mismatch: verified live, the mock declaration goods item carries CertificateOfOriginId
           // 0, so the certificate-link check fires first and returns. See gap-analysis.md.
           '30-customs-item-mismatch':     'מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא',
+          // The save's lead-document title check joins the reconciliation as an Error (legacy _requestExceptions).
+          '25-lead-document-title-mismatch': 'מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא',
           '50-destination-not-in-group':  'אי התאמה בין הארצות בהסכם לבין ארץ הקונה',
           '10-no-associated-goods-items': 'אין בהצהרה טובין המקושרים להצהרת היבוא'
       };
