@@ -1,3 +1,4 @@
+using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
@@ -76,6 +77,28 @@ public partial class CertificateOfOriginsBl
             // The letter is in English and addressed abroad, so it wants the English country name.
             letter.ExternalCustomDepartmentCountry = country?.EnglishName ?? country?.Name;
         }
+
+        if (data is SouthKoreaOriginVerificationLetterResult signedLetter)
+        {
+            await FillSignatureBlock(signedLetter);
+        }
+    }
+
+    // Legacy signed the import-verification letters as the user producing them (@CreateUserID). UserTemplateDetails
+    // was INNER JOINed to the user, so without that row the whole block stayed empty, the email included.
+    private async Task FillSignatureBlock(SouthKoreaOriginVerificationLetterResult letter)
+    {
+        var userProxy = Resolve<IUserProxy>();
+        var details = await userProxy.GetUserTemplateDetails(RequestMetadata.UserId ?? 0);
+        if (details is null)
+        {
+            return;
+        }
+
+        // T-SQL CONCAT treats NULL as an empty string, so a missing name part leaves only the separator.
+        letter.EmployeeFullName = $"{details.EnglishFirstName} {details.EnglishLastName}";
+        letter.EmployeeEmailAddress = details.Email;
+        letter.UserSignature = details.SignatureImageUrl;
     }
 
     // Template id → (data contract, the name registered in the Templates module, output format).

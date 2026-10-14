@@ -23,4 +23,23 @@ public class UserMockProxy(IProxyMockUtil mockUtil) : IUserProxy, IMockProxy
         }).ToList();
         return Task.FromResult<List<UserDto>?>(result);
     }
+
+    // Default = a full signature block; feature "Users.NoTemplateDetails" flips to a user with no template details.
+    public Task<UserTemplateDetailsDto?> GetUserTemplateDetails(int userId)
+    {
+        if (mockUtil.HasMockFeature("Users.NoTemplateDetails"))
+        {
+            return Task.FromResult<UserTemplateDetailsDto?>(null);
+        }
+
+        var result = new UserTemplateDetailsDto
+        {
+            UserId = userId,
+            EnglishFirstName = "Test",                                          // TODO: dummy data
+            EnglishLastName = "User " + userId,                                 // TODO: dummy data
+            SignatureImageUrl = "signature-" + userId + ".png",                 // TODO: dummy data
+            Email = "test.user" + userId + "@example.invalid",                  // TODO: dummy data
+        };
+        return Task.FromResult<UserTemplateDetailsDto?>(result);
+    }
 }

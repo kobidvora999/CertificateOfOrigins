@@ -38,16 +38,19 @@ public class SouthKoreaOriginVerificationLetterResult
     // that is the field the letter is meant to print.
     public string? FreeText { get; set; }
 
-    // <EmployeeFullName> / <EmployeeEmailAddress> — the signing customs employee.
-    // 🛑 TODO(blocking): no confirmed source. Candidates are the file's UserID, its UpdateUserID, or the acting user
-    // on the request — they differ in practice. Once chosen, fill from the Users service like other cross-service
-    // names. Until then both tags render empty.
+    // The signature block: <EmployeeFullName>, <EmployeeEmailAddress>, <UserSignature>. It is filled in the BL from
+    // the Users service, following the sibling letters' legacy (usp_Template_INNER_CROSS_CertificateOfOrigin, the
+    // 2251-2259 branch): the signer is the user producing the letter (@CreateUserID → RequestMetadata.UserId), and the
+    // block comes from UserMng_UserTemplateDetails INNER JOIN UserMng_User. So a user with no template details gets
+    // the whole block empty, the email included.
+    //
+    // CONCAT(EnglishFirstName, ' ', EnglishLastName).
     public string? EmployeeFullName { get; set; }
 
+    // UserMng_User.Email.
     public string? EmployeeEmailAddress { get; set; }
 
-    // <UserSignature> — an IMAGE field: the signing employee's scanned signature, not a string.
-    // 🛑 TODO(blocking): nothing in this service stores or serves a user signature image, so the tag renders empty.
-    // Needs a product/platform decision on where signatures live.
-    public byte[]? UserSignature { get; set; }
+    // An IMAGE field. Legacy merged UserTemplateDetails.SignatureImageUrl (a URL string) into it as-is.
+    // TODO(confirm): that the Templates module's Image field type accepts a URL (and not only base64 content).
+    public string? UserSignature { get; set; }
 }

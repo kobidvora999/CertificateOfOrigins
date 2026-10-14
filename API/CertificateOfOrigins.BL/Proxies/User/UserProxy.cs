@@ -18,4 +18,14 @@ public class UserProxy(IHttpProxy httpProxy)
         var response = await ExecuteAsync(req);
         return await response.GetResult<List<UserDto>>();
     }
+
+    public async Task<UserTemplateDetailsDto?> GetUserTemplateDetails(int userId)
+    {
+        var req = CreateRequestBuilder()
+            .UseGetMethod()
+            .WithResource("api/User/UserTemplateDetails/{userId}") // TODO(blocking): confirm endpoint name/route with the Users microservice
+            .AddUrlSegmentParameter("userId", userId);
+        var response = await ExecuteAsync(req);
+        return await response.GetResult<UserTemplateDetailsDto>();
+    }
 }

@@ -52,8 +52,8 @@ fields:
     field type: PlainText
     field path: $.freeText
 
-  # The signing employee. These three have no confirmed data source yet (see the TODOs on the Result DTO) and
-  # therefore render empty; they are declared so the contract is complete the moment the source is decided.
+  # The signing employee — the user producing the letter, as in the sibling letters' legacy. The BL fills these three
+  # from the Users service (UserTemplateDetails); a user with no template details gets all three empty.
   - tag: EmployeeFullName
     field type: PlainText
     field path: $.employeeFullName
