@@ -28,6 +28,9 @@ public partial class AuthenticationRequestBl
     // and Suspended(5) as blocking, and IsTaskInProgress covers only Open(1)/InProgress(4).
     // TODO(confirm): exact parity needs the raw TaskStatusID (or a status filter) from the Tasks service; until
     // then a Canceled or Suspended reminder task will not block a new reminder, where legacy would have.
+    // The gap is on the Tasks side: usp_Tasks_IsTaskExist returns only TaskTypeID/IsTaskInProgress/UserID, as did the
+    // legacy IsTaskExistResultDTO. Rare in practice: our reminder opens with CloseOld (status 2), so 3/5 needs a manual
+    // cancel/suspend. Either accept it as a documented deviation or add the status once Tasks returns it.
     public async Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler()
     {
         var days = await parametersUtil.Get<int>(CertificateOfOriginsConsts.DaysForReminderForImporterSchedulerParameter);

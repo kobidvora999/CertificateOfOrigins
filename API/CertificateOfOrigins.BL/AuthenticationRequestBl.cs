@@ -335,7 +335,7 @@ public partial class AuthenticationRequestBl(
         // status, so the open-only filter must also be applied to the returned rows — the same pattern as
         // AuthenticationRequestBl.Schedulers.
         // TODO(confirm): not exact parity — IsTaskInProgress is TaskStatusID IN (1,4), while the legacy `!= 2` also
-        // counted Canceled(3) / Suspended(5) as existing.
+        // counted Canceled(3) / Suspended(5) as existing. Blocked on the Tasks service (see AuthenticationRequestBl.Schedulers).
         var reminderTasks = await tasksProxy.IsTaskExist(request.DocumentId, (int)EEntityType.ImportAuthenticationRequest, [(int)ETaskType.SendReminderForImporter], isTaskInProgress: true);
         requestDto.IsSendReminderForImporterTaskExists = reminderTasks?.Exists(task => task.IsTaskInProgress) == true;
 

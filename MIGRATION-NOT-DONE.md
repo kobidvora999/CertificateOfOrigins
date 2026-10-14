@@ -153,7 +153,7 @@
 `TODO(blocking)`: מעבר ל-proxy האמיתי + אימות שם ה-endpoint כשיוקם שירות ExportDealFile
 (הערך `CustomsMicroServices.ExportDealFile` קיים ב-enum ומקומפל).
 
-## Internal: SaveCertificateOfOrigin — 🟡 הומר, 3 חסמים פתוחים (אודיט נאמנות 2026-09-14)
+## Internal: SaveCertificateOfOrigin — 🟡 הומר, פער פתוח אחד חסום + שניים לא חסומים (אודיט נאמנות 2026-09-14, עודכן 2026-10-14)
 
 הזרימה מומרת בפועל (הסימון 🔴 הקודם ב-MIGRATION-STATUS היה מיושן). אודיט אדוורסרי מול הלגסי תיקן שניים
 (org-unit+reason באירוע ה-supersede; המרת code→ID ל-DestinationCountry/PortOfShipment בישות חדשה) והשאיר שלושה
@@ -162,13 +162,27 @@
 1. **פידבק+צרופה על Publish לא נשלח.** לגסי `CreateAttacmentsAndSendFeedBackMessage` → `SendRequestFeedback(cert, attachments)`
    (`CertificateOfOriginsBL.cs:397-418`) שלח ללקוח את התעודה המרונדרת. הערוץ (`OutgoingMessageProxy`, EAI) **הוסר
    מהפלטפורמה** (InfrastructureCore.Utils ≥ 1.10.105) ואין תחליף — ראה `_shared/outgoing-message-pattern.md`.
-2. **אין פרסום-אוטומטי כשההצהרה כבר משוחררת.** לגסי `CheckCertificateOfOriginOnDeclarationReleased`
-   (`CertificateOfOriginsBL.cs:671-694`, נקרא מ-`CertificateOfOriginsInternalServicePartial.cs:61-64`) דרך
-   `CheckDeclarationStatus` ששואל את **ExportDealFile** — שירות שטרם הוקם (mock בלבד). אותה תלות חוסמת גם את
-   ה-repoint של lead-document ואירוע אי-התאמת-הכותרת בזרימת ההודעה הנכנסת.
-3. **אין guards אי-כפילות.** לגסי חסם פרסום/פידבק חוזרים עם `IsCreateAttachments` / `IsMessageSent`
-   (`CertificateOfOriginsBL.cs:381,424`). העמודות **אינן קיימות** בטבלת `.NET10` ולא בישות → נדרש שינוי סכימה
-   (DB + entity + seed) לפני שאפשר לשחזר את ההגנה. עד אז שמירה חוזרת בסטטוס Published מייצרת את התבנית מחדש.
+2. **אין פרסום-אוטומטי כשההצהרה כבר משוחררת — לא חסום, פשוט טרם מומש (בדיקה 2026-10-14).** לגסי
+   `CheckCertificateOfOriginOnDeclarationReleased` (`CertificateOfOriginsBL.cs:671-694`, נקרא מ-
+   `CertificateOfOriginsInternalServicePartial.cs:61-64`): כשהסטטוס השתנה ל-PendingRelease → `CheckDeclarationStatus(cert, true)`
+   (`:648-667`) → `GetExportDeclarationInfoForPC`; אם מצב המסמך המוביל Released/Paroled/Closed → `DeclarationReleased` (`:310-352`).
+   כל החלקים כבר קיימים ב-.NET 10: `IExportDealFileProxy.GetExportDeclarationInfoForPc` (אמיתי + mock), ה-repoint ב-`LinkLeadDocument`,
+   ו-`DeclarationReleased` הפרטי המלא; דפוס להעתקה: `GetDeclarationInfoForReconciliation` (`CertificateOfOriginsBl.MessageDeclarationCheck.cs`).
+   "ExportDealFile טרם הוקם" חל באותה מידה על זרימות שכבר הומרו — חסר אימות חי, לא חסם. **הכרעות סדר פתוחות:**
+   (א) בלגסי הבדיקה רצה **לפני** שער הפידבק, כך שתעודה שפורסמה אוטומטית לא קיבלה פידבק PendingRelease;
+   (ב) בלגסי `HandleCertificateReplacement` נקרא פעמיים (בתוך `DeclarationReleased` ושוב בענף ה-Published של ה-service).
+   הערכה: 4–6 ש'.
+   **בדיקת אי-התאמת הכותרת** (לגסי `CertificateOfOriginsBL.cs:1012-1023`, `CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile`)
+   גם היא אינה חסומה: `LeadDocumentTitle` כבר חוזר מה-proxy, וההודעה קיימת כ-`EReconciliationMessage.CertificateNumberNotInDealFile`.
+   בלגסי היא השפיעה רק במסלול GetPC (Incoming): ה-exception נצבר ב-`_requestExceptions` ונקרא ב-reconciliation (`:513`) → hasErrors →
+   Rejected; במסלול ה-Internal save הוא נזרק לפח. הבדיקה רצה **לפני** ה-backfill, ולכן נכשלת גם כשלתעודה אין מספר וה-title לא null
+   (קוואירק — להכריע אם לשמר). הערכה: 3–5 ש'.
+3. **guards אי-כפילות — לא שינוי סכימה (תיקון 2026-10-14).** `IsCreateAttachments` / `IsMessageSent` אינם עמודות בלגסי: אלה
+   properties בזיכרון בלבד ב-`Customs.CRM.Entities\CertificateOfOriginsPartial\CertificateOfOriginPartial.cs:149-185` (בלי `[DataMember]`,
+   לא ב-EDMX, לא ב-SP). הם מנעו הפקה כפולה **בתוך אותה בקשה** — כשהפרסום האוטומטי (סעיף 2) הפך את אותו אובייקט ל-Published, ענף
+   ה-Published שאחריו לא הפיק שוב (`CertificateOfOriginsBL.cs:381,417,424,442`). משמירה חוזרת הם לא הגנו גם בלגסי (וגם Published→Published
+   אינו שינוי סטטוס). לכן אין מה לשחזר כרגע; כשסעיף 2 ימומש דרך `DeclarationReleased` (שקורא את התעודות מחדש מה-DB) — לכל היותר bool
+   מקומי. העמודות שקיימות ב-DB המקומי באו מסקריפט שנמחק (`API_20260707`) — drift בלבד.
 
 ## External: UpdateCetrificateOfOrigins — ✅ הומר (2026-07-07, branch `feature/migrate-update-cetrificate-of-origins`)
 
@@ -179,10 +193,16 @@
 **הכרעת קובי (2026-08): רינדור רק דרך SSRS** — אין צורך בתבניות מקומיות. הפיילוט הגנרי של התבניות
 (ITemplateUtil + dbo.usp_Template_INNER_CROSS_CertificateOfOrigin + DTOs + 2 endpoints) נמחק; הזרימה תמיד פונה
 ל-`commonServicesProxy.GenerateTemplate` (SSRS).
-**חסמים שנותרו (TODO(blocking) בקוד):** טקסטי resx מטבלת UIMessage הפנימית; חבילת BaseValidationMessages
-טרם ב-feed החיצוני; CountryCountryGroup חסר בתשתית lookup (2 בדיקות מדולגות); ערכי SendService/DestinationExternalId
-של הודעת הפידבק; endpoints לא מאומתים (Common, CustomsBook, Tasks, ExportDealFile);
-אימות עמודות IsCreateAttachments/IsMessageSent מול המונוליט.
+**חסמים שנותרו (TODO(blocking) בקוד):** טקסטי resx מטבלת UIMessage הפנימית; CountryCountryGroup חסר בתשתית lookup
+(2 בדיקות מדולגות); ערכי SendService/DestinationExternalId של הודעת הפידבק; endpoints לא מאומתים (Common, CustomsBook,
+Tasks, ExportDealFile).
+**ValidationMessages — החבילה כבר לא חוסמת (בדיקה 2026-10-14):** `AddValidationMessages<T>() where T : IValidationMessages`
+קיים ב-InfrastructureCore.WebApi 1.10.144 (שה-repo מפנה אליה), ו-`BaseValidationMessages<T>` ב-Interfaces 1.10.51 (הגרסה
+שנטענת בפועל). הדפוס כבר בשימוש ב-Customers (`ValidationMessages.cs` + resx, `Program.cs:19`). מה שנשאר בפועל:
+(1) ~17 טקסטים + 10 קודי `EMessages` לשליפה מטבלאות UIMessage/ServerTerms בלגסי (כיום פרפרזות, `ExceptionType = 0`);
+(2) ל-`ValidationMessage` אין קוד מספרי ואין טקסט אנגלי, ואילו ה-reconciliation מחזיר את שניהם בחוזה הלגסי (D-F1) —
+נדרשת טבלת מיפוי מקומית לצד ה-ValidationMessages; (3) FeedbackRemark בתעודה מחליפה טרם מומש. הערכה: 9–17 ש'.
+**IsCreateAttachments/IsMessageSent** — נבדק מול המונוליט: אינם עמודות (ראה SaveCertificateOfOrigin סעיף 3).
 
 ## External: TempSync — ⏭️ לא נדרש
 
@@ -266,6 +286,13 @@ CurrencyCode נפתר מה-lookup המקומי `CurrencyType` · נבדק חי e
 `TaskStatusID IN (1,4)`. **הפער שנותר:** משימות ב-Canceled(3)/Suspended(5) נחשבו "קיימות" בלגסי ואינן נחשבות
 אצלנו. מופעים: `GetAuthenticationRequestFileByID`, `GetAuthenticationRequestByID`, `IsCurrentUserHandleFile`,
 ושני ה-Planar jobs.
+**החסם בשירות Tasks, לא אצלנו (בדיקה 2026-10-14):** `usp_Tasks_IsTaskExist` מחזיר רק `TaskTypeID`, `IsTaskInProgress`, `UserID`,
+וגם `IsTaskExistResultDTO` הלגסי זהה — אין שדה סטטוס שנשכח במיפוי. ההשפעה נדירה: התזכורת נפתחת עם `CloseOld` ומשאירה סטטוס 2;
+משימה נהיית 3/5 רק בביטול/השהיה ידניים.
+**הכרעה (2026-10-14): סטייה מתועדת** (~0.5 ש' בדוח שלב 3) — בכפוף לאישור שביטול ידני של משימת תזכורת לא שימש
+בכוונה לעצירת תזכורות (בלגסי ביטול כזה עצר אותן לתמיד; אצלנו הן ממשיכות). במושהית ההתנהגות החדשה סבירה: תזכורת חדשה
+נפתחת ו-`CloseOld` סוגר את הישנה. אם יתברר שביטול כן שימש לעצירה: Tasks מוסיף `TaskStatusID` → אצלנו DTO + mock +
+סינון `!= 2` + בדיקות (~2.5 ש').
 
 ### ⚠️ `SaveAuthenticationRequestFile` — שינוי התנהגות שדורש אישור מוצר
 

@@ -288,7 +288,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         certificate.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Cancelled;
 
         // Legacy EMessages.CertificateOfOriginCancelFromMessage (from the UIMessage table). The generic resx/
-        // ValidationMessages pipeline is still blocked repo-wide (BaseValidationMessages — see Program.cs), but this
+        // ValidationMessages pipeline is not wired yet (see Program.cs), but this
         // specific message text is known, so it is set literally rather than deferred.
         certificate.RejectCancelReason = "התקבלה בקשה לביטול תעודה במסר";
         await DataLayer.CancelCertificate(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
@@ -1056,16 +1056,17 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             await RaiseStatusEvents(entity, eventUtil, certificateToUpdateId);
         }
 
-        // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin, deferred pending platform/schema:
+        // TODO(blocking) audited gaps vs legacy SaveCertificateOfOrigin (#1 is blocked on the platform; #2 is below):
         //  (#1) On Publish, legacy CreateAttacmentsAndSendFeedBackMessage sent the customer a request-feedback message
         //       carrying the rendered certificate PDF (SendRequestFeedback(cert, attachments), CertificateOfOriginsBL.cs:397-418).
         //       It is NOT sent here — the feedback gate below excludes Published, and the outgoing-message (EAI) channel
         //       that carried the PDF was removed from the platform with no replacement (see SendRequestFeedback). Restore
         //       when the channel returns.
-        //  (#3) Legacy guarded publish/feedback with IsCreateAttachments / IsMessageSent idempotency flags
-        //       (CertificateOfOriginsBL.cs:381,424); those columns do NOT exist on the .NET10 CertificateOfOrigin
-        //       table/entity, so a retried Published save re-issues the template + (once #1 is restored) re-sends feedback.
-        //       Needs the two columns (DB + entity + seed) to guard.
+        //  (#3) Not a gap: legacy IsCreateAttachments / IsMessageSent (CertificateOfOriginsBL.cs:381,417,424,442) were
+        //       in-memory properties on the entity partial (CertificateOfOriginPartial.cs:149-185), never DB columns.
+        //       They only stopped a second publish within the SAME request, after the auto-publish (#2) flipped the
+        //       object to Published; a retried save was never guarded. When #2 is wired through DeclarationReleased
+        //       (which reloads the certificates from the DB) a local bool is enough, if anything.
         if (isStatusChanged && entity.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Published)
         {
             await SendRequestFeedback(entity);
@@ -1080,11 +1081,14 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             }
         }
 
-        // TODO(blocking) (#2): legacy called CheckCertificateOfOriginOnDeclarationReleased here (via the service partial,
+        // TODO(migration) (#2): legacy called CheckCertificateOfOriginOnDeclarationReleased here (via the service partial,
         // CertificateOfOriginsInternalServicePartial.cs:61-64): a certificate saved to PendingRelease whose export
-        // declaration is ALREADY released auto-published (DeclarationReleased). Not migrated — it needs CheckDeclarationStatus,
-        // which queries the ExportDealFile service (not yet stood up; mock only). Wire when ExportDealFile is available
-        // (same dependency as the GetPC CheckDeclarationStatus reconciliation gap).
+        // declaration is ALREADY released (lead-document state Released/Paroled/Closed) auto-published (DeclarationReleased).
+        // Not blocked — every piece exists: IExportDealFileProxy.GetExportDeclarationInfoForPc (real + mock), the repoint in
+        // LinkLeadDocument, and the private DeclarationReleased; copy GetDeclarationInfoForReconciliation
+        // (CertificateOfOriginsBl.MessageDeclarationCheck.cs). Two ordering decisions are owed: legacy ran this BEFORE the
+        // feedback gate (an auto-published certificate got no PendingRelease feedback), and legacy called
+        // HandleCertificateReplacement twice (inside DeclarationReleased and again in the service's Published branch).
         return await GetCertificateOfOriginById(entity.Id);
     }
 
@@ -1589,7 +1593,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             entity.ExportDeclarationNumber = leadDocument.LeadDocumentTitle;
 
             // The backfill is stamped after the main upsert (this method needs the new certificate id), so it needs its
-            // own explicit write to persist. TODO(migration): the title-mismatch validation is deferred.
+            // own explicit write to persist.
+            // TODO(migration): the title-mismatch validation is deferred (not blocked). Legacy (CertificateOfOriginsBL.cs:1012-1023)
+            // added CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile when LeadDocumentTitle != ExportDeclarationNumber,
+            // checked BEFORE this backfill. It only had an effect on the incoming GetPC path, where the reconciliation read
+            // _requestExceptions (:513) and the mismatch forced Rejected; on the internal save it was discarded. To port: carry
+            // the mismatch into the reconciliation as EReconciliationMessage.CertificateNumberNotInDealFile, de-duplicated by code.
             await DataLayer.UpdateCertificateDeclarationLink(entity.Id, entity.LeadDocumentId, entity.ExportDeclarationNumber, userId);
         }
 
@@ -2354,8 +2363,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         if (assessorUserId.HasValue)
         {
-            // TODO(migration): the legacy SingleUserAssignmentFilter also carried EProfession.Marech + the Export
-            // organization-unit-type; the new builder assigns by the resolved assessor user id only.
+            // Legacy set a SingleUserAssignmentFilter with EProfession.Marech + the Export organization-unit type besides the
+            // user id. The platform used only the user id when it was set (AssignToUserBySingleUserAssignmentFilter.GetFilter;
+            // the other fields fed the assignment log text), so assigning by the resolved assessor user id is parity. The
+            // Export unit type is set on the event above.
             builder = builder.WithTaskArguments(task => task.WithTaskAssignmentUser(assessorUserId.Value));
         }
 
@@ -2773,9 +2784,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member
     // corresponds to a legacy EMessages code (noted below); ExceptionType is left 0 for now because those codes + their
-    // text live in the SystemTables message table, whose .NET 10 equivalent (ValidationMessages/resx) is blocked on the
-    // BaseValidationMessages package (see Program.cs). TODO(migration): when it lands, set ExceptionType to the real
-    // EMessages code and source the text from ValidationMessages.
+    // text live in the SystemTables message table, whose .NET 10 equivalent (ValidationMessages/resx) is not wired yet
+    // (see Program.cs; the package is available). TODO(migration): set ExceptionType to the real EMessages code and source
+    // the text from ValidationMessages — ValidationMessage has no numeric code or English text, so keep a local map for those.
     private enum EReconciliationMessage
     {
         DestinationCountryMismatch,                 // EMessages.DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration

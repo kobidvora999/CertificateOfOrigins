@@ -9,7 +9,7 @@ namespace CertificateOfOrigins.BL;
 // Each enum member's NUMERIC VALUE is the real UIMessage id, so the exception carries the true EMessages code on
 // ExceptionType. The Hebrew texts are the authoritative UIMessage.UserFriendlyMessage values (confirmed against the
 // module's UIMessage export, 2026-08).
-// TODO(migration): when the resx / BaseValidationMessages pipeline lands (see Program.cs), source the text from
+// TODO(migration): once the resx / ValidationMessages pipeline is wired (see Program.cs), source the text from
 // ValidationMessages keyed by ExceptionType and drop this local catalogue.
 public partial class CertificateOfOriginsBl
 {
