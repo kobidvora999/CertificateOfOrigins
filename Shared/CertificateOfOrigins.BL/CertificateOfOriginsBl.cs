@@ -5,7 +5,6 @@ using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
-using CustomsCloud.InfrastructureCore.Interfaces.Redis;
 using CustomsCloud.InfrastructureCore.Lock;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
@@ -140,13 +139,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
         finally
         {
-            // Deliberate deviation: legacy also called SafeReleaseAsync with an UNACQUIRED state. Only a lock this request
-            // took is released here - releasing one it did not take could free the lock another request is holding,
-            // depending on how the lock library matches the state (not verified).
+            // Legacy also called SafeReleaseAsync with an UNACQUIRED state; only a lock this request took is released here.
+            // Since Lock 1.10.54 SafeReleaseAsync releases in the database the lock was taken in, only when the stored
+            // LockId still matches this state's, and returns false for an unacquired state.
             if (lockState is { IsAcquired: true })
             {
                 await lockUtil.SafeReleaseAsync(lockKey!, lockState);
-                await LockReleaseInLockDatabase.Release(Resolve<IRedisConnection>(), lockKey!, lockState);
             }
         }
     }
