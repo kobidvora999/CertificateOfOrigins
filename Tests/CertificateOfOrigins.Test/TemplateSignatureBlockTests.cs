@@ -89,7 +89,7 @@ public class TemplateSignatureBlockTests
 
         var enrich = typeof(CertificateOfOriginsBl).GetMethod("EnrichTemplateData", BindingFlags.NonPublic | BindingFlags.Instance)!;
         // GetTemplateData resolves the signer (explicit createUserId, else the request user) and hands it down.
-        await (Task)enrich.Invoke(bl, [letter, CurrentUserId])!;
+        await (Task)enrich.Invoke(bl, [(int)ECertificateOfOriginsTemplate.SouthKoreaOriginVerificationLetter, letter, CurrentUserId])!;
     }
 
     // --- Minimal dependency-free interface faking over System.Reflection.DispatchProxy (no mocking package). ---

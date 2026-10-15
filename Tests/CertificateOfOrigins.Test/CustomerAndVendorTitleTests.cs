@@ -28,12 +28,13 @@ public class CustomerAndVendorTitleTests
         Assert.That(vendor.Title, Is.EqualTo("Vendor GmbH"));
     }
 
-    // A-24: legacy named the milestone user by UserMng_User.Title (aliased UserName in the result).
+    // A-24: legacy named the milestone user by UserMng_User.Title (aliased UserName in the result); the Users service's
+    // UsersByIds returns that name as Name.
     [Test]
-    public void AUserReadsItsTitle()
+    public void AUserReadsItsName()
     {
-        var user = JsonSerializer.Deserialize<UserDto>("""{"id":9,"title":"Dana Cohen"}""", Web)!;
+        var user = JsonSerializer.Deserialize<UserDto>("""{"id":9,"userName":"danac","name":"Dana Cohen"}""", Web)!;
 
-        Assert.That(user.Title, Is.EqualTo("Dana Cohen"));
+        Assert.That(user.Name, Is.EqualTo("Dana Cohen"));
     }
 }

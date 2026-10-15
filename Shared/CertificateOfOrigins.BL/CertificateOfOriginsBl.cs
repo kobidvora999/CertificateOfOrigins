@@ -37,8 +37,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Decided (parity A-24, 2026-10-08): every milestone row is kept, with an empty name for a user the Users service does
-    // not know - legacy's INNER JOIN on UserMng_User dropped such rows. The name is the user's Title, as legacy read it (the
-    // Users service contract is not published yet: UserDto.Title carries a TODO(blocking)).
+    // not know - legacy's INNER JOIN on UserMng_User dropped such rows. The name is legacy's UserMng_User.Title, which the
+    // Users service's UsersByIds returns as Name (confirmed by the developer, 15.10.2026).
     private async Task FillMilestoneUserNames(CertificateOfOriginDto certificate)
     {
         var userProxy = Resolve<IUserProxy>();
@@ -63,7 +63,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         {
             if (milestone.UserId.HasValue && usersById.TryGetValue(milestone.UserId.Value, out var user))
             {
-                milestone.UserName = user.Title;
+                milestone.UserName = user.Name;
             }
         }
     }

@@ -19,6 +19,10 @@ public class VendorMockProxy(IProxyMockUtil mockUtil) : IVendorProxy, IMockProxy
         {
             Id = id,                       // TODO: dummy data
             Title = "Test Vendor " + id,    // TODO: dummy data
+            VendorAddress =
+            [
+                new VendorAddressDto { EnglishMainAddressLine = "1 Test Street", EnglishCityName = "Test City", EnglishPostalCode = "12345", EnglishCountryId = 840 }, // TODO: dummy data
+            ],
         }).ToList();
         return Task.FromResult<List<VendorDto>?>(result);
     }

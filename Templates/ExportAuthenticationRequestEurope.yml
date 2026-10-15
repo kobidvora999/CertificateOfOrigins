@@ -1,0 +1,73 @@
+## ExportAuthenticationRequestEurope (2289) — מאפייני תדפיס אירופה ים תיכוני – תקין ותקין חלקי
+##
+## Pairs with ExportAuthenticationRequestEurope.docx (the latest legacy version, from the TemplateBackUp share). The Templates module loads both by that
+## name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## Data source: dbo.GetTemplateData @TemplateTypeID = 2289, serialized from ExportVerificationLetterResult with JsonNamingPolicy.CamelCase — hence
+## the camelCase paths. A path the data does not carry renders empty.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # CONVERT(..., 107) — "Oct 15, 2026".
+  - tag: ExportAuthenticationRequestDate
+    field type: PlainText
+    field path: $.exportAuthenticationRequestDate
+
+  - tag: ExportRequestID
+    field type: PlainText
+    field path: $.exportRequestID
+
+  - tag: ExporterName
+    field type: PlainText
+    field path: $.exporterName
+
+  # The foreign customs department (activity 40), from the Customers service.
+  - tag: ExternalCustomDepartmentAddress
+    field type: PlainText
+    field path: $.externalCustomDepartmentAddress
+
+  - tag: ExternalCustomDepartmentCountry
+    field type: PlainText
+    field path: $.externalCustomDepartmentCountry
+
+  - tag: MainDocumentTitle
+    field type: PlainText
+    field path: $.mainDocumentTitle
+
+  - tag: InvoiceNumbers
+    field type: PlainText
+    field path: $.invoiceNumbers
+
+  - tag: ReferenceNumber
+    field type: PlainText
+    field path: $.referenceNumber
+
+  # REGEON_tbl (with OriginatedArea2 / OriginatedZipcode2) omitted: repeating-row SDT unsupported by MergeTableField.
+  # Legacy filled it from the request's manufacturing areas (TOP 4) — see Templates/README.md.
+
+  # The user's free text (a single blank when none).
+  - tag: FreeText
+    field type: PlainText
+    field path: $.freeText
+
+  # The producing user's signature block (the user's customs phone is required — see the BL).
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
+
+  - tag: EmployeeFullName
+    field type: PlainText
+    field path: $.employeeFullName
+
+  - tag: PhoneNumber
+    field type: PlainText
+    field path: $.phoneNumber
+
+  - tag: EmployeeEmailAddress
+    field type: PlainText
+    field path: $.employeeEmailAddress
+

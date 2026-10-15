@@ -1,0 +1,77 @@
+## ExportAuthenticationSendDeliveryForExporterTurkeyJordanTemplate (2291) — מכתב ליצואן – תורכיה וירדן
+##
+## Pairs with ExportAuthenticationSendDeliveryForExporterTurkeyJordanTemplate.docx (the latest legacy version, from the TemplateBackUp share). The Templates module loads both by that
+## name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## Data source: dbo.GetTemplateData @TemplateTypeID = 2291, serialized from ExportVerificationLetterResult with JsonNamingPolicy.CamelCase — hence
+## the camelCase paths. A path the data does not carry renders empty.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # Letterhead. Legacy: the merger's Hebrew date (AddHebrewCreateDate) — no source here yet, renders empty.
+  - tag: HebrewCreateDate
+    field type: PlainText
+    field path: $.hebrewCreateDate
+
+  # Letterhead. TODO(confirm): legacy source unknown (not in the data procedure) — renders empty.
+  - tag: CreateDate
+    field type: PlainText
+    field path: $.createDate
+
+  - tag: ReferenceNumber
+    field type: PlainText
+    field path: $.referenceNumber
+
+  - tag: ExportRequestID
+    field type: PlainText
+    field path: $.exportRequestID
+
+  - tag: ExporterCustomer
+    field type: PlainText
+    field path: $.exporterCustomer
+
+  - tag: ExportCountryName
+    field type: PlainText
+    field path: $.exportCountryName
+
+  # Legacy 'True'/'False' — drops the certificates paragraph when the request has no main document.
+  - tag: IsDocument
+    field type: Bool
+    field path: $.isDocument
+
+  # Inside IsDocument. CONVERT(..., 101) — "10/15/2026".
+  - tag: DocumentDate
+    field type: PlainText
+    field path: $.documentDate
+
+  - tag: MainDocumentTitle
+    field type: PlainText
+    field path: $.mainDocumentTitle
+
+  # Drops the invoices paragraph when the request has no invoices.
+  - tag: IsInvoice
+    field type: Bool
+    field path: $.isInvoice
+
+  # Inside IsInvoice.
+  - tag: InvoiceDate
+    field type: PlainText
+    field path: $.invoiceDate
+
+  - tag: InvoiceNumbers
+    field type: PlainText
+    field path: $.invoiceNumbers
+
+  # The producing user's signature block (the user's customs phone is required — see the BL).
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
+
+  - tag: CustomsEmployeeName
+    field type: PlainText
+    field path: $.customsEmployeeName
+

@@ -8,4 +8,19 @@ public class VendorDto
 {
     public int Id { get; set; }
     public string? Title { get; set; }
+
+    // The vendor's addresses (StockPileData.Vendors_VendorAddress) — the import-verification letters print the supplier's
+    // English address and country from them. Named after the legacy table/columns until the Vendors contract is published.
+    public List<VendorAddressDto>? VendorAddress { get; set; }
+}
+
+// A vendor address entry (legacy Vendors_VendorAddress columns).
+public class VendorAddressDto
+{
+    public string? EnglishMainAddressLine { get; set; }
+    public string? EnglishCityName { get; set; }
+    public string? EnglishPostalCode { get; set; }
+
+    // Vendors_VendorAddress.English_CountryID.
+    public int? EnglishCountryId { get; set; }
 }

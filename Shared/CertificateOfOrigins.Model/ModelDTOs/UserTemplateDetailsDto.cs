@@ -20,4 +20,15 @@ public class UserTemplateDetailsDto
 
     // UserMng_User.Email.
     public string? Email { get; set; }
+
+    // UserMng_User.Title — the user's Hebrew display name (the export letters' <CustomsEmployeeName>).
+    public string? Title { get; set; }
+
+    // UserMng_User.PhoneNumber — the phone the export letters print for their fixed signer.
+    public string? PhoneNumber { get; set; }
+
+    // The user's customs phone: Infrastructure.UserMng_ContactDetailsFromCustoms.ContactDetails with CommunicationTypeID 1 —
+    // the phone the other export letters print for the user producing them. Legacy INNER JOINed it, so a user without
+    // one got no signature block at all on those letters.
+    public string? CustomsPhoneNumber { get; set; }
 }

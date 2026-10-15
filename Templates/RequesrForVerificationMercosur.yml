@@ -1,0 +1,59 @@
+## RequesrForVerificationMercosur (2254) — מכתב אימות מרקוסור
+##
+## Pairs with RequesrForVerificationMercosur.docx (the latest legacy version, from the TemplateBackUp share). The Templates module loads both by that
+## name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## Data source: dbo.GetTemplateData @TemplateTypeID = 2254, serialized from ImportVerificationLetterResult with JsonNamingPolicy.CamelCase — hence
+## the camelCase paths. A path the data does not carry renders empty.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # CONVERT(..., 107) — "Oct 15, 2026", formatted by the procedure.
+  - tag: ImportAuthenticationRequestDate
+    field type: PlainText
+    field path: $.importAuthenticationRequestDate
+
+  - tag: FileNumber
+    field type: PlainText
+    field path: $.fileNumber
+
+  # The foreign customs department — the request customer (activity 40), from the Customers service.
+  - tag: ExternalCustomDepartmentTitle
+    field type: PlainText
+    field path: $.externalCustomDepartmentTitle
+
+  - tag: ExternalCustomDepartmentAddress
+    field type: PlainText
+    field path: $.externalCustomDepartmentAddress
+
+  - tag: ExternalCustomDepartmentCountry
+    field type: PlainText
+    field path: $.externalCustomDepartmentCountry
+
+  # DocumentNumbers of the vendor group (this letter never swaps in the invoice number).
+  - tag: MovementCertificate
+    field type: PlainText
+    field path: $.movementCertificate
+
+  # The user's free text (a single blank when none).
+  - tag: FreeText
+    field type: PlainText
+    field path: $.freeText
+
+  # The producing user's signature (UserTemplateDetails.SignatureImageUrl).
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
+
+  - tag: EmployeeFullName
+    field type: PlainText
+    field path: $.employeeFullName
+
+  - tag: EmployeeEmailAddress
+    field type: PlainText
+    field path: $.employeeEmailAddress
+

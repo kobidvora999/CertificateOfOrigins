@@ -14,13 +14,17 @@
 ## איך תבנית מחוברת לקוד
 
 ```
-GET api/CertificateOfOrigins/Template/{templateId}/{entityId}?additionalInfo=
+GET api/CertificateOfOrigins/Template/{templateId}/{entityId}?additionalInfo=&freeText=
   → CertificateOfOriginsBl.GenerateTemplate
-      → GetTemplateMeta(templateId)   ← ממפה id → (Result DTO, {Name}, Format)
+      → GetTemplateMeta(templateId)   ← ממפה id → (Result DTO, {Name}, Format, IsFreeTextAllowed)
       → dbo.GetTemplateData           ← @EntityID, @TemplateTypeID, @CreateUserID, @AdditionalInfo (חתימת Object Maker); ענף פר-תבנית
-      → EnrichTemplateData            ← שמות חוצי-שירות (לקוח, מדינה) מ-proxy/lookup
+      → EnrichTemplateData            ← נתונים חוצי-שירות (ספק, לקוח, מדינה, בלוק חתימה) מ-proxy/lookup
+      → FreeText                      ← הטקסט החופשי של המשתמש, בתבנית שמתירה (רווח בודד כשריק — כמו הלגאסי)
       → ITemplateUtil.GenerateTemplate ← מודול התבניות ממזג ומחזיר את המסמך
 ```
+
+מזהה התבנית במכתבי הלגאסי הוא **מזהה הלגאסי** (`General_enum_Template.ID`), כך שצרכן שמגיע מהלגאסי שולח את
+אותו מספר ששלח תמיד.
 
 תבנית חדשה = ערך ב-`ECertificateOfOriginsTemplate` + `case` ב-`GetTemplateMeta` + Result DTO +
 ענף ב-`dbo.GetTemplateData` + זוג הקבצים כאן.
@@ -30,11 +34,59 @@ GET api/CertificateOfOrigins/Template/{templateId}/{entityId}?additionalInfo=
 
 ## התבניות שכאן
 
-| קובץ | מזהה | CR |
-|---|---|---|
-| `ExportAuthenticationSendDeliveryForExporterSouthKoreaTemplate` | ⚠️ `TODO(confirm)` — ראה `ECertificateOfOriginsTemplate` | 194221 |
+| קובץ | מזהה | Result DTO | ישות (`@EntityID`) |
+|---|---|---|---|
+| `ExportAuthenticationSendDeliveryForExporterSouthKoreaTemplate` (CR 194221) | 1 ⚠️ `TODO(confirm)` | `SouthKoreaOriginVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationEurope` | 2251 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationJordan` | 2252 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationMexico` | 2253 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationMercosur` | 2254 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationCanada` | 2255 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationTurkey` | 2256 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationGeneral` | 2257 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationUSATemplate_New` | 2258 | `ImportVerificationLetterResult` | תיק אימות |
+| `RequesrForVerificationUSATemplate` | 2259 | `ImportVerificationLetterResult` | תיק אימות |
+| `ImportAuthenticationRequestImporterLetter` | 2244 | `ImporterAlertLetterResult` | בקשת אימות (`DocumentID`) |
+| `ExportAuthenticationRequestEurope` | 2289 | `ExportVerificationLetterResult` | בקשת אימות יצוא |
+| `ExportAuthenticationSendDeliveryForExporterMercosurTemplate` | 2290 | `ExportVerificationLetterResult` | בקשת אימות יצוא |
+| `ExportAuthenticationSendDeliveryForExporterTurkeyJordanTemplate` | 2291 | `ExportVerificationLetterResult` | בקשת אימות יצוא |
+| `ExportAuthenticationSendDeliveryForExporterEuropeTemplate` | 2293 | `ExportVerificationLetterResult` | בקשת אימות יצוא |
+| `ExportAuthenticationRequestMercosur` | 2295 | `ExportVerificationLetterResult` | בקשת אימות יצוא |
 
-### מכתבי לגאסי שטרם הומרו (18 פעילים — נשלף מ-`Infrastructure.General_enum_Template`, 14.10.2026)
+ה-docx של מכתבי הלגאסי הם הגרסה האחרונה מה-share (`TemplateBackUp`), שהמפתחת העבירה ב-15.10.2026. ענפי ה-SP
+מכסים כבר את כל המשפחה (2251–2259, 2289–2295, 2317) — מכתב שנשאר להמיר צריך רק docx + YAML + `case` ב-`GetTemplateMeta`.
+
+**נשאר להמיר (אין docx):** 2292, 2294, 2317 — שלושתם מכתבי יצוא, אותו Result DTO וענף SP (2294 חתום ע"י המשתמש הקבוע
+וכבר מטופל ב-BL). אין להם קריאה מפורשת בקוד הלגאסי — המשתמש בוחר אותם ידנית (`IsAllowManualCreation = 1`).
+
+### מקור כל שדה — הכרעות לפי הלגאסי
+
+- **מחרוזות תאריך** — כמו בלגאסי, ה-SP מחזיר מחרוזת מעוצבת: `CONVERT(..., 107)` ("Oct 15, 2026") לתאריך המכתב
+  ולתאריך התגובה (היום + 3 חודשים), `CONVERT(..., 101)` ("10/15/2026") לתאריכי המסמך/החשבונית ביצוא.
+- **ספק** (מכתבי היבוא) — מ-Vendors: שם, כתובת אנגלית (`שורה ␠\nעיר,מיקוד`), מדינה באנגלית. ספק בלי כתובת →
+  כל בלוק הספק ריק (בלגאסי INNER JOIN לכתובת).
+- **תיק עם כמה ספקים** — בלגאסי הודפסה הקבוצה ש"יצאה ראשונה" (`Rows[0]`, סדר לא מוגדר). כאן: מזהה הספק הנמוך.
+- **מחלקת המכס הזרה** (יצוא) — מ-Customers, רק אם ללקוח פעילות 40, לפי הכתובת הראשונה. ⚠️ בלגאסי לקוח שאינו
+  מחלקת מכס (או בלי כתובת) ביטל את **כל** שורת הנתונים; כאן רק בלוק הנמען ריק.
+- **היצואן** — `ExporterCustomer` = `Title`; `ExporterName` = השם האנגלי הפרטי, ואם הוא ריק — שם התאגיד באנגלית.
+- **`IsDocument` / `IsInvoice`** — שדות `Bool` שמסירים את הפסקה כשאין מסמך ראשי / חשבוניות.
+- **`CustomsWebsite_ForSignature`** (2244) — הפרמטר `CustomsWebsite` (`http://go.gov.il/taxes`, מהקונפיגורציה של הלגאסי), נזרע ב-`API_20261015190000`.
+
+### פתוח — דורש החלטה / מקור
+
+| נושא | מכתבים | מצב |
+|---|---|---|
+| `REGEON_tbl` (אזורי ייצור, TOP 4) | 2289 | ה-SDT עוטף **שורה** (`w:tr`) — מודול התבניות לא ממזג repeating-row. הושמט מה-YAML ומה-SP; הטבלה תצא ריקה |
+| `HebrewCreateDate` / `CreateDate` בכותרת | 2244, 2290, 2291, 2293 | בלגאסי מילא אותם המיזוג הגנרי, לא ה-SP. כרגע ריקים |
+| כתובת/טלפון/פקס יחידת החתימה בכותרת התחתונה | 2244 | בלגאסי מטבלאות מערכת (`OrganizationUnitPhoneNumberLOV`) — אין מקור. ריקים |
+| `Bool` עם שדות מקוננים | 2291, 2293 | `IsDocument` / `IsInvoice` עוטפים את `DocumentDate` וכו' — `TODO(confirm)` שמודול התבניות ממזג שדות בתוך SDT מסוג Bool |
+| `freeText` ב-query string | 2251–2256, 2258, 2259, 2289, 2295 | ה-endpoint הוא GET, ולכן טקסט חופשי ארוך מוגבל באורך ה-URL |
+| כותרת המסמך הראשי (`LeadDocumentTitle...`) | 2244 | אין proxy לתיק העסקה ביבוא (אותו פער כמו בקריאות בקשות האימות) |
+| `EmployeesSignature` | 2258, 2259 | בגרסת ה-share תג התמונה נקרא `EmployeesSignature`, וה-SP בלגאסי לא החזיר עמודה בשם הזה — לכן יצא ריק. נשמר ריק (פאריטי) |
+| המפריד של `ufn_Util_clr_Conc` | 2251–2259 | הונח `', '` |
+| endpoints של Users / Vendors / Customers | כולם | `TODO(blocking)` — ה-routes והשדות החדשים (כתובת ספק, שמות אנגליים, פעילות לקוח, טלפון משתמש) ממתינים לחוזה |
+
+### מכתבי לגאסי (18 פעילים — נשלף מ-`Infrastructure.General_enum_Template`, 14.10.2026)
 
 ה-`Enumeration` הוא ה-`{Name}` שיירשם במודול התבניות. כולם `DocumentTypeID = 14`.
 

@@ -1,0 +1,73 @@
+## ImportAuthenticationRequestImporterLetter (2244) — מכתב התראה ליבואן - בקשת אימות
+##
+## Pairs with ImportAuthenticationRequestImporterLetter.docx (the latest legacy version, from the TemplateBackUp share). The Templates module loads both by that
+## name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## Data source: dbo.GetTemplateData @TemplateTypeID = 2244, serialized from ImporterAlertLetterResult with JsonNamingPolicy.CamelCase — hence
+## the camelCase paths. A path the data does not carry renders empty.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # Letterhead. Legacy: the merger's Hebrew date (AddHebrewCreateDate) — no source here yet, renders empty.
+  - tag: HebrewCreateDate
+    field type: PlainText
+    field path: $.hebrewCreateDate
+
+  - tag: ImportAuthenticationRequestID
+    field type: PlainText
+    field path: $.importAuthenticationRequestID
+
+  - tag: AuthenticationFileID
+    field type: PlainText
+    field path: $.authenticationFileID
+
+  # From the Customers service.
+  - tag: ImporterName
+    field type: PlainText
+    field path: $.importerName
+
+  # TODO(blocking): no source for the import lead document title yet — renders empty.
+  - tag: LeadDocumentTitleForImportAuthenticationRequest
+    field type: PlainText
+    field path: $.leadDocumentTitleForImportAuthenticationRequest
+
+  - tag: InvoiceNumberForImportAuthenticationRequest
+    field type: PlainText
+    field path: $.invoiceNumberForImportAuthenticationRequest
+
+  - tag: DocumentTitle
+    field type: PlainText
+    field path: $.documentTitle
+
+  # The producing user's title.
+  - tag: UserTitle
+    field type: PlainText
+    field path: $.userTitle
+
+  # The signature of the user who last updated the request (legacy IAR.UpdateUserID).
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
+
+  # Footer. TODO(blocking): the signing unit's address / phone / fax have no source yet — render empty.
+  - tag: CustomsHouseAddress_ForSignature
+    field type: PlainText
+    field path: $.customsHouseAddress_ForSignature
+
+  - tag: CustomsHousePhone_ForSignature
+    field type: PlainText
+    field path: $.customsHousePhone_ForSignature
+
+  - tag: CustomsHouseFax_ForSignature
+    field type: PlainText
+    field path: $.customsHouseFax_ForSignature
+
+  # The CustomsWebsite parameter.
+  - tag: CustomsWebsite_ForSignature
+    field type: PlainText
+    field path: $.customsWebsite_ForSignature
+

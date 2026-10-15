@@ -75,11 +75,12 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // hands back the rendered file. Route-style read of a derived resource → GET. Unregistered template id → 400
     // (RestValidationException); an entity with no data → 404 (RestNotFoundException). additionalInfo is the legacy
     // Object Maker @AdditionalInfo, passed through to the template-data procedure; the user is taken from the request.
+    // freeText is the user's free text for a template that allows it (legacy TemplateArgument.FreeText).
     [HttpGet("Template/{templateId}/{entityId}")]
     [BadRequestResponse][NotFoundResponse]
-    public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId, [FromQuery] string? additionalInfo)
+    public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId, [FromQuery] string? additionalInfo, [FromQuery] string? freeText)
     {
-        var result = await BusinessLayer.GenerateTemplate(templateId, entityId, additionalInfo);
+        var result = await BusinessLayer.GenerateTemplate(templateId, entityId, additionalInfo, freeText: freeText);
         return File(result, "application/pdf");
     }
 }

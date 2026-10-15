@@ -21,6 +21,8 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
             Title = "Test Customer " + id,     // TODO: dummy data
             ExternalIdNum = "000000000",
             IsActive = true,
+            EnglishFirstName = "Test",                // TODO: dummy data
+            EnglishLastName = "Customer " + id,       // TODO: dummy data
         }).ToList();
         return Task.FromResult<List<CustomerDto>?>(result);
     }
@@ -42,6 +44,18 @@ public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockP
             [
                 new CustomerAddressDto { AddressPurpose = 1, AddressSingleLine = "רחוב הבדיקה 1, חיפה" }, // TODO: dummy authentication address
             ],
+            CustomerAddress =
+            [
+                new CustomerAddressDto
+                {
+                    Title = "Test Customs Department",          // TODO: dummy data
+                    EnglishMainAddressLine = "1 Customs Road",  // TODO: dummy data
+                    EnglishCityName = "Test City",
+                    EnglishPostalCode = "12345",
+                    EnglishCountryId = 840,
+                },
+            ],
+            CustomerActivity = [new CustomerActivityDto { CustomerActivityTypeId = 40 }], // TODO: dummy data (a foreign customs department)
         };
         return Task.FromResult<CustomerDto?>(result);
     }

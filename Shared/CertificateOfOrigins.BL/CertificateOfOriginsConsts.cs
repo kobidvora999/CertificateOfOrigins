@@ -119,4 +119,17 @@ internal static class CertificateOfOriginsConsts
     public const string SchedulerExportFirstReminderParameter = "DaysForFirstReminderInExportAuthenticationRequest1";
 
     public const string SchedulerExportSecondReminderParameter = "DaysForSecondReminderInExportAuthenticationRequest2";
+
+    // --- The preference-document letters (CertificateOfOriginsBl.Templates) ---
+
+    // The export letters to the exporter (2290, 2293) and the export alert letter (2294) are signed by this fixed user —
+    // hard-coded in the legacy data procedure (usp_Template_INNER_CROSS_ExportDocumentAuthenticationRequestLetter).
+    public const int ExportExporterLettersSignerUserId = 69591766;
+
+    // A foreign customs department is a customer with this activity type (legacy CustomerActivityTypeID = 40).
+    public const int ForeignCustomsDepartmentActivityTypeId = 40;
+
+    // The customs website printed in the letters' footer (legacy Configuration.GetConfig<string>("CustomsWebsite") in the
+    // template merger's AddSignatureDetails).
+    public const string CustomsWebsiteParameter = "CustomsWebsite";
 }

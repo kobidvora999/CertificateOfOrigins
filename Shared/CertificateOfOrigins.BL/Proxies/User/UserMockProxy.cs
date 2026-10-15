@@ -18,7 +18,7 @@ public class UserMockProxy(IProxyMockUtil mockUtil) : IUserProxy, IMockProxy
         var result = userIds.Select(id => new UserDto
         {
             Id = id,                      // TODO: dummy data
-            Title = "Test User " + id,     // TODO: dummy data
+            Name = "Test User " + id,      // TODO: dummy data
             OrganizationUnit = 6,         // TODO: dummy data (e.g. חיפה)
         }).ToList();
         return Task.FromResult<List<UserDto>?>(result);
@@ -39,6 +39,9 @@ public class UserMockProxy(IProxyMockUtil mockUtil) : IUserProxy, IMockProxy
             EnglishLastName = "User " + userId,                                 // TODO: dummy data
             SignatureImageUrl = "signature-" + userId + ".png",                 // TODO: dummy data
             Email = "test.user" + userId + "@example.invalid",                  // TODO: dummy data
+            Title = "משתמש בדיקה " + userId,                                    // TODO: dummy data
+            PhoneNumber = "03-0000000",                                         // TODO: dummy data
+            CustomsPhoneNumber = "03-1111111",                                  // TODO: dummy data
         };
         return Task.FromResult<UserTemplateDetailsDto?>(result);
     }
