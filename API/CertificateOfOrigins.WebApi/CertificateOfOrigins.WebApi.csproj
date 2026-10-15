@@ -30,8 +30,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
-		<ProjectReference Include="..\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
+		<ProjectReference Include="..\..\Shared\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
+		<ProjectReference Include="..\..\Shared\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

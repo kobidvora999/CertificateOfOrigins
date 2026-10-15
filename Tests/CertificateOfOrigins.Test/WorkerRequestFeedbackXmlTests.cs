@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
+using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Utils.Customers;
 using IssueCertificateOfOrigin.Worker;
@@ -68,12 +69,12 @@ public class WorkerRequestFeedbackXmlTests
         {
             CertificateOfOriginId = 10,
             CertificateNumber = "COO-10",
-            CertificateTypeID = 1,
+            CertificateTypeId = 1,
             CertificateOfOriginStatusId = 4,
             RequestReasonCode = 1,
-            CreateCustomerID = 77,
+            CreateCustomerId = 77,
             InternalApplication = "APP-1",
-            GUID = guid,
+            Guid = guid,
             IssuingDate = new DateTime(2026, 9, 30),
             IsDeclarationReleased = isDeclarationReleased,
         };
@@ -122,8 +123,6 @@ public class WorkerRequestFeedbackXmlTests
         public Task UpdateCertificateOfOriginStatus(int certificateOfOriginId, int status) => Task.CompletedTask;
 
         public Task UpdateIsInPublishingProcess(int certificateOfOriginId, bool value) => Task.CompletedTask;
-
-        public Task<CertificateOfOriginDetailsDto?> GetCertificateOfOriginById(int certificateOfOriginId) => Task.FromResult<CertificateOfOriginDetailsDto?>(null);
     }
 
     private static T Fake<T>(Func<MethodInfo, object?[]?, object?>? handler = null) where T : class

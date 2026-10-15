@@ -55,15 +55,12 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>ConnectedServices.tt</DependentUpon>
     </None>
-    <None Update="CustomsDb.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>CustomsDb.txt</LastGenOutput>
-    </None>
-    <None Update="CustomsDb.txt">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>CustomsDb.tt</DependentUpon>
-    </None>
+  </ItemGroup>
+
+  <!-- The entity, DbContext, enums and the queue payload DTO come from Shared. Dal/ keeps only the writes the module DAL does not have. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
+    <ProjectReference Include="..\..\..\Shared\CertificateOfOrigins.DAL\CertificateOfOrigins.DAL.csproj" />
   </ItemGroup>
 
   <ItemGroup>

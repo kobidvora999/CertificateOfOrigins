@@ -1,3 +1,4 @@
+using CertificateOfOrigins.DAL;
 using CommonServicesExternal;
 using CustomsCloud.InfrastructureCore;
 using CustomsCloud.InfrastructureCore.Interfaces.DependencyInjection;
@@ -27,7 +28,7 @@ internal class ServiceConfiguration : IServicesConfiguration
 
         // === IssueCertificateOfOrigin worker ===
         services.AddHostedService<IssueCertificateOfOriginWorker>();
-        services.AddCustomsDbContext<CustomsDbContext>();
+        services.AddCustomsDbContext<CertificateOfOriginsDbContext, CertificateOfOriginsDbReadOnlyContext>();
         services.AddScoped<IssueCertificateOfOriginHandler>();
         services.AddScoped<IssueCertificateOfOriginBL>();
         services.AddScoped<IIssueCertificateDal, IssueCertificateDal>();

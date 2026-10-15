@@ -1,6 +1,6 @@
 # Dependency-workload — outbound-call map & gaps (CertificateOfOrigins)
 
-Derived from the **real** proxies `API/CertificateOfOrigins.BL/Proxies/*/*Proxy.cs` (excluding `*MockProxy.cs` and the
+Derived from the **real** proxies `Shared/CertificateOfOrigins.BL/Proxies/*/*Proxy.cs` (excluding `*MockProxy.cs` and the
 interfaces): **42 outbound calls to 9 external services**, one v3 collection per service, **one request per outbound
 call**, sent **straight to the route the proxy calls** (`{{base_URL}}/api/{Controller}/{Endpoint}`) — not through
 CertificateOfOrigins. Runs **pre-prod** against the real services (infrastructure stands them up).

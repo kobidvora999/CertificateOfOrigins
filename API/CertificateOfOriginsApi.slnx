@@ -1,9 +1,11 @@
 <Solution>
-  <Folder Name="/Test/">
-    <Project Path="CertificateOfOrigins.Test/CertificateOfOrigins.Test.csproj" />
-  </Folder>
-  <Project Path="CertificateOfOrigins.BL/CertificateOfOrigins.BL.csproj" />
-  <Project Path="CertificateOfOrigins.DAL/CertificateOfOrigins.DAL.csproj" />
-  <Project Path="CertificateOfOrigins.Model/CertificateOfOrigins.Model.csproj" />
   <Project Path="CertificateOfOrigins.WebApi/CertificateOfOrigins.WebApi.csproj" />
+  <Folder Name="/Shared/">
+    <Project Path="../Shared/CertificateOfOrigins.BL/CertificateOfOrigins.BL.csproj" />
+    <Project Path="../Shared/CertificateOfOrigins.DAL/CertificateOfOrigins.DAL.csproj" />
+    <Project Path="../Shared/CertificateOfOrigins.Model/CertificateOfOrigins.Model.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="../Tests/CertificateOfOrigins.Test/CertificateOfOrigins.Test.csproj" />
+  </Folder>
 </Solution>

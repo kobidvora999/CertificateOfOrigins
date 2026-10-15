@@ -1,8 +1,8 @@
 ﻿using CommonServicesExternal;
 using Customs.CRM.CertificateOfOrigins.ExternalCommon.Common;
 using Customs.Infrastructure.DocumentManagement.ExternalCommon;
-using IssueCertificateOfOrigin.Worker.Dto;
-using IssueCertificateOfOrigin.Worker.Enums;
+using ERequestReason = CertificateOfOrigins.Model.ModelDTOs.ERequestReason;
+using IssueCertificateDto = CertificateOfOrigins.Model.ModelDTOs.IssueCertificateDto;
 using IssueCertificateOfOrigin.Worker.Proxies;
 using malam.com.customs;
 using System.Globalization;
@@ -46,13 +46,13 @@ namespace IssueCertificateOfOrigin.Worker
         {
             foreach (var certificateTemplate in saveCertificateAttachmentsArgsDTO.CertificatesTemplates)
             {
-                var isDraft = saveCertificateAttachmentsArgsDTO.CertificateRequestReasonCode == (int)ERequestReasonCode.Draft || saveCertificateAttachmentsArgsDTO.AdditionalInfo == IssueCertificateOfOriginConsts.IsDraft ? IssueCertificateOfOriginConsts.Draft : IssueCertificateOfOriginConsts.Final;
+                var isDraft = saveCertificateAttachmentsArgsDTO.CertificateRequestReasonCode == (int)ERequestReason.Draft || saveCertificateAttachmentsArgsDTO.AdditionalInfo == IssueCertificateOfOriginConsts.IsDraft ? IssueCertificateOfOriginConsts.Draft : IssueCertificateOfOriginConsts.Final;
                 var document = new DocumentDTO()
                 {
                     Title = $"{issueCertificateDto.CertificateTypeName} - {isDraft}",
                     FileName = string.Format(System.Globalization.CultureInfo.InvariantCulture, IssueCertificateOfOriginConsts.CertificateName, issueCertificateDto.CertificateTypeName, saveCertificateAttachmentsArgsDTO.CertificateNumber),
                     TypeID = certificateTemplate.DocumentTypeID,
-                    OrganizationUnitID = issueCertificateDto.OrganizationUnitID ?? 4,
+                    OrganizationUnitID = issueCertificateDto.OrganizationUnitId,
                     EntityId = saveCertificateAttachmentsArgsDTO.CertificateID,
                     EntityTypeId = (int)EEntityType.CertificateOfOrigin
                 };

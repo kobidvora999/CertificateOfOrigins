@@ -64,7 +64,7 @@ public partial class DalAuditStampGuardTests
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            var candidate = Path.Combine(directory.FullName, "CertificateOfOrigins.DAL", "CertificateOfOriginsDal.cs");
+            var candidate = Path.Combine(directory.FullName, "Shared", "CertificateOfOrigins.DAL", "CertificateOfOriginsDal.cs");
             if (File.Exists(candidate))
             {
                 return candidate;

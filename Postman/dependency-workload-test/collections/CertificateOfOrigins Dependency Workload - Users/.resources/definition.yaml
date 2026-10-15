@@ -2,7 +2,7 @@ $kind: collection
 name: CertificateOfOrigins Dependency Workload - Users
 description: >-
   Dependency probe of the Users service: one request per outbound call of the real proxies
-  (API/CertificateOfOrigins.BL/Proxies), sent straight to the route the proxy calls. Every entity id is 2147483647,
+  (Shared/CertificateOfOrigins.BL/Proxies), sent straight to the route the proxy calls. Every entity id is 2147483647,
   an id no service can have, so the probe proves the dependency answers per its contract without depending on or
   changing pre-prod data. Runs PRE-PROD against the real service; base_URL is the target host (or the gateway).
 variables:

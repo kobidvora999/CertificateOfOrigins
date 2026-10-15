@@ -1,8 +1,9 @@
 using CloudNative.CloudEvents;
 using Customs.CRM.CertificateOfOrigins.ExternalCommon.Common;
+using ECertificateOfOriginStatus = CertificateOfOrigins.Model.ModelDTOs.ECertificateOfOriginStatus;
+using IssueCertificateDto = CertificateOfOrigins.Model.ModelDTOs.IssueCertificateDto;
 using IssueCertificateOfOrigin.Worker.Dal;
 using IssueCertificateOfOrigin.Worker.Dto;
-using IssueCertificateOfOrigin.Worker.Enums;
 using IssueCertificateOfOrigin.Worker.Proxies;
 using CustomsCloud.InfrastructureCore.Parameters;
 using CustomsCloud.InfrastructureCore.Utils.Customers;
@@ -39,7 +40,7 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
     {
         await Task.Delay(5000);
 
-        if (issueCertificateDto != null && issueCertificateDto.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatusCode.Published && issueCertificateDto.IsInPublishingProcess)
+        if (issueCertificateDto != null && issueCertificateDto.CertificateOfOriginStatusId == (int)ECertificateOfOriginStatus.Published && issueCertificateDto.IsInPublishingProcess)
         {
             // The feedback's query URL is read before the document is replaced and the publishing flag reset: a failed read
             // then leaves nothing half-done, and a dead-lettered message replays cleanly.
@@ -53,7 +54,7 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
                     CertificateID = issueCertificateDto.CertificateOfOriginId,
                     CertificateNumber = issueCertificateDto.CertificateNumber,
                     CertificateRequestReasonCode = issueCertificateDto.RequestReasonCode,
-                    CertificateTypeID = issueCertificateDto.CertificateTypeID,
+                    CertificateTypeID = issueCertificateDto.CertificateTypeId,
                     CertificatesTemplates = new TemplateResult[] { new TemplateResult() { Content = generateResponse.GenerateReportByParamsResult, IsPdfFormat = true, DocumentTypeID = 329 } },
                     AdditionalInfo = string.Empty
                 };
@@ -81,13 +82,13 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
             Attachment = attachment
         };
 
-        var customer = await _customerUtil.GetCustomerById(issueCertificateDto.CreateCustomerID);
+        var customer = await _customerUtil.GetCustomerById(issueCertificateDto.CreateCustomerId);
         if (customer != null)
         {
             var outgoingMessageDetails = new OutgoingMessageDetails
             {
                 ConsumerEntityType = EEntityType.Customer,
-                ConsumerId = issueCertificateDto.CreateCustomerID,
+                ConsumerId = issueCertificateDto.CreateCustomerId,
                 ConsumerEntityTypeHebrewName = IssueCertificateOfOriginConsts.EntityTypeCustomer,
                 DestinationExternalId = customer.Title,
             };
@@ -139,13 +140,13 @@ internal class IssueCertificateOfOriginHandler(IServiceProvider provider)
         // The same Infrastructure.Parameters row the API reads (legacy Configuration.GetConfig, CertificateOfOriginsUtil.cs:46) —
         // one source, so the QR on the certificate and the feedback's query URL cannot drift apart (parity finding GN-04).
         var urlTemplate = await LoadQueryUrlTemplate();
-        var queryURLFormat = string.Format(CultureInfo.InvariantCulture, urlTemplate, issueCertificateDto.GUID.ToString());
+        var queryURLFormat = string.Format(CultureInfo.InvariantCulture, urlTemplate, issueCertificateDto.Guid.ToString());
 
         var requestFeedback = new CertificateOfOriginRequestFeedback
         {
             RejectCancelReason = issueCertificateDto.RejectCancelReason,
             InternalApplication = issueCertificateDto.InternalApplication,
-            CertificateOfOriginTypeCode = issueCertificateDto.CertificateTypeID,
+            CertificateOfOriginTypeCode = issueCertificateDto.CertificateTypeId,
             CertificateOfOriginStatusCode = issueCertificateDto.CertificateOfOriginStatusId,
             CertificateID = issueCertificateDto.CertificateNumber,
             FeedbackRemark = issueCertificateDto.FeedbackRemark,

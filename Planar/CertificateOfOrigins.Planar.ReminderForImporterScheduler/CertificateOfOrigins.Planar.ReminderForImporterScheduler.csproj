@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\API\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
+    <ProjectReference Include="..\..\Shared\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,7 +17,7 @@
          the 1.5.x line: it targets net7.0 and exposes a different API. -->
     <PackageReference Include="CustomsCloud.InfrastructureCore.PlanarJob" Version="1.10.58" />
 
-    <!-- API/Directory.Build.props scopes to API/**, so a Planar project has to carry the analyzers and the
+    <!-- Shared/Directory.Build.props scopes to API/**, Shared/** and Tests/**, so a Planar project has to carry the analyzers and the
          security pins itself — otherwise the job would build under looser rules than the rest of the repo. -->
     <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.31.0.145097">
