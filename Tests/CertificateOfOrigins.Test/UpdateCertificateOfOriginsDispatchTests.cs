@@ -45,7 +45,7 @@ public class UpdateCertificateOfOriginsDispatchTests
             Assert.That(cap.Cancelled, Has.Count.EqualTo(2), "both certificates are cancelled");
             Assert.That(cap.Cancelled.Select(c => c.Id), Is.EquivalentTo(new[] { 11, 22 }));
             Assert.That(cap.Cancelled.Select(c => c.Reason),
-                Is.All.EqualTo(CertificateOfOriginsConsts.CanceledDeclarationReason),
+                Is.All.EqualTo("ההצהרה בוטלה"),
                 "the reject reason is the canceled-declaration text");
             Assert.That(cap.RaisedEventTypes.Count(e => e == (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled),
                 Is.EqualTo(2), "the close-open-task event fires once per certificate");
@@ -192,7 +192,7 @@ public class UpdateCertificateOfOriginsDispatchTests
     // --- The save's lead-document title check (legacy CertificateOfOriginsBL.cs:1014-1017): on the incoming-message path
     // the mismatch was already in the BL's _requestExceptions when the reconciliation ran, so it counted as an Error (:513)
     // and its text went out with the reconciliation's findings. ---
-    private const string DealFileMismatchText = "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא";
+    private const string DealFileMismatchText = "מספר תעודה אינו תואם את מספר התעודה שדווח בהצהרת היצוא"; // legacy UIMessage 14026542
 
     [Test]
     public async Task TitleMismatchRejectsACertificateThatOtherwiseMatches()
@@ -208,6 +208,7 @@ public class UpdateCertificateOfOriginsDispatchTests
             Assert.That(cap.Reconciliations.Any(r => r.Id == 81 && r.StatusId == (int)ECertificateOfOriginStatus.Rejected), Is.True,
                 "the mismatch is an Error, so the certificate is Rejected");
             Assert.That(cap.RaisedEventTypes, Does.Contain((int)EEventType.CertificateOfOriginCertificateDeclarationMismatch));
+            Assert.That(cap.Returned.Select(e => e.ExceptionType), Is.EqualTo(new[] { 14026542 }), "the legacy EMessages code");
             Assert.That(cap.Returned.Select(e => e.ExceptionDescription), Is.EqualTo(new[] { DealFileMismatchText }));
         });
     }
@@ -265,6 +266,32 @@ public class UpdateCertificateOfOriginsDispatchTests
         var cap = await RunDispatchAsync(request, certs, invoices, titleMismatchCertificateId: 84);
 
         Assert.That(cap.Returned.Count(e => e.ExceptionDescription == DealFileMismatchText), Is.EqualTo(1));
+    }
+
+    // --- The response level is the UIMessage row's, the outcome is the InfException level's (legacy :513-514 vs :558). An
+    // invoice missing from the declaration is a warning that decides DeclarationMismatch, but its UIMessage type is 1. ---
+    [Test]
+    public async Task UnmatchedInvoiceDecidesAsAWarningButReportsTheUiMessageLevel()
+    {
+        var certs = new[] { Cert(91, (int)ECertificateOfOriginStatus.Received, (int)ERequestReason.NewCertificate, 1, null) };
+        var request = Request((int)EEventType.ExportDeclarationSubmissionSucceeded, [91], "SUB-DEC");
+        request.ExportInvoiceInfoList = [new ExportInvoiceInfoDto { ExternalIdNum = "INV-1" }];
+        var invoices = new List<CertificateReconcileInvoiceDto>
+        {
+            new() { CertificateOfOriginId = 91, InvoiceNumber = "INV-OTHER", GoodsItemCustomsItemIds = [] },
+        };
+
+        var cap = await RunDispatchAsync(request, certs, invoices);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cap.Reconciliations.Any(r => r.Id == 91 && r.StatusId == (int)ECertificateOfOriginStatus.DeclarationMismatch), Is.True,
+                "decided as a warning (legacy InfException level)");
+            Assert.That(cap.Returned.Select(e => (e.ExceptionType, e.ExceptionLevel, e.EnglishDescription, e.ExceptionDescription)), Is.EqualTo(new[]
+            {
+                (14026546, (int?)1, "ExportInvoiceIsNotMAtchToExportInvoiceInExportdeclaration", "מספר חשבון INV-OTHER אינו תואם את החשבונות בהצהרת היצוא"),
+            }), "reported with the UIMessage row: type 1, EnglishName");
+        });
     }
 
     // ------------------------------------------------------------------------------------------------------------------
@@ -376,7 +403,7 @@ public class UpdateCertificateOfOriginsDispatchTests
         });
 
         var commonServices = Fake<ICommonServicesProxy>((method, _) =>
-            method.Name == "CreateQrCode" ? Task.FromResult<byte[]?>([1, 2, 3, 4]) : null); // GenerateTemplate → null (default)
+            method.Name == "CreateQrCode" ? Task.FromResult<byte[]?>([1, 2, 3, 4]) : null); // GenerateReportByParams → null (default)
 
         var documentBuilder = default(IDocumentBuilder);
         documentBuilder = Fake<IDocumentBuilder>((method, _) =>

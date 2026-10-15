@@ -166,11 +166,11 @@ scripts:
       // These carry ExceptionType 0 (the real EMessages codes are still a migration TODO), so they can only be
       // identified by their text.
       var FINDING = {
-          '10-destination-mismatch':          'ארץ היעד בתעודה אינה תואמת לארץ היעד בהצהרת היצוא',
-          '30-declnum-mismatch':              'אינו קיים במערכת',
-          '50-origin-mismatch':               'ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא',
-          '70-origingroup-not-in-group':      'ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא',
-          '90-importreplace-not-in-agreement':'אין בהצהרה טובין המקושרים להצהרת היבוא'
+          '10-destination-mismatch':          'מדינת יעד אינה תואמת את מדינת היעד של הסחורה בהצהרת היצוא',
+          '30-declnum-mismatch':              'אינה קיימת במערכת',
+          '50-origin-mismatch':               'מדינת מקור אינה תואמת את מדינת המקור של הסחורה בהצהרת היצוא',
+          '70-origingroup-not-in-group':      'מדינת מקור אינה תואמת את מדינת המקור של הסחורה בהצהרת היצוא',
+          '90-importreplace-not-in-agreement':'לא קיימת בהצהרה סחורה המקושרת להצהרת היבוא'
       };
       if (FINDING[name]) {
           pm.test(name + ': raised its finding', function () {

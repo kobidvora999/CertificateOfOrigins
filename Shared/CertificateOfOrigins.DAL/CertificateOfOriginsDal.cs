@@ -386,6 +386,19 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 .SetProperty(c => c.UpdateUserId, userId));
     }
 
+    public async Task UpdateCertificateFeedbackRemark(int id, string? feedbackRemark, int userId)
+    {
+        // HandleCertificateReplacement: the replacing certificate's remark asking the agent to update the export declaration
+        // (legacy set FeedbackRemark and saved the certificate). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.FeedbackRemark, feedbackRemark)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
     public async Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId)
     {
         // SaveCertificateOfOrigin (UploadQrCodeDocument): persist the QR document path resolved AFTER the main upsert.
@@ -1366,9 +1379,9 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
     }
 
     // CR 194221 — dbo.GetTemplateData. A read, so ReadOnlyContext per the repo convention.
-    public async Task<T?> GetTemplateData<T>(int templateId, int entityId)
+    public async Task<T?> GetTemplateData<T>(int templateId, int entityId, int createUserId, string? additionalInfo)
     {
-        var result = await ReadOnlyContext.GetTemplateData<T>(templateId, entityId);
+        var result = await ReadOnlyContext.GetTemplateData<T>(templateId, entityId, createUserId, additionalInfo);
         return result.FirstOrDefault();
     }
 }

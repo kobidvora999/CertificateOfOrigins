@@ -61,8 +61,8 @@ scripts:
           '20-customers-by-country-not-found': 400
       };
       var REFUSED_FIELD = {
-          '10-customer-information-not-found': ['customerId', 'מספר זיהוי לא תקין'],
-          '20-customers-by-country-not-found': ['countryId', 'אין בית מכס למדינה זו']
+          '10-customer-information-not-found': ['customerId', 'הלקוח לא קיים במערכת'],
+          '20-customers-by-country-not-found': ['countryId', 'לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה']
       };
       var expected = EXPECT_STATUS[name] || 200;
       pm.test('status is ' + expected, function () { pm.response.to.have.status(expected); });
@@ -202,18 +202,18 @@ scripts:
       var MUST_CONTAIN = {
           // NOT the 6-digit mismatch: verified live, the mock declaration goods item carries CertificateOfOriginId
           // 0, so the certificate-link check fires first and returns. See gap-analysis.md.
-          '30-customs-item-mismatch':     'מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא',
+          '30-customs-item-mismatch':     'מספר תעודה אינו תואם את מספר התעודה שדווח בהצהרת היצוא',
           // The save's lead-document title check joins the reconciliation as an Error (legacy _requestExceptions).
-          '25-lead-document-title-mismatch': 'מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא',
-          '50-destination-not-in-group':  'אי התאמה בין הארצות בהסכם לבין ארץ הקונה',
-          '10-no-associated-goods-items': 'אין בהצהרה טובין המקושרים להצהרת היבוא'
+          '25-lead-document-title-mismatch': 'מספר תעודה אינו תואם את מספר התעודה שדווח בהצהרת היצוא',
+          '50-destination-not-in-group':  'אי התאמה בין המדינות בהסכם לעומת מדינת הקונה',
+          '10-no-associated-goods-items': 'לא קיימת בהצהרה סחורה המקושרת להצהרת היבוא'
       };
       var MUST_NOT_CONTAIN = {
           // B-M1 (d2014fe): legacy rejects a certificate whose declaration has no invoices WITHOUT a finding.
           '20-no-declaration-invoices':   ['אין חשבוניות בהצהרת היצוא'],
           // LeadDocumentState 0 fails ReconcileWithSubmittedDeclaration's gate, so NO reconciliation finding
           // may appear - that is the whole branch under test.
-          '10-declaration-not-released': ['אין חשבוניות בהצהרת היצוא', 'אינו תואם לפריט מכס בהצהרת היצוא']
+          '10-declaration-not-released': ['אין חשבוניות בהצהרת היצוא', 'בתעודה אינו קיים או חסר בחשבונית']
       };
 
       if (MUST[name]) {

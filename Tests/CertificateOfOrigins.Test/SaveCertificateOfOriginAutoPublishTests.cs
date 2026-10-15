@@ -85,6 +85,9 @@ public class SaveCertificateOfOriginAutoPublishTests
         Assert.Multiple(() =>
         {
             Assert.That(captures.CancelledIds, Is.EqualTo(new[] { ReplacedCertificateId }), "the replaced certificate is cancelled once");
+            Assert.That(captures.CancelReasons, Is.EqualTo(new[] { "תעודת מקור הוחלפה בתעודת מקור COO-2001" }), "legacy EMessages.CertificateReplaced");
+            Assert.That(captures.FeedbackRemarks, Is.EqualTo(new[] { "סוכן המכס מתבקש לעדכן את הצהרת היצוא 260146, בעקבות החלפת תעודת מקור COO-OLD" }),
+                "legacy EMessages.UpdateExportDeclaration on the replacing certificate");
             Assert.That(captures.EventTypes.Count(type => type == (int)EEventType.CertificateOfOriginCertificateReplaced), Is.EqualTo(1),
                 "legacy raised CertificateReplaced twice here (inside DeclarationReleased and again in the save's Published branch)");
         });
@@ -145,6 +148,10 @@ public class SaveCertificateOfOriginAutoPublishTests
                     return Task.CompletedTask;
                 case "CancelCertificate":
                     captures.CancelledIds.Add((int)args![0]!);
+                    captures.CancelReasons.Add((string)args[1]!);
+                    return Task.CompletedTask;
+                case "UpdateCertificateFeedbackRemark":
+                    captures.FeedbackRemarks.Add((string?)args![1]);
                     return Task.CompletedTask;
                 case "GetCertificateOfOriginById":
                     return Task.FromResult<CertificateOfOriginDto?>(new CertificateOfOriginDto { Id = (int)args![0]! });
@@ -229,6 +236,8 @@ public class SaveCertificateOfOriginAutoPublishTests
     {
         public List<int> ReconciliationStatuses { get; } = [];
         public List<int> CancelledIds { get; } = [];
+        public List<string> CancelReasons { get; } = [];
+        public List<string?> FeedbackRemarks { get; } = [];
         public List<int> EventTypes { get; } = [];
         public List<int> InfoLeadDocumentIds { get; } = [];
         public int FeedbackMessages { get; set; }

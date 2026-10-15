@@ -31,9 +31,8 @@ public class ExportDocumentAuthenticationRequestBl(
         // Single-customer lookup against the Customers service by id. Legacy threw the business error
         // EMessages.InvalidIdentificationNumber on a missing customer, so it is a 400 with that message, not a 404
         // (analyst decision 2026-09-29). Address selection was client-side (SPA), not in the BL.
-        // TODO(confirm): the UIMessage text of InvalidIdentificationNumber (not in the local UIMessage copy).
         var customer = await customerProxy.GetCustomerInformation(customerId)
-            ?? throw new RestValidationException(nameof(customerId), "מספר זיהוי לא תקין");
+            ?? throw new RestValidationException(nameof(customerId), ValidationMessages.InvalidIdentificationNumber);
         return customer;
     }
 
@@ -44,11 +43,10 @@ public class ExportDocumentAuthenticationRequestBl(
         // Foreign customs-houses in the given country (Customers service, activity-type filtered in the proxy).
         // Legacy threw the business error EMessages.NoCustomHouseForThisCountry when the country had none, so it is a
         // 400 with that message, not a 404 (analyst decision 2026-09-29); it returned the first candidate.
-        // TODO(confirm): the UIMessage text of NoCustomHouseForThisCountry (not in the local UIMessage copy).
         var customers = await customerProxy.GetCustomersByCountry(countryId);
         if (customers is null || customers.Count == 0)
         {
-            throw new RestValidationException(nameof(countryId), "אין בית מכס למדינה זו");
+            throw new RestValidationException(nameof(countryId), ValidationMessages.NoCustomHouseForThisCountry);
         }
 
         return customers[0];

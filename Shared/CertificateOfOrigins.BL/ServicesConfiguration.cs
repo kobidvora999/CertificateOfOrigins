@@ -93,7 +93,7 @@ public class ServicesConfiguration : IServicesConfiguration
 
         // CR 194221 — document rendering through the Templates microservice (CertificateOfOriginsBl.Templates.cs), via
         // ITemplateUtil. Note this is a different path from the SSRS certificate rendering, which stays on
-        // ICommonServicesProxy.GenerateTemplate.
+        // ICommonServicesProxy.GenerateReportByParams.
         services.AddTemplateUtil();
 
         // Optional per-certificate distributed lock for GetPC_MSG2280_2281 (was LockFactory.GetLock) — gated at runtime

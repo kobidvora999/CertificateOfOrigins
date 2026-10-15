@@ -116,6 +116,8 @@ public interface ICertificateOfOriginsDal : IBaseDal
 
     Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId);
 
+    Task UpdateCertificateFeedbackRemark(int id, string? feedbackRemark, int userId);
+
     Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId);
 
     Task UpdateCertificateQrCode(int id, Guid? guid, byte[]? qrImage, int userId);
@@ -137,6 +139,7 @@ public interface ICertificateOfOriginsDal : IBaseDal
     Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts);
 
     // CR 194221 — the template's data row (dbo.GetTemplateData). T is the template's Result DTO, chosen by the BL
-    // from the template id; null when the id is unregistered or the entity has no data.
-    Task<T?> GetTemplateData<T>(int templateId, int entityId);
+    // from the template id; null when the id is unregistered or the entity has no data. createUserId + additionalInfo
+    // are the legacy Object Maker parameters (usp_Template_INNER_CROSS_*), passed to every template branch.
+    Task<T?> GetTemplateData<T>(int templateId, int entityId, int createUserId, string? additionalInfo);
 }

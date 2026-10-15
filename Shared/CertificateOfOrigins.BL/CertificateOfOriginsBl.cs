@@ -287,10 +287,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     {
         certificate.CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Cancelled;
 
-        // Legacy EMessages.CertificateOfOriginCancelFromMessage (from the UIMessage table). The generic resx/
-        // ValidationMessages pipeline is not wired yet (see Program.cs), but this
-        // specific message text is known, so it is set literally rather than deferred.
-        certificate.RejectCancelReason = "התקבלה בקשה לביטול תעודה במסר";
+        // Legacy EMessages.CertificateOfOriginCancelFromMessage (from the UIMessage table).
+        certificate.RejectCancelReason = ErrorMessagesResources.CertificateOfOriginCancelFromMessage;
         await DataLayer.CancelCertificate(certificate.Id, certificate.RejectCancelReason, RequestMetadata.UserId ?? 0);
 
         var eventUtil = Resolve<IEventUtil>();
@@ -1245,8 +1243,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // "\n<update received>" — the legacy appended EServerTerms.CertificateUpdateRecived.
         // The resulting reason (prior + suffix) is also the UserCancelledCertificate event's AdditionalInfo, and the
         // cancelled certificate's own OrganizationUnitId scopes that event (legacy VirtualEntity(certificateToCancel)).
-        var previousCancelReason = (previous.RejectCancelReason ?? string.Empty) + Environment.NewLine + CertificateOfOriginsConsts.CertificateUpdateReceived;
-        await DataLayer.CancelPreviousCertificate(previous.Id, Environment.NewLine + CertificateOfOriginsConsts.CertificateUpdateReceived, RequestMetadata.UserId ?? 0);
+        var previousCancelReason = (previous.RejectCancelReason ?? string.Empty) + Environment.NewLine + ErrorMessagesResources.CertificateUpdateRecived;
+        await DataLayer.CancelPreviousCertificate(previous.Id, Environment.NewLine + ErrorMessagesResources.CertificateUpdateRecived, RequestMetadata.UserId ?? 0);
 
         entity.VersionNumber = previous.VersionNumber + 1;
         entity.IsLastVersion = true;
@@ -1793,7 +1791,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Legacy PrintCertificateOfOriginAndSaveAttachments: render the certificate document via SSRS (the Common service's
-    // GenerateTemplate) and save it as an attachment on the certificate (GenerateTemplate → SaveCertificateOfOriginAttachments).
+    // GenerateReportByParams) and save it as an attachment on the certificate (→ SaveCertificateOfOriginAttachments).
     // Shared by the publish flow (#33) and the reconciliation re-print (#34). Rendering is always delegated to SSRS
     // (developer decision — no per-type template switch / no local template files).
     // Returns the rendered template so the caller can put it on the message feedback (legacy returned
@@ -1810,12 +1808,31 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return null;
         }
 
+        // Legacy CommonServicesServiceAdapter.GanerateReportAndConvertToTemplateResult: GenerateReportByParams with the
+        // EntityID + AdditionalInfo report parameters in PDF, wrapped as a PDF ExportCertificateOfOrigin (329) template.
         var commonServicesProxy = Resolve<ICommonServicesProxy>();
-        var template = await commonServicesProxy.GenerateTemplate(reportId.Value, certificate.Id, additionalInfo);
-        if (template is null)
+        var reportRequest = new GenerateReportByParamsRequestDto
+        {
+            ReportId = reportId.Value,
+            ReportParameters =
+            [
+                new(CertificateOfOriginsConsts.ReportParameterEntityId, certificate.Id.ToString(CultureInfo.InvariantCulture)),
+                new(CertificateOfOriginsConsts.ReportParameterAdditionalInfo, additionalInfo),
+            ],
+            FileFormat = CertificateOfOriginsConsts.ReportFileFormatPdf,
+        };
+        var reportContent = await commonServicesProxy.GenerateReportByParams(reportRequest);
+        if (reportContent is null)
         {
             return null;
         }
+
+        var template = new TemplateResultDto
+        {
+            Content = reportContent,
+            IsPdfFormat = true,
+            DocumentTypeId = CertificateOfOriginsConsts.ExportCertificateOfOriginDocumentTypeId,
+        };
 
         var args = new SaveCertificateAttachmentsArgsDto
         {
@@ -1862,12 +1879,11 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         await queueUtil.SendMessage(message);
     }
 
-    // Legacy HandleCertificateReplacement — cancel the replaced certificate + raise the replaced event scoped to the
-    // cancelled certificate's own identity / organization unit.
-    // TODO(migration): two resx-sourced texts are still deferred (no ValidationMessages source yet) plus the agent
-    // talk-back: the new certificate's FeedbackRemark (legacy EMessages.UpdateExportDeclaration, params
-    // {entity.ExportDeclarationNumber, cancelled.CertificateNumber}) and SendMessageToAgent (legacy
-    // EMessages.UpdateExportDecForReplacement).
+    // Legacy HandleCertificateReplacement (CertificateOfOriginsBL.cs:356-377) — remark on the replacing certificate, cancel
+    // the replaced one + raise the replaced event scoped to the cancelled certificate's own identity / organization unit.
+    // TODO(migration): the agent talk-back (legacy servicesAdapter.SendMessageToAgent with EMessages.UpdateExportDecForReplacement,
+    // params {cancelled.ExportDeclarationNumber, cancelled.CertificateNumber, entity.CertificateNumber}) waits for the
+    // agent-message proxy operation; the text is ErrorMessagesResources.UpdateExportDecForReplacement.
     private async Task HandleCertificateReplacement(CertificateOfOrigin entity, IEventUtil eventUtil)
     {
         if (entity.CertificateIdToCancel is null)
@@ -1882,10 +1898,16 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return;
         }
 
+        var userId = RequestMetadata.UserId ?? 0;
+
+        // Legacy EMessages.UpdateExportDeclaration: the replacing certificate's remark asks the agent to update the export
+        // declaration; saved with the certificate (legacy Repository.Save(certificate) at the end of the method).
+        entity.FeedbackRemark = string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.UpdateExportDeclaration, entity.ExportDeclarationNumber, certificateToCancel.CertificateNumber);
+        await DataLayer.UpdateCertificateFeedbackRemark(entity.Id, entity.FeedbackRemark, userId);
+
         // Legacy: Cancelled + the CertificateReplaced reason (replacing the old one). The replaced certificate keeps
         // IsLastVersion - a replacement has a different number, so it is still the last version of its own.
-        // TODO(confirm): the UIMessage text of EMessages.CertificateReplaced (not in the local UIMessage copy).
-        await DataLayer.CancelCertificate(certificateToCancel.Id, $"התעודה הוחלפה בתעודה {entity.CertificateNumber}", RequestMetadata.UserId ?? 0);
+        await DataLayer.CancelCertificate(certificateToCancel.Id, string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.CertificateReplaced, entity.CertificateNumber), userId);
 
         // Scope the replaced event to the CANCELLED certificate's own organization unit (legacy VirtualEntity(certificateToCancel)),
         // not the replacement certificate's — the two can differ on a cross-organization import-certificate replacement.
@@ -1987,9 +2009,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     // against the declaration (scalar details + destination/origin country-groups + import-replacement trade-agreement +
     // the full invoice / goods-item / customs-item 6-digit matching, both directions), then — unless it is a Draft — set
     // DeclarationMatch / Rejected / DeclarationMismatch, raise the matching event (warnings assign the mismatch task to
-    // the assessor), re-print the draft, and append the error rows. Returns the reconciliation errors.
-    // TODO(migration): only the exception text + EMessages code + Error/Warning level source (ValidationMessages/resx,
-    // legacy GetUIMessageWithEnglishAndLevel) is still deferred — the checks themselves are migrated.
+    // the assessor), re-print the draft, and append the error rows. Returns the reconciliation errors (texts and codes:
+    // EReconciliationMessage).
     // titleMismatchCertificateId: the certificate whose save found a lead-document title mismatch (incoming message path only).
     private async Task<List<CertificateOfOriginExceptionDto>> ReconcileCertificatesAgainstDeclaration(UpdateCertificateOfOriginsRequestDto request, int? titleMismatchCertificateId = null)
     {
@@ -2205,7 +2226,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         foreach (var certificate in certificates)
         {
-            await DataLayer.CancelCertificate(certificate.Id, CertificateOfOriginsConsts.CanceledDeclarationReason, userId);
+            await DataLayer.CancelCertificate(certificate.Id, ErrorMessagesResources.CanceledDeclaration, userId);
             await RaiseCertificateEvent(eventUtil, (int)EEventType.ExportDeclarationConnectToCertificateOfOriginCanceled, certificate, null);
         }
     }
@@ -2219,9 +2240,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         UpdateCertificateOfOriginsRequestDto request,
         IEventUtil eventUtil)
     {
-        var hasErrors = reconciliation.HasNoExportInvoices
-            || reconciliation.Exceptions.Exists(exception => !exception.ExceptionLevel.HasValue || exception.ExceptionLevel == (int)EExceptionLevel.Error);
-        var hasWarnings = reconciliation.Exceptions.Exists(exception => exception.ExceptionLevel == (int)EExceptionLevel.Warning);
+        // Decided by the findings' InfException level (legacy :508-514), not by the level reported on the response rows.
+        var hasErrors = reconciliation.HasNoExportInvoices || reconciliation.HasErrorFindings;
+        var hasWarnings = !reconciliation.HasNoExportInvoices && reconciliation.HasWarningFindings;
 
         if (!hasErrors && !hasWarnings)
         {
@@ -2333,7 +2354,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             2 => certificateNumbers[0] + ", " + certificateNumbers[1],
             _ => ". לדוגמה:" + certificateNumbers[0] + ", " + certificateNumbers[^1],
         };
-        var message = string.Format(CultureInfo.InvariantCulture, CertificateOfOriginsConsts.AdditionalCertificatesToExportDeclarationMessage, messageParameter);
+        var message = string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.AdditionalCertificatesToExportDeclaration, messageParameter);
         var result = requestReasonName + ". " + message;
         return result;
     }
@@ -2452,10 +2473,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
     // Legacy ValidateExportDeclarationInfoForPCIsMatch: compares the certificate against the export declaration and
     // collects the mismatch exceptions (deduped by message, like legacy PassGroupdExceptionListToEntity's GroupBy).
-    // Levels follow the legacy (a null level counts as an error; only the import-replacement and unmatched-invoice
-    // checks are warnings). Returns the exceptions + whether the certificate is now linked to an import declaration.
-    // TODO(migration): the localized + English exception texts and their EMessages codes are placeholders here — source
-    // them from ValidationMessages/resx (legacy SystemTablesUtil.GetUIMessageWithEnglishAndLevel gives text+english+level).
+    // The finding levels are the legacy InfException levels, which decide the outcome (a null level counts as an error; only
+    // the import-replacement and unmatched-invoice checks are warnings); the response rows carry the UIMessage row instead
+    // (ReconciliationUiMessages). Returns the exceptions + whether the certificate is now linked to an import declaration.
     // isLeadDocumentTitleMismatch: the save's title check failed (legacy: already in _requestExceptions when this ran). It is
     // the first finding, so it survives every early return below and wins the de-duplication against the goods-item check
     // that reports under the same message.
@@ -2475,7 +2495,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         // no AdditionalInfo on the mismatch event, nothing returned to the caller — beyond a title mismatch already found.
         if (request.ExportInvoiceInfoList == null || request.ExportInvoiceInfoList.Count == 0)
         {
-            return new ReconciliationResult(BuildReconciliationResult(builder, false).Exceptions, false, true);
+            return BuildReconciliationResult(builder, false, hasNoExportInvoices: true);
         }
 
         // A certificate with no invoice rows is a match, whatever its own details say. Faithful to production (analyst
@@ -2520,8 +2540,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.DestinationCountryMismatch,
                 (int)EExceptionLevel.Error,
-                "ארץ היעד בתעודה אינה תואמת לארץ היעד בהצהרת היצוא",
-                "The destination country does not match the destination country in the export declaration."));
+                ErrorMessagesResources.DestinationCountryMismatch));
         }
 
         // Destination country-group agreement — the buyer country must belong to the certificate's destination group
@@ -2536,8 +2555,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.DestinationGroupDiscrepancy,
                     (int)EExceptionLevel.Error,
-                    "אי התאמה בין הארצות בהסכם לבין ארץ הקונה",
-                    "Discrepancy between the countries in the agreement and the buyer country."));
+                    ErrorMessagesResources.DestinationGroupDiscrepancy));
             }
         }
 
@@ -2549,8 +2567,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.ExportDeclarationNotInSystem,
                 (int)EExceptionLevel.Error,
-                $"מספר הצהרת היצוא {request.ExportDeclarationNum} אינו קיים במערכת",
-                $"Export declaration {request.ExportDeclarationNum} is not in the system."));
+                string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.ExportDeclarationNotInSystem, request.ExportDeclarationNum)));
         }
 
         // The exporter on the certificate must match the declaration's exporter (Error; the legacy compares int to
@@ -2560,8 +2577,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.ExporterMismatch,
                 (int)EExceptionLevel.Error,
-                "מספר היצואן בתעודה אינו תואם למספר היצואן בהצהרת היצוא",
-                "The exporter number does not match the exporter number in the export declaration."));
+                ErrorMessagesResources.ExporterMismatch));
         }
     }
 
@@ -2598,8 +2614,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         builder.Add(new ReconciliationFinding(
             EReconciliationMessage.ImportReplacementNoTradeAgreement,
             (int)EExceptionLevel.Warning,
-            "אין בהצהרה טובין המקושרים להצהרת היבוא שארץ המקור שלהם נמצאת בהסכם הסחר",
-            "There is no merchandise in the declaration linked to the import declaration whose country of origin is in the trade agreement."));
+            ErrorMessagesResources.ImportReplacementNoTradeAgreement));
         return true;
     }
 
@@ -2668,8 +2683,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.ExportInvoiceNotMatch,
                     (int)EExceptionLevel.Warning,
-                    $"חשבונית היצוא {invoice.InvoiceNumber} אינה תואמת לחשבונית בהצהרת היצוא",
-                    $"Export invoice {invoice.InvoiceNumber} does not match an invoice in the export declaration."));
+                    string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.ExportInvoiceNotMatch, invoice.InvoiceNumber)));
                 return false;
             }
 
@@ -2719,8 +2733,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.OriginCountryMismatch,
                 (int)EExceptionLevel.Error,
-                "ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא",
-                "The origin country does not match the origin country in the export declaration."));
+                ErrorMessagesResources.OriginCountryMismatch));
         }
 
         // Origin country-group agreement — any declaration origin country must be in the group (Error).
@@ -2741,8 +2754,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 builder.Add(new ReconciliationFinding(
                     EReconciliationMessage.OriginCountryMismatch,
                     (int)EExceptionLevel.Error,
-                    "ארץ המקור בתעודה אינה תואמת לארץ המקור בהצהרת היצוא",
-                    "The origin country does not match the origin country in the export declaration."));
+                    ErrorMessagesResources.OriginCountryMismatch));
             }
         }
 
@@ -2766,8 +2778,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             builder.Add(new ReconciliationFinding(
                 EReconciliationMessage.CustomsItemMismatch,
                 (int)EExceptionLevel.Error,
-                $"פריט המכס {certificateSixDigits} בחשבונית {invoiceNumber} אינו תואם לפריט מכס בהצהרת היצוא",
-                $"Customs item {certificateSixDigits} in invoice {invoiceNumber} does not match a customs item in the export declaration."));
+                string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.CustomsItemMismatch, certificateSixDigits, invoiceNumber)));
         }
     }
 
@@ -2810,8 +2821,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                     builder.Add(new ReconciliationFinding(
                         EReconciliationMessage.CustomsItemInDeclarationNotInCertificate,
                         (int)EExceptionLevel.Error,
-                        $"פריט המכס {declarationSixDigits} בחשבונית {declarationInvoice.ExternalIdNum} אינו תואם לפריטי המכס בתעודה",
-                        $"Customs item {declarationSixDigits} in invoice {declarationInvoice.ExternalIdNum} does not match the customs items in the certificate."));
+                        string.Format(CultureInfo.InvariantCulture, ErrorMessagesResources.CustomsItemInDeclarationNotInCertificate, declarationSixDigits, declarationInvoice.ExternalIdNum)));
                 }
             }
         }
@@ -2824,8 +2834,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return new ReconciliationFinding(
             EReconciliationMessage.CertificateNumberNotInDealFile,
             (int)EExceptionLevel.Error,
-            "מספר התעודה אינו תואם למספר התעודה בקובץ עסקת היצוא",
-            "The certificate number does not match the certificate number in the export deal file.");
+            ErrorMessagesResources.CertificateNumberNotInDealFile);
     }
 
     private static string? GetDetailValue(List<CertificateOfOriginDetails> details, ECertificateDetailsType detailType)
@@ -2841,53 +2850,84 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     }
 
     // Legacy PassGroupdExceptionListToEntity: dedup by message (GroupBy UserMessage, first wins), then project to DTOs.
-    private static ReconciliationResult BuildReconciliationResult(List<ReconciliationFinding> builder, bool isLinkedToImportDeclaration)
+    // Two different levels, as in legacy: the outcome (Rejected / DeclarationMismatch) is decided by the InfException level of
+    // the findings (CertificateOfOriginsBL.cs:513-514, no level = Error), while the response row carries the UIMessage row's
+    // UIMessageTypeID and EnglishName (GetUIMessageWithEnglishAndLevel, :538, :558-559).
+    private static ReconciliationResult BuildReconciliationResult(List<ReconciliationFinding> builder, bool isLinkedToImportDeclaration, bool hasNoExportInvoices = false)
     {
-        var exceptions = builder
-            .GroupBy(exception => exception.Key)
+        var findings = builder
+            .GroupBy(finding => finding.Key)
             .Select(group => group.First())
-            .Select(exception => new CertificateOfOriginExceptionDto
+            .ToList();
+        var exceptions = findings
+            .Select(finding => new CertificateOfOriginExceptionDto
             {
-                ExceptionLevel = exception.Level,
-                ExceptionDescription = exception.Description,
-                EnglishDescription = exception.EnglishDescription,
-                ExceptionType = 0, // TODO(migration): the real EMessages code (legacy GetUIMessageWithEnglishAndLevel).
+                ExceptionLevel = ReconciliationUiMessages[finding.Key].Level,
+                ExceptionDescription = finding.Description,
+                EnglishDescription = ReconciliationUiMessages[finding.Key].EnglishName,
+                ExceptionType = (int)finding.Key,
             })
             .ToList();
-        return new ReconciliationResult(exceptions, isLinkedToImportDeclaration, false);
+        return new ReconciliationResult(
+            exceptions,
+            isLinkedToImportDeclaration,
+            hasNoExportInvoices,
+            findings.Exists(finding => finding.Level == (int)EExceptionLevel.Error),
+            findings.Exists(finding => finding.Level == (int)EExceptionLevel.Warning));
     }
 
-    // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member
-    // corresponds to a legacy EMessages code (noted below); ExceptionType is left 0 for now because those codes + their
-    // text live in the SystemTables message table, whose .NET 10 equivalent (ValidationMessages/resx) is not wired yet
-    // (see Program.cs; the package is available). TODO(migration): set ExceptionType to the real EMessages code and source
-    // the text from ValidationMessages — ValidationMessage has no numeric code or English text, so keep a local map for those.
+    // The legacy UIMessage row of each reconciliation message (Shared.General_enum_UIMessage, queried 2026-10-15): EnglishName
+    // (the enum name, not a translation) and UIMessageTypeID (1 = Error, 2 = Warning, the EExceptionLevel values). Three of them
+    // differ from the decision level: DestinationGroupDiscrepancy and CustomsItemInDeclarationNotInCertificate decide as errors but
+    // report 2, ExportInvoiceNotMatch decides as a warning but reports 1.
+    private static readonly IReadOnlyDictionary<EReconciliationMessage, (string EnglishName, int Level)> ReconciliationUiMessages =
+        new Dictionary<EReconciliationMessage, (string EnglishName, int Level)>
+        {
+            [EReconciliationMessage.OriginCountryMismatch] = ("OriginCountryIsNotMAtchToOriginCountryInExportdeclaration", 1),
+            [EReconciliationMessage.DestinationCountryMismatch] = ("DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration", 1),
+            [EReconciliationMessage.CertificateNumberNotInDealFile] = ("CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile", 1),
+            [EReconciliationMessage.ExporterMismatch] = ("ExporterNumberIsNotMAtchToExporterNumberInExportdeclaration", 1),
+            [EReconciliationMessage.ExportInvoiceNotMatch] = ("ExportInvoiceIsNotMAtchToExportInvoiceInExportdeclaration", 1),
+            [EReconciliationMessage.CustomsItemMismatch] = ("CustomsItemIsNotMAtchToCustomsItemInExportdeclaration", 1),
+            [EReconciliationMessage.ExportDeclarationNotInSystem] = ("ExportDeclarationNotInSystemForWarningMessage", 1),
+            [EReconciliationMessage.DestinationGroupDiscrepancy] = ("DiscrepancyBetweenTheCountriesInTheAgreementVersusTheCountryOfTheBuyer", 2),
+            [EReconciliationMessage.ImportReplacementNoTradeAgreement] = ("ThereIsNoMerchandiseInTheDeclarationThatIsLinkedToTheImportDeclarationWhoseCountryOfOriginIsInTheTradeAgreement", 2),
+            [EReconciliationMessage.CustomsItemInDeclarationNotInCertificate] = ("CustomsItemInDeclarationIsNotMAtchToCustomsItemsInCertificate", 2),
+        };
+
+    // Dedup key for the reconciliation exceptions — reproduces the legacy GroupBy(InfException.UserMessage). Each member's
+    // NUMERIC VALUE is the legacy EMessages id (noted beside it), carried as ExceptionType; its Hebrew text is the
+    // ErrorMessagesResources entry of the same name, and its English name and response level are in ReconciliationUiMessages.
     private enum EReconciliationMessage
     {
-        DestinationCountryMismatch,                 // EMessages.DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration
-        DestinationGroupDiscrepancy,                // EMessages.DiscrepancyBetweenTheCountriesInTheAgreementVersusTheCountryOfTheBuyer
-        ExportDeclarationNotInSystem,               // EMessages.ExportDeclarationNotInSystemForWarningMessage
-        ExporterMismatch,                           // EMessages.ExporterNumberIsNotMAtchToExporterNumberInExportdeclaration
-        ImportReplacementNoTradeAgreement,          // EMessages.ThereIsNoMerchandiseInTheDeclarationThatIsLinkedToTheImportDeclarationWhoseCountryOfOriginIsInTheTradeAgreement
-        OriginCountryMismatch,                      // EMessages.OriginCountryIsNotMAtchToOriginCountryInExportdeclaration
-        CertificateNumberNotInDealFile,             // EMessages.CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile
-        CustomsItemMismatch,                        // EMessages.CustomsItemIsNotMAtchToCustomsItemInExportdeclaration
-        ExportInvoiceNotMatch,                      // EMessages.ExportInvoiceIsNotMAtchToExportInvoiceInExportdeclaration
-        CustomsItemInDeclarationNotInCertificate,   // EMessages.CustomsItemInDeclarationIsNotMAtchToCustomsItemsInCertificate
+        DestinationCountryMismatch = 1402655,                   // EMessages.DestinationCountryIsNotMAtchTofDestinationCountryInExportdeclaration
+        DestinationGroupDiscrepancy = 14027170,                 // EMessages.DiscrepancyBetweenTheCountriesInTheAgreementVersusTheCountryOfTheBuyer
+        ExportDeclarationNotInSystem = 14026636,                // EMessages.ExportDeclarationNotInSystemForWarningMessage
+        ExporterMismatch = 14026543,                            // EMessages.ExporterNumberIsNotMAtchToExporterNumberInExportdeclaration
+        ImportReplacementNoTradeAgreement = 14027187,           // EMessages.ThereIsNoMerchandiseInTheDeclarationThatIsLinkedToTheImportDeclarationWhoseCountryOfOriginIsInTheTradeAgreement
+        OriginCountryMismatch = 1402654,                        // EMessages.OriginCountryIsNotMAtchToOriginCountryInExportdeclaration
+        CertificateNumberNotInDealFile = 14026542,              // EMessages.CertificateNumberISNotMatchToCerrtificateNumberInExportDealFile
+        CustomsItemMismatch = 14026547,                         // EMessages.CustomsItemIsNotMAtchToCustomsItemInExportdeclaration
+        ExportInvoiceNotMatch = 14026546,                       // EMessages.ExportInvoiceIsNotMAtchToExportInvoiceInExportdeclaration
+        CustomsItemInDeclarationNotInCertificate = 14027278,    // EMessages.CustomsItemInDeclarationIsNotMAtchToCustomsItemsInCertificate
     }
 
-    private sealed class ReconciliationFinding(EReconciliationMessage key, int level, string description, string englishDescription)
+    // level: the legacy InfException level, which decides the outcome (not the reported level — see ReconciliationUiMessages).
+    private sealed class ReconciliationFinding(EReconciliationMessage key, int level, string description)
     {
         public EReconciliationMessage Key { get; } = key;
 
         public int Level { get; } = level;
 
         public string Description { get; } = description;
-
-        public string EnglishDescription { get; } = englishDescription;
     }
 
-    private sealed class ReconciliationResult(List<CertificateOfOriginExceptionDto> exceptions, bool isLinkedToImportDeclaration, bool hasNoExportInvoices)
+    private sealed class ReconciliationResult(
+        List<CertificateOfOriginExceptionDto> exceptions,
+        bool isLinkedToImportDeclaration,
+        bool hasNoExportInvoices,
+        bool hasErrorFindings,
+        bool hasWarningFindings)
     {
         public List<CertificateOfOriginExceptionDto> Exceptions { get; } = exceptions;
 
@@ -2895,5 +2935,10 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         // The declaration carried no invoices: an error outcome (Rejected) that legacy raised with no exception.
         public bool HasNoExportInvoices { get; } = hasNoExportInvoices;
+
+        // The findings by their decision (InfException) level.
+        public bool HasErrorFindings { get; } = hasErrorFindings;
+
+        public bool HasWarningFindings { get; } = hasWarningFindings;
     }
 }

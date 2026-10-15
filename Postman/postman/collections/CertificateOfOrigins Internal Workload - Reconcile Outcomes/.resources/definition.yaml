@@ -80,10 +80,10 @@ scripts:
           'MatchNoAssessor':       { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'BackfillLink':          { levels: [],    status: DECLARATION_MATCH,    contains: [] },
           'NoInvoiceRowsMatch':    { levels: [],    status: DECLARATION_MATCH,    contains: [] },
-          'Warnings':              { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אינה תואמת לחשבונית בהצהרת היצוא'] },
-          'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['אין בהצהרה טובין המקושרים להצהרת היבוא'] },
-          'CustomsItemMismatch':   { levels: [1],   status: REJECTED,             contains: ['אינו תואם לפריט מכס בהצהרת היצוא',
-                                                                                             'אינו תואם לפריטי המכס בתעודה'] }
+          'Warnings':              { levels: [1],   status: DECLARATION_MISMATCH, contains: ['אינו תואם את החשבונות בהצהרת היצוא'] },
+          'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['לא קיימת בהצהרה סחורה המקושרת להצהרת היבוא'] },
+          'CustomsItemMismatch':   { levels: [1, 2],   status: REJECTED,             contains: ['בתעודה אינו קיים או חסר בחשבונית',
+                                                                                             'בהצהרת היצוא אינו קיים או חסר בחשבונית'] }
       };
       var want = EXPECT[folder];
 
@@ -96,11 +96,13 @@ scripts:
                   pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.empty;
               });
           } else {
-              // The arm is chosen by LEVEL, not by count: one Error anywhere sends it to the errors arm, so a
-              // warnings-only run must prove the absence of Errors, not merely the presence of a warning.
-              pm.test(folder + '/10: findings are exactly level ' + want.levels[0], function () {
+              // The reported level is each message's legacy UIMessage type, NOT the level that picks the arm (legacy decided
+              // by the InfException level): the unmatched invoice is a warning that reports 1, the declaration-side customs item
+              // an error that reports 2. The arm itself is proven by the status at 20-verify.
+              pm.test(folder + '/10: findings report the UIMessage levels ' + JSON.stringify(want.levels), function () {
                   pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.not.empty;
-                  levels.forEach(function (l) { pm.expect(l, 'level (1=Error, 2=Warning)').to.eql(want.levels[0]); });
+                  var seen = levels.filter(function (l, i) { return levels.indexOf(l) === i; }).sort();
+                  pm.expect(seen, 'levels (1=Error, 2=Warning)').to.eql(want.levels);
               });
               want.contains.forEach(function (t) {
                   pm.test(folder + '/10: raised "' + t + '"', function () {

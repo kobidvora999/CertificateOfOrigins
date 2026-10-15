@@ -14,10 +14,10 @@
 ## איך תבנית מחוברת לקוד
 
 ```
-GET api/CertificateOfOrigins/Template/{templateId}/{entityId}
+GET api/CertificateOfOrigins/Template/{templateId}/{entityId}?additionalInfo=
   → CertificateOfOriginsBl.GenerateTemplate
       → GetTemplateMeta(templateId)   ← ממפה id → (Result DTO, {Name}, Format)
-      → dbo.GetTemplateData           ← ענף פר-תבנית שמחזיר את עמודות ה-Result DTO
+      → dbo.GetTemplateData           ← @EntityID, @TemplateTypeID, @CreateUserID, @AdditionalInfo (חתימת Object Maker); ענף פר-תבנית
       → EnrichTemplateData            ← שמות חוצי-שירות (לקוח, מדינה) מ-proxy/lookup
       → ITemplateUtil.GenerateTemplate ← מודול התבניות ממזג ומחזיר את המסמך
 ```

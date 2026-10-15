@@ -29,7 +29,7 @@ JSON, and the status from the endpoint contract:
 | Service | Calls | Probes |
 |---|---|---|
 | Collaterals | CollateralRequestByEntity · CollateralRequestIdsByEntity · ChangeTempCollateralRequest · GrantAllCollateralRequests · DebitCreditCollateralRequest | 5 |
-| Common | CommonServices/CreateQrCode · CommonServices/GenerateTemplate · Message/SendMessage | 3 |
+| Common | CommonServices/CreateQrCode · CommonServices/GenerateReportByParams · Message/SendMessage | 3 |
 | Customers | CustomersByIds · CustomerInformation · CustomersByCountry (activity type 40) · IdByExternalId | 4 |
 | Documents | DocumentsByEntity · Document/{id} · AttachDocumentsToEntity · DeleteDocuments | 4 |
 | ExportDealFile | ExportDeclarationDetailsForCertificateOfOrigin · LeadDocumentSubmissionDate · LeadDocumentByCertificateOfOrigin (update) · LeadDocumentByCertificateOfOriginId · ChangeCertificateOfOriginForLeadDocument · ExportDeclarationInfo · DetailsForExportAssociatedGoodsItems | 7 |

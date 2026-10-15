@@ -88,7 +88,8 @@ public class TemplateSignatureBlockTests
         var bl = new CertificateOfOriginsBl(services.BuildServiceProvider(), Fake<ILookupUtil>(), Fake<IParametersUtil>());
 
         var enrich = typeof(CertificateOfOriginsBl).GetMethod("EnrichTemplateData", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        await (Task)enrich.Invoke(bl, [letter])!;
+        // GetTemplateData resolves the signer (explicit createUserId, else the request user) and hands it down.
+        await (Task)enrich.Invoke(bl, [letter, CurrentUserId])!;
     }
 
     // --- Minimal dependency-free interface faking over System.Reflection.DispatchProxy (no mocking package). ---

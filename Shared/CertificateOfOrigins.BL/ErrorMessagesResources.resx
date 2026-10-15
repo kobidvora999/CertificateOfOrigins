@@ -1,19 +1,331 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <resheader name="resmimetype">
-    <value>text/microsoft-resx</value>
-  </resheader>
-  <resheader name="version">
-    <value>2.0</value>
-  </resheader>
-  <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </resheader>
-  <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </resheader>
-  <!-- Legacy EMessages.FileExistForRequest (message id 14070) — exact text from the old system-messages table. -->
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="GeneralException" xml:space="preserve">
+    <value>שגיאת מערכת, נא לפנות לספק התוכנה</value>
+    <comment>EMessages 0</comment>
+  </data>
+  <data name="ConcurrencyErrorTryAgain" xml:space="preserve">
+    <value>נעשה נסיון לעדכן את אותה היישות יותר מפעם אחת בו זמנית. יש לנסות שוב.</value>
+    <comment>EMessages 1402474</comment>
+  </data>
+  <data name="CustomerNotInCustomers" xml:space="preserve">
+    <value>לקוח {0} לא קיים במאגר לקוחות</value>
+    <comment>EMessages 4978</comment>
+  </data>
+  <data name="CertificateToCancelIncorrectStatus" xml:space="preserve">
+    <value>בהחלפת תעודה סטטוס התעודה לביטול חייב להיות מאושרת לפרסום באינטרנט</value>
+    <comment>EMessages 4984</comment>
+  </data>
+  <data name="ReplacementReasonMissing" xml:space="preserve">
+    <value>סיבת בקשה להחלפת תעודה חסרה</value>
+    <comment>EMessages 4986</comment>
+  </data>
+  <data name="ExportDeclarationMissing" xml:space="preserve">
+    <value>מספר הצהרת יצוא חסר</value>
+    <comment>EMessages 4987</comment>
+  </data>
+  <data name="SecondCountryNotInAgreement" xml:space="preserve">
+    <value>מדינה שניה אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 4990</comment>
+  </data>
+  <data name="IllegalExporterCountry" xml:space="preserve">
+    <value>מדינת היצואן חייבת להיות ישראל</value>
+    <comment>EMessages 4991</comment>
+  </data>
+  <data name="IllegalFirstCountryInAgreement" xml:space="preserve">
+    <value>מדינה ראשונה בהסכם חייבת להיות ישראל</value>
+    <comment>EMessages 4992</comment>
+  </data>
+  <data name="SecondCountryRequired" xml:space="preserve">
+    <value>חסרה מדינה שניה או קבוצת מדינות בהסכם</value>
+    <comment>EMessages 4993</comment>
+  </data>
+  <data name="GroupOfCountriesNotInAgreement" xml:space="preserve">
+    <value>קבוצת מדינות אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 4994</comment>
+  </data>
+  <data name="ImporterCountryNotInAgreement" xml:space="preserve">
+    <value>מדינת יבואן/נשגר אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 4995</comment>
+  </data>
+  <data name="ImporterCountryRequired" xml:space="preserve">
+    <value>חסרה מדינת יבואן/נשגר</value>
+    <comment>EMessages 4996</comment>
+  </data>
+  <data name="OriginCountryNotInAgreement" xml:space="preserve">
+    <value>מדינת המקור אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 4997</comment>
+  </data>
+  <data name="OriginCountryRequired" xml:space="preserve">
+    <value>חסרה מדינת המקור או קבוצת מדינות המקור</value>
+    <comment>EMessages 4998</comment>
+  </data>
+  <data name="OriginGroupOfCountriesNotInAgreement" xml:space="preserve">
+    <value>קבוצת מדינות מקור אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 4999</comment>
+  </data>
+  <data name="DestinationCountryNotInAgreement" xml:space="preserve">
+    <value>מדינת היעד אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 5000</comment>
+  </data>
+  <data name="DestinationCountryRequired" xml:space="preserve">
+    <value>חסרה מדינת היעד או קבוצת מדינות היעד</value>
+    <comment>EMessages 5001</comment>
+  </data>
+  <data name="DestinationGroupOfCountriesNotInAgreement" xml:space="preserve">
+    <value>קבוצת מדינות היעד אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 5002</comment>
+  </data>
+  <data name="CumulationCountryRequired" xml:space="preserve">
+    <value>חסרה מדינת הצבירה או קבוצת מדינות הצבירה</value>
+    <comment>EMessages 5003</comment>
+  </data>
+  <data name="CumulationCountryNotInAgreement" xml:space="preserve">
+    <value>מדינת הצבירה אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 5004</comment>
+  </data>
+  <data name="CumulationGroupOfCountriesNotInAgreement" xml:space="preserve">
+    <value>קבוצת מדינות הצבירה אינה שייכת להסכם הסחר</value>
+    <comment>EMessages 5005</comment>
+  </data>
+  <data name="PlaceOfManufactureAndZipcodeRequired" xml:space="preserve">
+    <value>יש לציין מקום ייצור הטובין ומיקוד</value>
+    <comment>EMessages 5006</comment>
+  </data>
+  <data name="CustomsHouseNotInTable" xml:space="preserve">
+    <value>ערך בשדה בית מכס אינו קיים בטבלת בתי מכס</value>
+    <comment>EMessages 5007</comment>
+  </data>
+  <data name="IssuingCountryIllegal" xml:space="preserve">
+    <value>מדינה מנפיקה אינה יכולה להיות שונה מישראל</value>
+    <comment>EMessages 5008</comment>
+  </data>
+  <data name="ExporterDecCountryIllegal" xml:space="preserve">
+    <value>מדינת הצהרת יצואן אינה יכולה להיות שונה מישראל</value>
+    <comment>EMessages 5009</comment>
+  </data>
+  <data name="ExporterDecDateIllegal" xml:space="preserve">
+    <value>תאריך הצהרת יצואן צריך להיות שווה להיום או מוקדם ממנו, עד 5 ימים אחורה</value>
+    <comment>EMessages 5010</comment>
+  </data>
+  <data name="DeclaringExporter" xml:space="preserve">
+    <value>השדה IsDeclaredByExporter - `המצהיר הוא היצואן` חייב להיות TRUE</value>
+    <comment>EMessages 5011</comment>
+  </data>
+  <data name="ItemNumberNotFound" xml:space="preserve">
+    <value>פרט מכס לא קיים בספר המכס</value>
+    <comment>EMessages 5012</comment>
+  </data>
+  <data name="OriginCriteriaMissing" xml:space="preserve">
+    <value>קריטריון העדפה חסר</value>
+    <comment>EMessages 5013</comment>
+  </data>
+  <data name="OriginCriteriaIllegal" xml:space="preserve">
+    <value>ערך לא חוקי לקריטריון העדפה</value>
+    <comment>EMessages 5014</comment>
+  </data>
+  <data name="ExportDateIllegal" xml:space="preserve">
+    <value>תאריך היצוא יכול להיות היסטורי ועד שלושה חודשים קדימה</value>
+    <comment>EMessages 5015</comment>
+  </data>
+  <data name="ExportCounrtyIllegal" xml:space="preserve">
+    <value>מדינת יצוא אינה יכולה להיות ישראל</value>
+    <comment>EMessages 5016</comment>
+  </data>
+  <data name="ImportDatetIllegal" xml:space="preserve">
+    <value>תאריך היבוא לישראל צריך להיות שווה או מוקדם מתאריך היצוא, עד שנה אחורה</value>
+    <comment>EMessages 5017</comment>
+  </data>
+  <data name="TransirCountryIllegal" xml:space="preserve">
+    <value>מדינת הביניים אינה יכולה להיות שונה מישראל</value>
+    <comment>EMessages 5018</comment>
+  </data>
+  <data name="ManifestIdMissing" xml:space="preserve">
+    <value>לא הוזן מספר מצהר או מספר הצהרה עבור תעודה מסוג non manipulation</value>
+    <comment>EMessages 5019</comment>
+  </data>
+  <data name="RequestReasonNotExist" xml:space="preserve">
+    <value>סיבת בקשה לא קיימת במערכת</value>
+    <comment>EMessages 5020</comment>
+  </data>
+  <data name="CertificateTypeNotExist" xml:space="preserve">
+    <value>סוג תעודת מקור לא קיים במערכת</value>
+    <comment>EMessages 5022</comment>
+  </data>
+  <data name="CountryAndCountryGroup" xml:space="preserve">
+    <value>אין לספק מדינה וקבוצת מדינות לאותו עניין</value>
+    <comment>EMessages 5040</comment>
+  </data>
+  <data name="ExitDateIllegal" xml:space="preserve">
+    <value>תאריך היציאה המשוער מישראל צריך להיות שווה או גדול מן התאריך הנוכחי, עד שלושה חודשים קדימה</value>
+    <comment>EMessages 5095</comment>
+  </data>
+  <data name="AgentInUpdateDifferent" xml:space="preserve">
+    <value>סוכן מכס במסר שונה מן הסוכן בבקשה {0} להנפקת תעודת מקור</value>
+    <comment>EMessages 11908</comment>
+  </data>
+  <data name="IllegalCertificateTypeUpdate" xml:space="preserve">
+    <value>אין לתקן סוג תעודה {0} לסוג תעודה {1}</value>
+    <comment>EMessages 11909</comment>
+  </data>
+  <data name="CertificateDoesntExist" xml:space="preserve">
+    <value>תעודה מספר {0} אינה קיימת במערכת</value>
+    <comment>EMessages 13680</comment>
+  </data>
+  <data name="MustSendCertificateID" xml:space="preserve">
+    <value>חובה לספק מספר תעודה לפעולה המבוקשת</value>
+    <comment>EMessages 14026318</comment>
+  </data>
+  <data name="ItIsNotPossibleToTransmitACorrectionWhenThereIsATaskForACustomsEmployee" xml:space="preserve">
+    <value>לא ניתן לשדר תיקון לתעודה {0} כאשר יש משימה לעובד מכס</value>
+    <comment>EMessages 14027036</comment>
+  </data>
+  <data name="ItIsNotPossibleToTransmitACertificateThatPublishedOrThatRevoked" xml:space="preserve">
+    <value>לא ניתן לשדר סוג בקשה {0} לתעודה בסטטוס {1}</value>
+    <comment>EMessages 14027037</comment>
+  </data>
+  <data name="TheNumOfCharactersInTheZipcodeIsLessThan7" xml:space="preserve">
+    <value>מספר התוים במיקוד קטן מ-7</value>
+    <comment>EMessages 14027168</comment>
+  </data>
+  <data name="ACustomsItemMustContainAtLeast6Digits" xml:space="preserve">
+    <value>פרט מכס חייב להכיל לפחות 6 ספרות</value>
+    <comment>EMessages 14027169</comment>
+  </data>
+  <data name="CustomsItemRequired" xml:space="preserve">
+    <value>חסר שדה פרט מכס</value>
+    <comment>EMessages 14027172</comment>
+  </data>
+  <data name="ItIsntPossibleToTransmitDeclarationNumberThatHasntBeenSubmittedOrCanceledDeclaration" xml:space="preserve">
+    <value>לא ניתן לשדר מספר הצהרה שלא הוגשה או הצהרה מבוטלת</value>
+    <comment>EMessages 14027173</comment>
+  </data>
+  <data name="TheLinkedDeclarationMustBeCanceledBeforeCancelingTheCertificate" xml:space="preserve">
+    <value>יש לבטל את ההצהרה המקושרת {0} קודם ביטול התעודה</value>
+    <comment>EMessages 14027174</comment>
+  </data>
+  <data name="TheDescriptionLengthCannotExceed255Characters" xml:space="preserve">
+    <value>אורך התיאור לא יכול להיות גדול מ255 תווים</value>
+    <comment>EMessages 14027343</comment>
+  </data>
+  <data name="CertificateCannotBeTransmittedWhenThereIsAmendmentProcessOnTheDeclaration" xml:space="preserve">
+    <value>לא ניתן לשדר תעודה כאשר קיים תהליך תיקון על ההצהרה {0} המקושרת לתעודה</value>
+    <comment>EMessages 14027175</comment>
+  </data>
+  <data name="ExportCountryDoesNotExistInTheCountryTable" xml:space="preserve">
+    <value>מדינת היצוא אינה קיימת בטבלת המדינות</value>
+    <comment>EMessages 14027393</comment>
+  </data>
+  <data name="CityOfDeclarationDoesNotExistInTheCitiesTable" xml:space="preserve">
+    <value>הערך בשדה יישוב הצהרת יצואן אינו קיים בטבלת היישובים.</value>
+    <comment>EMessages 14027394</comment>
+  </data>
+  <data name="ValueNull" xml:space="preserve">
+    <value>יש להזין ערך בשדה {0}</value>
+    <comment>EMessages 6</comment>
+  </data>
+  <data name="TheValueInFieldNotExistsInSystem" xml:space="preserve">
+    <value>הערך בשדה {0} לא קיים במערכת</value>
+    <comment>EMessages 650</comment>
+  </data>
+  <data name="MandatoryValue" xml:space="preserve">
+    <value>אין ערך בשדה חובה {0}</value>
+    <comment>EMessages 2387</comment>
+  </data>
+  <data name="MandatoryNullValue" xml:space="preserve">
+    <value>הערך בשדה {0} חובה שיהיה ריק</value>
+    <comment>EMessages 2942</comment>
+  </data>
+  <data name="FieldMandatoryWhenTheAnotherField" xml:space="preserve">
+    <value>השדה {0} הינו שדה חובה כאשר הערך בשדה  {1} הינו {2}</value>
+    <comment>EMessages 4832</comment>
+  </data>
+  <data name="RequiredContainerIsoCodeFieldIfItIsAContainer" xml:space="preserve">
+    <value>שדה סוג מכולה חובה אם מדובר במכולה</value>
+    <comment>EMessages 14026376</comment>
+  </data>
+  <data name="DestinationCountryMismatch" xml:space="preserve">
+    <value>מדינת יעד אינה תואמת את מדינת היעד של הסחורה בהצהרת היצוא</value>
+    <comment>EMessages 1402655</comment>
+  </data>
+  <data name="DestinationGroupDiscrepancy" xml:space="preserve">
+    <value>אי התאמה בין המדינות בהסכם לעומת מדינת הקונה</value>
+    <comment>EMessages 14027170</comment>
+  </data>
+  <data name="ExportDeclarationNotInSystem" xml:space="preserve">
+    <value>הצהרת יצוא {0} אינה קיימת במערכת</value>
+    <comment>EMessages 14026636</comment>
+  </data>
+  <data name="ExporterMismatch" xml:space="preserve">
+    <value>מספר יצואן אינו זהה למספר היצואן בהצהרת היצוא</value>
+    <comment>EMessages 14026543</comment>
+  </data>
+  <data name="ImportReplacementNoTradeAgreement" xml:space="preserve">
+    <value>לא קיימת בהצהרה סחורה המקושרת להצהרת היבוא שמדינת המקור שלה היא מדינה בהסכם</value>
+    <comment>EMessages 14027187</comment>
+  </data>
+  <data name="OriginCountryMismatch" xml:space="preserve">
+    <value>מדינת מקור אינה תואמת את מדינת המקור של הסחורה בהצהרת היצוא</value>
+    <comment>EMessages 1402654</comment>
+  </data>
+  <data name="CertificateNumberNotInDealFile" xml:space="preserve">
+    <value>מספר תעודה אינו תואם את מספר התעודה שדווח בהצהרת היצוא</value>
+    <comment>EMessages 14026542</comment>
+  </data>
+  <data name="CustomsItemMismatch" xml:space="preserve">
+    <value>פרט המכס {0} בחשבונית {1} בתעודה אינו קיים או חסר בחשבונית {1} בהצהרת היצוא</value>
+    <comment>EMessages 14026547</comment>
+  </data>
+  <data name="ExportInvoiceNotMatch" xml:space="preserve">
+    <value>מספר חשבון {0} אינו תואם את החשבונות בהצהרת היצוא</value>
+    <comment>EMessages 14026546</comment>
+  </data>
+  <data name="CustomsItemInDeclarationNotInCertificate" xml:space="preserve">
+    <value>פרט המכס {0} בחשבונית {1} בהצהרת היצוא אינו קיים או חסר בחשבונית {1} שבתעודה</value>
+    <comment>EMessages 14027278</comment>
+  </data>
   <data name="FileExistForRequest" xml:space="preserve">
     <value>עבור בקשה {0} קיים תיק מספר {1}</value>
+    <comment>EMessages 14070</comment>
+  </data>
+  <data name="InvalidIdentificationNumber" xml:space="preserve">
+    <value>הלקוח לא קיים במערכת</value>
+    <comment>EMessages 2345</comment>
+  </data>
+  <data name="NoCustomHouseForThisCountry" xml:space="preserve">
+    <value>לא הוגדר בית מכס למדינה זו. יש להגדיר כתובת מתאימה</value>
+    <comment>EMessages 13717</comment>
+  </data>
+  <data name="CertificateOfOriginCancelFromMessage" xml:space="preserve">
+    <value>התקבלה בקשה לביטול תעודה במסר</value>
+    <comment>EMessages 1402550</comment>
+  </data>
+  <data name="UpdateExportDeclaration" xml:space="preserve">
+    <value>סוכן המכס מתבקש לעדכן את הצהרת היצוא {0}, בעקבות החלפת תעודת מקור {1}</value>
+    <comment>EMessages 6540</comment>
+  </data>
+  <data name="AdditionalCertificatesToExportDeclaration" xml:space="preserve">
+    <value>שים לב: להצהרת היצוא קיימות תעודות מקור נוספות {0}</value>
+    <comment>EMessages 6541</comment>
+  </data>
+  <data name="UpdateExportDecForReplacement" xml:space="preserve">
+    <value>יש לעדכן את הצהרת יצוא {0} בעקבות החלפת תעודת מקור {1} בתעודה {2}</value>
+    <comment>EMessages 6544</comment>
+  </data>
+  <data name="CertificateReplaced" xml:space="preserve">
+    <value>תעודת מקור הוחלפה בתעודת מקור {0}</value>
+    <comment>EMessages 6545</comment>
+  </data>
+  <data name="CanceledDeclaration" xml:space="preserve">
+    <value>ההצהרה בוטלה</value>
+    <comment>EServerTerms 5245</comment>
+  </data>
+  <data name="CertificateUpdateRecived" xml:space="preserve">
+    <value>התקבל תיקון לבקשה להנפקת תעודת מקור</value>
+    <comment>EServerTerms 10971</comment>
   </data>
 </root>

@@ -7,7 +7,7 @@
 ## sibling) — same letterhead header/footer and the SAME TAG VOCABULARY. Only the legal references differ
 ## (Article 3.29 of Chapter 3 of the Israel–Korea FTA, in place of the EU protocol).
 ##
-## Data source: dbo.GetTemplateData @TemplateID = <SouthKoreaOriginVerificationLetter>, serialized from
+## Data source: dbo.GetTemplateData @TemplateTypeID = <SouthKoreaOriginVerificationLetter>, serialized from
 ## SouthKoreaOriginVerificationLetterResult with JsonNamingPolicy.CamelCase — hence the camelCase paths.
 
 properties:

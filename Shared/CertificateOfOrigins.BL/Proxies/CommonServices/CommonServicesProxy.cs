@@ -19,17 +19,14 @@ public class CommonServicesProxy(IHttpProxy httpProxy)
         return await response.GetResult<byte[]>();
     }
 
-    public async Task<TemplateResultDto?> GenerateTemplate(int templateId, int certificateOfOriginId, string additionalInfo)
+    public async Task<byte[]?> GenerateReportByParams(GenerateReportByParamsRequestDto request)
     {
-        // TODO(blocking): the Templates generation service + the certificate-of-origin templates are not yet migrated
-        // — confirm the route and run template-migrate for the real templates (until then the mock is used).
+        // TODO(blocking): confirm the route of GenerateReportByParams on the Common (SSRS reports) microservice.
         var req = CreateRequestBuilder()
-            .UseGetMethod()
-            .WithResource("api/CommonServices/GenerateTemplate/{templateId}/{certificateOfOriginId}")
-            .AddUrlSegmentParameter("templateId", templateId)
-            .AddUrlSegmentParameter("certificateOfOriginId", certificateOfOriginId)
-            .AddQueryStringParameter("additionalInfo", additionalInfo ?? string.Empty);
+            .UsePostMethod()
+            .WithResource("api/CommonServices/GenerateReportByParams")
+            .AddBody(request);
         var response = await ExecuteAsync(req);
-        return await response.GetResult<TemplateResultDto>();
+        return await response.GetResult<byte[]>();
     }
 }

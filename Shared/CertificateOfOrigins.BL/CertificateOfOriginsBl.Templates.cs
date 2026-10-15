@@ -22,10 +22,10 @@ public partial class CertificateOfOriginsBl
         new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     // The rendered document. Missing entity / unregistered template → 404 (GetTemplateData throws).
-    public async Task<Stream> GenerateTemplate(int templateId, int entityId)
+    public async Task<Stream> GenerateTemplate(int templateId, int entityId, string? additionalInfo, int? createUserId = null)
     {
         var templateUtil = Resolve<ITemplateUtil>();
-        var printTemplate = await GetTemplateData(templateId, entityId);
+        var printTemplate = await GetTemplateData(templateId, entityId, additionalInfo, createUserId);
 
         var templateRequest = templateUtil.CreateRequestBuilder()
             .WithName(printTemplate.Name)
@@ -46,21 +46,25 @@ public partial class CertificateOfOriginsBl
     // format. Only GenerateTemplate calls it today (there is deliberately no endpoint of its own — no consumer asked
     // for the un-rendered data); it stays public per the shared template-print pattern so a future caller needs no
     // signature change.
-    public async Task<PrintTemplateDto> GetTemplateData(int templateId, int entityId)
+    public async Task<PrintTemplateDto> GetTemplateData(int templateId, int entityId, string? additionalInfo, int? createUserId = null)
     {
         var (dataType, name, format) = GetTemplateMeta(templateId);
+
+        // Legacy Object Maker passed the producing user as @CreateUserID (the same user FillSignatureBlock signs as). A
+        // caller without a request user (a worker, a queue consumer) passes it explicitly; otherwise it is the request user.
+        var userId = createUserId ?? RequestMetadata.UserId ?? 0;
 
         // T is only known at run time (it comes from the template id), so the generic DAL method is invoked by
         // reflection — the same approach the shared pattern uses.
         var method = typeof(ICertificateOfOriginsDal)
             .GetMethod(nameof(ICertificateOfOriginsDal.GetTemplateData))!
             .MakeGenericMethod(dataType);
-        var task = (Task)method.Invoke(DataLayer, [templateId, entityId])!;
+        var task = (Task)method.Invoke(DataLayer, [templateId, entityId, userId, additionalInfo])!;
         await task.ConfigureAwait(false);
         var data = ((dynamic)task).Result as object
             ?? throw new RestNotFoundException();
 
-        await EnrichTemplateData(data);
+        await EnrichTemplateData(data, userId);
 
         var json = JsonSerializer.Serialize(data, dataType, TemplateJsonOptions);
         return new PrintTemplateDto { Name = name, Data = json, Format = format };
@@ -68,7 +72,7 @@ public partial class CertificateOfOriginsBl
 
     // Cross-service names. The procedure returns ids only — a service-owned procedure never joins another service's
     // tables — so the names are resolved here, the same split the search reads use.
-    private async Task EnrichTemplateData(object data)
+    private async Task EnrichTemplateData(object data, int createUserId)
     {
         if (data is SouthKoreaOriginVerificationLetterResult letter && letter.RequestCountryId is > 0)
         {
@@ -80,16 +84,16 @@ public partial class CertificateOfOriginsBl
 
         if (data is SouthKoreaOriginVerificationLetterResult signedLetter)
         {
-            await FillSignatureBlock(signedLetter);
+            await FillSignatureBlock(signedLetter, createUserId);
         }
     }
 
     // Legacy signed the import-verification letters as the user producing them (@CreateUserID). UserTemplateDetails
     // was INNER JOINed to the user, so without that row the whole block stayed empty, the email included.
-    private async Task FillSignatureBlock(SouthKoreaOriginVerificationLetterResult letter)
+    private async Task FillSignatureBlock(SouthKoreaOriginVerificationLetterResult letter, int createUserId)
     {
         var userProxy = Resolve<IUserProxy>();
-        var details = await userProxy.GetUserTemplateDetails(RequestMetadata.UserId ?? 0);
+        var details = await userProxy.GetUserTemplateDetails(createUserId);
         if (details is null)
         {
             return;

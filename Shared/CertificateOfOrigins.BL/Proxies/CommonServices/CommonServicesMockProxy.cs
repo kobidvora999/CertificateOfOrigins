@@ -19,22 +19,15 @@ public class CommonServicesMockProxy(IProxyMockUtil mockUtil) : ICommonServicesP
         return Task.FromResult<byte[]?>([0xFF, 0xD8, 0xFF, 0xD9]); // TODO: dummy JPEG bytes
     }
 
-    // Default = a dummy PDF template result; feature "Templates.Empty" returns none (no attachments produced).
-    public Task<TemplateResultDto?> GenerateTemplate(int templateId, int certificateOfOriginId, string additionalInfo)
+    // Default = dummy PDF report bytes; feature "Templates.Empty" returns none (no attachments produced). The feature
+    // keeps its old name because the Postman mock-features collection sends it.
+    public Task<byte[]?> GenerateReportByParams(GenerateReportByParamsRequestDto request)
     {
         if (mockUtil.HasMockFeature("Templates.Empty"))
         {
-            return Task.FromResult<TemplateResultDto?>(null);
+            return Task.FromResult<byte[]?>(null);
         }
 
-        var result = new TemplateResultDto
-        {
-            Id = templateId,
-            Name = $"Mock certificate template {templateId}",           // TODO: dummy data
-            Content = Encoding.ASCII.GetBytes("%PDF-1.4\nmock certificate\n%%EOF"), // TODO: dummy PDF bytes
-            DocumentTypeId = 0,                                          // TODO: dummy data
-            IsPdfFormat = true,
-        };
-        return Task.FromResult<TemplateResultDto?>(result);
+        return Task.FromResult<byte[]?>(Encoding.ASCII.GetBytes("%PDF-1.4\nmock certificate report\n%%EOF")); // TODO: dummy PDF bytes
     }
 }

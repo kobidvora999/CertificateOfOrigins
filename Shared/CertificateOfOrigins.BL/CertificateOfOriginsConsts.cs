@@ -39,6 +39,12 @@ internal static class CertificateOfOriginsConsts
     public const int ExportCertificateOfOriginDocumentTypeId = 329;
     public const int CertificateNumberAdditionalFieldId = 46;
 
+    // SSRS certificate report parameters + output format (legacy CommonServicesServiceAdapter
+    // .GanerateReportAndConvertToTemplateResult → GenerateReportByParams).
+    public const string ReportParameterEntityId = "EntityID";
+    public const string ReportParameterAdditionalInfo = "AdditionalInfo";
+    public const string ReportFileFormatPdf = "PDF";
+
     // --- GetCertificateRequestByGuid (public-portal web query) ---
 
     // Legacy field labels came from SystemTablesUtil.GetCodeById<DataDictionaryField>(fieldId), where fieldId was
@@ -65,21 +71,9 @@ internal static class CertificateOfOriginsConsts
 
     // --- SaveCertificateOfOrigin (#33) / UpdateCertificateOfOrigins (#34) ---
 
-    // Legacy EServerTerms.CertificateUpdateRecived — appended to a superseded certificate's cancel reason.
-    public const string CertificateUpdateReceived = "התקבל עדכון לתעודה"; // TODO(migration): source from ValidationMessages/resx.
-
     // Legacy CertificateOfOriginsConsts.ThereIsNoMatchBetweenTheCertificateDataAndTheDeclaration (a code constant, copied
-    // exactly) — set on a rejected reconciliation.
+    // exactly) — set on a rejected reconciliation. The UIMessage / ServerTerms texts are in ErrorMessagesResources.resx.
     public const string ReconciliationMismatchReason = "אין התאמה בין נתוני התעודה להצהרה";
-
-    // UIMessage 6541 (EMessages.AdditionalCertificatesToExportDeclaration) — appended after the request reason in the
-    // new-certificate-check task's AdditionalInfo; {0} is the other certificate numbers. Text from the legacy DB
-    // (confirmed by the developer, 2026-10-11).
-    public const string AdditionalCertificatesToExportDeclarationMessage = "שים לב: להצהרת היצוא קיימות תעודות מקור נוספות {0}";
-
-    // Legacy EServerTerms.CanceledDeclaration — the reject/cancel reason stamped when an export declaration's
-    // cancellation is committed (ExportDeclarationCancellationRequestCommited).
-    public const string CanceledDeclarationReason = "ההצהרה בוטלה"; // TODO(migration): source the exact text from ValidationMessages/resx (EServerTerms.CanceledDeclaration).
 
     // The RabbitMQ exchange a published certificate is sent to for asynchronous issuing by a worker (same name as the legacy).
     public const string IssueCertificateOfOriginExchange = "IssueCertificateOfOrigin";
