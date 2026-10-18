@@ -7,7 +7,7 @@
   <Folder Name="/Solution Items/">
     <File Path="../.editorconfig" />
   </Folder>
-  <Folder Name="/Test/">
+  <Folder Name="/Tests/">
     <Project Path="../Tests/CertificateOfOrigins.Test/CertificateOfOrigins.Test.csproj" />
   </Folder>
   <Project Path="CertificateOfOriginsWorkers/CertificateOfOriginsWorkers.csproj" />
