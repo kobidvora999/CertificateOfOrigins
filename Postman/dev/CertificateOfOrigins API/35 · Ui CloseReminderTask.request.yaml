@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_URL}}/ui/AuthenticationRequest/CloseReminderTask"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "organizationUnitId": {{fileOrg}}
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4400

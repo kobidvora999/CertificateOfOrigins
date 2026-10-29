@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_URL}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    {{approveBody}}
+scripts:
+  - type: beforeRequest
+    code: |-
+      // The worker approves: the certificate the previous request read, status PendingRelease (7) with its ORIGINAL status
+      // (the workload's withStatus helper). The declaration is already released (mock default), so the save publishes at once.
+      var dto = JSON.parse(pm.collectionVariables.get('certDto') || '{}');
+      dto.originalCertificateOfOriginStatusId = dto.certificateOfOriginStatusId;
+      dto.certificateOfOriginStatusId = 7;
+      pm.collectionVariables.set('approveBody', JSON.stringify(dto));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+      try {
+        const j = pm.response.json();
+        if (j && j.guid !== undefined && j.guid !== null) pm.collectionVariables.set('certGuid', j.guid);
+      } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 3500

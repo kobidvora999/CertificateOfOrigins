@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_URL}}/ui/ExportDocumentAuthenticationRequest/{{expId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+      try {
+        const j = pm.response.json();
+        if (j && j.exporterCustomerId !== undefined && j.exporterCustomerId !== null) pm.collectionVariables.set('expExporterId', j.exporterCustomerId);
+        if (j && j.countryId !== undefined && j.countryId !== null) pm.collectionVariables.set('expCountryId', j.countryId);
+      } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 2600

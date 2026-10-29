@@ -1,0 +1,39 @@
+$kind: http-request
+url: "{{base_URL}}/community/CertificateOfOrigins"
+method: POST
+headers:
+  MessageSenderId: "{{messageSenderId}}"
+  Content-Type: "application/json"
+  x-mock-feature--DealFile.NotReleased: "true"
+body:
+  type: json
+  content: |-
+    {
+      "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationCountry": "DE",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "invoiceDetail": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "invoiceSum": 100, "currencyType": "USD",
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 201', () => pm.response.to.have.status(201));
+      try {
+        const j = pm.response.json();
+        if (j && j.applicationId !== undefined && j.applicationId !== null) pm.collectionVariables.set('certId', j.applicationId);
+        if (j && j.certificateId !== undefined && j.certificateId !== null) pm.collectionVariables.set('certNumber', j.certificateId);
+      } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 1000

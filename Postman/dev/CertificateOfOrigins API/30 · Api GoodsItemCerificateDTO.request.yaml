@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_URL}}/api/CertificateOfOrigins/GoodsItemCerificateDTO"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    [ { "goodsItemId": 1, "certificateNumber": "{{certNumber}}" } ]
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 3900

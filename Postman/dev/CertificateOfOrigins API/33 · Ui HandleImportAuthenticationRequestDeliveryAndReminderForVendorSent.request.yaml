@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{base_URL}}/ui/AuthenticationRequest/HandleImportDeliveryAndReminderForVendorSent"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}},
+      "isDelivery": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+      try {
+        const j = pm.response.json();
+        if (j && j.authenticationFileStatusId !== undefined && j.authenticationFileStatusId !== null) pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId);
+        if (j && j.deliveryMethodId !== undefined && j.deliveryMethodId !== null) pm.collectionVariables.set('fileDm', j.deliveryMethodId);
+      } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 4200

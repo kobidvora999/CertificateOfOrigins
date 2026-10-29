@@ -1,0 +1,5 @@
+name: "CertificateOfOrigins — DEV"
+values:
+  - key: base_URL
+    value: "http://localhost:9034"
+    description: "service host"

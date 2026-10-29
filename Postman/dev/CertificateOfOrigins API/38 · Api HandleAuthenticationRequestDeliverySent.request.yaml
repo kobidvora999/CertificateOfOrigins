@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_URL}}/api/EventsResponse/HandleDeliverySent"
+method: PATCH
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    {
+      "relatedEntities": [
+        {
+          "entityId": {{fileId}},
+          "entityType": 12385
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4700

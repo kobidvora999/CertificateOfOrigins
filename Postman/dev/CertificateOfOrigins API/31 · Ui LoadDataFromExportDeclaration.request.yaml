@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_URL}}/ui/CertificateOfOrigins/LoadDataFromExportDeclaration"
+method: QUERY
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    { "leadDocumentId": 111, "exportDeclarationNumber": "260146", "requestReasonCode": 1 }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4000

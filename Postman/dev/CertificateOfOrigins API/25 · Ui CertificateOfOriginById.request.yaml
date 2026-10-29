@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_URL}}/ui/CertificateOfOrigins/{{certId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+      try { pm.collectionVariables.set('certDto', JSON.stringify(pm.response.json())); } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 3400

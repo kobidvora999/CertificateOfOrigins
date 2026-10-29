@@ -1,0 +1,45 @@
+$kind: http-request
+url: "{{base_URL}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{docA}},
+      "isNewInstance": true,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "decisionId": 1,
+      "leadDocumentId": {{docA}},
+      "documentIssuingDate": "{{today}}",
+      "documentNumber": "DN-{{docA}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "originCountryId": 32,
+      "number": 1,
+      "preferenceDocumentTypeId": 4,
+      "responseNameEmail": "flow@example.com",
+      "responsePhoneNum": "0500000000",
+      "organizationUnitId": 1,
+      "vendorId": {{vendorId}},
+      "vendorName": "Lifecycle Vendor",
+      "customerId": 888,
+      "importerId": {{importerId}},
+      "remarks": "lifecycle request A",
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": true,
+      "collaterals": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 200', () => pm.response.to.have.status(200));
+      try {
+        const j = pm.response.json();
+        if (j && j.decisionId !== undefined && j.decisionId !== null) pm.collectionVariables.set('decA', j.decisionId);
+      } catch (e) { console.error('capture failed', e); }
+    language: text/javascript
+order: 1100

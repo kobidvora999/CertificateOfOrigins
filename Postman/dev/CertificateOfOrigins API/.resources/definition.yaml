@@ -1,0 +1,67 @@
+$kind: collection
+name: "CertificateOfOrigins API"
+description: |-
+  CertificateOfOrigins .NET 10 microservice - DEV smoke collection. base_URL points to the locally running service (http://localhost:9034).
+
+  HOW TO RUN: run the whole collection top to bottom (Runner or `postman collection run`) against a fresh DB. Every request
+  sends `x-mock-mode: x-mock-mode` (collection pre-request script), so all proxies answer from their in-service mocks.
+  Each request asserts the HTTP status only. Request values are copied from the internal-workload collections
+  (Postman/postman/collections); the first request mints `runId` and the import-authentication document / importer /
+  vendor ids, and the collection script refreshes the relative dates (today, twoDaysAgo, tenDaysAgo, inOneMonth).
+
+  CHAIN (afterResponse scripts store ids in collection variables):
+  - 01 Community Create -> {{certId}} (applicationId) and {{certNumber}} (certificateId); 23 Community Update re-captures both.
+  - 02 Ui SaveImportAuthenticationRequest -> {{decA}}; 03 Ui CreateNewAuthenticationFile -> {{fileId}}, {{fileOrg}}, {{fileStatus}}, {{fileDm}}.
+  - 04 Ui SaveExportDocumentAuthenticationRequest -> {{expId}}; 17 Ui ExportDocumentAuthenticationRequestByID -> {{expExporterId}}, {{expCountryId}}.
+  - 25 Ui CertificateOfOriginById -> {{certDto}}; 26 Ui SaveCertificateOfOrigin builds {{approveBody}} from it (status 7) and captures {{certGuid}}.
+  - 33/36/37 delivery steps re-capture {{fileStatus}}, {{fileDm}}, {{decA}}; 40 Community Replacement -> {{replacementNumber}} (cancelled by 41).
+  Order: creates, reads, state changes (update, reconcile, approve/publish, import-file deliveries), replacement and cancel last.
+  Captured values are collection variables only - never put them in an environment file (it would shadow every capture).
+variables:
+  base_URL: http://localhost:9034
+  messageSenderId: "1"
+  runId: "0"
+  certId: "0"
+  certNumber: "0"
+  certDto: "{}"
+  approveBody: "{}"
+  certGuid: "00000000-0000-0000-0000-000000000000"
+  replacementNumber: "0"
+  docA: "0"
+  importerId: "0"
+  vendorId: "0"
+  decA: "0"
+  fileId: "0"
+  fileOrg: "0"
+  fileStatus: "0"
+  fileDm: "0"
+  expId: "0"
+  expExporterId: "0"
+  expCountryId: "0"
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Platform mock convention: REAL proxies are the DI default; opt into the mocks with the global
+      // x-mock-mode header (value must equal "x-mock-mode") - enables every AddProxy-registered mock.
+      pm.request.headers.add({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      // Acting-user context (RequestMetadata.UserId), as every internal-workload collection sends it.
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+
+      // Relative dates (copied from the workload collection scripts): the exporter-declaration rule allows today..-5 days.
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('today', iso(now));
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+      pm.collectionVariables.set('inOneMonth', iso(now + 30 * DAY));
+
+      // Run-scoped values, re-minted on the first request so reruns never collide (workload scheme:
+      // runId = Date.now(); DocumentID = 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k; importer / vendor = 6000000 / 7000000 + ms).
+      if (/^01 /.test(pm.info.requestName) || pm.collectionVariables.get('runId') === '0') {
+          var ms = now % 1000000;
+          pm.collectionVariables.set('runId', String(now));
+          pm.collectionVariables.set('docA', 800000000 + ms * 100 + 7 * 10 + 1);
+          pm.collectionVariables.set('importerId', 6000000 + ms);
+          pm.collectionVariables.set('vendorId', 7000000 + ms);
+      }
+    language: text/javascript
