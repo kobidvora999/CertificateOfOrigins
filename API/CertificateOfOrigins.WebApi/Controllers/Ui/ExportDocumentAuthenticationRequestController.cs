@@ -54,11 +54,10 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
         return Ok(result);
     }
 
-    [HttpQuery("Search")]
+    [HttpQuery]
     [BadRequestResponse]
-    [NotFoundResponse]
     [OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
-    public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromBody] ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> Search([FromBody] ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
         var result = await BusinessLayer.GetExportDocumentAuthenticationRequestSearch(filter);
         return Ok(result);

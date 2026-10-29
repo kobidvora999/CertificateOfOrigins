@@ -30,11 +30,10 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
 
     // Internal WCF: GetCertificateOfOriginsByFilter(filter) — the main certificate search. Returns the matching
     // certificates (empty list when none — a search, never 404). The BL/DAL/SP/enrichment were built for #2.
-    [HttpQuery("ByFilter")]
+    [HttpQuery]
     [BadRequestResponse]
-    [NotFoundResponse]
     [OkJsonResponse(typeof(List<CertificateOfOriginResultDto>))]
-    public async Task<ActionResult<List<CertificateOfOriginResultDto>>> CertificateOfOriginsByFilter([FromBody] CertificateOfOriginFilterDto filter)
+    public async Task<ActionResult<List<CertificateOfOriginResultDto>>> Search([FromBody] CertificateOfOriginFilterDto filter)
     {
         var result = await BusinessLayer.GetCertificateOfOriginsByFilter(filter);
         return Ok(result);

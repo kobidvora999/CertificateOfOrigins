@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/ByFilter"
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
 method: QUERY
 headers:
   Content-Type: application/json

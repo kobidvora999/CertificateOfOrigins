@@ -18,11 +18,10 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // matching requests (empty list when none — a search, never 404). ImporterName/VendorName are enriched via
     // proxies and IssuingCountry/OrganizationUnit names via lookups; only LeadDocument title stays null (raw id
     // returned). Supply the request-date range — the SP always applies it.
-    [HttpQuery("ByFilter")]
+    [HttpQuery]
     [BadRequestResponse]
-    [NotFoundResponse]
     [OkJsonResponse(typeof(List<GetImportAuthenticationRequestResultDto>))]
-    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>>> AuthenticationRequestByFilter([FromBody] ImportAuthenticationRequestFilterDto filter)
+    public async Task<ActionResult<List<GetImportAuthenticationRequestResultDto>>> Search([FromBody] ImportAuthenticationRequestFilterDto filter)
     {
         var result = await BusinessLayer.GetAuthenticationRequestByFilter(filter);
         return Ok(result);

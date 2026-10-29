@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/ExportDocumentAuthenticationRequest/Search"
+url: "{{base_URL}}/ui/ExportDocumentAuthenticationRequest"
 method: QUERY
 headers:
   Content-Type: "application/json"
