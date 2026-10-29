@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # Status 2 is not an open-task status, but a child with a Partly(5) decision opens the handling task anyway - the second half of that OR, which the status alone never reaches.

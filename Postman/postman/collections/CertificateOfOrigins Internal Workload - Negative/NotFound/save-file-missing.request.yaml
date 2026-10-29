@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/2147483647"
+method: PUT
 headers:
   Content-Type: application/json
 # A file save for a file that does not exist, with no status change and no children, so only the file UPDATE runs -> 404.

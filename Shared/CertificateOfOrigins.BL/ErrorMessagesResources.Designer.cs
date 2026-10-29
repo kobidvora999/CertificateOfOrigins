@@ -94,6 +94,8 @@ internal static class ErrorMessagesResources
 
     internal static string RequestReasonNotAllowedForOperation => ResourceManager.GetString(nameof(RequestReasonNotAllowedForOperation), null)!;
 
+    internal static string RouteIdDoesNotMatchBody => ResourceManager.GetString(nameof(RouteIdDoesNotMatchBody), null)!;
+
     internal static string CertificateTypeNotExist => ResourceManager.GetString(nameof(CertificateTypeNotExist), null)!;
 
     internal static string CountryAndCountryGroup => ResourceManager.GetString(nameof(CountryAndCountryGroup), null)!;

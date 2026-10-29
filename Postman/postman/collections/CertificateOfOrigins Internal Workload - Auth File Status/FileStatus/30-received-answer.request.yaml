@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # ReceivedAnswerInFile(5) is both an open-task status AND the one that fires UpdateFileStatusFinalDecisionInCase - two arms in one request.

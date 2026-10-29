@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/AuthenticationRequest/SaveImport"
+url: "{{base_URL}}/ui/AuthenticationRequest"
 method: POST
 headers:
   Content-Type: "application/json"

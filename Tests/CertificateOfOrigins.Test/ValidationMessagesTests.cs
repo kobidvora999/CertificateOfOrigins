@@ -24,7 +24,7 @@ public class ValidationMessagesTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(messages, Has.Count.EqualTo(75));
+            Assert.That(messages, Has.Count.EqualTo(76));
             Assert.That(messages.Where(message => string.IsNullOrWhiteSpace(message.DisplayMessage)).Select(message => message.Name), Is.Empty,
                 "every entry resolves from the resx");
         });

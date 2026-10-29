@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # Three arms at once: the child's Rejection(2) decision drives ManageFileStatus' rejection loop AND SendDecisionMessage's Rejection case (a different message type + parameters), and userId 7 != userResponseId 5 makes the message a GROUP message - both of those had never run because every fixture sent 5/5.

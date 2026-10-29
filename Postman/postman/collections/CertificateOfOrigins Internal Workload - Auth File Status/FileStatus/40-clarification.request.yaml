@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # ClarificationRequired(7) opens the handling task and is the ONLY status that skips the close-all-tasks block in ManageFileStatus - the != ClarificationRequired guard's false side.

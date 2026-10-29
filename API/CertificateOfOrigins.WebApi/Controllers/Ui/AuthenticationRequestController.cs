@@ -1,6 +1,7 @@
 using CertificateOfOrigins.BL;
 using CertificateOfOrigins.WebApi.Filters;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.WebApi;
 using CustomsCloud.InfrastructureCore.WebApi.OpenApiOperations;
 using Microsoft.AspNetCore.Mvc;
@@ -159,8 +160,8 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: CreateNewAuthenticationFile(requests) — creates a new import authentication-request file from a
     // set of requests and links them to it. Fails with 400 (RestValidationException) if any request already belongs
-    // to a file. A state-changing write with a body → POST. Returns the created file.
-    [HttpPost("CreateNewFile")]
+    // to a file. Creates a file → POST on File. Returns the created file.
+    [HttpPost("File")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(CreateNewAuthenticationFileResultDto))]
@@ -200,9 +201,9 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: SaveImportAuthenticationRequest(request) — saves an import authentication request's central-decision
     // edits: pushes its collaterals to permanent (Collateral service), raises the decision-driven events + message, and
     // inserts the request when the caller sends IsNewInstance, otherwise updates it (missing row → 404). A
-    // state-changing write with a body → POST.
+    // write with a body → POST on the controller root (one route for insert and update, as legacy; no "save" in routes).
     // Returns the fully re-read request graph (same shape as GetAuthenticationRequestByID).
-    [HttpPost("SaveImport")]
+    [HttpPost]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
@@ -214,14 +215,20 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
 
     // Internal WCF: SaveAuthenticationRequestFile(file) — saves an authentication file's central-decision review:
     // persists each child request's decision, raises the per-request + per-file status events, sends the decision /
-    // status messages, and grants collaterals on approval. A state-changing write with a body → POST. Missing file
-    // row → 404. Returns the fully re-read file (same shape as GetAuthenticationRequestFileByID).
-    [HttpPost("SaveFile")]
+    // status messages, and grants collaterals on approval. Updates the file → PUT File/{fileId}; the body's Id must be
+    // the same file (else 400). Missing file row → 404. Returns the fully re-read file (same shape as
+    // GetAuthenticationRequestFileByID).
+    [HttpPut("File/{fileId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]
-    public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> SaveAuthenticationRequestFile([FromBody] SaveAuthenticationRequestFileRequestDto request)
+    public async Task<ActionResult<GetAuthenticationRequestFileByIdResultDto>> SaveAuthenticationRequestFile([FromRoute] int fileId, [FromBody] SaveAuthenticationRequestFileRequestDto request)
     {
+        if (request.Id != fileId)
+        {
+            throw new RestValidationException(nameof(request.Id), ValidationMessages.RouteIdDoesNotMatchBody, [fileId, request.Id]);
+        }
+
         var result = await BusinessLayer.SaveAuthenticationRequestFile(request);
         return Ok(result);
     }

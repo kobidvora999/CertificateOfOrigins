@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # The coordinator's edits to a child request on the file screen (legacy UpdateAndSaveImportAuthenticationRequest,

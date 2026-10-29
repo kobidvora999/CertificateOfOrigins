@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # The file status equals the original -> ManageFileStatus returns immediately. The whole status machine is guarded by that one comparison, and no fixture had ever sent a NON-change, so the guard's true side was unrun.

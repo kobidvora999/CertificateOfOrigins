@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{refileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # S1: CancelledFile (9) - every child request is unlinked from the file.

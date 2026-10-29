@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # CancelledFile(9) detaches every child request from the file (UnlinkAllRequestsFromFile). Deliberately LAST in the folder: it unlinks this run's two requests - harmless, the next run creates a new file and new requests.

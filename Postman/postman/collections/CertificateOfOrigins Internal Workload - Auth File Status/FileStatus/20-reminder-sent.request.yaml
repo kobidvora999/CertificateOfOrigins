@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
-method: POST
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: PUT
 headers:
   Content-Type: application/json
 # AuthenticationRequestReminderWasSend(3) -> CheckStatusAndOpenTask fires UpdateFileStatusVendorReminderNotice. It is NOT one of the open-task statuses, so the handling task is deliberately not opened.
