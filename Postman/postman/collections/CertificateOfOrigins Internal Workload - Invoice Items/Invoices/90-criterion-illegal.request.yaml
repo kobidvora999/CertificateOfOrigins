@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
@@ -13,16 +13,16 @@ body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 3, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "customsHouse": "SITE01", "dateOfDeclaration": "{{twoDaysAgo}}",
+        "customsHouse": "SIT01", "dateOfDeclaration": "{{twoDaysAgo}}",
         "isDeclaredByManufacturer": true, "isDeclaredByExporter": true,
-        "invoiceDetails": [
+        "invoiceDetail": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "ZZ", "measureType": "KG", "packageType": "BX" } ] }
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "ZZ", "measureType": "KG", "packageType": "BX" } ] }
         ]
       }
     }

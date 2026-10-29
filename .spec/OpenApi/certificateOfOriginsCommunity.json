@@ -1,0 +1,1698 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CertificateOfOrigins community - certificate-of-origin request (pure REST)",
+    "version": "1.0.0",
+    "description": "Original messages: PC_NG_2280_MSG01_CertificateOfOriginRequest (request) and PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback (feedback). V2: POST /CertificateOfOrigins_2280_CertOfOriginRequest.\nEvery field that changed from V2 carries x-legacy (xsdElement, v2Property, rule, reason); removed fields are listed under the parent's x-legacy.removed.\nRules (22.10.2026): R3 camelCase; identifiers are always Id, never ID (rule 3); R5 prefix that repeats the parent removed (rule 5); R6 spelling fixed (rule 6); R7 *Specified helper removed; an absent value is null (rule 7); R8 moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026); R9 wrapper that carries nothing removed; its fields moved up (rule 9); RH transmission details are not part of a REST body; the sender id is set by the message platform (MessageSenderId) (rule 9); RT type restored to the XSD type (Numeric = integer); V2 declared number.\nAlternative 2 (customs-approved 28.10.2026): one endpoint and HTTP method per operation instead of requestReasonCode. The certificate number moves from the body to the URL.\nThe sender is the message platform's MessageSenderId header. Every operation on an existing certificate checks that the sender created it; otherwise 404 (new: legacy did not check).\nArrays keep their singular XSD names (invoiceDetail, itemDetail, exception, attachment). Attachments: externalAttachmentId only (content from the Documents service).",
+    "x-legacy": {
+      "messages": [
+        "PC_NG_2280_MSG01_CertificateOfOriginRequest",
+        "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback"
+      ],
+      "v2": "CertificateOfOrigins.json",
+      "v2Path": "/CertificateOfOrigins_2280_CertOfOriginRequest"
+    }
+  },
+  "paths": {
+    "/community/CertificateOfOrigins": {
+      "post": {
+        "operationId": "createCertificateOfOrigin",
+        "summary": "Create a certificate of origin (request reasons 1, 2, 10, 12)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateOfOriginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The certificate was created. exception[] carries reconciliation warnings, if any.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateOfOriginResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing was done: invalid input or a business rule. Legacy: exception[] under 200. Cases:\n- Contract: a required field missing, or a length or range violated. errors[].field = the property path in PascalCase (e.g. AgentRequest.CertificateOfOriginTypeCode), detail = the rule that failed. With a single attribute error the platform reports it in title (\"{field} is invalid\") and detail, and errors[] is empty.\n- Business: the message validation rejected the request and nothing was saved. errors[].errorCode = the legacy exceptionType (the UIMessage id), detail = its text, level = exceptionLevel. Legacy returned these under 200 in responseContentHeader.exception.\n- RequestReasonCode: not 1, 2, 10 or 12.\n- ExportDeclarationNum: the export declaration is in an amendment process.\n- CertificateOfOrigin / NonManipulationCertificate: the body the certificate type requires is missing.\n- CertificateOfOriginTypeCode: missing or unknown.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failure. Legacy: SoapResponseFault, or GeneralException under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/community/CertificateOfOrigins/{certificateId}": {
+      "get": {
+        "operationId": "getCertificateOfOriginStatus",
+        "summary": "Status of a certificate (legacy request reason 13)",
+        "description": "Legacy validated the full message body on a status query; there is no body now, so that validation is gone (customs-approved 28.10.2026).",
+        "parameters": [
+          {
+            "name": "certificateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 35
+            },
+            "description": "Certificate number, matched exactly. Legacy matched any certificate whose number contained the value (developer decision, 29.10.2026).",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateID",
+              "v2Property": "agentRequest.certificateID",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The certificate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateOfOriginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No certificate with this number was created by the sender (MessageSenderId). Legacy: CertificateDoesntExist under 200, and no check of who created the certificate (new: someone else's certificate is not found).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failure. Legacy: SoapResponseFault, or GeneralException under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateCertificateOfOrigin",
+        "summary": "Resend a certificate not yet published (reasons 1, 2, 12) or update a certificate (reason 3)",
+        "parameters": [
+          {
+            "name": "certificateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 35
+            },
+            "description": "Certificate number, matched exactly. Legacy matched any certificate whose number contained the value (developer decision, 29.10.2026).",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateID",
+              "v2Property": "agentRequest.certificateID",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateOfOriginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The certificate was saved. exception[] carries reconciliation warnings, if any.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateOfOriginResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing was done: invalid input or a business rule. Legacy: exception[] under 200. Cases:\n- Contract: a required field missing, or a length or range violated. errors[].field = the property path in PascalCase (e.g. AgentRequest.CertificateOfOriginTypeCode), detail = the rule that failed. With a single attribute error the platform reports it in title (\"{field} is invalid\") and detail, and errors[] is empty.\n- Business: the message validation rejected the request and nothing was saved. errors[].errorCode = the legacy exceptionType (the UIMessage id), detail = its text, level = exceptionLevel. Legacy returned these under 200 in responseContentHeader.exception.\n- RequestReasonCode: not 1, 2, 3 or 12.\n- ExportDeclarationNum: the export declaration is in an amendment process.\n- Status: the certificate's status does not allow this reason (e.g. reason 1, 2 or 12 on a published certificate).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No certificate with this number was created by the sender (MessageSenderId). Legacy: CertificateDoesntExist under 200, and no check of who created the certificate (new: someone else's certificate is not found).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The certificate is being processed by a parallel request; send again. Legacy: ConcurrencyErrorTryAgain under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failure. Legacy: SoapResponseFault, or GeneralException under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelCertificateOfOrigin",
+        "summary": "Cancel a certificate (legacy request reason 14)",
+        "parameters": [
+          {
+            "name": "certificateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 35
+            },
+            "description": "Certificate number, matched exactly. Legacy matched any certificate whose number contained the value (developer decision, 29.10.2026).",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateID",
+              "v2Property": "agentRequest.certificateID",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The certificate was cancelled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateOfOriginResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing was done: invalid input or a business rule. Legacy: exception[] under 200. Cases:\n- Contract: a required field missing, or a length or range violated. errors[].field = the property path in PascalCase (e.g. AgentRequest.CertificateOfOriginTypeCode), detail = the rule that failed. With a single attribute error the platform reports it in title (\"{field} is invalid\") and detail, and errors[] is empty.\n- Business: the message validation rejected the request and nothing was saved. errors[].errorCode = the legacy exceptionType (the UIMessage id), detail = its text, level = exceptionLevel. Legacy returned these under 200 in responseContentHeader.exception.\n- LeadDocument: a declaration is still linked to the certificate; cancel the declaration first.\n- Task: the certificate has an open customs-employee task.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No certificate with this number was created by the sender (MessageSenderId). Legacy: CertificateDoesntExist under 200, and no check of who created the certificate (new: someone else's certificate is not found).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The certificate is being processed by a parallel request; send again. Legacy: ConcurrencyErrorTryAgain under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failure. Legacy: SoapResponseFault, or GeneralException under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/community/CertificateOfOrigins/{certificateIdToCancel}/Replacement": {
+      "post": {
+        "operationId": "replaceCertificateOfOrigin",
+        "summary": "Create a certificate that replaces an existing one, which is cancelled (reasons 4, 5)",
+        "parameters": [
+          {
+            "name": "certificateIdToCancel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 35
+            },
+            "description": "Number of the certificate this one replaces, matched exactly; it is cancelled.",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateIdToCancel",
+              "v2Property": "agentRequest.certificateIdToCancel",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateOfOriginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The replacing certificate was created and the replaced one cancelled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateOfOriginResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing was done: invalid input or a business rule. Legacy: exception[] under 200. Cases:\n- Contract: a required field missing, or a length or range violated. errors[].field = the property path in PascalCase (e.g. AgentRequest.CertificateOfOriginTypeCode), detail = the rule that failed. With a single attribute error the platform reports it in title (\"{field} is invalid\") and detail, and errors[] is empty.\n- Business: the message validation rejected the request and nothing was saved. errors[].errorCode = the legacy exceptionType (the UIMessage id), detail = its text, level = exceptionLevel. Legacy returned these under 200 in responseContentHeader.exception.\n- RequestReasonCode: not 4 or 5.\n- ExportDeclarationNum: the export declaration is in an amendment process.\n- ReplacementReason: missing.\n- Status: the replaced certificate's status does not allow cancelling it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No certificate with this number was created by the sender (MessageSenderId). Legacy: CertificateDoesntExist under 200, and no check of who created the certificate (new: someone else's certificate is not found).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The certificate is being processed by a parallel request; send again. Legacy: ConcurrencyErrorTryAgain under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failure. Legacy: SoapResponseFault, or GeneralException under 200.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CertificateOfOriginRequest": {
+        "type": "object",
+        "description": "Certificate-of-origin request body. Original message: PC_NG_2280_MSG01_CertificateOfOriginRequest.",
+        "required": [
+          "agentRequest"
+        ],
+        "properties": {
+          "agentRequest": {
+            "$ref": "#/components/schemas/AgentRequest"
+          },
+          "certificateOfOrigin": {
+            "$ref": "#/components/schemas/CertificateOfOrigin"
+          },
+          "nonManipulationCertificate": {
+            "$ref": "#/components/schemas/NonManipulationCertificate"
+          }
+        },
+        "x-legacy": {
+          "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest",
+          "v2Schema": "CertificateOfOrigins_2280_CertOfOriginRequest_Request",
+          "removed": [
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/RequestContentHeader",
+              "v2Property": "requestContentHeader",
+              "rule": "RH",
+              "reason": "transmission details are not part of a REST body; the sender id is set by the message platform (MessageSenderId) (rule 9)"
+            }
+          ]
+        }
+      },
+      "AgentRequest": {
+        "type": "object",
+        "description": "פרטי בקשת סוכן המכס",
+        "required": [
+          "internalApplication",
+          "certificateOfOriginTypeCode",
+          "requestReasonCode"
+        ],
+        "properties": {
+          "internalApplication": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר בקשה פנימי של הסוכן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/internalApplication",
+              "v2Property": "internalApplication"
+            }
+          },
+          "certificateOfOriginTypeCode": {
+            "type": "integer",
+            "description": "קוד סוג תעודת מקור",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateOfOriginTypeCode",
+              "v2Property": "certificateOfOriginTypeCode"
+            }
+          },
+          "requestReasonCode": {
+            "type": "integer",
+            "description": "Request reason. POST create: 1 new, 2 retrospective, 10 empty, 12 draft. PUT: 1, 2, 12 (resend a certificate not yet published) or 3 (update). POST Replacement: 4 replacement, 5 replacement in import. Any other value: 400. 13 (status) and 14 (cancel) are GET and DELETE.",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/requestReasonCode",
+              "v2Property": "requestReasonCode"
+            }
+          },
+          "replacementReason": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Replacement reason. Used by POST Replacement only.",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/replacementReason",
+              "v2Property": "replacementReason"
+            }
+          },
+          "exportDeclarationNum": {
+            "type": "string",
+            "maxLength": 17,
+            "description": "מספר הצהרת ייצוא/שטעון",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/exportDeclarationNum",
+              "v2Property": "exportDeclarationNum"
+            }
+          }
+        },
+        "x-legacy": {
+          "removed": [
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateID",
+              "v2Property": "certificateID",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/AgentRequest/certificateIdToCancel",
+              "v2Property": "certificateIdToCancel",
+              "rule": "R8",
+              "reason": "moved from the body to the URL: an HTTP method per operation instead of requestReasonCode (rule 8, alternative 2, customs-approved 28.10.2026)"
+            }
+          ]
+        }
+      },
+      "CertificateOfOrigin": {
+        "type": "object",
+        "description": "פרטי תעודת המקור",
+        "required": [
+          "exporterId",
+          "exporterName",
+          "exporterAddress",
+          "exporterCountry",
+          "dateOfDeclaration"
+        ],
+        "properties": {
+          "invoiceDetail": {
+            "type": "array",
+            "description": "פירוט החשבוניות בתעודת המקור",
+            "maxItems": 999,
+            "items": {
+              "$ref": "#/components/schemas/InvoiceDetail"
+            },
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail",
+              "v2Property": "certificateOfOriginRequestInvoiceDetail",
+              "rule": "R5",
+              "reason": "prefix that repeats the parent removed (rule 5)"
+            }
+          },
+          "exporterId": {
+            "type": "string",
+            "maxLength": 9,
+            "description": "מס' היצואן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ExporterId",
+              "v2Property": "exporterId"
+            }
+          },
+          "exporterName": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "שם יצואן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ExporterName",
+              "v2Property": "exporterName"
+            }
+          },
+          "exporterAddress": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "כתובת יצואן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ExporterAddress",
+              "v2Property": "exporterAddress"
+            }
+          },
+          "exporterCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת יצואן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ExporterCountry",
+              "v2Property": "exporterCountry"
+            }
+          },
+          "tradeAgreementCountry1": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינה ראשונה בהסכם",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/TradeAgreementCountry1",
+              "v2Property": "tradeAgreementCountry1"
+            }
+          },
+          "tradeAgreementCountry2": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינה שניה בהסכם",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/TradeAgreementCountry2",
+              "v2Property": "tradeAgreementCountry2"
+            }
+          },
+          "tradeAgreementGroupOfCountries": {
+            "type": "integer",
+            "description": "קבוצת מדינות בהסכם",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/TradeAgreementGroupOfCountries",
+              "v2Property": "tradeAgreementGroupOfCountries"
+            }
+          },
+          "consigneeName": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "שם הנשגר/יבואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ConsigneeName",
+              "v2Property": "consigneeName"
+            }
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "כתובת הנשגר/יבואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ConsigneeAddress",
+              "v2Property": "consigneeAddress"
+            }
+          },
+          "consigneeCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת הנשגר/יבואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ConsigneeCountry",
+              "v2Property": "consigneeCountry"
+            }
+          },
+          "consigneeRemarks": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "הערות לגבי נשגר/ יבואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ConsigneeRemarks",
+              "v2Property": "consigneeRemarks"
+            }
+          },
+          "isConsigneeForPrint": {
+            "type": "boolean",
+            "description": "האם להדפיס נתוני נשגר/יבואן?",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsConsigneeForPrint",
+              "v2Property": "isConsigneeForPrint"
+            }
+          },
+          "originCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת המקור",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/OriginCountry",
+              "v2Property": "originCountry"
+            }
+          },
+          "originGroupOfCountries": {
+            "type": "integer",
+            "description": "קבוצת מדינות המקור",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/OriginGroupOfCountries",
+              "v2Property": "originGroupOfCountries"
+            }
+          },
+          "destinationCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת היעד",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/DestinationCountry",
+              "v2Property": "destinationCountry"
+            }
+          },
+          "destinationGroupOfCountries": {
+            "type": "integer",
+            "description": "קבוצת מדינות היעד",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/DestinationGroupOfCountries",
+              "v2Property": "destinationGroupOfCountries"
+            }
+          },
+          "transport": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "אמצעי הובלה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/Transport",
+              "v2Property": "transport"
+            }
+          },
+          "portOfShipment": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "נמל מוצא",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/PortOfShipment",
+              "v2Property": "portOfShipment"
+            }
+          },
+          "isCumulation": {
+            "type": "boolean",
+            "description": "צבירה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsCumulation",
+              "v2Property": "isCumulation"
+            }
+          },
+          "cumulationCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת צבירה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CumulationCountry",
+              "v2Property": "cumulationCountry"
+            }
+          },
+          "cumulationGroupOfCountries": {
+            "type": "integer",
+            "description": "קבוצת מדינות צבירה",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CumulationGroupOfCountries",
+              "v2Property": "cumulationGroupOfCountries"
+            }
+          },
+          "placeOfManufacture": {
+            "type": "integer",
+            "description": "מקום ייצור הטובין",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/PlaceOfManufacture",
+              "v2Property": "placeOfManufacture"
+            }
+          },
+          "zipCodeOfManufacture": {
+            "type": "integer",
+            "description": "מיקוד של ייצור הטובין",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 9999999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ZipCodeOfManufacture",
+              "v2Property": "zipCodeOfManufacture"
+            }
+          },
+          "observations": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "הערות",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/Observations",
+              "v2Property": "observations"
+            }
+          },
+          "isExportDecForPrint": {
+            "type": "boolean",
+            "description": "האם להדפיס את מספר הצהרת היצוא?",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsExportDecForPrint",
+              "v2Property": "isExportDecForPrint"
+            }
+          },
+          "customsHouse": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "בית מכס",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CustomsHouse",
+              "v2Property": "customsHouse"
+            }
+          },
+          "issuingCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינה מנפיקה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IssuingCountry",
+              "v2Property": "issuingCountry"
+            }
+          },
+          "cityOfDeclaration": {
+            "type": "integer",
+            "description": "יישוב הצהרת יצואן",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CityOfDeclaration",
+              "v2Property": "cityOfDeclaration"
+            }
+          },
+          "countryOfDeclaration": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת הצהרת יצואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CountryOfDeclaration",
+              "v2Property": "countryOfDeclaration"
+            }
+          },
+          "dateOfDeclaration": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך הצהרת יצואן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/DateOfDeclaration",
+              "v2Property": "dateOfDeclaration"
+            }
+          },
+          "isDeclaredByManufacturer": {
+            "type": "boolean",
+            "description": "המצהיר הוא היצרן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsDeclaredByManufacturer",
+              "v2Property": "isDeclaredByManufacturer"
+            }
+          },
+          "isDeclaredByExporter": {
+            "type": "boolean",
+            "description": "המצהיר הוא היצואן",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsDeclaredByExporter",
+              "v2Property": "isDeclaredByExporter"
+            }
+          },
+          "isAttachedList": {
+            "type": "boolean",
+            "description": "אינדיקציה האם רוצים להדפיס את רשימת  המטענים בדף אחר",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsAttachedList",
+              "v2Property": "isAttachedList"
+            }
+          },
+          "insufficientWorkingInd": {
+            "type": "boolean",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/InSufficentworkingInd",
+              "v2Property": "inSufficentworkingInd",
+              "rule": "R6",
+              "reason": "spelling fixed (rule 6)"
+            }
+          },
+          "insufficientWorkingText": {
+            "type": "string",
+            "maxLength": 256,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/InsufficentWorkingText",
+              "v2Property": "insufficentWorkingText",
+              "rule": "R6",
+              "reason": "spelling fixed (rule 6)"
+            }
+          }
+        },
+        "x-legacy": {
+          "removed": [
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/TradeAgreementGroupOfCountriesSpecified",
+              "v2Property": "tradeAgreementGroupOfCountriesSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsConsigneeForPrintSpecified",
+              "v2Property": "isConsigneeForPrintSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/OriginGroupOfCountriesSpecified",
+              "v2Property": "originGroupOfCountriesSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/DestinationGroupOfCountriesSpecified",
+              "v2Property": "destinationGroupOfCountriesSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsCumulationSpecified",
+              "v2Property": "isCumulationSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CumulationGroupOfCountriesSpecified",
+              "v2Property": "cumulationGroupOfCountriesSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/PlaceOfManufactureSpecified",
+              "v2Property": "placeOfManufactureSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/ZipCodeOfManufactureSpecified",
+              "v2Property": "zipCodeOfManufactureSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsExportDecForPrintSpecified",
+              "v2Property": "isExportDecForPrintSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CityOfDeclarationSpecified",
+              "v2Property": "cityOfDeclarationSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsDeclaredByManufacturerSpecified",
+              "v2Property": "isDeclaredByManufacturerSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsDeclaredByExporterSpecified",
+              "v2Property": "isDeclaredByExporterSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/IsAttachedListSpecified",
+              "v2Property": "isAttachedListSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/InSufficentworkingIndSpecified",
+              "v2Property": "inSufficentworkingIndSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            }
+          ]
+        }
+      },
+      "NonManipulationCertificate": {
+        "type": "object",
+        "description": "פרטי תעודת המעבר",
+        "required": [
+          "exportDate",
+          "exportCountry",
+          "importBillOfLadingNum",
+          "exportPort",
+          "importDate",
+          "exportBillOfLadingNum",
+          "transitCountry",
+          "portOfEntrance",
+          "expectedExitDate",
+          "exitPort",
+          "goodsDescription",
+          "declaringCompany",
+          "declaringPerson",
+          "declaringPosition"
+        ],
+        "properties": {
+          "exportDate": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך היצוא",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExportDate",
+              "v2Property": "exportDate"
+            }
+          },
+          "exportCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת היצוא",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExportCountry",
+              "v2Property": "exportCountry"
+            }
+          },
+          "importBillOfLadingNum": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר שטר מטען יבוא לישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ImportBillOfLadingNum",
+              "v2Property": "importBillOfLadingNum"
+            }
+          },
+          "exportPort": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "נמל המוצא/ יצוא",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExportPort",
+              "v2Property": "exportPort"
+            }
+          },
+          "importDate": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך היבוא לישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ImportDate",
+              "v2Property": "importDate"
+            }
+          },
+          "exportBillOfLadingNum": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר שטר מטען יצוא מישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExportBillOFLadingNum",
+              "v2Property": "exportBillOFLadingNum",
+              "rule": "R6",
+              "reason": "spelling fixed (rule 6)"
+            }
+          },
+          "transitCountry": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "מדינת הביניים",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/TransirCountry",
+              "v2Property": "transirCountry",
+              "rule": "R6",
+              "reason": "spelling fixed (rule 6)"
+            }
+          },
+          "portOfEntrance": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "נמל כניסה לישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/PortOfEntrance",
+              "v2Property": "portOfEntrance"
+            }
+          },
+          "expectedExitDate": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך יציאה משוער מישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExpectedExitDate",
+              "v2Property": "expectedExitDate"
+            }
+          },
+          "exitPort": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "נמל יציאה מישראל",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ExitPort",
+              "v2Property": "exitPort"
+            }
+          },
+          "goodsDescription": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "תיאור הטובין בתעודת מעבר",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/GoodsDescription",
+              "v2Property": "goodsDescription"
+            }
+          },
+          "declaringCompany": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "שם החברה המצהירה",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/DeclaringCompany",
+              "v2Property": "declaringCompany"
+            }
+          },
+          "declaringPerson": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "שם המצהיר (אדם ספציפי)",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/DeclaringPerson",
+              "v2Property": "declaringPerson"
+            }
+          },
+          "declaringPosition": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "תפקיד המצהיר",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/DeclaringPosition",
+              "v2Property": "declaringPosition"
+            }
+          },
+          "manifestNum": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר מצהר",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/NonManipulationCertificate/ManifestNum",
+              "v2Property": "manifestNum"
+            }
+          }
+        }
+      },
+      "CertificateOfOriginResult": {
+        "type": "object",
+        "description": "The certificate after the operation. Original message: PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback. The SOAP headers/content, responseContentHeader and certificateOfOriginRequestFeedback wrappers are removed and their fields moved to the root (R9).",
+        "required": [
+          "applicationId",
+          "internalApplication",
+          "certificateId",
+          "certificateOfOriginTypeCode",
+          "certificateOfOriginStatusCode",
+          "requestReasonCode"
+        ],
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Internal id of the certificate.",
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/ApplicationID",
+              "v2Property": "responseContentHeader.applicationID",
+              "rule": "R3+R9",
+              "reason": "camelCase; identifiers are always Id, never ID (rule 3); wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "internalApplication": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר בקשה פנימי של הסוכן",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/internalApplication",
+              "v2Property": "internalApplication",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "certificateId": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר תעודת המקור ",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/certificateID",
+              "v2Property": "certificateID",
+              "rule": "R3",
+              "reason": "camelCase; identifiers are always Id, never ID (rule 3)",
+              "lifted": "certificateOfOriginRequestFeedback"
+            }
+          },
+          "certificateOfOriginTypeCode": {
+            "type": "integer",
+            "description": "סוג התעודה",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/certificateOfOriginTypeCode",
+              "v2Property": "certificateOfOriginTypeCode",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "certificateOfOriginStatusCode": {
+            "type": "integer",
+            "description": "סטטוס התעודה",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/certificateOfOriginStatusCode",
+              "v2Property": "certificateOfOriginStatusCode",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "feedbackRemark": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "הערות מעריך",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/FeedbackRemark",
+              "v2Property": "feedbackRemark",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "rejectCancelReason": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "סיבת ביטול/ דחייה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/rejectCancelReason",
+              "v2Property": "rejectCancelReason",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "queryUrl": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "קישור לשאילתת נתוני מסמך",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/QueryURL",
+              "v2Property": "queryURL",
+              "rule": "R3",
+              "reason": "camelCase; identifiers are always Id, never ID (rule 3)",
+              "lifted": "certificateOfOriginRequestFeedback"
+            }
+          },
+          "requestReasonCode": {
+            "type": "integer",
+            "description": "קוד סיבת הבקשה",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/requestReasonCode",
+              "v2Property": "requestReasonCode",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "issueDateIfReleased": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך ההנפקה של התעודה אם המתינו להתרה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/IssueDateIfReleased",
+              "v2Property": "issueDateIfReleased",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "issueDateIfNotReleased": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך ההנפקה של התעודה אם לא המתינו להתרה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/IssueDateIfNotReleased",
+              "v2Property": "issueDateIfNotReleased",
+              "lifted": "certificateOfOriginRequestFeedback",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "exception": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/MessageException"
+            },
+            "description": "Reconciliation warnings when the certificate was saved; null when there are none.",
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception",
+              "v2Property": "responseContentHeader.exception",
+              "rule": "R9",
+              "reason": "wrapper that carries nothing removed; its fields moved up (rule 9)"
+            }
+          },
+          "attachment": {
+            "type": "array",
+            "nullable": true,
+            "maxItems": 9,
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            },
+            "description": "The certificate document: for a draft, or once the certificate is published. Never for a status query or a cancellation.",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/Attachment",
+              "v2Property": "attachment"
+            }
+          }
+        },
+        "x-legacy": {
+          "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback",
+          "v2Schema": "CertificateOfOrigins_2280_CertOfOriginRequest_ResponseContent",
+          "removed": [
+            {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/ResponseContentHeader/TransmitionDateTime",
+              "v2Property": "responseContentHeader.transmitionDateTime",
+              "rule": "RH",
+              "reason": "transmission details are not part of a REST body; the sender id is set by the message platform (MessageSenderId) (rule 9)"
+            },
+            {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/ResponseContentHeader/Remark",
+              "v2Property": "responseContentHeader.remark",
+              "rule": "RH",
+              "reason": "transmission details are not part of a REST body; the sender id is set by the message platform (MessageSenderId) (rule 9)"
+            },
+            {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/IssueDateIfReleasedSpecified",
+              "v2Property": "issueDateIfReleasedSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/CertificateOfOriginRequestFeedback/IssueDateIfNotReleasedSpecified",
+              "v2Property": "issueDateIfNotReleasedSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            }
+          ]
+        }
+      },
+      "MessageException": {
+        "type": "object",
+        "required": [
+          "exceptionLevel",
+          "exceptionType",
+          "exceptionDescription"
+        ],
+        "properties": {
+          "exceptionLevel": {
+            "type": "integer",
+            "description": "רמת חריגה",
+            "format": "int32",
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/ExceptionLevel",
+              "v2Property": "exceptionLevel"
+            }
+          },
+          "exceptionType": {
+            "type": "integer",
+            "description": "סוג חריגה",
+            "format": "int32",
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/ExceptionType",
+              "v2Property": "exceptionType"
+            }
+          },
+          "exceptionParms": {
+            "type": "array",
+            "maxItems": 99,
+            "minItems": 0,
+            "items": {
+              "type": "string",
+              "maxLength": 80000
+            },
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/ExceptionParms",
+              "v2Property": "exceptionParms"
+            }
+          },
+          "exceptionDescription": {
+            "type": "string",
+            "maxLength": 80000,
+            "description": "תיאור החריגה",
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/ExceptionDescription",
+              "v2Property": "exceptionDescription"
+            }
+          },
+          "englishDescription": {
+            "type": "string",
+            "maxLength": 80000,
+            "description": "תיאור באנגלית",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/EnglishDescription",
+              "v2Property": "englishDescription"
+            }
+          },
+          "bindingXpathField": {
+            "type": "string",
+            "maxLength": 20000,
+            "description": "שדה XPath",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "ResponseContentHeader/Exception/BindingXpathField",
+              "v2Property": "bindingXpathField"
+            }
+          }
+        },
+        "description": "A reconciliation warning against the export declaration, returned when the certificate was saved."
+      },
+      "Attachment": {
+        "type": "object",
+        "required": [
+          "externalAttachmentId"
+        ],
+        "properties": {
+          "externalAttachmentId": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מזהה צרופה חיצוני שהתקבל משער עולמי משירות AddAttachment",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2281_MSG02_CertificateOfOriginRequestFeedback/Attachment/externalAttachmentID",
+              "v2Property": "externalAttachmentId"
+            }
+          }
+        },
+        "description": "A certificate document, by id only. The content is read from the Documents service."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "description": "The platform's standard error body (RFC 7807). Supplied by the platform; not generated (excludedTypeNames).",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Errors"
+            }
+          }
+        }
+      },
+      "Errors": {
+        "type": "object",
+        "description": "RestProblem: one error. Legacy exception[]: exceptionType -> errorCode, exceptionDescription -> detail (parameters already formatted in), exceptionLevel -> level.",
+        "required": [
+          "field",
+          "detail"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "InvoiceDetail": {
+        "type": "object",
+        "required": [
+          "invoiceNum",
+          "invoiceDate",
+          "descriptionOfInvoice",
+          "isInvoicesForPrint"
+        ],
+        "properties": {
+          "itemDetail": {
+            "type": "array",
+            "description": "פרטי הטובין בבקשת תעודת המקור",
+            "maxItems": 999,
+            "items": {
+              "$ref": "#/components/schemas/ItemDetail"
+            },
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail",
+              "v2Property": "certificateOfOriginRequestItemDetail",
+              "rule": "R5",
+              "reason": "prefix that repeats the parent removed (rule 5)"
+            }
+          },
+          "invoiceNum": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "מספר חשבונית",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/InvoiceNum",
+              "v2Property": "invoiceNum"
+            }
+          },
+          "invoiceDate": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך חשבונית",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/InvoiceDate",
+              "v2Property": "invoiceDate"
+            }
+          },
+          "invoiceSum": {
+            "type": "number",
+            "description": "סכום חשבונית",
+            "format": "decimal",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/InvoiceSum",
+              "v2Property": "invoiceSum"
+            }
+          },
+          "currencyType": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "קוד סוג מטבע",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CurrencyType",
+              "v2Property": "currencyType"
+            }
+          },
+          "descriptionOfInvoice": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "description": "תיאור טובין בחשבונית",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/DescriptionOfInvoice",
+              "v2Property": "descriptionOfInvoice"
+            }
+          },
+          "isInvoicesForPrint": {
+            "type": "boolean",
+            "description": "האם להדפיס חשבוניות בתעודה?",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/IsInvoicesForPrint",
+              "v2Property": "isInvoicesForPrint"
+            }
+          }
+        }
+      },
+      "ItemDetail": {
+        "type": "object",
+        "required": [
+          "marksAndNumbers",
+          "itemDescription",
+          "weight",
+          "measureType"
+        ],
+        "properties": {
+          "itemSerial": {
+            "type": "integer",
+            "description": "מספר סידורי של הסחורה",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/ItemSerial",
+              "v2Property": "itemSerial",
+              "rule": "RT",
+              "reason": "type restored to the XSD type (Numeric = integer); V2 declared number"
+            }
+          },
+          "itemId": {
+            "type": "string",
+            "maxLength": 6,
+            "description": "פרט מכס",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/ItemId",
+              "v2Property": "itemId"
+            }
+          },
+          "originCriterion": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "קריטריון העדפה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/OriginCriterion",
+              "v2Property": "originCriterion"
+            }
+          },
+          "marksAndNumbers": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "סימונים ומספרים",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/MarksAndNumbers",
+              "v2Property": "marksAndNumbers"
+            }
+          },
+          "packageQuantity": {
+            "type": "integer",
+            "description": "מספר אריזות",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 99999,
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/PackageQuantity",
+              "v2Property": "packageQuantity",
+              "rule": "RT",
+              "reason": "type restored to the XSD type (Numeric = integer); V2 declared number"
+            }
+          },
+          "packageType": {
+            "type": "string",
+            "maxLength": 5,
+            "description": "סוג אריזות",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/PackageType",
+              "v2Property": "packageType"
+            }
+          },
+          "itemDescription": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "תיאור הטובין",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/ItemDescription",
+              "v2Property": "itemDescription"
+            }
+          },
+          "weight": {
+            "type": "number",
+            "maximum": 99999999.99,
+            "multipleOf": 0.01,
+            "description": "משקל ברוטו",
+            "format": "decimal",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/Weight",
+              "v2Property": "weight"
+            }
+          },
+          "measureType": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 1,
+            "description": "סוג יחידה",
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/MeasureType",
+              "v2Property": "measureType"
+            }
+          },
+          "containerIsoCode": {
+            "type": "string",
+            "maxLength": 12,
+            "description": "סוג מכולה",
+            "nullable": true,
+            "x-legacy": {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/ContainerISOCode",
+              "v2Property": "containerISOCode",
+              "rule": "R3",
+              "reason": "camelCase; identifiers are always Id, never ID (rule 3)"
+            }
+          }
+        },
+        "x-legacy": {
+          "removed": [
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/ItemSerialSpecified",
+              "v2Property": "itemSerialSpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            },
+            {
+              "xsdElement": "PC_NG_2280_MSG01_CertificateOfOriginRequest/CertificateOfOrigin/CertificateOfOriginRequestInvoiceDetail/CertificateOfOriginRequestItemDetail/PackageQuantitySpecified",
+              "v2Property": "packageQuantitySpecified",
+              "rule": "R7",
+              "reason": "*Specified helper removed; an absent value is null (rule 7)"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

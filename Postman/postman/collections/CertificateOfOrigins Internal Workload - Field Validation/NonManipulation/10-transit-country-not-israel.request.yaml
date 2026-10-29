@@ -1,16 +1,17 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# TransirCountry(40) is a NonManipulation-only field, so it is only ever validated by a NonManipulation message - and the one fixture that sends one uses IL. A non-Israel transit country reaches the fourth arm of CheckIfCountryInSystemAndIsrael's switch: TransirCountryIllegal(5018).
+# transitCountry (detail TransirCountry 40) is a NonManipulation-only field, so it is only ever validated by a NonManipulation message - and the one fixture that sends one uses IL. A non-Israel transit country reaches the fourth arm of CheckIfCountryInSystemAndIsrael's switch: TransirCountryIllegal(5018).
+# The ride-along certificateOfOrigin (it is read only for customsHouse) carries the four exporter fields the contract requires as empty strings; a NonManipulation request does not validate them.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
-      "certificateOfOrigin": { "customsHouse": "SITE01" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 5, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": { "exporterId": "", "exporterName": "", "exporterAddress": "", "exporterCountry": "", "customsHouse": "SIT01" },
       "nonManipulationCertificate": {
         "exportDate": "{{twoDaysAgo}}",
         "exportCountry": "DE",

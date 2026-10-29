@@ -1,20 +1,20 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{rorANumber}}/Replacement"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
   x-mock-feature--DealFile.NotReleased: "true"
-# Replacement B (reason 4 CertificateReplacement) naming A as the certificate to cancel.
+# Replacement B (legacy reason 4 CertificateReplacement, now POST {A}/Replacement) naming A as the certificate to cancel -> 201.
 body:
   type: json
   content: |-
     {
       "agentRequest": {
-        "requestReasonCode": 4,
+        "internalApplication": "internal-workload", "requestReasonCode": 4,
         "certificateOfOriginTypeCode": 1,
         "exportDeclarationNum": "260146",
-        "certificateIdToCancel": "{{rorANumber}}",
+        
         "replacementReason": "PM replacement"
       },
       "certificateOfOrigin": {
@@ -29,23 +29,23 @@ body:
         "originCountry": "IL",
         "destinationCountry": "DE",
         "placeOfManufacture": 1,
-        "zipCodeOfManufacture": "6100000",
+        "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer",
         "consigneeAddress": "2 St",
         "consigneeCountry": "DE",
-        "customsHouse": "SITE01",
+        "customsHouse": "SIT01",
         "issuingCountry": "IL",
         "cityOfDeclaration": 1,
         "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           {
             "invoiceNum": "INV1",
             "invoiceDate": "{{tenDaysAgo}}",
             "descriptionOfInvoice": "goods",
             "invoiceSum": 100,
             "currencyType": "USD",
-            "itemDetails": [
+            "itemDetail": [
               {
                 "itemId": "123456",
                 "marksAndNumbers": "M1",

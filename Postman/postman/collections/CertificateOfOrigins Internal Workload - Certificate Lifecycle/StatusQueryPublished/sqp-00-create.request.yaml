@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
@@ -11,7 +11,7 @@ body:
   content: |-
     {
       "agentRequest": {
-        "requestReasonCode": 1,
+        "internalApplication": "internal-workload", "requestReasonCode": 1,
         "certificateOfOriginTypeCode": 1,
         "exportDeclarationNum": "260146"
       },
@@ -27,23 +27,23 @@ body:
         "originCountry": "IL",
         "destinationCountry": "DE",
         "placeOfManufacture": 1,
-        "zipCodeOfManufacture": "6100000",
+        "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer",
         "consigneeAddress": "2 St",
         "consigneeCountry": "DE",
-        "customsHouse": "SITE01",
+        "customsHouse": "SIT01",
         "issuingCountry": "IL",
         "cityOfDeclaration": 1,
         "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           {
             "invoiceNum": "INV1",
             "invoiceDate": "{{tenDaysAgo}}",
             "descriptionOfInvoice": "goods",
             "invoiceSum": 100,
             "currencyType": "USD",
-            "itemDetails": [
+            "itemDetail": [
               {
                 "itemId": "123456",
                 "marksAndNumbers": "M1",

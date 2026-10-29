@@ -1,27 +1,27 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# reason 2 with NO exportDeclarationNum -> CheckExportDeclarationNumber's required-field arm, ExportDeclarationMissing(4987).
+# reason 2 with NO exportDeclarationNum -> CheckExportDeclarationNumber's required-field arm, ExportDeclarationMissing(4987) -> 400.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 2, "certificateOfOriginTypeCode": 1 },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 2, "certificateOfOriginTypeCode": 1 },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
               "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] } ]
       }
     }

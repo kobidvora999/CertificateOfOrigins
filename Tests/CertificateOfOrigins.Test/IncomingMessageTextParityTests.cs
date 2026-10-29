@@ -1,5 +1,7 @@
 using System.Reflection;
+using AutoMapper;
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.BL.MapperProfile;
 using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
@@ -11,18 +13,19 @@ using CustomsCloud.InfrastructureCore.Utils.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using CertificateOfOriginResult = Api.Models.CertificateOfOriginsCommunity.CertificateOfOriginResult;
 
 namespace CertificateOfOrigins.Test;
 
 // Parity findings C F-16 / F-17 / F-22 (message 2280):
 //  F-16 the "cannot transmit a published / cancelled certificate" text rendered the request reason and the status by their
 //       Hebrew table Names; the migration rendered the enum identifiers ("NewCertificate", "Published");
-//  F-17 a whitespace-only certificateID is "no certificate id" (MustSendCertificateID), not a certificate that doesn't exist;
+//  F-17 a whitespace-only certificateID is "no certificate id" - gone in pure REST: the certificate number is a URL segment;
 //  F-22 the feedback's query URL was formatted for every certificate, with an empty guid when the certificate had none.
 [TestFixture]
 public class IncomingMessageTextParityTests
 {
-    private const int MustSendCertificateIdCode = 14026318;
+    private const int SenderId = 55;
     private const string QueryUrlFormat = "https://query.example/{0}";
 
     [Test]
@@ -53,32 +56,23 @@ public class IncomingMessageTextParityTests
     }
 
     [Test]
-    public async Task AWhitespaceCertificateIdOnCancellationIsAMissingCertificateId()
-    {
-        var response = await Cancel(certificateId: "   ", guid: null, queryUrlFormat: null);
-
-        Assert.That(response.Exceptions, Is.Not.Null);
-        Assert.That(response.Exceptions!.Select(e => e.ExceptionType), Does.Contain(MustSendCertificateIdCode));
-    }
-
-    [Test]
     public async Task ACertificateWithoutAGuidStillGetsTheQueryUrlWithAnEmptyGuid()
     {
-        var response = await Cancel(certificateId: "COO-1001", guid: null, queryUrlFormat: QueryUrlFormat);
+        var result = await Status(null, QueryUrlFormat);
 
-        Assert.That(response.Feedback.QueryUrl, Is.EqualTo("https://query.example/"));
+        Assert.That(result.QueryUrl, Is.EqualTo("https://query.example/"));
     }
 
     [Test]
     public async Task ACertificateWithAGuidGetsItInTheQueryUrl()
     {
         var guid = Guid.NewGuid();
-        var response = await Cancel(certificateId: "COO-1001", guid: guid, queryUrlFormat: QueryUrlFormat);
+        var result = await Status(guid, QueryUrlFormat);
 
-        Assert.That(response.Feedback.QueryUrl, Is.EqualTo($"https://query.example/{guid}"));
+        Assert.That(result.QueryUrl, Is.EqualTo($"https://query.example/{guid}"));
     }
 
-    private static async Task<CertificateOfOriginRequestFeedbackResponseDto> Cancel(string certificateId, Guid? guid, string? queryUrlFormat)
+    private static async Task<CertificateOfOriginResult> Status(Guid? guid, string? queryUrlFormat)
     {
         var certificate = new CertificateOfOrigin
         {
@@ -87,20 +81,14 @@ public class IncomingMessageTextParityTests
             Title = "COO-1001",
             OrganizationUnitId = 1,
             CustomerId = 777,
+            CreateCustomerId = SenderId,
             CertificateOfOriginStatusId = (int)ECertificateOfOriginStatus.Published,
             Guid = guid,
         };
 
         var bl = CreateBl(certificate, queryUrlFormat);
-        var response = await bl.GetPC22802281CertificateOfOriginRequest(new CertificateOfOriginRequestMessageDto
-        {
-            AgentRequest = new CertificateOfOriginAgentRequestDto
-            {
-                RequestReasonCode = (int)ERequestReason.CertificateCancellation,
-                CertificateId = certificateId,
-            },
-        });
-        return response;
+        var result = await bl.GetCertificateOfOriginStatusForMessage("COO-1001");
+        return result;
     }
 
     private static CertificateOfOriginsBl CreateBl(CertificateOfOrigin certificate, string? queryUrlFormat)
@@ -117,7 +105,13 @@ public class IncomingMessageTextParityTests
         var services = new ServiceCollection();
         services.AddSingleton<ILogger<CertificateOfOriginsBl>>(NullLogger<CertificateOfOriginsBl>.Instance);
         services.AddSingleton(dataLayer);
-        services.AddSingleton(Fake<IRequestMetadata>((method, _) => method.Name == "get_UserId" ? (int?)7 : null));
+        services.AddSingleton(Fake<IRequestMetadata>((method, _) => method.Name switch
+        {
+            "get_UserId" => (int?)7,
+            "get_MessageSenderId" => (int?)SenderId,
+            _ => null,
+        }));
+        services.AddSingleton<IMapper>(new MapperConfiguration(cfg => cfg.AddProfile<PureRestContractProfile>(), NullLoggerFactory.Instance).CreateMapper());
         var builderType = typeof(IEventUtil).GetMethod(nameof(IEventUtil.CreatBuilder))!.ReturnType;
         services.AddSingleton(Fake<IEventUtil>((method, _) => method.Name == nameof(IEventUtil.CreatBuilder) ? FakeChainingBuilder(builderType) : null));
         services.AddSingleton(Fake<IExportDealFileProxy>());

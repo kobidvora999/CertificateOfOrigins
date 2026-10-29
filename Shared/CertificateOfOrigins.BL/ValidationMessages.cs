@@ -120,6 +120,9 @@ public class ValidationMessages : BaseValidationMessages<ValidationMessages>
     public static ValidationMessage RequestReasonNotExist { get; } =
         new ValidationMessage(nameof(RequestReasonNotExist), ErrorMessagesResources.RequestReasonNotExist, ValidationMessageLevel.Error);
 
+    public static ValidationMessage RequestReasonNotAllowedForOperation { get; } =
+        new ValidationMessage(nameof(RequestReasonNotAllowedForOperation), ErrorMessagesResources.RequestReasonNotAllowedForOperation, ValidationMessageLevel.Error);
+
     public static ValidationMessage CertificateTypeNotExist { get; } =
         new ValidationMessage(nameof(CertificateTypeNotExist), ErrorMessagesResources.CertificateTypeNotExist, ValidationMessageLevel.Error);
 

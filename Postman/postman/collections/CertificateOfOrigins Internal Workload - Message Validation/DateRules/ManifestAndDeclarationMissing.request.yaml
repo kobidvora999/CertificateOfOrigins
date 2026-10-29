@@ -1,16 +1,17 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# CheckManifestNumber: omitting BOTH manifestNum and exportDeclarationNum raises ManifestIdMissing AND ExportDeclarationMissing - two exceptions from one request.
+# CheckManifestNumber: omitting BOTH manifestNum and exportDeclarationNum raises ManifestIdMissing AND ExportDeclarationMissing - two errors from one request (400).
+# The ride-along certificateOfOrigin (it is read only for customsHouse) carries the four exporter fields the contract requires as empty strings; a NonManipulation request does not validate them.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 5 },
-      "certificateOfOrigin": { "customsHouse": "SITE01" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 5 },
+      "certificateOfOrigin": { "exporterId": "", "exporterName": "", "exporterAddress": "", "exporterCountry": "", "customsHouse": "SIT01" },
       "nonManipulationCertificate": {
         "exportDate": "{{twoDaysAgo}}", "exportCountry": "DE", "importBillOfLadingNum": "IBL1", "exportPort": "DEHAM",
         "importDate": "{{tenDaysAgo}}", "exportBillOfLadingNum": "EBL1", "transitCountry": "IL", "portOfEntrance": "ILHFA",

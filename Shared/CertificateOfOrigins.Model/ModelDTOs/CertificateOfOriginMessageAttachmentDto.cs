@@ -1,12 +1,8 @@
 namespace CertificateOfOrigins.Model.ModelDTOs;
 
-// One rendered attachment returned with the certificate feedback (legacy EAISchema Attachment — only the fields the
-// legacy CreateAttachments populated: DocumentTypeID + content + fileName).
+// One certificate document returned with the certificate feedback, by id only (V2 / pure REST attachment): the
+// community reads the content from the Documents service. Legacy returned the rendered bytes in the message.
 public class CertificateOfOriginMessageAttachmentDto
 {
-    public int DocumentTypeId { get; set; }
-
-    public byte[]? Content { get; set; }
-
-    public string? FileName { get; set; }
+    public string ExternalAttachmentId { get; set; } = null!;
 }

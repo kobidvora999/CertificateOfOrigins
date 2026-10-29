@@ -1,27 +1,28 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/PR-PUB-D-{{runId}}"
+method: PUT
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# reason 3 against the Published row, sent by a DIFFERENT agent. The Customers mock maps a numeric externalId to itself, so exporterId 888 resolves to 888 while the row's CustomerId is 777 -> AgentInUpdateDifferent(11908), plus the published-status error(14027037). Two of CheckCertificateUpdate's three arms at once.
+# reason 3 (PUT {PR-PUB-D}) against the Published row, sent by a DIFFERENT agent. The Customers mock maps a numeric externalId to itself, so exporterId 888 resolves to 888 while the row's CustomerId is 777 -> AgentInUpdateDifferent(11908), plus the published-status error(14027037) -> 400. Two of CheckCertificateUpdate's three arms at once.
+# "Different agent" is the exporter (CustomerId); the row's createCustomerId is the sender (1), or the PUT would be a 404.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 3, "certificateId": "PR-PUB-D-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 3, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "888", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
               "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] } ]
       }
     }

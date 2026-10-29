@@ -1,18 +1,7 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{sqpNumber}}"
+method: GET
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# C-03: a GetRequestStatus message on the published certificate answers the status only - no attachment (the attachment follows the reason of the incoming message, not of the stored certificate).
-body:
-  type: json
-  content: |-
-    {
-      "agentRequest": {
-        "requestReasonCode": 13,
-        "certificateOfOriginTypeCode": 1,
-        "certificateId": "{{sqpNumber}}"
-      }
-    }
+# C-03: a status query (GET) on the published certificate answers the status only - no attachment (the attachment follows the reason of the incoming message, not of the stored certificate).
 order: 5060

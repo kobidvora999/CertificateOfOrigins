@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
@@ -9,19 +9,19 @@ body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
         { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-          "itemDetails": [ { "itemId": "12345", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] }]
+          "itemDetail": [ { "itemId": "12345", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] }]
       }
     }
 order: 10600

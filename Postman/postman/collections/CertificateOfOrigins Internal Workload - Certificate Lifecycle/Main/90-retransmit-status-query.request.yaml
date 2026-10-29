@@ -1,12 +1,8 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{certNumber}}"
+method: GET
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# C13 on the same certificate id, seconds after 80: the lock 80 took was released (in Redis DB 2, LockReleaseInLockDatabase - the platform package releases in DB 0), so this is answered with the Cancelled status.
-body:
-  type: json
-  content: |-
-    { "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1, "certificateId": "{{certNumber}}" } }
+# C13 (legacy reason 13, now GET {certificateId}) on the same certificate id, seconds after 80: the lock 80 took was released (in Redis DB 2,
+# LockReleaseInLockDatabase - the platform package releases in DB 0), so this is answered 200 (not 409) with the Cancelled status.
 order: 1900

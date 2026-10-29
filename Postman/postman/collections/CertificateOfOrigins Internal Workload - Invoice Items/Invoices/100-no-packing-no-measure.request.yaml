@@ -1,27 +1,29 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# Neither packageType nor measureType -> both resolvers take their empty-code early return and must raise NOTHING. Omitting a code is legal; only an unresolvable one is an error.
+# No packageType -> ResolvePackingTypeId takes its empty-code early return and must raise NOTHING. Omitting a code is legal; only an unresolvable one is an error.
+# Was: neither packageType nor measureType. The contract now requires measureType (minLength 1), so it is sent (KG) and the measurement resolver's
+# empty-code return is no longer reachable through the API.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
         { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-          "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A" } ] }]
+          "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG" } ] }]
       }
     }
 order: 10900

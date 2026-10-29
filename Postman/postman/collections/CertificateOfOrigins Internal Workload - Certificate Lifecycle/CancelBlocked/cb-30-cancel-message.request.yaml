@@ -1,18 +1,8 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{cbNumber}}"
+method: DELETE
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# C-01: the agent sends a cancellation while the customs-employee task is open -> refused in-band with ItIsNotPossibleToTransmitACorrection (14027036), as legacy.
-body:
-  type: json
-  content: |-
-    {
-      "agentRequest": {
-        "requestReasonCode": 14,
-        "certificateOfOriginTypeCode": 1,
-        "certificateId": "{{cbNumber}}"
-      }
-    }
+# C-01: the agent cancels (DELETE) while the customs-employee task is open -> refused with 400, errors[].errorCode "14027036"
+# (ItIsNotPossibleToTransmitACorrection), as legacy refused it (legacy answered in-band under 200).
 order: 4030

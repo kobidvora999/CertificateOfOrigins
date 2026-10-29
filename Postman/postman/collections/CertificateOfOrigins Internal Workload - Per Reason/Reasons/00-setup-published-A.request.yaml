@@ -4,12 +4,13 @@ method: POST
 headers:
   Content-Type: application/json
 # A PUBLISHED row to point the per-reason checks at. Saved straight at status 8 - that is NOT a status CHANGE for a new instance (CertificateOfOriginsBl.cs:942) so no publish side effects fire; all this scenario needs is the row. Created at Received (2); 01-publish-A moves it to 8 through the status save.
+# createCustomerId is 1, the MessageSenderId every message request here sends: the pure-REST message endpoints answer 404 for a certificate another agent created (GetSenderCertificate), so a row the messages target must be the sender's own.
 body:
   type: json
   content: |-
     {
       "id": 0, "state": 1, "typeId": 1, "title": "per-reason fixture PR-PUB-A-{{runId}}",
-      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 1,
       "certificateNumber": "PR-PUB-A-{{runId}}",
       "certificateOfOriginStatusId": 2,
       "originalCertificateOfOriginStatusId": 0,

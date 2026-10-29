@@ -8,7 +8,9 @@ description: >-
       switch has cases for;
     * FillCustomersInformation and Convert — both fixtures pointed at the literal certificate number
       IL0000116895, which no longer matches anything, so the filter returned [] and Convert 404'd every run;
-    * GetSavedCertificateForMessage's two error arms — the GetRequestStatus fixture always supplied a valid id;
+    * GetSavedCertificateForMessage's two error arms — the GetRequestStatus fixture always supplied a valid id
+      (pure REST since 2026-10-28: the status query is GET /{id}, so these are now the create endpoint refusing
+      reason 13 (400) and an unknown id (404); the two arms are no longer reachable through the API);
     * the individual reconciliation findings — earlier rounds matched on every field at once, so the arms were
       never isolated;
     * HandleCertificateReplacement — reachable only on a real transition into Published on a reason-4
@@ -74,7 +76,11 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+      // The two message-status requests are pure REST now (alternative 2): 10 sends reason 13 to POST create, which
+      // refuses it (400); 20 is GET community/CertificateOfOrigins/{unknown} (404). Every other request answers 200.
+      var EXPECT_HTTP = { '10-status-no-id': 400, '20-status-unknown-id': 404 };
+      var wantHttp = EXPECT_HTTP[name] || 200;
+      pm.test(name + ': status is ' + wantHttp, function () { pm.response.to.have.status(wantHttp); });
 
       // ---- captures ----
       if (name === '00-setup' && j) { pm.collectionVariables.set('filterCertId', j.id); }
@@ -154,11 +160,14 @@ scripts:
       }
 
       // ---- message status arms ----
-      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
-      var MSG = { '10-status-no-id': 14026318, '20-status-unknown-id': 13680 };
-      if (MSG[name]) {
-          pm.test(name + ': raises exceptionType ' + MSG[name], function () {
-              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MSG[name]);
+      // Was: reason 13 in the body, answered 200 with in-band MustSendCertificateID (14026318) / CertificateDoesntExist
+      // (13680) from GetSavedCertificateForMessage. Pure REST: the number is the GET URL segment, so a status query
+      // without one cannot be sent - 10 now proves the create endpoint refuses the status reason (400 on
+      // AgentRequest.RequestReasonCode), and an unknown number is the 404 asserted above.
+      if (name === '10-status-no-id') {
+          pm.test('10-status-no-id: reason 13 refused on AgentRequest.RequestReasonCode', function () {
+              var fields = (j && j.errors ? j.errors : []).map(function (e) { return e.field; });
+              pm.expect(fields, 'errors[].field').to.include('AgentRequest.RequestReasonCode');
           });
       }
 

@@ -14,6 +14,8 @@ description: >-
   The third folder covers the country-GROUP switch. `CheckIfCountryGroupIsInTradeAgreement` picks its message
   from the same kind of DetailType switch, and a group can never share a message with its country — the
   cross-field XOR rule demands exactly one of each pair — so each arm needs a message of its own.
+  Pure REST: every request is POST community/CertificateOfOrigins; a rejected message is HTTP 400 with the legacy
+  code in errors[].errorCode (string), not 200 with an in-band exceptions[] array.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -35,9 +37,11 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
-
-      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+      // Pure REST (alternative 2, POST community/CertificateOfOrigins): a rejected message is 400 ProblemDetails whose
+      // errors[].errorCode is the legacy exceptionType as a STRING; a saved certificate is 201 with the flat result and
+      // only its reconciliation warnings in exception[]. Codes are read from both, as strings.
+      var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })
+          .concat((j && j.exception ? j.exception : []).map(function (e) { return String(e.exceptionType); }));
 
       // One flipped field per request, one code per flip. Each of the first four is a different arm of the same
       // DetailType switch, which is why they are separate scenarios rather than one message with four bad fields.
@@ -45,7 +49,7 @@ scripts:
           '10-exporter-country-not-israel':    4991,     // CheckIfCountryInSystemAndIsrael -> ExporterCountry
           '20-issuing-country-not-israel':     5008,     // ...                             -> IssuingCountry
           '30-declaration-country-not-israel': 5009,     // ...                             -> CountryOfDeclaration
-          '10-transit-country-not-israel':     5018,     // ...                             -> TransirCountry
+          '10-transit-country-not-israel':     5018,     // ...                             -> TransirCountry (transitCountry)
           '40-first-agreement-not-israel':     4992,     // CheckAgreementFirstCountry
           '50-city-unknown':                   14027394, // CheckCityOfDeclaration, unresolvable id
           '20-export-country-israel':          5016,     // CheckExportCountry, inverted for NonManipulation
@@ -67,15 +71,29 @@ scripts:
           '30-export-country-valid':        [5016]
       };
 
+      // NOT CONVERTED FAITHFULLY: the contract caps destinationCountry at 3 characters, so the 7-character arithmetic code
+      // of 60-place-of-manufacture-exempt is refused by the contract (400) before the BL runs - see the request comment.
+      // Until a 3-character exempt code exists, the contract-level 400 is what this request asserts.
+      if (name === '60-place-of-manufacture-exempt') {
+          pm.test(name + ': refused by the contract (destinationCountry maxLength 3) - 400', function () {
+              pm.response.to.have.status(400);
+          });
+          return;
+      }
+
+      // A scenario that must raise a validation code is a rejected message: 400 (was 200 with the code in-band). The
+      // silent scenario asserted nothing about the outcome beyond 'answered', so either REST answer is accepted there.
       if (MUST[name] !== undefined) {
-          pm.test(name + ': raises exceptionType ' + MUST[name], function () {
-              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MUST[name]);
+          pm.test(name + ': rejected with 400', function () { pm.response.to.have.status(400); });
+          pm.test(name + ': errors[] carries errorCode ' + MUST[name], function () {
+              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(String(MUST[name]));
           });
       }
       if (MUST_NOT[name]) {
+          pm.test(name + ': answered 201 or 400', function () { pm.expect(pm.response.code).to.be.oneOf([201, 400]); });
           pm.test(name + ': raises nothing for this field - the input is legal', function () {
               MUST_NOT[name].forEach(function (c) {
-                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(String(c));
               });
           });
       }

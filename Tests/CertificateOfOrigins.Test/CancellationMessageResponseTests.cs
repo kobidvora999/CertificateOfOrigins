@@ -1,9 +1,12 @@
 using System.Reflection;
+using AutoMapper;
 using CertificateOfOrigins.BL;
+using CertificateOfOrigins.BL.MapperProfile;
 using CertificateOfOrigins.BL.Proxies;
 using CertificateOfOrigins.DAL;
 using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Interfaces.Http;
 using CustomsCloud.InfrastructureCore.Lookup;
 using CustomsCloud.InfrastructureCore.Parameters;
@@ -11,60 +14,59 @@ using CustomsCloud.InfrastructureCore.Utils.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using CertificateOfOriginResult = Api.Models.CertificateOfOriginsCommunity.CertificateOfOriginResult;
 
 namespace CertificateOfOrigins.Test;
 
-// C F-10 regression: in legacy the exception gate (throw _requestExceptions) ran before the reason switch, and the wrapper
-// answered a throw with a FRESH response - empty feedback, ApplicationId 0, only the header exceptions. A cancellation
-// that was blocked (an open customs-employee task, a still-linked declaration) therefore never echoed the certificate it
-// had not cancelled; the migration returned the full feedback and the certificate id next to the exceptions.
+// C F-10 regression: in legacy the exception gate (throw _requestExceptions) ran before the reason switch, so a cancellation
+// that was blocked (an open customs-employee task, a still-linked declaration) never echoed the certificate it had not
+// cancelled. Pure REST (DELETE community/CertificateOfOrigins/{certificateId}): a blocked cancellation is a 400 with the
+// legacy exceptions, never a response that could read as a success.
 [TestFixture]
 public class CancellationMessageResponseTests
 {
     private const int CertificateId = 321;
+    private const int SenderId = 55;
 
     [Test]
-    public async Task BlockedCancellationReturnsAnEmptyFeedbackAndNoApplicationId()
+    public void BlockedCancellationIsABadRequest()
     {
         // A certificate with an open customs-employee task cannot be cancelled by message.
-        var response = await Cancel((int)ECertificateOfOriginStatus.DeclarationMatch, linkedDeclaration: false);
+        var exception = Assert.ThrowsAsync<RestValidationException>(() => Cancel((int)ECertificateOfOriginStatus.DeclarationMatch, false, SenderId));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(response.Exceptions, Is.Not.Null.And.Not.Empty, "the block is reported in the header exceptions");
-            Assert.That(response.ApplicationId, Is.Zero, "a blocked cancellation must not look like a success");
-            Assert.That(response.Feedback.CertificateId, Is.Null, "the feedback of the un-cancelled certificate is not echoed");
-        });
+        Assert.That(exception!.Errors, Is.Not.Empty, "the block is reported as errors[]");
     }
 
     [Test]
-    public async Task CancellationBlockedByALinkedDeclarationReturnsAnEmptyFeedbackAndNoApplicationId()
+    public void CancellationBlockedByALinkedDeclarationIsABadRequest()
     {
-        var response = await Cancel((int)ECertificateOfOriginStatus.Published, linkedDeclaration: true);
+        var exception = Assert.ThrowsAsync<RestValidationException>(() => Cancel((int)ECertificateOfOriginStatus.Published, true, SenderId));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(response.Exceptions, Is.Not.Null.And.Not.Empty);
-            Assert.That(response.ApplicationId, Is.Zero);
-            Assert.That(response.Feedback.CertificateId, Is.Null);
-        });
+        Assert.That(exception!.Errors, Is.Not.Empty);
     }
 
     [Test]
-    public async Task CleanCancellationStillReturnsTheCancelledCertificate()
+    public async Task CleanCancellationReturnsTheCancelledCertificate()
     {
-        var response = await Cancel((int)ECertificateOfOriginStatus.Published, linkedDeclaration: false);
+        var result = await Cancel((int)ECertificateOfOriginStatus.Published, false, SenderId);
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.Exceptions, Is.Null);
-            Assert.That(response.ApplicationId, Is.EqualTo(CertificateId));
-            Assert.That(response.Feedback.CertificateId, Is.EqualTo("COO-1001"));
-            Assert.That(response.Feedback.CertificateOfOriginStatusCode, Is.EqualTo((int)ECertificateOfOriginStatus.Cancelled));
+            Assert.That(result.Exception, Is.Null);
+            Assert.That(result.ApplicationId, Is.EqualTo(CertificateId));
+            Assert.That(result.CertificateId, Is.EqualTo("COO-1001"));
+            Assert.That(result.CertificateOfOriginStatusCode, Is.EqualTo((int)ECertificateOfOriginStatus.Cancelled));
         });
     }
 
-    private static async Task<CertificateOfOriginRequestFeedbackResponseDto> Cancel(int storedStatusId, bool linkedDeclaration)
+    // New vs legacy (29.10.2026): a certificate another agent created is not found, and is not cancelled.
+    [Test]
+    public void AnotherSendersCertificateIsNotFound()
+    {
+        Assert.ThrowsAsync<RestNotFoundException>(() => Cancel((int)ECertificateOfOriginStatus.Published, false, SenderId + 1));
+    }
+
+    private static async Task<CertificateOfOriginResult> Cancel(int storedStatusId, bool linkedDeclaration, int messageSenderId)
     {
         var certificate = new CertificateOfOrigin
         {
@@ -73,6 +75,7 @@ public class CancellationMessageResponseTests
             Title = "COO-1001",
             OrganizationUnitId = 1,
             CustomerId = 777,
+            CreateCustomerId = SenderId,
             CertificateOfOriginStatusId = storedStatusId,
         };
 
@@ -90,7 +93,13 @@ public class CancellationMessageResponseTests
         var services = new ServiceCollection();
         services.AddSingleton<ILogger<CertificateOfOriginsBl>>(NullLogger<CertificateOfOriginsBl>.Instance);
         services.AddSingleton(dataLayer);
-        services.AddSingleton(Fake<IRequestMetadata>((method, _) => method.Name == "get_UserId" ? (int?)7 : null));
+        services.AddSingleton(Fake<IRequestMetadata>((method, _) => method.Name switch
+        {
+            "get_UserId" => (int?)7,
+            "get_MessageSenderId" => (int?)messageSenderId,
+            _ => null,
+        }));
+        services.AddSingleton<IMapper>(new MapperConfiguration(cfg => cfg.AddProfile<PureRestContractProfile>(), NullLoggerFactory.Instance).CreateMapper());
         var builderType = typeof(IEventUtil).GetMethod(nameof(IEventUtil.CreatBuilder))!.ReturnType;
         services.AddSingleton(Fake<IEventUtil>((method, _) => method.Name == nameof(IEventUtil.CreatBuilder) ? FakeChainingBuilder(builderType) : null));
         services.AddSingleton(exportDealFile);
@@ -98,15 +107,8 @@ public class CancellationMessageResponseTests
 
         var bl = new CertificateOfOriginsBl(serviceProvider, Fake<ILookupUtil>(), Fake<IParametersUtil>());
 
-        var response = await bl.GetPC22802281CertificateOfOriginRequest(new CertificateOfOriginRequestMessageDto
-        {
-            AgentRequest = new CertificateOfOriginAgentRequestDto
-            {
-                RequestReasonCode = (int)ERequestReason.CertificateCancellation,
-                CertificateId = "COO-1001",
-            },
-        });
-        return response;
+        var result = await bl.CancelCertificateOfOriginByMessage("COO-1001");
+        return result;
     }
 
     // --- Minimal dependency-free interface faking over System.Reflection.DispatchProxy (no mocking package). ---

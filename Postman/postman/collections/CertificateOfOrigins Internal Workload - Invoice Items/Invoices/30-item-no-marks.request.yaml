@@ -1,27 +1,28 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# An item with no marksAndNumbers -> MandatoryValue naming MarksAndNumbers (the else-if arm, which only fires when the item list is NOT empty).
+# An item with an EMPTY marksAndNumbers -> MandatoryValue naming MarksAndNumbers (the else-if arm, which only fires when the item list is NOT empty).
+# The contract requires the property, so omitting it (as before) is now a contract-level 400 that never reaches the BL; "" passes the contract and the BL treats it as missing.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
         { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-          "itemDetails": [ { "itemId": "123456", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] }]
+          "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] }]
       }
     }
 order: 10200

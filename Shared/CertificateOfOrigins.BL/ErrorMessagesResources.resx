@@ -152,6 +152,10 @@
     <value>סיבת בקשה לא קיימת במערכת</value>
     <comment>EMessages 5020</comment>
   </data>
+  <data name="RequestReasonNotAllowedForOperation" xml:space="preserve">
+    <value>סיבת הבקשה {0} אינה מתאימה לפעולה זו. סיבות אפשריות: {1}</value>
+    <comment>Pure-REST community message: each endpoint takes only its own request reasons (no legacy EMessages code)</comment>
+  </data>
   <data name="CertificateTypeNotExist" xml:space="preserve">
     <value>סוג תעודת מקור לא קיים במערכת</value>
     <comment>EMessages 5022</comment>

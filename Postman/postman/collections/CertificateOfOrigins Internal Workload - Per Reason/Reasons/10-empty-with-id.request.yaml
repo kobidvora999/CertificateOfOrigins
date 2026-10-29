@@ -1,27 +1,29 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/PR-PUB-G-{{runId}}"
+method: PUT
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# reason 10 (EmptyCertificate) MUST NOT carry a certificateId -> CheckCertificateIdIsEmpty raises MandatoryNullValue(2942). That whole helper was 0%.
+# Was: reason 10 (EmptyCertificate) carrying a certificateId -> CheckCertificateIdIsEmpty raised MandatoryNullValue(2942), in-band under 200.
+# Pure REST: an empty certificate is created by POST with no number; sent as PUT {PR-PUB-G} with reason 10, the update endpoint refuses
+# the reason -> 400 on AgentRequest.RequestReasonCode. CheckCertificateIdIsEmpty is no longer reachable through the API.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 10, "certificateId": "PR-PUB-G-{{runId}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 10, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
               "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] } ]
       }
     }

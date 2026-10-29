@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CertificateOfOrigins.Model.ModelDTOs;
 
 // Legacy TemplateResult [DataContract] — a single generated certificate template document. The BL uses Content
@@ -14,6 +16,11 @@ public class TemplateResultDto
     public int DocumentTypeId { get; set; }
 
     public bool IsPdfFormat { get; set; }
+
+    // The ExternalId the document was uploaded with to Documents — set by the upload, returned to the community as the
+    // message attachment's externalAttachmentId. Not part of the API contract.
+    [JsonIgnore]
+    public string? ExternalAttachmentId { get; set; }
 
     // Legacy TemplateResult.FileName — a computed property, not a stored one: Name + the extension implied by
     // IsPdfFormat. It is what CreateAttachments put on the feedback's attachment, so it is reproduced here rather

@@ -7,7 +7,8 @@ namespace CertificateOfOrigins.Test;
 
 // Parity finding C F-23: message 2280 finds "the certificate with this number" the way legacy's GetCertificateOfOriginByExternalId
 // did - the first row of usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter, which reads active rows only (State = 1)
-// and orders by CreateDate descending, matching the number with LIKE '%number%'.
+// and orders by CreateDate descending. Legacy matched the number with LIKE '%number%'; pure REST puts the number in the URL,
+// so it is matched exactly (developer decision, 29.10.2026).
 [TestFixture]
 public class LatestCertificateByNumberTests
 {
@@ -35,15 +36,15 @@ public class LatestCertificateByNumberTests
         Assert.That(result?.Id, Is.EqualTo(5));
     }
 
-    // The legacy SP matched with LIKE '%' + number + '%': a number contained in a longer one is found too.
+    // The legacy SP matched with LIKE '%' + number + '%', so a partial number reached (and could cancel) a longer one.
     [Test]
-    public async Task ANumberContainedInALongerOneMatchesAsTheLegacyLikeDid()
+    public async Task ANumberContainedInALongerOneIsNotTheCertificate()
     {
         var dal = await CreateDal(NewCertificate(9, state: 1, createDate: new DateTime(2026, 1, 1)));
 
         var result = await dal.GetLatestCertificateByNumberForFeedback("IL000000000");
 
-        Assert.That(result?.Id, Is.EqualTo(9));
+        Assert.That(result, Is.Null);
     }
 
     private static CertificateOfOrigin NewCertificate(int id, int state, DateTime createDate)

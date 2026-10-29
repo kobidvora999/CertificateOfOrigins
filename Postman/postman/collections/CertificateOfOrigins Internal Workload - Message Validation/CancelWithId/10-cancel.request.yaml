@@ -1,28 +1,8 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{certIdCancelA}}"
+method: DELETE
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# reason 14 WITH certificateIdToCancel -> CheckCertificateIdToCancelHasValue.
-body:
-  type: json
-  content: |-
-    {
-            "agentRequest": { "requestReasonCode": 14, "certificateId": "{{certIdCancelA}}", "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
-      "certificateOfOrigin": {
-        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
-        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
-        "isCumulation": true, "cumulationCountry": "DE",
-        "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
-        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
-        "dateOfDeclaration": "{{twoDaysAgo}}",
-        "certificateIdToCancel": "{{certIdCancelA}}",
-        "invoiceDetails": [
-          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget", "originCriterion": "A", "measureType": "KG", "packageType": "BX" } ] } ]
-      }
-    }
+# Cancel (legacy reason 14, now DELETE {certIdCancelA}, no body) -> 200. Was: a reason-14 body WITH certificateIdToCancel -> CheckCertificateIdToCancelHasValue.
+# The cancel body is gone in pure REST, so this request and CancelNoId/10-cancel are now the same DELETE, each on its own certificate.
 order: 31000

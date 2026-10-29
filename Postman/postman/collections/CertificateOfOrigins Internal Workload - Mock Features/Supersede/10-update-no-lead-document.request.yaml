@@ -1,29 +1,29 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{certIdSupersedeMf}}"
+method: PUT
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
   x-mock-feature--DealFile.NoLeadDocument: "true"
-# GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId -> null: LinkLeadDocument's 'nothing to repoint' branch.
+# reason 3 (PUT {certIdSupersedeMf}): GetLeadDocumentByOldCertificateOfOriginIdAndUpdateToNewCertificateOfOriginId -> null: LinkLeadDocument's 'nothing to repoint' branch.
 body:
   type: json
   content: |-
     {
-            "agentRequest": { "requestReasonCode": 3, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146", "certificateId": "{{certIdSupersedeMf}}" },
+            "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 3, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
       "certificateOfOrigin": {
         "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
         "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
         "isCumulation": true, "cumulationCountry": "DE",
         "originCountry": "IL", "destinationCountry": "DE",
-        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "placeOfManufacture": 1, "zipCodeOfManufacture": 6100000,
         "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
-        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "customsHouse": "SIT01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
         "dateOfDeclaration": "{{twoDaysAgo}}",
-        "invoiceDetails": [
+        "invoiceDetail": [
           { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
             "invoiceSum": 100, "currencyType": "USD",
-            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+            "itemDetail": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
               "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
       }
     }

@@ -1,12 +1,14 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+url: "{{baseUrl}}/community/CertificateOfOrigins"
 method: POST
 headers:
   MessageSenderId: "1"
   Content-Type: application/json
-# reason 13 (GetRequestStatus) with NO certificateId -> GetSavedCertificateForMessage's missing-id arm, MustSendCertificateID(14026318). The stock fixture always supplied one.
+# Was: reason 13 (GetRequestStatus) with NO certificateId -> MustSendCertificateID(14026318), in-band under 200. Pure REST: the status query is
+# GET {certificateId}, so a query without a number cannot be sent any more. Closest case kept: reason 13 sent to POST create, which accepts only
+# 1, 2, 10, 12 -> 400 with errors[].field AgentRequest.RequestReasonCode.
 body:
   type: json
   content: |-
-    { "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1 } }
+    { "agentRequest": { "internalApplication": "internal-workload", "requestReasonCode": 13, "certificateOfOriginTypeCode": 1 } }
 order: 21000

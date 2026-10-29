@@ -19,8 +19,15 @@ description: >-
   id can be transmitted exactly ONCE per five minutes, and every scenario that sends one needs its own row.
   That is a defect in its own right, recorded in reports/gap-analysis-mock-features.md — an agent retransmitting
   the same certificate hits a spurious 400.
-  The message endpoint answers 200 with an `exceptions` array, so the status says nothing: every assertion here
-  is on the in-band exceptionType, and the scenarios that must raise NOTHING assert that too.
+  PURE REST (alternative 2, 2026-10-28): the one message endpoint, which answered 200 with an in-band `exceptions`
+  array, is split by method - POST community/CertificateOfOrigins (reasons 1, 2, 10, 12 without a number, 201),
+  PUT /{certificateId} (1, 2, 12 with a number, and 3; 200), POST /{certificateIdToCancel}/Replacement (4, 5; 201).
+  The certificate number moved from the body into the URL (the lease is now keyed on the PUT URL id), a rejected
+  message is 400 with the legacy code in errors[].errorCode (string), and a number that does not exist or that
+  another sender created is 404 - which is why the PR-* rows are created with createCustomerId 1, the
+  MessageSenderId every message here sends. The scenarios that tested a blank / missing id in the body (10, 80,
+  140) and the unknown reason (70) now send their reason to an endpoint that refuses it (400 on
+  AgentRequest.RequestReasonCode); see each request's comment.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -93,45 +100,66 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
 
-      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+      // Pure REST (alternative 2): the message is split by method - POST community/CertificateOfOrigins (create, 201),
+      // PUT .../{certificateId} (update / resend, 200), POST .../{certificateIdToCancel}/Replacement (201). A rejected
+      // message is 400 ProblemDetails (errors[].errorCode = the legacy exceptionType as a STRING), a number that does not
+      // exist or that another sender created is 404. The worker-screen setup/publish requests (ui/...) still answer 200.
+      var EXPECT_STATUS = {
+          '08-setup-received': 201, '20-empty-clean': 201, '65-draft-clean': 201, '120-replace-published': 201,
+          '10-empty-with-id': 400, '30-new-with-published': 400, '40-retro-with-published': 400, '50-retro-no-declaration': 400,
+          '60-draft-with-published': 400, '70-unknown-reason': 400, '80-update-empty-id': 400, '100-update-agent-mismatch': 400,
+          '110-update-type-switch': 400, '130-replace-not-published': 400, '140-replace-no-idtocancel': 400,
+          '150-correction-blocked': 400,
+          '90-update-unknown-id': 404
+      };
+      var want = EXPECT_STATUS[name] || 200;
+      pm.test(name + ': status is ' + want, function () { pm.response.to.have.status(want); });
 
-      // An unknown requestReasonCode is refused IN-BAND, as legacy did (EMessages.RequestReasonNotExist,
-      // CertificateOfOriginsIncomingMessageServicePartial.cs:1401): 200 + exceptionType 5020, and nothing is created.
-      if (name === '70-unknown-reason') {
-          pm.test('70: an undefined reason is refused in-band with RequestReasonNotExist (5020)', function () {
-              var types = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
-              pm.expect(types, 'exceptionType').to.include(5020);
-          });
-          pm.test('70: no certificate was created', function () {
-              pm.expect(j && j.applicationId, 'applicationId').to.eql(0);
+      // Scenarios whose legacy purpose no longer exists in pure REST (the number moved into the URL, and each endpoint
+      // accepts only its own reasons). Each now sends the request reason to an endpoint that does not accept it, and is
+      // refused BEFORE the message is processed: 400 on AgentRequest.RequestReasonCode, nothing created.
+      //   70  - reason 99 to POST create (was: in-band RequestReasonNotExist 5020; the reason check now answers first)
+      //   10  - reason 10 to PUT {id}   (was: CheckCertificateIdIsEmpty, MandatoryNullValue 2942)
+      //   80  - reason 3 to POST create (was: a blank certificateId, MustSendCertificateID 14026318)
+      //   140 - reason 4 to POST create (was: no certificateIdToCancel, ValueNull 6 + MustSendCertificateID 14026318)
+      var REASON_REFUSED = ['70-unknown-reason', '10-empty-with-id', '80-update-empty-id', '140-replace-no-idtocancel'];
+      if (REASON_REFUSED.indexOf(name) >= 0) {
+          pm.test(name + ': refused on AgentRequest.RequestReasonCode', function () {
+              var fields = (j && j.errors ? j.errors : []).map(function (e) { return e.field; });
+              pm.expect(fields, 'errors[].field').to.include('AgentRequest.RequestReasonCode');
           });
           return;
       }
 
+      // A certificate number that resolves to nothing is now 404 (was 200 + in-band CertificateDoesntExist 13680).
+      if (name === '90-update-unknown-id') {
+          return;
+      }
+
       if (name === '08-setup-received' && j) {
-          var made = (j.feedback || {}).certificateId;
+          // The pure-REST result is flat: the certificate number is j.certificateId (was j.feedback.certificateId).
+          var made = j.certificateId;
           if (made) { pm.collectionVariables.set('prReceived', made); }
           pm.test('08-setup: created a NOT-published certificate to replace', function () {
-              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+              pm.expect(made, 'certificateId').to.be.a('string').and.not.empty;
           });
       }
 
-      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+      var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })
+          .concat((j && j.exception ? j.exception : []).map(function (e) { return String(e.exceptionType); }));
 
-      // Each scenario names the in-band code(s) its arm must raise. The message endpoint always answers 200, so
-      // the code IS the branch proof — there is nothing else to look at.
+      // Each scenario names the legacy code(s) its arm must raise - errors[].errorCode on the 400. The 400 alone does
+      // not say which validator ran, so the code IS the branch proof.
+      // (10-empty-with-id, 80-update-empty-id, 90-update-unknown-id and 140-replace-no-idtocancel left this list: see
+      // REASON_REFUSED and the 404 above.)
       var MUST = {
-          '10-empty-with-id':            [2942],            // CheckCertificateIdIsEmpty
-          '30-new-with-published':       [14027037],        // NewCertificate -> published/cancelled
-          '40-retro-with-published':     [14027037],        // Retrospective  -> published/cancelled
+          '30-new-with-published':       [14027037],        // NewCertificate -> published/cancelled (PUT)
+          '40-retro-with-published':     [14027037],        // Retrospective  -> published/cancelled (PUT)
           '50-retro-no-declaration':     [4987],            // CheckExportDeclarationNumber, required
-          '60-draft-with-published':     [14027037],        // Draft          -> published/cancelled
-          '80-update-empty-id':          [14026318],        // CheckCertificateNumber, blank
-          '90-update-unknown-id':        [13680],           // CheckCertificateNumber, not found
+          '60-draft-with-published':     [14027037],        // Draft          -> published/cancelled (PUT)
           '100-update-agent-mismatch':   [11908, 14027037], // CheckCertificateUpdate, agent + status arms
           '110-update-type-switch':      [11909],           // CheckCertificateUpdate, type-switch arm
           '130-replace-not-published':   [4984, 4986],      // ValidateCertificateInReplacement, both arms
-          '140-replace-no-idtocancel':   [6, 14026318],     // CheckCertificateIdToCancelHasValue + blank id
           '150-correction-blocked':      [14027036]         // the tail: a customs-employee task is open
       };
       // The clean sides. Asserting the ABSENCE is what makes the positive cases mean something: without these,
@@ -143,35 +171,35 @@ scripts:
 
       if (MUST[name]) {
           MUST[name].forEach(function (c) {
-              pm.test(name + ': raises exceptionType ' + c, function () {
-                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(c);
+              pm.test(name + ': errors[] carries errorCode ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(String(c));
               });
           });
       }
       if (MUST_NOT[name]) {
           pm.test(name + ': raises none of the per-reason codes', function () {
               MUST_NOT[name].forEach(function (c) {
-                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(String(c));
               });
           });
       }
 
-      // Legacy returns the rendered document on the feedback for a Draft request, and for the three read/cancel
-      // reasons it returns none. The migration hard-coded attachments to null everywhere, so an agent asking for a
-      // draft got no document — invisible to 755 assertions because nothing had ever looked at the field.
-      // Restored 2026-09-07 (CHECK 2 blocker #6); asserted here on both sides so it cannot silently regress.
+      // Legacy returns the rendered document for a Draft request, and for the three read/cancel reasons it returns
+      // none. The migration hard-coded attachments to null everywhere, so an agent asking for a draft got no document —
+      // invisible to 755 assertions because nothing had ever looked at the field. Restored 2026-09-07 (CHECK 2 blocker
+      // #6); asserted here on both sides so it cannot silently regress. Pure REST returns only the uploaded document's
+      // id, attachment[].externalAttachmentId (no content / fileName / documentTypeId any more).
       if (name === '65-draft-clean') {
           pm.test('65: a Draft request carries the rendered attachment', function () {
-              pm.expect(j.attachments, 'attachments').to.be.an('array').that.is.not.empty;
-              pm.expect(j.attachments[0].fileName, 'fileName').to.be.a('string').and.not.empty;
-              pm.expect(j.attachments[0].documentTypeId, 'documentTypeId').to.be.a('number');
+              pm.expect(j.attachment, 'attachment').to.be.an('array').that.is.not.empty;
+              pm.expect(j.attachment[0].externalAttachmentId, 'externalAttachmentId').to.be.a('string').and.not.empty;
           });
       }
       if (name === '20-empty-clean') {
           // EmptyCertificate is one of the three reasons legacy explicitly excludes, so the absence here is a rule,
           // not an accident — it is what stops the positive assertion above from passing on a blanket "always attach".
           pm.test('20: EmptyCertificate carries no attachment', function () {
-              pm.expect(j.attachments == null || j.attachments.length === 0, 'attachments absent').to.be.true;
+              pm.expect(j.attachment == null || j.attachment.length === 0, 'attachment absent').to.be.true;
           });
       }
     language: text/javascript

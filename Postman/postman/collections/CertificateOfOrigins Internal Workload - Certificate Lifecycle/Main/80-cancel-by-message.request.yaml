@@ -1,12 +1,7 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{certNumber}}"
+method: DELETE
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# C12: the agent cancels the certificate by message (reason 14). The FIRST message carrying this certificate id - see 90.
-body:
-  type: json
-  content: |-
-    { "agentRequest": { "requestReasonCode": 14, "certificateOfOriginTypeCode": 1, "certificateId": "{{certNumber}}" } }
+# C12: the agent cancels the certificate by message (legacy reason 14, now DELETE {certificateId}) -> 200. The FIRST message carrying this certificate id - see 90.
 order: 1800

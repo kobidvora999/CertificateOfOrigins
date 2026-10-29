@@ -4,8 +4,11 @@ name: CertificateOfOrigins Message Validation
 description: >-
   Body-variant scenarios for the incoming-message field/cross-field validation engine
   (GetPC_MSG2280_2281). Every request targets a specific validator branch in
-  CertificateOfOriginsBl.MessageCrossField.cs and asserts the in-band exceptionType it must raise,
-  so the assertion proves the BRANCH ran - not merely that the endpoint answered.
+  CertificateOfOriginsBl.MessageCrossField.cs and asserts the legacy code it must raise - now
+  errors[].errorCode (a string) on the HTTP 400 of a rejected message, where it used to be the in-band
+  exceptionType under 200 - so the assertion proves the BRANCH ran, not merely that the endpoint answered.
+  Pure REST (alternative 2): create is POST community/CertificateOfOrigins (201), update PUT /{id} (200),
+  replacement POST /{idToCancel}/Replacement (201), cancel DELETE /{id} (200, no body).
   Certificate type 1 (EURMED) is used deliberately: it is the only type whose cl_DetailsPerCertificate
   catalogue carries IsCumulation (field 19), and it has the richest catalogue (30 fields vs 19 for MERCOSUR).
 variables:
@@ -41,16 +44,38 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+      // Pure REST (alternative 2): the one message endpoint is split by method - POST community/CertificateOfOrigins
+      // (create, 201), PUT .../{certificateId} (update, 200), POST .../{certificateIdToCancel}/Replacement (201), DELETE
+      // .../{certificateId} (cancel, 200). A rejected message is 400 ProblemDetails whose errors[].errorCode is the legacy
+      // exceptionType as a STRING. Each request's expected HTTP status:
+      var name = pm.info.requestName;
+      var EXPECT_STATUS = {
+          '00-setup-Update': 201, '00-setup-Replacement': 201, '00-setup-CancelWithId': 201, '00-setup-CancelNoId': 201,
+          '10-update': 200,      // PUT {certIdUpdate}
+          '10-replace': 400,     // POST {certIdReplace}/Replacement - target not Published, no replacementReason
+          '10-cancel': 200,      // DELETE {certIdCancelA|B} - both cancel folders now send the same bodiless DELETE
+          'CumulationBothCountryAndGroup': 400, 'CumulationNeither': 400,
+          'DeclarationDateFuture': 400, 'DeclarationDateTooOld': 400,
+          // NonManipulation date / manifest rules: rejected messages; their codes were never asserted and still are not.
+          'ExpectedExitDateTooFar': 400, 'ImportDateAfterExport': 400, 'ImportDateTooOld': 400, 'ManifestAndDeclarationMissing': 400,
+          // The valid cumulation path: it asserted nothing about the outcome beyond 'answered'.
+          'CumulationCountryOnly': [201, 400]
+      };
+      var want = EXPECT_STATUS[name];
+      if (Array.isArray(want)) {
+          pm.test(name + ': answered ' + want.join(' or '), function () { pm.expect(pm.response.code).to.be.oneOf(want); });
+      } else if (want !== undefined) {
+          pm.test(name + ': status is ' + want, function () { pm.response.to.have.status(want); });
+      }
 
-      // Branch proof: each scenario declares, via the request name, which in-band exceptionType the
-      // validator must raise (or must NOT raise). The message engine answers 200 with an `exceptions`
-      // array, so the status alone proves nothing about which validator ran.
+      // Branch proof: each scenario declares, via the request name, which legacy code the validator must raise (or
+      // must NOT raise) - now errors[].errorCode on the 400, so the 400 alone still proves nothing about which ran.
       var EXPECT_CODE = {
-          'CumulationBothCountryAndGroup': 5040,  // CheckCumulationCountry -> CountryAndCountryGroup
-          'CumulationNeither':             5003,  // CheckCumulationCountry -> CumulationCountryRequired
-          'DeclarationDateFuture':          5010,  // CheckDeclarationDate -> ExporterDecDateIllegal (future)
-          'DeclarationDateTooOld':          5010,  // CheckDeclarationDate -> ExporterDecDateIllegal (older than 5 days)
+          'CumulationBothCountryAndGroup': [5040],  // CheckCumulationCountry -> CountryAndCountryGroup
+          'CumulationNeither':             [5003],  // CheckCumulationCountry -> CumulationCountryRequired
+          'DeclarationDateFuture':          [5010],  // CheckDeclarationDate -> ExporterDecDateIllegal (future)
+          'DeclarationDateTooOld':          [5010],  // CheckDeclarationDate -> ExporterDecDateIllegal (older than 5 days)
+          '10-replace':                     [4984, 4986]  // ValidateCertificateInReplacement, both arms
       };
       var MUST_NOT = {
           'CumulationCountryOnly': [5003, 5040],  // exactly one supplied -> neither error may appear
@@ -61,33 +86,38 @@ scripts:
       // silently no-oped, the follow-ups sent the literal "{{certIdUpdate}}" as a certificate id, and the run still
       // went green. It only surfaced when a later parallel run hit the 5-minute ILockUtil lease left on that literal
       // key: setup 200, follow-up 400 "The certificate is locked by another request".)
-      // The lock is keyed on AgentRequest.CertificateId (CertificateOfOriginsBl.cs:86) and only taken when that id is
-      // non-empty, which is why the reason-2 setup never contends but every follow-up does.
+      // The lock is keyed on the certificate number the PUT / DELETE URL carries (it becomes AgentRequest.CertificateId
+      // inside the BL) and only taken when that id is non-empty, which is why the POST setups never contend but the
+      // PUT / DELETE follow-ups do (a parallel holder answers 409). The Replacement URL id does not take it.
       var SETUP_VAR = {
           '00-setup-Update':       'certIdUpdate',
           '00-setup-Replacement':  'certIdReplace',
           '00-setup-CancelWithId': 'certIdCancelA',
           '00-setup-CancelNoId':   'certIdCancelB',
       };
-      if (SETUP_VAR[pm.info.requestName]) {
-          var made = (pm.response.json().feedback || {}).certificateId;
-          pm.test(pm.info.requestName + ': created a certificate to chain from', function () {
-              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+      if (SETUP_VAR[name]) {
+          // The pure-REST result is flat: the certificate number is j.certificateId (was j.feedback.certificateId).
+          var made = j && j.certificateId;
+          pm.test(name + ': created a certificate to chain from', function () {
+              pm.expect(made, 'certificateId').to.be.a('string').and.not.empty;
           });
-          if (made) { pm.collectionVariables.set(SETUP_VAR[pm.info.requestName], made); }
+          if (made) { pm.collectionVariables.set(SETUP_VAR[name], made); }
       }
 
-      var name = pm.info.requestName;
-      var codes = (pm.response.json().exceptions || []).map(function (e) { return e.exceptionType; });
+      var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })
+          .concat((j && j.exception ? j.exception : []).map(function (e) { return String(e.exceptionType); }));
 
       if (EXPECT_CODE[name] !== undefined) {
-          pm.test(name + ': raises exceptionType ' + EXPECT_CODE[name], function () {
-              pm.expect(codes).to.include(EXPECT_CODE[name]);
+          EXPECT_CODE[name].forEach(function (c) {
+              pm.test(name + ': errors[] carries errorCode ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(String(c));
+              });
           });
       }
       if (MUST_NOT[name]) {
           pm.test(name + ': raises no cumulation error', function () {
-              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(c); });
+              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(String(c)); });
           });
       }
     language: text/javascript

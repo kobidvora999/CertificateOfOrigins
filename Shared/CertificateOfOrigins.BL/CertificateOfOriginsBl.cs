@@ -19,6 +19,9 @@ using System.Data;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using CommunityAgentRequest = Api.Models.CertificateOfOriginsCommunity.AgentRequest;
+using CommunityRequest = Api.Models.CertificateOfOriginsCommunity.CertificateOfOriginRequest;
+using CommunityResult = Api.Models.CertificateOfOriginsCommunity.CertificateOfOriginResult;
 
 namespace CertificateOfOrigins.BL;
 
@@ -68,49 +71,144 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         }
     }
 
-    #region GetPC_MSG2280_2281 (Incoming / EAI certificate-of-origin request)
+    #region Community certificate-of-origin request (Incoming / EAI 2280 → feedback 2281, pure REST)
 
-    // Incoming/EAI WCF: GetPC_MSG2280_2281_CertificateOfOriginRequest (PC_NG_2280 → feedback PC_NG_2281). Processes an
-    // agent's certificate-of-origin request and returns the feedback synchronously — the legacy one-way callback/MSMQ
-    // response is exposed here as a direct REST return (developer decision: mirrors the legacy *Sync contract and the
-    // migrated sibling GetCertificateRequestByGuid).
+    // Incoming/EAI WCF: GetPC_MSG2280_2281_CertificateOfOriginRequest (PC_NG_2280 → feedback PC_NG_2281). In legacy one
+    // message did five operations, chosen by AgentRequest.RequestReasonCode. Pure REST, alternative 2 (customs-approved
+    // 28.10.2026): one endpoint and HTTP method per operation, the certificate number in the URL
+    // (.spec/OpenApi/certificateOfOriginsCommunity.json). Each entry point below builds the internal message from the URL and
+    // the body and runs the same processing core as before (ProcessCertificateOfOriginRequest: message validation, save,
+    // declaration reconciliation).
     //
-    // Branches by request reason: GetRequestStatus and CertificateCancellation read/cancel the saved certificate; every
-    // other reason is the create/update branch (ProcessCreateCertificateBranch: message validation, which also resolves
-    // the exporter / destination-country / org-unit / cert-to-update values → SaveCertificateOfOrigin → declaration
-    // check and reconciliation).
-    //
-    // Legacy generated wrapper (CertificateOfOriginsIncomingMessageService.GetPC_MSG2280_2281_CertificateOfOriginRequest):
-    // EVERYTHING the message does - reading the config, taking the lock, processing, a failed external service - runs
-    // inside one try; every exception is caught and returned to the sender in the response header
-    // (HandleMessageException), never as a fault. The message channel expects a response.
-#pragma warning disable CA1031 // catch-all on purpose: the legacy contract answers every message in-band
-    public async Task<CertificateOfOriginRequestFeedbackResponseDto> GetPC22802281CertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
+    // Errors follow pure REST instead of legacy's in-band answer (every exception returned under 200 in the response
+    // header): a rejected request is a 400 with the legacy exceptions as errors[], a certificate that is missing or that
+    // the sender did not create is a 404, a certificate locked by a parallel request is a 409, and a technical failure is
+    // a 500. Reconciliation warnings on a saved certificate stay in the response body (exception[]).
+    private static readonly int[] CreateReasons =
+        [(int)ERequestReason.NewCertificate, (int)ERequestReason.RetrospectiveCertificate, (int)ERequestReason.EmptyCertificate, (int)ERequestReason.Draft];
+
+    private static readonly int[] UpdateReasons =
+        [(int)ERequestReason.NewCertificate, (int)ERequestReason.RetrospectiveCertificate, (int)ERequestReason.CertificateUpdate, (int)ERequestReason.Draft];
+
+    private static readonly int[] ReplacementReasons =
+        [(int)ERequestReason.CertificateReplacement, (int)ERequestReason.ImportCertificateReplacement];
+
+    // POST community/CertificateOfOrigins — legacy reasons 1, 2, 10, 12 without a certificate number.
+    public async Task<CommunityResult> CreateCertificateOfOriginFromMessage(CommunityRequest request)
     {
-        try
+        CheckRequestReasonForOperation(request.AgentRequest, CreateReasons);
+        var result = await ProcessCommunityMessage(Mapper.Map<CertificateOfOriginRequestMessageDto>(request));
+        return result;
+    }
+
+    // PUT community/CertificateOfOrigins/{certificateId} — legacy reasons 1, 2, 12 with a certificate number (resend a
+    // certificate not yet published) and 3 (update).
+    public async Task<CommunityResult> UpdateCertificateOfOriginFromMessage(string certificateId, CommunityRequest request)
+    {
+        CheckRequestReasonForOperation(request.AgentRequest, UpdateReasons);
+        await GetSenderCertificate(certificateId);
+        var message = Mapper.Map<CertificateOfOriginRequestMessageDto>(request);
+        message.AgentRequest.CertificateId = certificateId;
+        var result = await ProcessCommunityMessage(message);
+        return result;
+    }
+
+    // POST community/CertificateOfOrigins/{certificateIdToCancel}/Replacement — legacy reasons 4 and 5: a new certificate
+    // that replaces the one in the URL, which is cancelled.
+    public async Task<CommunityResult> ReplaceCertificateOfOriginFromMessage(string certificateIdToCancel, CommunityRequest request)
+    {
+        CheckRequestReasonForOperation(request.AgentRequest, ReplacementReasons);
+        await GetSenderCertificate(certificateIdToCancel);
+        var message = Mapper.Map<CertificateOfOriginRequestMessageDto>(request);
+        message.AgentRequest.CertificateIdToCancel = certificateIdToCancel;
+        var result = await ProcessCommunityMessage(message);
+        return result;
+    }
+
+    // GET community/CertificateOfOrigins/{certificateId} — legacy reason 13 (status). Legacy validated the full message body
+    // on a status query; a GET has no body, so that validation is gone (customs-approved 28.10.2026). Legacy also skipped
+    // the amendment check for this reason, and returned no attachment.
+    public async Task<CommunityResult> GetCertificateOfOriginStatusForMessage(string certificateId)
+    {
+        var certificate = await GetSenderCertificate(certificateId);
+        var result = Mapper.Map<CommunityResult>(await BuildRequestFeedbackResponse(certificate, [], (int)ERequestReason.GetRequestStatus));
+        return result;
+    }
+
+    // DELETE community/CertificateOfOrigins/{certificateId} — legacy reason 14 (cancel).
+    public async Task<CommunityResult> CancelCertificateOfOriginByMessage(string certificateId)
+    {
+        await GetSenderCertificate(certificateId);
+        var result = await ProcessCommunityMessage(new CertificateOfOriginRequestMessageDto
         {
-            var result = await GetPC22802281CertificateOfOriginRequestUnderLock(request);
-            return result;
-        }
-        catch (Exception exception)
+            AgentRequest = new CertificateOfOriginAgentRequestDto
+            {
+                CertificateId = certificateId,
+                RequestReasonCode = (int)ERequestReason.CertificateCancellation,
+            },
+        });
+        return result;
+    }
+
+    // Each endpoint accepts only its own request reasons (the contract's RequestReasonCode description); legacy chose the
+    // operation by the reason, so a reason of another operation is a 400 here.
+    private static void CheckRequestReasonForOperation(CommunityAgentRequest agentRequest, int[] allowedReasons)
+    {
+        if (!allowedReasons.Contains(agentRequest.RequestReasonCode))
         {
-            Resolve<ILogger<CertificateOfOriginsBl>>().LogError(exception, "GetPC_MSG2280_2281 failed; answered in-band with GeneralException.");
-            var failedResponse = BuildInBandErrorResponse(EMessageCode.GeneralException);
-            return failedResponse;
+            throw new RestValidationException(
+                "AgentRequest.RequestReasonCode",
+                ValidationMessages.RequestReasonNotAllowedForOperation,
+                [agentRequest.RequestReasonCode, string.Join(", ", allowedReasons)]);
         }
     }
-#pragma warning restore CA1031
 
-    // Legacy InternalGetPC_MSG2280_2281_CertificateOfOriginRequest.
-    private async Task<CertificateOfOriginRequestFeedbackResponseDto> GetPC22802281CertificateOfOriginRequestUnderLock(CertificateOfOriginRequestMessageDto request)
+    // The certificate the URL names, only when the sender created it. New vs legacy (developer decision, 29.10.2026):
+    // legacy found the certificate by number alone, so any agent could query or cancel another agent's certificate.
+    // Someone else's certificate answers as not found, so its existence is not revealed.
+    private async Task<CertificateOfOrigin> GetSenderCertificate(string certificateId)
     {
-        // Legacy dereferenced request.Content.AgentRequest on its first line, so a message without one failed with a
-        // NullReferenceException that the wrapper answered in-band (GeneralException).
-        if (request.AgentRequest is null)
+        var certificate = await DataLayer.GetLatestCertificateByNumberForFeedback(certificateId);
+        if (certificate == null || certificate.CreateCustomerId != RequestMetadata.MessageSenderId)
         {
-            throw new InvalidOperationException("GetPC_MSG2280_2281 received no AgentRequest.");
+            throw new RestNotFoundException();
         }
 
+        return certificate;
+    }
+
+    // Runs the message under the certificate lock and turns the outcome into the REST answer: no certificate in the
+    // feedback means nothing was saved → 400 with the accumulated legacy exceptions; otherwise the certificate, with any
+    // reconciliation warnings.
+    private async Task<CommunityResult> ProcessCommunityMessage(CertificateOfOriginRequestMessageDto message)
+    {
+        var response = await ProcessCertificateOfOriginRequestUnderLock(message);
+        if (response.ApplicationId == 0)
+        {
+            throw new RestValidationException((response.Exceptions ?? []).Select(ToRestProblem));
+        }
+
+        var result = Mapper.Map<CommunityResult>(response);
+        return result;
+    }
+
+    // A legacy message exception as a platform error: errorCode = the legacy ExceptionType (UIMessage id), field = its
+    // message name, detail = the text with the parameters formatted in, level = the legacy ExceptionLevel.
+    private static RestProblem ToRestProblem(CertificateOfOriginExceptionDto exception)
+    {
+        var result = new RestProblem(
+            ((EMessageCode)exception.ExceptionType).ToString(),
+            exception.ExceptionDescription ?? string.Empty,
+            exception.ExceptionType.ToString(CultureInfo.InvariantCulture))
+        {
+            Level = (byte?)exception.ExceptionLevel,
+        };
+        return result;
+    }
+
+    // Legacy InternalGetPC_MSG2280_2281_CertificateOfOriginRequest.
+    private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequestUnderLock(CertificateOfOriginRequestMessageDto request)
+    {
         // An optional distributed lock (config IsNeedToLockCertificateOfOrigin), keyed by the certificate id, serializes
         // concurrent requests for the same certificate; released in a finally.
         var lockKey = request.AgentRequest.CertificateId;
@@ -125,13 +223,12 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         ILockState? lockState = null;
         try
         {
-            lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(GetPC22802281CertificateOfOriginRequest));
+            lockState = await lockUtil.LockUntilAsync(lockKey!, TimeSpan.FromMinutes(5), nameof(ProcessCertificateOfOriginRequestUnderLock));
             if (!lockState.IsAcquired)
             {
-                // Legacy threw InfException(ConcurrencyErrorTryAgain) here; the wrapper answered it in-band with that
-                // exception in the response header (a 200 the sender can retry on), not as a fault.
-                var lockedResponse = BuildInBandErrorResponse(EMessageCode.ConcurrencyErrorTryAgain);
-                return lockedResponse;
+                // Legacy threw InfException(ConcurrencyErrorTryAgain) and answered it in-band under 200; pure REST: 409,
+                // the sender sends again.
+                throw new RestConflictException();
             }
 
             var result = await ProcessCertificateOfOriginRequest(request);
@@ -147,17 +244,6 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 await lockUtil.SafeReleaseAsync(lockKey!, lockState);
             }
         }
-    }
-
-    // The legacy wrapper's fresh response for a failed message: an empty feedback and the failure in the header exceptions.
-    private static CertificateOfOriginRequestFeedbackResponseDto BuildInBandErrorResponse(EMessageCode code)
-    {
-        var response = new CertificateOfOriginRequestFeedbackResponseDto
-        {
-            Feedback = new CertificateOfOriginRequestFeedbackDto(),
-            Exceptions = [BuildMessageException(code)],
-        };
-        return response;
     }
 
     private async Task<CertificateOfOriginRequestFeedbackResponseDto> ProcessCertificateOfOriginRequest(CertificateOfOriginRequestMessageDto request)
@@ -343,15 +429,8 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
             return null;
         }
 
-        return
-        [
-            new CertificateOfOriginMessageAttachmentDto
-            {
-                DocumentTypeId = template.DocumentTypeId,
-                Content = template.Content,
-                FileName = template.FileName,
-            },
-        ];
+        // V2 / pure REST: the attachment is the uploaded document's id; the community reads the content from Documents.
+        return [new CertificateOfOriginMessageAttachmentDto { ExternalAttachmentId = template.ExternalAttachmentId! }];
     }
 
     // Legacy CreateCertificateOfOriginRequestFeedback: echo the certificate identity/status + the public query URL.
@@ -875,6 +954,9 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
 
         foreach (var certificateTemplate in request.CertificatesTemplates)
         {
+            // The ExternalId the document is uploaded with: the message feedback returns it as the attachment id.
+            certificateTemplate.ExternalAttachmentId ??= Guid.NewGuid().ToString();
+
             // Replace the certificate's currently-attached documents before uploading (legacy: GetDocumentsByEntitySync
             // + DeleteDocument, both inside the loop).
             var existingDocuments = await documentsProxy.GetDocumentsByEntity(request.CertificateId, (int)EEntityType.CertificateOfOrigin);
@@ -888,6 +970,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
                 .WithFileName(fileName)
                 .WithTitle(title)
                 .WithContent(certificateTemplate.Content)
+                .WithExternalId(certificateTemplate.ExternalAttachmentId)
                 .WithTypeId((DocumentType)certificateTemplate.DocumentTypeId)
                 .WithEntityId(request.CertificateId)
                 .WithEntityTypeId((int)EEntityType.CertificateOfOrigin)

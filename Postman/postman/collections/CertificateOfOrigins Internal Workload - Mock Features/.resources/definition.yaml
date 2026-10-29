@@ -56,9 +56,26 @@ scripts:
 
       // Most scenarios answer 200 with the branch visible in the body. The two ExportDoc reads do NOT: a customer the
       // Customers service does not know is refused with a 400 naming the field, as legacy (b720c6a, bdb1866).
+      // The certificate-of-origin message (pure REST, alternative 2) is split by method: POST community/CertificateOfOrigins
+      // creates (201), PUT /{id} updates (200), POST /{idToCancel}/Replacement replaces (201), DELETE /{id} cancels (200).
+      // A message the validation rejects is 400 (errors[].errorCode = the legacy exceptionType as a STRING); a saved
+      // certificate keeps its reconciliation findings in exception[] of the 201/200.
       var EXPECT_STATUS = {
           '10-customer-information-not-found': 400,
-          '20-customers-by-country-not-found': 400
+          '20-customers-by-country-not-found': 400,
+          // message creates whose certificate is saved (reconciliation findings, if any, ride in exception[])
+          '00-setup-cancel': 201, '00-setup-supersede': 201, '00-setup-importreplace': 201, '00-baseline': 201,
+          '120-declaration-unresolvable': 201,
+          '10-declaration-not-released': 201, '20-no-declaration-invoices': 201, '25-lead-document-title-mismatch': 201,
+          '30-customs-item-mismatch': 201, '40-no-assessor': 201, '50-destination-not-in-group': 201,
+          '10-no-associated-goods-items': 201,   // POST {certIdImportMf}/Replacement, reason 5
+          '10-update-no-lead-document': 200,     // PUT {certIdSupersedeMf}, reason 3
+          // messages the flipped mock makes the validation reject (was 200 with the code in-band)
+          '10-country-not-found': 400, '20-not-in-agreement': 400, '30-customs-item-not-found': 400,
+          '40-measurement-unit-not-found': 400, '50-packing-type-not-found': 400, '60-currency-not-found': 400,
+          '70-exporter-not-found': 400, '80-orgunit-not-customs-house': 400, '90-site-not-found': 400,
+          '100-group-not-exists': 400, '110-group-not-in-agreement': 400, '130-declaration-in-amendment': 400,
+          '10-cancel-with-live-declaration': 400 // DELETE {certIdCancelMf}, blocked by the live declaration
       };
       var REFUSED_FIELD = {
           '10-customer-information-not-found': ['customerId', 'הלקוח לא קיים במערכת'],
@@ -76,9 +93,10 @@ scripts:
       }
 
       // C-02 (87f5039): the unresolved site leaves the org unit unset, and the save no longer requires one.
+      // Pure REST: "nothing saved" is the 400 itself (legacy answered applicationId 0 in-band) - asserted above.
       if (name === '90-site-not-found' && j) {
           pm.test('90-site-not-found: rejected, nothing saved (legacy GetIdByCode miss, C-F05)', function () {
-              pm.expect(j.applicationId, 'applicationId').to.eql(0);
+              pm.expect(j.applicationId, 'no certificate in a ProblemDetails').to.be.undefined;
           });
       }
 
@@ -131,10 +149,11 @@ scripts:
           '00-setup-importreplace': 'certIdImportMf'
       };
       if (SETUP_VAR[name] && j) {
-          var made = (j.feedback || {}).certificateId;
+          // The pure-REST result is flat: the certificate number is j.certificateId (was j.feedback.certificateId).
+          var made = j.certificateId;
           if (made) { pm.collectionVariables.set(SETUP_VAR[name], made); }
           pm.test(name + ': created a certificate to chain from', function () {
-              pm.expect(made, 'feedback.certificateId').to.be.a('string').and.not.empty;
+              pm.expect(made, 'certificateId').to.be.a('string').and.not.empty;
           });
       }
       var CERT_VAR = { '00-setup-A': 'mfCertA', '30-setup-B': 'mfCertB', '50-setup-C': 'mfCertC' };
@@ -161,11 +180,16 @@ scripts:
           });
       }
 
-      var exList = (j && j.exceptions) ? j.exceptions : [];
-      var codes = exList.map(function (e) { return e.exceptionType; });
-      var descr = exList.map(function (e) { return e.exceptionDescription || ''; }).join(' | ');
+      // Message codes: errors[] of a 400 (errorCode = legacy exceptionType as a STRING, detail[0] = its text) and
+      // exception[] of a saved certificate (reconciliation warnings). Read from both, codes as strings.
+      var errList = (j && j.errors) ? j.errors : [];
+      var exList = (j && j.exception) ? j.exception : [];
+      var codes = errList.map(function (e) { return String(e.errorCode); })
+          .concat(exList.map(function (e) { return String(e.exceptionType); }));
+      var descr = errList.map(function (e) { return (e.detail || []).join(' '); })
+          .concat(exList.map(function (e) { return e.exceptionDescription || ''; })).join(' | ');
 
-      // ---- in-band message codes the flipped mock must raise ----
+      // ---- message codes the flipped mock must raise (now on the 400; were in-band under 200) ----
       var MUST = {
           '10-country-not-found':            [14027393],
           '20-not-in-agreement':             [4990, 4995, 4997, 5000, 5004],
@@ -218,14 +242,14 @@ scripts:
 
       if (MUST[name]) {
           MUST[name].forEach(function (c) {
-              pm.test(name + ': raises exceptionType ' + c, function () {
-                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(c);
+              pm.test(name + ': errors[] carries errorCode ' + c, function () {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(String(c));
               });
           });
       }
       if (MUST_NOT[name]) {
           pm.test(name + ': raises none of the flagged codes', function () {
-              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(c); });
+              MUST_NOT[name].forEach(function (c) { pm.expect(codes).to.not.include(String(c)); });
           });
       }
       if (MUST_SAY[name]) {
@@ -252,8 +276,8 @@ scripts:
       // reason 2 WITHOUT this flag answers status 3 (Rejected) carrying four reconciliation findings.
       if (name === '120-declaration-unresolvable') {
           pm.test('120: no declaration resolved, so the reconciliation never ran', function () {
-              pm.expect(exList, 'exceptions').to.be.an('array').that.is.empty;
-              pm.expect((j.feedback || {}).certificateOfOriginStatusCode, 'status stays Received (2), not Rejected (3)').to.eql(2);
+              pm.expect(exList, 'exception').to.be.an('array').that.is.empty;
+              pm.expect(j.certificateOfOriginStatusCode, 'status stays Received (2), not Rejected (3)').to.eql(2);
           });
       }
       if (name === '10-publish-A') {

@@ -42,10 +42,11 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
         // GetPC_MSG2280_2281 (GetRequestStatus / CertificateCancellation): the latest certificate with this number,
         // projected to the fields the feedback response + the cancel write need. Legacy GetCertificateOfOriginByExternalId
         // took the first row of usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter: active rows only (State = 1),
-        // newest CreateDate first, and the number matched as the SP did: LIKE '%' + number + '%', unescaped, so a number
-        // contained in a longer one also matches (parity finding C F-23).
+        // newest CreateDate first. Legacy matched the number LIKE '%' + number + '%' (parity finding C F-23); pure REST
+        // puts the number in the URL, so it is the exact resource id (developer decision, 29.10.2026) - a partial number
+        // must not reach, and cancel, another certificate whose number contains it.
         var result = await ReadOnlyContext.CertificateOfOrigins
-            .Where(c => EF.Functions.Like(c.CertificateNumber, "%" + certificateNumber + "%") && c.State == 1)
+            .Where(c => c.CertificateNumber == certificateNumber && c.State == 1)
             .OrderByDescending(c => c.CreateDate)
             .ThenByDescending(c => c.Id)
             .Select(c => new CertificateOfOrigin
@@ -54,6 +55,7 @@ public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
                 TypeId = c.TypeId,
                 Title = c.Title,
                 CustomerId = c.CustomerId,
+                CreateCustomerId = c.CreateCustomerId, // the pure-REST community endpoints check the sender created it
                 CertificateNumber = c.CertificateNumber,
                 CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
                 RequestReasonCode = c.RequestReasonCode,

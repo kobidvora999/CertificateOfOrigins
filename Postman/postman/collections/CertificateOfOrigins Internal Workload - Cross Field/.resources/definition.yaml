@@ -10,8 +10,9 @@ description: >-
   needs an Israel origin AND a missing pair AND a zipcode-mandatory type AND a non-exempt destination), and
   two of them fire only when a field is ABSENT — something no fixture built by copying a working message ever
   produces.
-  No scenario sends a certificateId, so none takes the five-minute message lease; the collection is freely
-  re-runnable.
+  Every scenario is a POST community/CertificateOfOrigins create with no certificate number, so none takes the
+  five-minute message lease; the collection is freely re-runnable. Pure REST: a rejected message is HTTP 400 with
+  the legacy code in errors[].errorCode (string), not 200 with an in-band exceptions[] array.
 variables:
   baseUrl: http://localhost:9034
 scripts:
@@ -32,12 +33,14 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
-
-      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+      // Pure REST (alternative 2, POST community/CertificateOfOrigins): a rejected message is 400 ProblemDetails whose
+      // errors[].errorCode is the legacy exceptionType as a STRING; a saved certificate is 201 with the flat result and
+      // only its reconciliation warnings in exception[]. Codes are read from both, as strings.
+      var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })
+          .concat((j && j.exception ? j.exception : []).map(function (e) { return String(e.exceptionType); }));
 
       var MUST = {
-          '10-insufficient-working-text':   4832,      // InSufficentworkingInd without its text
+          '10-insufficient-working-text':   4832,      // insufficientWorkingInd without its text
           '20-consignee-country-missing':   4996,      // CheckConsigneeCountry
           '50-place-of-manufacture-missing':5006,      // CheckPlaceOfManufactureAndZipcode, the four-way &&
           '60-zip-too-short':               14027168,  // ... and its independent length check
@@ -56,15 +59,19 @@ scripts:
           '40-origin-as-group': [5006, 14027168]
       };
 
+      // A scenario that must raise a validation code is a rejected message: 400 (was 200 with the code in-band). The two
+      // silent scenarios asserted nothing about the outcome beyond 'answered', so either REST answer is accepted there.
       if (MUST[name] !== undefined) {
-          pm.test(name + ': raises exceptionType ' + MUST[name], function () {
-              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MUST[name]);
+          pm.test(name + ': rejected with 400', function () { pm.response.to.have.status(400); });
+          pm.test(name + ': errors[] carries errorCode ' + MUST[name], function () {
+              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(String(MUST[name]));
           });
       }
       if (MUST_NOT[name]) {
+          pm.test(name + ': answered 201 or 400', function () { pm.expect(pm.response.code).to.be.oneOf([201, 400]); });
           pm.test(name + ': the rule does not apply, so it raises nothing', function () {
               MUST_NOT[name].forEach(function (c) {
-                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(String(c));
               });
           });
       }

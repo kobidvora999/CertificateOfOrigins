@@ -1,12 +1,7 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
-method: POST
+url: "{{baseUrl}}/community/CertificateOfOrigins/{{sqCertNumber}}"
+method: GET
 headers:
   MessageSenderId: "1"
-  Content-Type: application/json
-# C13: the agent asks for the status of the certificate it just sent - feedback only, status Received (2).
-body:
-  type: json
-  content: |-
-    { "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1, "certificateId": "{{sqCertNumber}}" } }
+# C13: the agent asks (GET) for the status of the certificate it just sent - 200, the flat result only, status Received (2).
 order: 3100
