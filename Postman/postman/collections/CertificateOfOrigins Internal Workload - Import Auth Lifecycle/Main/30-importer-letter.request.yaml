@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/HandleImportDeliveryForImporterSent"
+method: POST
+headers:
+  Content-Type: application/json
+# F4: a letter to the importer about request A -> decision LetterForImporterWasSent (8); the file state is carried over.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{docA}},
+      "organizationUnitId": 1,
+      "authenticationFileId": {{fileId}},
+      "authenticationFileStatusId": {{fileStatus}},
+      "deliveryMethodId": {{fileDm}}
+    }
+order: 1300

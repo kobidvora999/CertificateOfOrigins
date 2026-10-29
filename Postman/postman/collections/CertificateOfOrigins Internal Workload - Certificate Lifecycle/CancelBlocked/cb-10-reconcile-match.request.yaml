@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# C6: reconciled clean -> DeclarationMatch (6), which opens a task for the customs employee.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [
+        {{cbId}}
+      ],
+      "exporterCustomerId": 777,
+      "destinationCountryId": 138,
+      "organizationUnitId": 407,
+      "exportInvoiceInfoList": [
+        {
+          "externalIdNum": "INV1",
+          "exportGoodsItemInfoList": []
+        }
+      ]
+    }
+order: 4010

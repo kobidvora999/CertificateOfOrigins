@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/ID/NO-SUCH-{{runId}}"
+method: GET
+# A certificate number no certificate can carry (minted per run, not the IL + 10-digit format) -> 404.
+order: 5100

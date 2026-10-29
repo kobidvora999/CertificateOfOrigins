@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+  x-mock-feature--Customers.NotFound: "true"
+# FillAuthenticationRequestNames: GetCustomersByIds -> null, so the importer-name fill is skipped (29/42
+# branches covered before this; the null side of both proxy results was never taken).
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{mfDoc}},
+      "fromRequestDate": "{{tenDaysAgo}}",
+      "toRequestDate": "{{inOneMonth}}"
+    }
+order: 40500

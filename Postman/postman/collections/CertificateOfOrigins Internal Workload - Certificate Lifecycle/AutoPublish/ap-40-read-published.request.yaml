@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{apId}}"
+method: GET
+# State after the auto-publish: Published (8), with the publish stamps.
+order: 7040

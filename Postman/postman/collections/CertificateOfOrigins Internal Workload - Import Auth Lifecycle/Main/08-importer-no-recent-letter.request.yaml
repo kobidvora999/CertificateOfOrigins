@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CheckIfExistsAdditionalRequestsForImporter?importerId={{importerId}}&customerId=888&countryId=32"
+method: GET
+# Before any letter to the importer of this run (minted per run, so no other run can interfere): no request with a recent delivery -> false.
+order: 1080

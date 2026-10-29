@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+  x-mock-feature--DealFile.NoLeadDocument: "true"
+# No lead document is linked to the new certificate either, so the save leaves the link empty for the reconcile to fill.
+# B-H1 (35aa7fd): a certificate with NO declaration link (no exportDeclarationNumber) - the reconcile must backfill it.
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-BH1",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "certificateNumber": "RC-BH1-{{runId}}",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "AR" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+      ],
+      "certificateOfOriginInvoiceDetails": []
+    }
+order: 9500

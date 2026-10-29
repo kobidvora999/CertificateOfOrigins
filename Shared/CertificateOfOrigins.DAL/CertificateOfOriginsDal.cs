@@ -1,0 +1,1387 @@
+using CertificateOfOrigins.Model.CertificateOfOriginsDb;
+using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
+using CustomsCloud.InfrastructureCore.DAL;
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+
+namespace CertificateOfOrigins.DAL;
+
+public class CertificateOfOriginsDal(IServiceProvider serviceProvider)
+    : BaseDal<CertificateOfOriginsDbContext, CertificateOfOriginsDbReadOnlyContext>(serviceProvider), ICertificateOfOriginsDal
+{
+    public async Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber)
+    {
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.CertificateNumber == certificateNumber)
+            .OrderByDescending(c => c.CreateDate)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<string?>> GetLiveCertificateNumbersByIds(List<int> certificateIds)
+    {
+        // Legacy GetCertificateOfOriginByDeclaration: the numbers of the given certificates that are not Cancelled,
+        // Rejected or Error (no State filter, as legacy). Ordered by id — the order the legacy query (no ORDER BY) returned
+        // in practice — because the caller shows the first and the last.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => certificateIds.Contains(c.Id)
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Cancelled
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Rejected
+                && c.CertificateOfOriginStatusId != (int)ECertificateOfOriginStatus.Error)
+            .OrderBy(c => c.Id)
+            .Select(c => (string?)c.CertificateNumber)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber)
+    {
+        // GetPC_MSG2280_2281 (GetRequestStatus / CertificateCancellation): the latest certificate with this number,
+        // projected to the fields the feedback response + the cancel write need. Legacy GetCertificateOfOriginByExternalId
+        // took the first row of usp_CertificateOfOrigins_GetCertificateOfOriginsByFilter: active rows only (State = 1),
+        // newest CreateDate first, and the number matched as the SP did: LIKE '%' + number + '%', unescaped, so a number
+        // contained in a longer one also matches (parity finding C F-23).
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => EF.Functions.Like(c.CertificateNumber, "%" + certificateNumber + "%") && c.State == 1)
+            .OrderByDescending(c => c.CreateDate)
+            .ThenByDescending(c => c.Id)
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                TypeId = c.TypeId,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
+                CertificateNumber = c.CertificateNumber,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                RequestReasonCode = c.RequestReasonCode,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
+                RejectCancelReason = c.RejectCancelReason,
+                IssuingDate = c.IssuingDate,
+                OrganizationUnitId = c.OrganizationUnitId,
+                Guid = c.Guid,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<int> GetNextCertificateOfOriginNumber()
+    {
+        // GetPC_MSG2280_2281 create branch: the next certificate-number numerator (legacy
+        // GetCertificateNumber → dbo.GetCertificateOfOriginNumber → NEXT VALUE FOR the CRM sequence). Scalar SP.
+        var connection = ReadOnlyContext.Database.GetDbConnection();
+        var command = new CommandDefinition("dbo.GetCertificateOfOriginNumber", commandType: CommandType.StoredProcedure);
+        var numerator = await connection.ExecuteScalarAsync<int>(command);
+        return numerator;
+    }
+
+    public async Task<OriginCriterion?> GetOriginCriterion(string originCriterionCode, int certificateOfOriginTypeCodeId)
+    {
+        // GetPC_MSG2280_2281 create branch: resolve an origin-criterion code scoped to a certificate type to its row
+        // (legacy SystemTablesUtil.GetTablesSync<OriginCriterion> with a code + certificate-type predicate). Local C-table.
+        // SystemTables returned active rows only (QueryBuilder.BuildState: State == 1 unless IgnoreState) - parity C F-23.
+        var result = await ReadOnlyContext.OriginCriterions
+            .Where(o => o.OriginCriterionCode == originCriterionCode && o.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId && o.State == 1)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId)
+    {
+        // GetPC_MSG2280_2281 field-validation engine: the field catalogue for a certificate type — which detail fields
+        // are relevant and each field's constraint (Mandatory/Optional/Condition). Legacy
+        // CertificateOfOriginsUtil.GetDetailsPerCertificate.
+        var result = await ReadOnlyContext.DetailsPerCertificates
+            .Where(d => d.CertificateOfOriginTypeCodeId == certificateOfOriginTypeCodeId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task CancelCertificate(int id, string rejectCancelReason, int userId)
+    {
+        // Cancel a certificate with a reason that REPLACES the stored one, leaving IsLastVersion as it is: the message
+        // CertificateCancellation, the declaration-cancellation branch and the certificate replacement. (Superseding a
+        // version of the same number is CancelPreviousCertificate, which also drops IsLastVersion.) Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, (int)ECertificateOfOriginStatus.Cancelled)
+                .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task<int?> GetPreviousCertificateIdByTitle(string title)
+    {
+        // Legacy CheckDeclarationStatus: the previous version of a just-saved certificate - the second-newest certificate
+        // with the same Title, whatever its status. Null when it is the first one.
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.Title == title)
+            .OrderByDescending(c => c.Id)
+            .Skip(1)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber)
+    {
+        // SaveCertificateOfOrigin: the latest existing certificate with the same number (the one a new instance
+        // supersedes). Projected to the columns the cancel-previous-version logic needs — including OrganizationUnitId +
+        // RejectCancelReason, which the UserCancelledCertificate supersede event is scoped to / carries (legacy raised it
+        // on certificateToCancel's own VirtualEntity with its RejectCancelReason as AdditionalInfo).
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => c.CertificateNumber == certificateNumber)
+            .OrderByDescending(c => c.Id)
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                VersionNumber = c.VersionNumber,
+                OrganizationUnitId = c.OrganizationUnitId,
+                RejectCancelReason = c.RejectCancelReason,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // The child-row merges below only STAGE changes on the tracked context; the BL commits them with
+    // BaseBL.SaveChangesAsync. That matters for more than layering: BaseBL.SaveChangesAsync is what maps
+    // DbUpdateConcurrencyException to a 409 RestConflictException. While these methods called
+    // Context.SaveChangesAsync themselves, a concurrency conflict raised during a child merge escaped as an
+    // unhandled 500 while the very same conflict on the parent row returned 409 — the same logical error
+    // answering differently depending on which stage of the save it hit.
+    //
+    // The staging is split into three steps because EF must assign the invoice ids before the item rows can be
+    // bound to them, so the BL saves between step 2 and step 3.
+    // ---------------------------------------------------------------------------------------------------------
+
+    // Step 1 — the certificate's detail rows, diff-merged by surrogate id. An EMPTY list means the caller did not send
+    // the details (a header-only save) — keep the stored rows, as the legacy self-tracking save did for rows the client
+    // never touched. A certificate always has details (mandatory fields per type), so an empty list is never a real
+    // "delete all". Same guard as the invoices in step 2.
+    public Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details)
+    {
+        if (details.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        foreach (var detail in details)
+        {
+            detail.CertificateOfOriginId = certificateId;
+        }
+
+        return MergeChildrenAsync(
+            details,
+            Context.Set<CertificateOfOriginDetails>().Where(d => d.CertificateOfOriginId == certificateId),
+            detail => detail.Id);
+    }
+
+    // Step 2 — the invoice rows. An EMPTY list means "the caller did not manage invoices" (the SPA save path) —
+    // do NOT touch the existing rows; only the incoming-message create branch supplies invoices, and it always
+    // supplies the full set. (Diff-merging an empty list would delete every existing invoice/item — a data-loss
+    // bug for the SPA update path.)
+    public Task StageCertificateOfOriginInvoices(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices)
+    {
+        if (invoices.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        foreach (var invoice in invoices)
+        {
+            invoice.CertificateOfOriginId = certificateId;
+        }
+
+        return MergeChildrenAsync(
+            invoices,
+            Context.Set<CertificateOfOriginInvoiceDetail>().Where(i => i.CertificateOfOriginId == certificateId),
+            invoice => invoice.Id);
+    }
+
+    // Step 3 — each invoice's item rows, keyed to the invoice id the save in step 2 assigned.
+    public async Task StageCertificateOfOriginInvoiceItems(List<CertificateOfOriginInvoiceDetail> invoices)
+    {
+        foreach (var invoice in invoices)
+        {
+            var items = invoice.CertificateOfOriginItemDetail;
+            foreach (var item in items)
+            {
+                item.CertificateOfOriginInvoiceDetailId = invoice.Id;
+            }
+
+            await MergeChildrenAsync(
+                items,
+                Context.Set<CertificateOfOriginItemDetail>().Where(it => it.CertificateOfOriginInvoiceDetailId == invoice.Id),
+                item => item.Id);
+        }
+    }
+
+    public async Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids)
+    {
+        // UpdateCertificateOfOrigins: the certificates of a declaration event. Legacy loaded the full entity here and ran
+        // the whole flow on it; the entity has 36 columns (over the platform's 30-column interceptor limit), so this is a
+        // projection that serves BOTH consumers - keep every column of each when changing it:
+        //  - the reconciler (status, reason, type, declaration link, org unit, reject reason);
+        //  - the release path: HandleCertificateReplacement (CertificateIdToCancel), the events (Title, CustomerId), and
+        //    the publish of a PendingRelease certificate - CreateQrCodeIfNeeded (QrCodePath, Guid) and the issue-queue
+        //    payload (CreateCustomerId, InternalApplication, FeedbackRemark).
+        var result = await ReadOnlyContext.CertificateOfOrigins
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new CertificateOfOrigin
+            {
+                Id = c.Id,
+                TypeId = c.TypeId,
+                Title = c.Title,
+                CustomerId = c.CustomerId,
+                CertificateNumber = c.CertificateNumber,
+                CertificateOfOriginStatusId = c.CertificateOfOriginStatusId,
+                RequestReasonCode = c.RequestReasonCode,
+                LeadDocumentId = c.LeadDocumentId,
+                ExportDeclarationNumber = c.ExportDeclarationNumber,
+                OrganizationUnitId = c.OrganizationUnitId,
+                RejectCancelReason = c.RejectCancelReason,
+                CertificateIdToCancel = c.CertificateIdToCancel,
+                QrCodePath = c.QrCodePath,
+                Guid = c.Guid,
+                CreateCustomerId = c.CreateCustomerId,
+                InternalApplication = c.InternalApplication,
+                FeedbackRemark = c.FeedbackRemark,
+                CreateDate = c.CreateDate,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateReconcileInvoiceDto>> GetCertificateInvoiceDetailsByCertificateIds(List<int> certificateIds)
+    {
+        // UpdateCertificateOfOrigins reconciliation: each certificate invoice + its goods items' customs-item ids (the
+        // certificate side of the invoice / goods-item matching against the export declaration).
+        var result = await ReadOnlyContext.CertificateOfOriginInvoiceDetails
+            .Where(invoice => certificateIds.Contains(invoice.CertificateOfOriginId))
+            .Select(invoice => new CertificateReconcileInvoiceDto
+            {
+                CertificateOfOriginId = invoice.CertificateOfOriginId,
+                InvoiceNumber = invoice.InvoiceNumber,
+                GoodsItemCustomsItemIds = ReadOnlyContext.CertificateOfOriginItemDetails
+                    .Where(item => item.CertificateOfOriginInvoiceDetailId == invoice.Id)
+                    .Select(item => item.CustomsItemId)
+                    .ToList(),
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<bool?> GetCertificateTypeIsCustomsItemMandatory(int certificateTypeId)
+    {
+        // UpdateCertificateOfOrigins reconciliation: whether the certificate type requires the customs-item (6-digit)
+        // match (legacy CertificateOfOriginsUtil.GetCertificateTypeCode(...).IsCustomsItemMandatory). Null (no row / bit
+        // NULL) means not mandatory.
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .Where(type => type.Id == certificateTypeId)
+            .Select(type => type.IsCustomsItemMandatory)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOriginTypeCode?> GetCertificateTypeCode(int certificateTypeId)
+    {
+        // GetPC_MSG2280_2281 create branch: the certificate type's mandatory flags (IsCriterionMandatory /
+        // IsCustomsItemMandatory / IsZipcodeMandatory) that drive the invoice/item + zipcode validation (legacy
+        // CertificateOfOriginsUtil.GetCertificateTypeCode).
+        var result = await ReadOnlyContext.CertificateOfOriginTypeCodes
+            .Where(type => type.Id == certificateTypeId)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginDetails>> GetCertificateDetailsByCertificateIds(List<int> certificateIds)
+    {
+        // UpdateCertificateOfOrigins reconciliation: the certificates' detail rows (destination / origin country,
+        // exporter id, country groups) compared against the export declaration. Projected to the columns the validator
+        // reads. No navigation exists on CertificateOfOrigin, so the details are loaded here keyed by certificate id.
+        var result = await ReadOnlyContext.CertificateOfOriginDetails
+            .Where(d => certificateIds.Contains(d.CertificateOfOriginId))
+            .Select(d => new CertificateOfOriginDetails
+            {
+                Id = d.Id,
+                CertificateOfOriginId = d.CertificateOfOriginId,
+                CertificateDetailsTypeCodeId = d.CertificateDetailsTypeCodeId,
+                Value = d.Value,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts)
+    {
+        // UpdateCertificateOfOrigins: append one mismatch-log row per reconciliation error (append-only).
+        if (errorTexts.Count == 0)
+        {
+            return;
+        }
+
+        var rows = errorTexts
+            .Select(text => new CertificateOfOriginVsDeclarationError
+            {
+                CertificateOfOriginId = certificateOfOriginId,
+                ErrorText = text,
+                State = 1,
+            })
+            .ToList();
+        Context.Set<CertificateOfOriginVsDeclarationError>().AddRange(rows);
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
+    }
+
+    public async Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId)
+    {
+        // UpdateCertificateOfOrigins: stamp the reconciled status + backfilled declaration link (+ reject reason on a
+        // mismatch) + update-audit. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, statusId)
+                .SetProperty(c => c.ExportDeclarationNumber, exportDeclarationNumber)
+                .SetProperty(c => c.LeadDocumentId, leadDocumentId)
+                .SetProperty(c => c.RejectCancelReason, rejectCancelReason)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId)
+    {
+        // SaveCertificateOfOrigin (publish): persist the issuing date + the issue-by-worker flag stamped after the main
+        // upsert (legacy PrintCertificateOfOriginAndSaveAttachments set these then Save(certificate)). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.IssuingDate, issuingDate)
+                .SetProperty(c => c.IsInPublishingProcess, isInPublishingProcess)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId)
+    {
+        // SaveCertificateOfOrigin (LinkLeadDocument): persist the lead-document + declaration-number backfill stamped
+        // after the main upsert (LinkLeadDocument needs the new certificate id, so it runs after the save). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.LeadDocumentId, leadDocumentId)
+                .SetProperty(c => c.ExportDeclarationNumber, exportDeclarationNumber)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificateFeedbackRemark(int id, string? feedbackRemark, int userId)
+    {
+        // HandleCertificateReplacement: the replacing certificate's remark asking the agent to update the export declaration
+        // (legacy set FeedbackRemark and saved the certificate). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.FeedbackRemark, feedbackRemark)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId)
+    {
+        // SaveCertificateOfOrigin (UploadQrCodeDocument): persist the QR document path resolved AFTER the main upsert.
+        // The QR document is uploaded linked to the assigned certificate id, so its resource path is unknown at upsert
+        // time and needs its own write here. QrImage + Guid are stamped by the main upsert; only QrCodePath lands here.
+        // Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.QrCodePath, qrCodePath)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task UpdateCertificateQrCode(int id, Guid? guid, byte[]? qrImage, int userId)
+    {
+        // DeclarationReleased (publish): persist the QR Guid + image stamped by CreateQrCodeIfNeeded. In the
+        // SaveCertificateOfOrigin flow these land with the main change-tracked upsert; the release path has no such
+        // upsert (the certificates are read no-tracking), so the freshly-generated Guid + image need their own write —
+        // the Guid is embedded in the QR's query URL, so losing it would orphan the published QR. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.Guid, guid)
+                .SetProperty(c => c.QrImage, qrImage)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId)
+    {
+        // SaveCertificateOfOrigin: when a new instance supersedes an existing certificate, cancel the old one
+        // (status → Cancelled, append the "update received" reason, drop IsLastVersion). Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOrigins
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.CertificateOfOriginStatusId, (int)ECertificateOfOriginStatus.Cancelled)
+                .SetProperty(c => c.RejectCancelReason, c => (c.RejectCancelReason ?? string.Empty) + rejectCancelReasonSuffix)
+                .SetProperty(c => c.IsLastVersion, false)
+                .SetProperty(c => c.UpdateDate, now)
+                .SetProperty(c => c.UpdateUserId, userId));
+    }
+
+    public async Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId)
+    {
+        // GetAuthenticationRequestByID SP result-set #1 (main row), local table only — the legacy CRP.DealFile
+        // LEFT JOIN (LeadDocumentSubmissionDate) is dropped (cross-service, deferred). Missing → null (404 in the BL).
+        //
+        // 31 columns: the save writes the coordinator-edited ones too (CHECK 2, 2026-09-07), so the read returns them, or
+        // the GET → POST round-trip would send nulls and erase them. That is over the platform MaxCountExceededInterceptor
+        // default of 30; the hash j4XSVK6Fl8 (InfrastructureCore.DAL 1.10.83+: columns error at 50) lets one query carry them.
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .Select(r => new CertificateOfOriginsImportAuthenticationRequest
+            {
+                DocumentId = r.DocumentId,
+                CreateDate = r.CreateDate,
+                AuthenticationFileId = r.AuthenticationFileId,
+                AuthenticationRequestDate = r.AuthenticationRequestDate,
+                CollateralId = r.CollateralId,
+                DecisionId = r.DecisionId,
+                LeadDocumentId = r.LeadDocumentId,
+                DocumentIssuingDate = r.DocumentIssuingDate,
+                ImportCountryId = r.ImportCountryId,
+                IssuingCountryId = r.IssuingCountryId,
+                Number = r.Number,
+                OriginCountryId = r.OriginCountryId,
+                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
+                ResponseNameEmail = r.ResponseNameEmail,
+                OrganizationUnitId = r.OrganizationUnitId,
+                VendorId = r.VendorId,
+                VendorName = r.VendorName,
+                CustomerId = r.CustomerId,
+                ImporterId = r.ImporterId,
+                LastDeliveryForImporter = r.LastDeliveryForImporter,
+                InvoiceNumber = r.InvoiceNumber,
+                UserId = r.UserId,
+                UserResponseId = r.UserResponseId,
+                DecisionCircumstences = r.DecisionCircumstences,
+                CirumstanceDetails = r.CirumstanceDetails,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                Remarks = r.Remarks,
+                ResponsePhoneNum = r.ResponsePhoneNum,
+                DocumentNumber = r.DocumentNumber,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference,
+            })
+            .ExcludeInterceptor("j4XSVK6Fl8")
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestId(int documentId)
+    {
+        // GetAuthenticationRequestByID SP result-set #2 — the item lines of the request.
+        var result = await ReadOnlyContext.CertificateOfOriginsItemDetails
+            .Where(i => i.ImportAuthenticationRequestId == documentId)
+            .Select(i => new CertificateOfOriginsItemDetails
+            {
+                Id = i.Id,
+                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
+                CustomItemId = i.CustomItemId,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsDecision>> GetAllDecisions()
+    {
+        // Legacy GetQuery<CertificateOfOriginsDecision>().ToList() — the full decision lookup table.
+        var result = await ReadOnlyContext.CertificateOfOriginsDecisions
+            .Select(d => new CertificateOfOriginsDecision
+            {
+                Id = d.Id,
+                Name = d.Name,
+                State = d.State,
+                Description = d.Description,
+                EnglishName = d.EnglishName,
+                Enumeration = d.Enumeration,
+                StartDate = d.StartDate,
+                EndDate = d.EndDate,
+                IsAutomatic = d.IsAutomatic,
+                IsForCoordinator = d.IsForCoordinator,
+                IsForClaliMakorWorker = d.IsForClaliMakorWorker,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    // Legacy CertificateOfOriginsUtil.GetTradeAgreementsForCertificateType, for every certificate type at once (the
+    // resolver's load): the trade-agreement ids per type. No ValidFrom / ValidTo or state filter, as legacy.
+    public async Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType()
+    {
+        var rows = await ReadOnlyContext.CertificateOfOriginTypeByTradeAgreements
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.CertificateOfOriginTypeCodeId, row.TradeAgreementId })
+            .ToListAsync();
+        var result = rows
+            .GroupBy(row => row.CertificateOfOriginTypeCodeId)
+            .Select(group => new CertificateTypeTradeAgreementsResolverDto
+            {
+                CertificateOfOriginTypeCodeId = group.Key,
+                TradeAgreementIds = group.Select(row => row.TradeAgreementId).ToList(),
+            })
+            .ToList();
+        return result;
+    }
+
+    public async Task<bool> IsSupplierDeliveryCountry(int countryId)
+    {
+        // Legacy IsVendor: GetIdByCode<...>("ConutryID", countryId) > 0 — true when the issuing country has an active
+        // supplier-delivery config row. GetIdByCode read SystemTables with ignoreState = false, i.e. State == 1 only; the
+        // column defaults to 0, so "not deleted" (State != 99) would also match inactive rows (parity finding E-F13).
+        var result = await ReadOnlyContext.CertificateOfOriginsSupplierDeliveryCountryConfigs
+            .AnyAsync(c => c.ConutryId == countryId && c.State == 1);
+        return result;
+    }
+
+    public async Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #1 (file header), local table. Missing → null (404 in BL).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == fileId)
+            .Select(f => new CertificateOfOriginsImportAuthenticationFileDetails
+            {
+                Id = f.Id,
+                State = f.State,
+                CreateDate = f.CreateDate,
+                AuthenticationFileStatusId = f.AuthenticationFileStatusId,
+                Notes = f.Notes,
+                PostalAdress = f.PostalAdress,
+                DeliveryMethodId = f.DeliveryMethodId,
+                EmailAdress = f.EmailAdress,
+                ReminderMethodId = f.ReminderMethodId,
+                RequestCountryId = f.RequestCountryId,
+                UserId = f.UserId,
+                UserNameIssuingLetter = f.UserNameIssuingLetter,
+                LastDelivery = f.LastDelivery,
+                ImporterContactingReasonId = f.ImporterContactingReasonId,
+                FirstProvideContactDate = f.FirstProvideContactDate,
+            })
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsImportAuthenticationRequest>> GetRequestsByFileId(int fileId)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #2 (child requests), local table by AuthenticationFileID.
+        // Projected to the needed columns (< 30 for the platform interceptor); the CRP.DealFile join +
+        // Infrastructure.Tasks_Task OUTER APPLY are resolved in the BL via proxies (LeadDocumentSubmissionDate,
+        // IsSendReminderForImporterTaskExists).
+        // UserId + UserResponseId are REQUIRED: SaveAuthenticationRequestFileChildDto round-trips them back and
+        // SaveAuthenticationRequestFile forwards them to SendDecisionMessage. While this read omitted them, a
+        // GET → edit → POST on the file screen posted 0 for both and routed the decision message / rejection task to
+        // user 0.
+        // The last eight (CirumstanceDetails … AllInvoiceGoodsItemTaxDifference) are what the legacy file screen shows
+        // for the selected request: the coordinator edits the circumstances/remarks and sees the rest read-only.
+        // Without them a GET → edit → POST could not round-trip those values. 28 columns — under the platform
+        // interceptor's 30-column cap. Still not projected: ResponsePhoneNum, OrganizationUnitTypeID, ItemDetailID,
+        // CreateUserID (not on the file screen).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .Select(r => new CertificateOfOriginsImportAuthenticationRequest
+            {
+                DocumentId = r.DocumentId,
+                CreateDate = r.CreateDate,
+                AuthenticationFileId = r.AuthenticationFileId,
+                AuthenticationRequestDate = r.AuthenticationRequestDate,
+                DecisionId = r.DecisionId,
+                LeadDocumentId = r.LeadDocumentId,
+                DocumentIssuingDate = r.DocumentIssuingDate,
+                ImportCountryId = r.ImportCountryId,
+                IssuingCountryId = r.IssuingCountryId,
+                OriginCountryId = r.OriginCountryId,
+                PreferenceDocumentTypeId = r.PreferenceDocumentTypeId,
+                ResponseNameEmail = r.ResponseNameEmail,
+                OrganizationUnitId = r.OrganizationUnitId,
+                VendorId = r.VendorId,
+                CustomerId = r.CustomerId,
+                ImporterId = r.ImporterId,
+                LastDeliveryForImporter = r.LastDeliveryForImporter,
+                InvoiceNumber = r.InvoiceNumber,
+                UserId = r.UserId,
+                UserResponseId = r.UserResponseId,
+                CirumstanceDetails = r.CirumstanceDetails,
+                DecisionCircumstences = r.DecisionCircumstences,
+                RequestCircumstancesId = r.RequestCircumstancesId,
+                Remarks = r.Remarks,
+                DocumentNumber = r.DocumentNumber,
+                IsOldIndication = r.IsOldIndication,
+                InvoiceGoodsItemTaxDifference = r.InvoiceGoodsItemTaxDifference,
+                AllInvoiceGoodsItemTaxDifference = r.AllInvoiceGoodsItemTaxDifference,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<string?> GetExportAuthenticationRequestStatusName(int statusId)
+    {
+        // Legacy SystemTablesUtil.GetCodeById<ExportAuthenticationRequestStatus>(id).Name — the Hebrew name from the
+        // enum table, not filtered by State, as the SystemTables lookup was not.
+        var result = await ReadOnlyContext.ExportAuthenticationRequestStatuses
+            .Where(s => s.Id == statusId)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses()
+    {
+        // Legacy GetQuery<CertificateOfOriginsAuthenticationFileStatus>().ToList() — the full file-status lookup table.
+        var result = await ReadOnlyContext.CertificateOfOriginsAuthenticationFileStatuses
+            .Select(s => new CertificateOfOriginsAuthenticationFileStatus
+            {
+                Id = s.Id,
+                Name = s.Name,
+                State = s.State,
+                Description = s.Description,
+                EnglishName = s.EnglishName,
+                Enumeration = s.Enumeration,
+                StartDate = s.StartDate,
+                EndDate = s.EndDate,
+                IsAutomatic = s.IsAutomatic,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds)
+    {
+        // GetAuthenticationRequestFileByID SP result-set #4 — item lines for all the file's requests (batched).
+        var result = await ReadOnlyContext.CertificateOfOriginsItemDetails
+            .Where(i => i.ImportAuthenticationRequestId != null && requestIds.Contains(i.ImportAuthenticationRequestId.Value))
+            .Select(i => new CertificateOfOriginsItemDetails
+            {
+                Id = i.Id,
+                ImportAuthenticationRequestId = i.ImportAuthenticationRequestId,
+                CustomItemId = i.CustomItemId,
+            })
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    {
+        // Set-based merge via ExecuteUpdateAsync (the repo's write convention, first used in #22). Legacy did a full
+        // self-tracking-entity save, so an explicit set-list is only equivalent for columns nobody edits.
+        //
+        // ⚠️ The earlier version of this comment called the omission "a genuine merge" and listed the
+        // circumstance/remark columns among the ones safely left untouched. That was wrong and CHECK 2 caught it
+        // (2026-09-07): the coordinator's screen edits them, and DecisionCircumstences is MANDATORY when the
+        // decision changes — so the justification for a decision change was being discarded on every save. They are
+        // in the set-list now.
+        //
+        // Still deliberately not written here: CreateDate/CreateUserId (insert-only audit), ItemDetailId and
+        // OrganizationUnitTypeId (system-assigned, no screen edits them), and IsOldIndication (derived from
+        // DocumentIssuingDate and written by the file-save path, not by the coordinator).
+        //
+        // DocumentID is a non-identity, externally-assigned key. This method edits an existing request only; no
+        // matching row → false (404 in the BL). A new request is inserted by AddImportAuthenticationRequest, chosen by
+        // the caller's IsNewInstance — never by this method's result.
+        //
+        // LastDeliveryForImporter is written as sent — a deliberate deviation (EN-01, decided 2026-10-12). Legacy's ById SP
+        // did not return it, so every popup save wrote NULL and silently cancelled the importer reminder (its scheduler
+        // needs it NOT NULL). The read returns it, so a round-trip keeps the date and the reminder.
+        var now = DateTime.Now;
+        var affected = await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == request.DocumentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(r => r.AuthenticationFileId, request.AuthenticationFileId)
+                .SetProperty(r => r.AuthenticationRequestDate, request.AuthenticationRequestDate)
+                .SetProperty(r => r.CollateralId, request.CollateralId)
+                .SetProperty(r => r.DecisionId, request.DecisionId)
+                .SetProperty(r => r.LeadDocumentId, request.LeadDocumentId)
+                .SetProperty(r => r.DocumentIssuingDate, request.DocumentIssuingDate)
+                .SetProperty(r => r.ImportCountryId, request.ImportCountryId)
+                .SetProperty(r => r.IssuingCountryId, request.IssuingCountryId)
+                .SetProperty(r => r.Number, request.Number)
+                .SetProperty(r => r.OriginCountryId, request.OriginCountryId)
+                .SetProperty(r => r.PreferenceDocumentTypeId, request.PreferenceDocumentTypeId)
+                .SetProperty(r => r.ResponseNameEmail, request.ResponseNameEmail)
+                .SetProperty(r => r.OrganizationUnitId, request.OrganizationUnitId)
+                .SetProperty(r => r.VendorId, request.VendorId)
+                .SetProperty(r => r.VendorName, request.VendorName)
+                .SetProperty(r => r.CustomerId, request.CustomerId)
+                .SetProperty(r => r.ImporterId, request.ImporterId)
+                .SetProperty(r => r.LastDeliveryForImporter, request.LastDeliveryForImporter)
+                .SetProperty(r => r.InvoiceNumber, request.InvoiceNumber)
+                .SetProperty(r => r.UserId, request.UserId)
+                .SetProperty(r => r.UserResponseId, request.UserResponseId)
+                .SetProperty(r => r.DecisionCircumstences, request.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, request.CirumstanceDetails)
+
+                // Remarks and RequestCircumstancesID are NOT NULL in the DB (the latter with an FK to
+                // enum_Circumstances) even though the CLR model types are nullable. Writing an omitted value
+                // straight through threw "Cannot insert the value NULL into column 'Remarks'" — caught by the
+                // workload run, not by the compiler. The value-from-row overload keeps the stored value when the
+                // caller does not supply one, which is also closer to the legacy full-entity save.
+                .SetProperty(r => r.RequestCircumstancesId, r => request.RequestCircumstancesId ?? r.RequestCircumstancesId)
+                .SetProperty(r => r.Remarks, r => request.Remarks ?? r.Remarks)
+                .SetProperty(r => r.ResponsePhoneNum, request.ResponsePhoneNum)
+                .SetProperty(r => r.DocumentNumber, request.DocumentNumber)
+                .SetProperty(r => r.InvoiceGoodsItemTaxDifference, request.InvoiceGoodsItemTaxDifference)
+                .SetProperty(r => r.AllInvoiceGoodsItemTaxDifference, request.AllInvoiceGoodsItemTaxDifference)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+
+        return affected > 0;
+    }
+
+    public async Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId)
+    {
+        // SaveImportAuthenticationRequest when the caller sends IsNewInstance = true (legacy Repository.Save of an
+        // IsNewInstance entity — the coordinator's popup creates requests through that operation). DocumentID is the
+        // caller-assigned key and is written as sent. The entity is not an ICloudEntity (its key is DocumentID, not Id), so the audit columns are
+        // stamped here, as the update above does.
+        //
+        // NOT NULL columns the popup does not send: RequestCircumstancesID = 1 (the value InitNewImportProcess sets),
+        // Remarks = empty, ItemDetailID = 0 and IsOldIndication = false (the legacy entity's CLR defaults).
+        var now = DateTime.Now;
+        Context.CertificateOfOriginsImportAuthenticationRequests.Add(new CertificateOfOriginsImportAuthenticationRequest
+        {
+            DocumentId = request.DocumentId,
+            CreateDate = now,
+            CreateUserId = userId,
+            UpdateDate = now,
+            UpdateUserId = userId,
+            AuthenticationFileId = request.AuthenticationFileId,
+            AuthenticationRequestDate = request.AuthenticationRequestDate,
+            CollateralId = request.CollateralId,
+            DecisionId = request.DecisionId,
+            LeadDocumentId = request.LeadDocumentId,
+            DocumentIssuingDate = request.DocumentIssuingDate,
+            ImportCountryId = request.ImportCountryId,
+            IssuingCountryId = request.IssuingCountryId,
+            Number = request.Number,
+            OriginCountryId = request.OriginCountryId,
+            PreferenceDocumentTypeId = request.PreferenceDocumentTypeId,
+            ResponseNameEmail = request.ResponseNameEmail,
+            ResponsePhoneNum = request.ResponsePhoneNum,
+            OrganizationUnitId = request.OrganizationUnitId,
+            OrganizationUnitTypeId = request.OrganizationUnitTypeId,
+            VendorId = request.VendorId,
+            VendorName = request.VendorName,
+            CustomerId = request.CustomerId,
+            ImporterId = request.ImporterId,
+            LastDeliveryForImporter = request.LastDeliveryForImporter,
+            InvoiceNumber = request.InvoiceNumber,
+            UserId = request.UserId,
+            UserResponseId = request.UserResponseId,
+            DecisionCircumstences = request.DecisionCircumstences,
+            CirumstanceDetails = request.CirumstanceDetails,
+            RequestCircumstancesId = request.RequestCircumstancesId ?? 1,
+            Remarks = request.Remarks ?? string.Empty,
+            DocumentNumber = request.DocumentNumber,
+            InvoiceGoodsItemTaxDifference = request.InvoiceGoodsItemTaxDifference,
+            AllInvoiceGoodsItemTaxDifference = request.AllInvoiceGoodsItemTaxDifference,
+            ItemDetailId = 0,
+            IsOldIndication = false,
+        });
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
+    }
+
+    // The stored State + OrganizationUnitId, which the update puts back on the entity — parity with the legacy
+    // full-entity round-trip. (Done as a read rather than an Entry().IsModified = false guard:
+    // the parent is now tracked by the BL's DbContext, which is not necessarily this DAL's Context instance.)
+    public async Task<ExportRequestStoredColumns?> GetExportRequestProjectionColumns(int requestId)
+    {
+        var row = await ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(r => r.Id == requestId)
+            .Select(r => new ExportRequestStoredColumns
+            {
+                State = r.State,
+                OrganizationUnitId = r.OrganizationUnitId,
+                CreateDate = r.CreateDate,
+                CreateUserId = r.CreateUserId,
+                UpdateDate = r.UpdateDate,
+                UpdateUserId = r.UpdateUserId,
+            })
+            .FirstOrDefaultAsync();
+        return row;
+    }
+
+    // The PARENT row is persisted by the BL through BaseBL.AddEntity/UpdateEntity (ExportDocumentAuthenticationRequest
+    // is an ICloudEntity — audit stamped server-side from RequestMetadata; see C12). This method owns only the three
+    // CHILD collections, which carry no audit columns: bind them to the (now known) parent id and DIFF-MERGE by
+    // surrogate id — update round-tripped children in place, insert new ones, delete the dropped ones (reproducing
+    // the legacy Self-Tracking-Entity Save, developer decision 2026-08-05).
+    //
+    // Everything here is only STAGED (the deletes included), so the BL's single SaveChangesAsync commits the parent and the
+    // three child collections together - the legacy Repository.Save + CommitAllChanges was one commit too (parity finding
+    // H-3). The parent is passed in already tracked: a stored parent (Id > 0) binds the children by id, a new one (Id == 0,
+    // its id assigned only by the save) by navigation, so EF fills the foreign key.
+    public async Task MergeExportDocumentAuthenticationRequestChildren(
+        ExportDocumentAuthenticationRequest request,
+        List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
+        List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
+        List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas)
+    {
+        var requestId = request.Id;
+        var isStoredParent = requestId != 0;
+
+        // Ids are preserved (NOT reset) so round-tripped children update in place.
+        foreach (var item in customsItems)
+        {
+            item.ExportDocumentAuthenticationRequestId = requestId;
+            item.Request = isStoredParent ? null : request;
+        }
+
+        foreach (var leadDocument in leadDocuments)
+        {
+            leadDocument.ExportRequestId = requestId;
+            leadDocument.Request = isStoredParent ? null : request;
+        }
+
+        foreach (var area in manufacturingAreas)
+        {
+            area.ExportAuthenticationRequestId = requestId;
+            area.Request = isStoredParent ? null : request;
+        }
+
+        await MergeChildrenAsync(
+            customsItems,
+            Context.Set<CustomsItemToExportDocumentAuthenticationRequest>().Where(c => c.ExportDocumentAuthenticationRequestId == requestId),
+            item => item.Id);
+        await MergeChildrenAsync(
+            leadDocuments,
+            Context.Set<ExportDocumentAuthenticationRequestLeadDocument>().Where(l => l.ExportRequestId == requestId),
+            leadDocument => leadDocument.Id);
+        await MergeChildrenAsync(
+            manufacturingAreas,
+            Context.Set<ExportAuthenticationRequestManufacturingArea>().Where(m => m.ExportAuthenticationRequestId == requestId),
+            area => area.Id);
+
+        // Staged only; the BL commits via BaseBL.SaveChangesAsync so a conflict maps to 409 (see the note above).
+    }
+
+    // Diff-merge a child collection against the DB by surrogate id (reproduces the legacy Self-Tracking-Entity Save):
+    // delete the rows the client dropped, update the round-tripped rows (Id > 0) in place, and insert the new ones
+    // (Id == 0) — preserving unchanged children's ids instead of re-creating every row. Used by
+    // SaveExportDocumentAuthenticationRequest.
+    private async Task MergeChildrenAsync<TChild>(
+        List<TChild> incoming,
+        IQueryable<TChild> existingForParent,
+        Func<TChild, int> getId)
+        where TChild : class
+    {
+        var keptIds = incoming.Where(child => getId(child) != 0).Select(getId).ToList();
+
+        var set = Context.Set<TChild>();
+
+        // Delete existing rows under this parent that the client did not send back (empty keptIds → delete all). They are
+        // loaded and removed through the change tracker - not ExecuteDeleteAsync, which hits the database at once - so the
+        // delete commits with the parent and the other children. A new parent has no stored children to drop.
+        var droppedChildren = await existingForParent
+            .Where(child => !keptIds.Contains(EF.Property<int>(child, "Id")))
+            .ToListAsync();
+        set.RemoveRange(droppedChildren);
+
+        foreach (var child in incoming)
+        {
+            if (getId(child) == 0)
+            {
+                set.Add(child);
+            }
+            else
+            {
+                set.Update(child);
+            }
+        }
+    }
+
+    public async Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters)
+    {
+        // dbo.GetCertificateOfOriginsByFilter — dynamic-SQL search; exporter/agent titles return NULL from the
+        // SP (customer JOINs removed) and are enriched in the BL via the Customers proxy.
+        var result = await ReadOnlyContext.GetCertificateOfOriginsByFilter(parameters);
+        return result.ToList();
+    }
+
+    public async Task<List<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters)
+    {
+        // dbo.GetImportAuthenticationRequestByFilter — dynamic-SQL search; importer/vendor/country names return
+        // NULL from the SP (cross-service JOINs removed) and are enriched in the BL (proxies + Country lookup).
+        var result = await ReadOnlyContext.GetImportAuthenticationRequestByFilter(parameters);
+        return result.ToList();
+    }
+
+    public async Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter)
+    {
+        // Faithful LINQ port of dbo.ExportDocumentAuthenticationRequestSearch (a dynamic-filter search — every dynamic
+        // clause was just a conditional AND, no procedural logic). The two INNER JOINs to the enum tables both resolve
+        // a Name AND exclude rows whose type/status is unmatched; the two IS-NOT-NULL guards preserve the row-membership
+        // of the removed cross-service INNER JOINs on the nullable FKs (CountryID / ExporterCustomerID). CustomerID is
+        // non-nullable so its INNER JOIN never excludes on null — no guard needed. ExportDeclarationTitle is the
+        // legacy OUTER APPLY (first lead-document title by id). CountryName / ForeignCustomsHouseName / RequestIssuerName
+        // stay null here and are enriched in the BL (Country lookup + Customers proxy).
+        // The two IS-NOT-NULL guards + all conditional filters are on the request row itself (fluent .Where chain,
+        // matching the rest of the DAL). The two INNER JOINs (for the names) are applied after — they also exclude
+        // rows with an unmatched type/status, exactly like the legacy SP.
+        var requests = ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(ear => ear.CountryId != null && ear.ExporterCustomerId != null);
+
+        if (filter.CountryId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CountryId == filter.CountryId);
+        }
+
+        if (filter.DocumentTypeId.HasValue)
+        {
+            requests = requests.Where(ear => ear.AuthenticationDocumentTypeId == filter.DocumentTypeId);
+        }
+
+        if (filter.RequestId.HasValue)
+        {
+            requests = requests.Where(ear => ear.Id == filter.RequestId);
+        }
+
+        if (filter.ForeignCustomsHouseId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CustomerId == filter.ForeignCustomsHouseId);
+        }
+
+        if (filter.RequestOpenDateFrom.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateDate >= filter.RequestOpenDateFrom);
+        }
+
+        if (filter.RequestOpenDateTo.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateDate <= filter.RequestOpenDateTo);
+        }
+
+        if (filter.ExportAuthenticationDocumentId.HasValue)
+        {
+            requests = requests.Where(ear => ear.DocumentId == filter.ExportAuthenticationDocumentId);
+        }
+
+        // Legacy bound these two through
+        //     Value = string.IsNullOrWhiteSpace(x) ? DBNull.Value : x
+        // and the SP only added the clause "WHERE @param IS NOT NULL", so blank input applied NO filter. A bare
+        // != null check is not the same thing: a UI text box that has been typed into and cleared sends "", which
+        // then applies LIKE '%%' and silently drops every row whose column is NULL. Restored to the legacy test.
+        var invoiceIdNum = filter.InvoiceIdNum;
+        if (!string.IsNullOrWhiteSpace(invoiceIdNum))
+        {
+            // Legacy: CONTAINS(EAR.InvoiceNumbers, '<a> OR <b>') built by replacing commas with " OR ". Losing
+            // CONTAINS was accepted (no FTS catalog — REWIRE-PLAN); losing the comma split was not, and turned
+            // "1001,1002" into a search for that literal text. One trimmed term per comma, OR-ed, restores it.
+            var invoiceTerms = invoiceIdNum
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            if (invoiceTerms.Count > 0)
+            {
+                requests = requests.Where(ear =>
+                    ear.InvoiceNumbers != null && invoiceTerms.Any(term => ear.InvoiceNumbers.Contains(term)));
+            }
+        }
+
+        var mainDocumentTitle = filter.MainDocumentTitle;
+        if (!string.IsNullOrWhiteSpace(mainDocumentTitle))
+        {
+            requests = requests.Where(ear => ear.MainDocumentTitle != null && ear.MainDocumentTitle.Contains(mainDocumentTitle));
+        }
+
+        if (filter.ExporterCustomerId.HasValue)
+        {
+            requests = requests.Where(ear => ear.ExporterCustomerId == filter.ExporterCustomerId);
+        }
+
+        if (filter.ExportAuthenticationRequestStatusId.HasValue)
+        {
+            requests = requests.Where(ear => ear.StatusId == filter.ExportAuthenticationRequestStatusId);
+        }
+
+        if (filter.CreateUserId.HasValue)
+        {
+            requests = requests.Where(ear => ear.CreateUserId == filter.CreateUserId);
+        }
+
+        // filter.ExportDeclarationId is a dead SP parameter (declared, never referenced) — intentionally not applied.
+        var result = await requests
+            .Join(
+                ReadOnlyContext.PreferenceDocumentTypes,
+                ear => ear.AuthenticationDocumentTypeId,
+                dt => dt.Id,
+                (ear, dt) => new { ear, DocumentTypeName = dt.Name })
+            .Join(
+                ReadOnlyContext.ExportAuthenticationRequestStatuses,
+                x => x.ear.StatusId,
+                ears => (int?)ears.Id,
+                (x, ears) => new { x.ear, x.DocumentTypeName, RequestStatusName = ears.Name })
+            .OrderBy(x => x.ear.Id)
+            .Select(x => new GetExportDocumentAuthenticationRequestSearchResultDto
+            {
+                RequestId = x.ear.Id,
+                CountryId = x.ear.CountryId,
+                CustomerId = x.ear.CustomerId,
+                DocumentTypeName = x.DocumentTypeName,
+                ExportDeclarationTitle = x.ear.LeadDocuments
+                    .OrderBy(l => l.Id)
+                    .Select(l => l.LeadDocumentTitle)
+                    .FirstOrDefault(),
+                RequestStatusName = x.RequestStatusName,
+                ExporterCustomerId = x.ear.ExporterCustomerId,
+                ExportLeadDocumentId = x.ear.ExportLeadDocumentId,
+            })
+            .ToListAsync();
+
+        return result;
+    }
+
+    public async Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(object? parameters)
+    {
+        // dbo.GetAuthenticationRequestByLeadDocumentID — TVP-filtered (Shared.IntArray) query; country/org-unit
+        // names return NULL from the SP (cross-service JOINs removed) and are enriched in the BL via lookups.
+        var result = await ReadOnlyContext.GetAuthenticationRequestByLeadDocumentID(parameters);
+        return result.ToList();
+    }
+
+    public async Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler(int days)
+    {
+        // dbo.GetImportAuthenticationRequestsForReminderForImporterScheduler — the reminder window arrives as a
+        // parameter because the legacy SP read it from the platform global-params UDF, which a service-owned SP
+        // may not call. The remaining "no open reminder task" filter runs in the BL (Tasks is another service).
+        var result = await ReadOnlyContext.GetImportAuthenticationRequestsForReminderForImporterScheduler(new { Days = days });
+        return result.ToList();
+    }
+
+    public async Task<List<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler(
+        int firstReminder,
+        int secondReminder,
+        int finalDecision,
+        int finalDecisionForCustomsHouse,
+        int exportFirstReminder,
+        int exportSecondReminder)
+    {
+        // dbo.GetAuthenticationRequestsForScheduler — same reason: the six month offsets were global params in the
+        // legacy SP and are now service parameters the BL reads and passes down.
+        var result = await ReadOnlyContext.GetAuthenticationRequestsForScheduler(new
+        {
+            FirstReminder = firstReminder,
+            SecondReminder = secondReminder,
+            FinalDecision = finalDecision,
+            FinalDecisionForCustomsHouse = finalDecisionForCustomsHouse,
+            ExportFirstReminder = exportFirstReminder,
+            ExportSecondReminder = exportSecondReminder,
+        });
+        return result.ToList();
+    }
+
+    public async Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id)
+    {
+        // Single request by id + its three child collections, as the legacy Single + 3x LoadProperty: four queries.
+        // The row has 35 columns, over the platform MaxCountExceededInterceptor default of 30. The hash j4XSVK6Fl8 is
+        // registered in InfrastructureCore.DAL's InterceptorList (since 1.10.83: columns warn 40 / error 50, rows 250),
+        // so the full row is read with it. The children are separate queries, not a JOIN: three collections joined
+        // would multiply their rows toward the 250-row limit.
+        var result = await ReadOnlyContext.ExportDocumentAuthenticationRequests
+            .Where(r => r.Id == id)
+            .ExcludeInterceptor("j4XSVK6Fl8")
+            .FirstOrDefaultAsync();
+        if (result is null)
+        {
+            return null;
+        }
+
+        result.CustomsItems = await ReadOnlyContext.Set<CustomsItemToExportDocumentAuthenticationRequest>()
+            .Where(c => c.ExportDocumentAuthenticationRequestId == id)
+            .ToListAsync();
+        result.LeadDocuments = await ReadOnlyContext.Set<ExportDocumentAuthenticationRequestLeadDocument>()
+            .Where(l => l.ExportRequestId == id)
+            .ToListAsync();
+        result.ManufacturingAreas = await ReadOnlyContext.Set<ExportAuthenticationRequestManufacturingArea>()
+            .Where(m => m.ExportAuthenticationRequestId == id)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId)
+    {
+        // dbo.GetCertificateOfOriginByID — a single certificate's full graph (7 result sets), composed in the
+        // DbContext extension. Milestone user display-names are NULL from the SP (cross-service JOIN removed) and
+        // are enriched in the BL via IUserProxy.
+        var parameters = new DynamicParameters();
+        parameters.Add("@CertificateOfOriginID", certificateOfOriginId, DbType.Int32);
+        var result = await ReadOnlyContext.GetCertificateOfOriginById(parameters);
+        return result;
+    }
+
+    public async Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters)
+    {
+        // dbo.GetCertificateOfOriginDataForWebQuery — the public-portal certificate-verification query (5 result
+        // sets), composed in the DbContext extension. DocumentId is NULL from the SP (the cross-service Docs JOIN was
+        // removed) and is resolved in the BL via IDocumentsProxy.GetDocumentsByEntity — it stays 0 only when no
+        // matching document exists. (Corrected 2026-09-15: this comment previously said it was "left unresolved in the
+        // BL (TODO(blocking))", which was stale — only the proxy's endpoint route is still a rollout TODO.)
+        var result = await ReadOnlyContext.GetCertificateOfOriginDataForWebQuery(parameters);
+        return result;
+    }
+
+    public async Task<List<int>> GetImportAuthenticationRequestDocumentIdsByLeadDocumentId(int leadDocumentId)
+    {
+        // The DocumentIDs of the import-authentication requests already registered under this lead document
+        // (legacy: GetQuery<...ImportAuthenticationRequest>().Where(LeadDocumentID == x).Select(DocumentID)).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.LeadDocumentId == leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<List<int>> GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId)
+    {
+        // Of the given document ids, those already claimed by a DIFFERENT lead document (legacy second query:
+        // Where(Ids.Contains(DocumentID) && LeadDocumentID != x).Select(DocumentID)).
+        var result = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.LeadDocumentId != leadDocumentId)
+            .Select(r => r.DocumentId)
+            .ToListAsync();
+        return result;
+    }
+
+    public async Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, DateTime now, bool stampFirstContactDate = false)
+    {
+        // The legacy saved through the infrastructure repository, which stamps the update user; the set-based writes below
+        // do it explicitly, as every other writer in this DAL does (parity finding G F3).
+        // Faithful to the legacy UpdateFileAfterDelivery: advance the file's status/delivery-method (computed in the
+        // BL from the client-sent values) + stamp LastDelivery/UpdateDate, and touch every child request's UpdateDate.
+        // Set-based writes (ExecuteUpdateAsync) — no row loaded, matching the "trust the client" decision.
+        //
+        // stampFirstContactDate: the first vendor/customs-house delivery also records FirstProvideContactDate = today,
+        // only while it is still empty. Legacy set it client-side (OnRequestDeliverNotificationCommand, "if null →
+        // Today") and the full-entity save persisted it; the reminder-ladder SP measures every rung from
+        // ISNULL(FirstProvideContactDate, LastDelivery), so without it the ladder restarts on each reminder.
+        // The clock comes from the BL, which returns the same stamps to the caller (the legacy echoed the mutated entity).
+        var today = now.Date;
+
+        await Context.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.AuthenticationFileStatusId, authenticationFileStatusId)
+                .SetProperty(f => f.DeliveryMethodId, deliveryMethodId)
+                .SetProperty(f => f.LastDelivery, today)
+                .SetProperty(f => f.FirstProvideContactDate,
+                    f => stampFirstContactDate && f.FirstProvideContactDate == null ? today : f.FirstProvideContactDate)
+                .SetProperty(f => f.UpdateDate, today)
+                .SetProperty(f => f.UpdateUserId, userId));
+
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+
+        return true;
+    }
+
+    public async Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId, DateTime now)
+    {
+        // Faithful to the legacy importer flow: stamp the request's DecisionID + LastDeliveryForImporter + UpdateDate.
+        // (The parent file + all its child requests' UpdateDate are handled separately by UpdateFileAfterDelivery,
+        // which — matching the legacy loop — overrides this request's UpdateDate to "now".) Set-based, no row loaded.
+        var today = now.Date;
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == documentId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.DecisionId, decisionId)
+                .SetProperty(r => r.LastDeliveryForImporter, today)
+                .SetProperty(r => r.UpdateDate, today)
+                .SetProperty(r => r.UpdateUserId, userId));
+        return true;
+    }
+
+    public async Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId)
+    {
+        // SaveAuthenticationRequestFile step 1 (legacy UpdateAndSaveImportAuthenticationRequest): per child request,
+        // Repository.Save of the client-modified entity + the server-recomputed IsOldIndication. The legacy screen can
+        // change the decision, the circumstances/remarks, the vendor / foreign customs house / importer, the countries,
+        // the preference-document type and issuing date, and clears InvoiceNumber or DocumentNumber in code — so those
+        // are written here. The fields that screen shows read-only are not.
+        //
+        // Legacy saved the entity the client sent back, so a nullable column is written as sent — a null clears it, as the
+        // screen's "clear" did (parity finding FN-03); the file read returns every one of these columns, so a round-trip
+        // keeps them. The NOT NULL columns (Remarks, the countries, the preference-document type) keep the stored value on a null.
+        // DocumentIssuingDate is written as sent (IsOldIndication is computed from it).
+        //
+        // Only a row whose values actually change is written, so an unchanged child keeps its UpdateDate/UpdateUserId: the
+        // legacy self-tracking entity was Modified only when a setter received a different value (parity finding FN-05).
+        // Set-based, no row loaded.
+        var now = DateTime.Now;
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.DocumentId == child.DocumentId
+                && (r.DecisionId != child.DecisionId
+                    || r.IsOldIndication != isOldIndication
+                    || r.DecisionCircumstences != child.DecisionCircumstences
+                    || r.CirumstanceDetails != child.CirumstanceDetails
+                    || (child.Remarks != null && r.Remarks != child.Remarks)
+                    || r.DocumentNumber != child.DocumentNumber
+                    || r.InvoiceNumber != child.InvoiceNumber
+                    || r.VendorId != child.VendorId
+                    || r.CustomerId != child.CustomerId
+                    || r.ImporterId != child.ImporterId
+                    || (child.ImportCountryId != null && r.ImportCountryId != child.ImportCountryId)
+                    || (child.OriginCountryId != null && r.OriginCountryId != child.OriginCountryId)
+                    || (child.IssuingCountryId != null && r.IssuingCountryId != child.IssuingCountryId)
+                    || (child.PreferenceDocumentTypeId != null && r.PreferenceDocumentTypeId != child.PreferenceDocumentTypeId)
+                    || r.DocumentIssuingDate != child.DocumentIssuingDate))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.DecisionId, child.DecisionId)
+                .SetProperty(r => r.IsOldIndication, isOldIndication)
+                .SetProperty(r => r.DecisionCircumstences, child.DecisionCircumstences)
+                .SetProperty(r => r.CirumstanceDetails, child.CirumstanceDetails)
+                .SetProperty(r => r.Remarks, r => child.Remarks ?? r.Remarks)
+                .SetProperty(r => r.DocumentNumber, child.DocumentNumber)
+                .SetProperty(r => r.InvoiceNumber, child.InvoiceNumber)
+                .SetProperty(r => r.VendorId, child.VendorId)
+                .SetProperty(r => r.CustomerId, child.CustomerId)
+                .SetProperty(r => r.ImporterId, child.ImporterId)
+                .SetProperty(r => r.ImportCountryId, r => child.ImportCountryId ?? r.ImportCountryId)
+                .SetProperty(r => r.OriginCountryId, r => child.OriginCountryId ?? r.OriginCountryId)
+                .SetProperty(r => r.IssuingCountryId, r => child.IssuingCountryId ?? r.IssuingCountryId)
+                .SetProperty(r => r.PreferenceDocumentTypeId, r => child.PreferenceDocumentTypeId ?? r.PreferenceDocumentTypeId)
+                .SetProperty(r => r.DocumentIssuingDate, child.DocumentIssuingDate)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+    }
+
+    public async Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId)
+    {
+        // SaveAuthenticationRequestFile step 4: persist the file's editable scalar columns + update-audit. Set-based
+        // (the repo write convention) — CreateDate/CreateUserId/State/TimeStamp are left untouched. Missing row → false.
+        //
+        // Only a row whose values actually change is written, so an unchanged file keeps its UpdateDate/UpdateUserId: the
+        // legacy self-tracking entity was Modified only when a setter received a different value (parity finding FN-05).
+        var now = DateTime.Now;
+        var affected = await Context.CertificateOfOriginsImportAuthenticationFileDetails
+            .Where(f => f.Id == file.Id
+                && (f.AuthenticationFileStatusId != file.AuthenticationFileStatusId
+                    || f.Notes != file.Notes
+                    || f.PostalAdress != file.PostalAdress
+                    || f.DeliveryMethodId != file.DeliveryMethodId
+                    || f.EmailAdress != file.EmailAdress
+                    || f.ReminderMethodId != file.ReminderMethodId
+                    || f.RequestCountryId != file.RequestCountryId
+                    || f.UserId != file.UserId
+                    || f.UserNameIssuingLetter != file.UserNameIssuingLetter
+                    || f.LastDelivery != file.LastDelivery
+                    || f.ImporterContactingReasonId != file.ImporterContactingReasonId
+                    || f.FirstProvideContactDate != file.FirstProvideContactDate))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.AuthenticationFileStatusId, file.AuthenticationFileStatusId)
+                .SetProperty(f => f.Notes, file.Notes)
+                .SetProperty(f => f.PostalAdress, file.PostalAdress)
+                .SetProperty(f => f.DeliveryMethodId, file.DeliveryMethodId)
+                .SetProperty(f => f.EmailAdress, file.EmailAdress)
+                .SetProperty(f => f.ReminderMethodId, file.ReminderMethodId)
+                .SetProperty(f => f.RequestCountryId, file.RequestCountryId)
+                .SetProperty(f => f.UserId, file.UserId)
+                .SetProperty(f => f.UserNameIssuingLetter, file.UserNameIssuingLetter)
+                .SetProperty(f => f.LastDelivery, file.LastDelivery)
+                .SetProperty(f => f.ImporterContactingReasonId, file.ImporterContactingReasonId)
+                .SetProperty(f => f.FirstProvideContactDate, file.FirstProvideContactDate)
+                .SetProperty(f => f.UpdateDate, now)
+                .SetProperty(f => f.UpdateUserId, userId));
+        if (affected > 0)
+        {
+            return true;
+        }
+
+        // Nothing changed, or no such file: only the second is a miss.
+        var exists = await Context.CertificateOfOriginsImportAuthenticationFileDetails.AnyAsync(f => f.Id == file.Id);
+        return exists;
+    }
+
+    public async Task UnlinkAllRequestsFromFile(int fileId, int userId)
+    {
+        // SaveAuthenticationRequestFile / CheckStatusAndOpenTask CancelledFile branch: detach every child request from
+        // the cancelled file (AuthenticationFileID → null) + stamp update-audit. Set-based.
+        var now = DateTime.Now;
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => r.AuthenticationFileId == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.AuthenticationFileId, (int?)null)
+                .SetProperty(r => r.UpdateDate, now)
+                .SetProperty(r => r.UpdateUserId, userId));
+    }
+
+    public async Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds)
+    {
+        // The first of the given requests that already belongs to a file — drives the FileExistForRequest validation.
+        var row = await ReadOnlyContext.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId != null)
+            .Select(r => new { r.DocumentId, r.AuthenticationFileId })
+            .FirstOrDefaultAsync();
+        return row is null ? null : (row.DocumentId, row.AuthenticationFileId!.Value);
+    }
+
+    public async Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId)
+    {
+        // Faithful to usp_CertificateOfOrigins_UpdateImportAuthenticationRequest: link only requests not already
+        // attached to a file (set-based ExecuteUpdate, replacing the legacy SP + Shared.IntArray TVP — developer
+        // decision 2026-07-30).
+        await Context.CertificateOfOriginsImportAuthenticationRequests
+            .Where(r => documentIds.Contains(r.DocumentId) && r.AuthenticationFileId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.AuthenticationFileId, fileId));
+        return true;
+    }
+
+    public async Task<int?> CheckImporterOfImportAuthentication(int importerId)
+    {
+        var isProhibited = await ReadOnlyContext.VerificationProhibitedImporters
+            .AnyAsync(c => c.CustomerId == importerId);
+        return isProhibited ? null : importerId;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForVendor(parameters);
+        return result;
+    }
+
+    public async Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@ImporterID", importerId, DbType.Int32);
+        parameters.Add("@VendorID", vendorId, DbType.Int32);
+        parameters.Add("@CustomerID", customerId, DbType.Int32);
+        parameters.Add("@CountryID", countryId, DbType.Int32);
+        var result = await ReadOnlyContext.CheckIfExistsAdditionalRequestsForImporter(parameters);
+        return result;
+    }
+
+    // CR 194221 — dbo.GetTemplateData. A read, so ReadOnlyContext per the repo convention.
+    public async Task<T?> GetTemplateData<T>(int templateId, int entityId, int createUserId, string? additionalInfo)
+    {
+        var result = await ReadOnlyContext.GetTemplateData<T>(templateId, entityId, createUserId, additionalInfo);
+        return result.FirstOrDefault();
+    }
+}

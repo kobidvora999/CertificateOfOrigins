@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_URL}}/api/CommonServices/CreateQrCode"
+method: POST
+headers:
+  Content-Type: application/json
+# CreateQrCode - the QR image of a published certificate (binary answer)
+body:
+  type: json
+  content: |-
+    "https://example.invalid/certificate-of-origin"
+order: 1000

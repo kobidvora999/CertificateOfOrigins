@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_URL}}/api/CustomsBook/CustomsItemsByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetCustomsItemsByIds - customs items of the reconciliation
+body:
+  type: json
+  content: |-
+    [
+      {
+        "customsItemId": 2147483647,
+        "date": "{{today}}"
+      }
+    ]
+order: 7000

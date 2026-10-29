@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{sqpId}}"
+method: GET
+# State after C9: Published (8).
+order: 5050

@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Convert"
+method: POST
+headers:
+  Content-Type: application/json
+# Convert resolves the number of the certificate 00-setup created in THIS run to a VirtualEntity - the SUCCESS path, and it must resolve to that certificate.
+body:
+  type: json
+  content: |-
+    { "entityIdKey1": "BLC-FILTER-{{runId}}" }
+order: 20020

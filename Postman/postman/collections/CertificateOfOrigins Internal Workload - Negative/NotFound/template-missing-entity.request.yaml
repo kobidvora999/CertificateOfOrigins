@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Template/1/2147483647"
+method: GET
+# The registered template (1) for a file that does not exist -> 404 (dbo.GetTemplateData finds no row).
+order: 5400

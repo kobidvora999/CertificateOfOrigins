@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X1: the letter goes to the exporter -> WaitingForExporter (2), delivery PostedMailing (2), last delivery today.
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 1100

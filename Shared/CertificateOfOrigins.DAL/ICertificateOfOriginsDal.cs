@@ -1,0 +1,145 @@
+using CertificateOfOrigins.Model.CertificateOfOriginsDb;
+using CertificateOfOrigins.Model.ModelDTOs;
+using CertificateOfOrigins.Model.ModelDTOs.ResolverDto;
+using CustomsCloud.InfrastructureCore.DAL;
+
+namespace CertificateOfOrigins.DAL;
+
+public interface ICertificateOfOriginsDal : IBaseDal
+{
+    Task<int?> GetCertificateOfOriginIdByNumber(string certificateNumber);
+
+    Task<List<string?>> GetLiveCertificateNumbersByIds(List<int> certificateIds);
+
+    Task<List<CertificateOfOriginResultDto>> GetCertificateOfOriginsByFilter(object? parameters);
+
+    Task<List<GetImportAuthenticationRequestResultDto>> GetImportAuthenticationRequestByFilter(object? parameters);
+
+    Task<List<GetExportDocumentAuthenticationRequestSearchResultDto>> GetExportDocumentAuthenticationRequestSearch(ExportDocumentAuthenticationRequestSearchFilterDto filter);
+
+    Task<List<GetAuthenticationRequestByLeadDocumentResultDto>> GetAuthenticationRequestByLeadDocumentIDs(object? parameters);
+
+    // The two reminder schedulers (Planar jobs) — no REST endpoint reaches these.
+    Task<List<ReminderForImporterSchedulerDto>> GetImportAuthenticationRequestsForReminderForImporterScheduler(int days);
+
+    Task<List<AuthenticationRequestsForSchedulerDto>> GetAuthenticationRequestsForScheduler(
+        int firstReminder,
+        int secondReminder,
+        int finalDecision,
+        int finalDecisionForCustomsHouse,
+        int exportFirstReminder,
+        int exportSecondReminder);
+
+    Task<ExportDocumentAuthenticationRequest?> GetExportDocumentAuthenticationRequestById(int id);
+
+    Task<CertificateOfOriginDto?> GetCertificateOfOriginById(int certificateOfOriginId);
+
+    Task<CertificateOfOriginWebQueryDto?> GetCertificateOfOriginDataForWebQuery(object? parameters);
+
+    Task<List<int>> GetImportAuthenticationRequestDocumentIdsByLeadDocumentId(int leadDocumentId);
+
+    Task<List<int>> GetImportAuthenticationRequestDocumentIdsClaimedByOtherLeadDocuments(List<int> documentIds, int leadDocumentId);
+
+    Task<bool> UpdateFileAfterDelivery(int fileId, int authenticationFileStatusId, int deliveryMethodId, int userId, DateTime now, bool stampFirstContactDate = false);
+
+    Task<bool> UpdateRequestDecisionAfterDelivery(int documentId, int decisionId, int userId, DateTime now);
+
+    Task<(int DocumentId, int FileId)?> GetFirstRequestAlreadyLinkedToFile(List<int> documentIds);
+
+    Task<bool> LinkRequestsToAuthenticationFile(List<int> documentIds, int fileId);
+
+    Task<int?> CheckImporterOfImportAuthentication(int importerId);
+
+    Task<bool> CheckIfExistsAdditionalRequestsForVendor(int vendorId);
+
+    Task<bool> CheckIfExistsAdditionalRequestsForImporter(int importerId, int? vendorId, int? customerId, int countryId);
+
+    Task<CertificateOfOriginsImportAuthenticationRequest?> GetImportAuthenticationRequestById(int documentId);
+
+    Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestId(int documentId);
+
+    Task<List<CertificateOfOriginsDecision>> GetAllDecisions();
+
+    Task<List<CertificateTypeTradeAgreementsResolverDto>> GetTradeAgreementsByCertificateType();
+
+    Task<bool> IsSupplierDeliveryCountry(int countryId);
+
+    Task<CertificateOfOriginsImportAuthenticationFileDetails?> GetAuthenticationFileById(int fileId);
+
+    Task<List<CertificateOfOriginsImportAuthenticationRequest>> GetRequestsByFileId(int fileId);
+
+    Task<List<CertificateOfOriginsAuthenticationFileStatus>> GetAllFileStatuses();
+
+    Task<string?> GetExportAuthenticationRequestStatusName(int statusId);
+
+    Task<List<CertificateOfOriginsItemDetails>> GetItemDetailsByRequestIds(List<int> requestIds);
+
+    Task<ExportRequestStoredColumns?> GetExportRequestProjectionColumns(int requestId);
+
+    Task MergeExportDocumentAuthenticationRequestChildren(
+        ExportDocumentAuthenticationRequest request,
+        List<CustomsItemToExportDocumentAuthenticationRequest> customsItems,
+        List<ExportDocumentAuthenticationRequestLeadDocument> leadDocuments,
+        List<ExportAuthenticationRequestManufacturingArea> manufacturingAreas);
+
+    Task<bool> UpdateImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+
+    Task AddImportAuthenticationRequest(SaveImportAuthenticationRequestRequestDto request, int userId);
+
+    Task UpdateFileChildRequest(SaveAuthenticationRequestFileChildDto child, bool isOldIndication, int userId);
+
+    Task<bool> UpdateAuthenticationFile(SaveAuthenticationRequestFileRequestDto file, int userId);
+
+    Task UnlinkAllRequestsFromFile(int fileId, int userId);
+
+    Task<CertificateOfOrigin?> GetLatestCertificateByNumber(string certificateNumber);
+
+    Task<int?> GetPreviousCertificateIdByTitle(string title);
+
+    Task<CertificateOfOrigin?> GetLatestCertificateByNumberForFeedback(string certificateNumber);
+
+    Task CancelCertificate(int id, string rejectCancelReason, int userId);
+
+    Task<int> GetNextCertificateOfOriginNumber();
+
+    Task<OriginCriterion?> GetOriginCriterion(string originCriterionCode, int certificateOfOriginTypeCodeId);
+
+    Task<List<DetailsPerCertificate>> GetDetailsPerCertificate(int certificateOfOriginTypeCodeId);
+
+    Task StageCertificateOfOriginDetails(int certificateId, List<CertificateOfOriginDetails> details);
+
+    Task StageCertificateOfOriginInvoiceItems(List<CertificateOfOriginInvoiceDetail> invoices);
+
+    Task StageCertificateOfOriginInvoices(int certificateId, List<CertificateOfOriginInvoiceDetail> invoices);
+
+    Task UpdateCertificatePublishingState(int id, DateTime issuingDate, bool isInPublishingProcess, int userId);
+
+    Task UpdateCertificateDeclarationLink(int id, int? leadDocumentId, string? exportDeclarationNumber, int userId);
+
+    Task UpdateCertificateFeedbackRemark(int id, string? feedbackRemark, int userId);
+
+    Task UpdateCertificateQrCodePath(int id, string? qrCodePath, int userId);
+
+    Task UpdateCertificateQrCode(int id, Guid? guid, byte[]? qrImage, int userId);
+
+    Task CancelPreviousCertificate(int id, string rejectCancelReasonSuffix, int userId);
+
+    Task<List<CertificateOfOrigin>> GetCertificatesByIds(List<int> ids);
+
+    Task<List<CertificateOfOriginDetails>> GetCertificateDetailsByCertificateIds(List<int> certificateIds);
+
+    Task<List<CertificateReconcileInvoiceDto>> GetCertificateInvoiceDetailsByCertificateIds(List<int> certificateIds);
+
+    Task<bool?> GetCertificateTypeIsCustomsItemMandatory(int certificateTypeId);
+
+    Task<CertificateOfOriginTypeCode?> GetCertificateTypeCode(int certificateTypeId);
+
+    Task UpdateCertificateReconciliation(int id, int statusId, string? exportDeclarationNumber, int? leadDocumentId, string? rejectCancelReason, int userId);
+
+    Task AddCertificateVsDeclarationErrors(int certificateOfOriginId, List<string> errorTexts);
+
+    // CR 194221 — the template's data row (dbo.GetTemplateData). T is the template's Result DTO, chosen by the BL
+    // from the template id; null when the id is unregistered or the entity has no data. createUserId + additionalInfo
+    // are the legacy Object Maker parameters (usp_Template_INNER_CROSS_*), passed to every template branch.
+    Task<T?> GetTemplateData<T>(int templateId, int entityId, int createUserId, string? additionalInfo);
+}

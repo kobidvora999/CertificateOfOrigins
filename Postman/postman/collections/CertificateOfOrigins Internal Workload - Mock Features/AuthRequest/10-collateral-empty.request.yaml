@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{mfDoc}}"
+method: GET
+headers:
+  x-mock-feature--Collateral.Empty: "true"
+# GetCollateralRequest returns [] -> GetAuthenticationRequestByID's "no collaterals" branch (the default mock
+# always returned exactly one, so the empty side never ran).
+order: 40000

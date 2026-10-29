@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{refileId}}"
+method: GET
+# The file as loaded before the cancel. It is the body of 04.
+order: 2020

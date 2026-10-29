@@ -61,3 +61,11 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+###############################################################################
+# Word templates (Templates/) — Office Open XML is a ZIP container. `* text=auto`
+# above would corrupt one the moment git guessed it was text, so pin them binary
+# explicitly rather than relying on that guess.
+###############################################################################
+*.docx binary
+*.dotx binary

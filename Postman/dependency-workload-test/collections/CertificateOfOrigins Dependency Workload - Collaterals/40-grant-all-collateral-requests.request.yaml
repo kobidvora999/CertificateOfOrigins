@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_URL}}/api/Collateral/GrantAllCollateralRequests"
+method: POST
+headers:
+  Content-Type: application/json
+# GrantAllCollateralRequests - approval / valid file releases the collaterals
+body:
+  type: json
+  content: |-
+    [
+      {
+        "entityId": 2147483647,
+        "entityTypeId": 12384
+      }
+    ]
+order: 4000

@@ -1,0 +1,71 @@
+$kind: collection
+id: certificateoforigins-cross-field-v1
+name: CertificateOfOrigins Cross Field
+description: >-
+  The cross-field rules in CertificateOfOriginsBl.MessageCrossField.cs — the checks that look at two or more
+  fields together rather than validating one in isolation. Ten requests, each breaking exactly ONE pairing on
+  an otherwise complete message.
+  These are the hardest arms to reach by accident, which is why they were the last ones left: several are
+  guarded by three or four conditions that all have to line up at once (PlaceOfManufactureAndZipcodeRequired
+  needs an Israel origin AND a missing pair AND a zipcode-mandatory type AND a non-exempt destination), and
+  two of them fire only when a field is ABSENT — something no fixture built by copying a working message ever
+  produces.
+  No scenario sends a certificateId, so none takes the five-minute message lease; the collection is freely
+  re-runnable.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      var now = Date.now(), DAY = 86400000;
+      pm.collectionVariables.set('twoDaysAgo', iso(now - 2 * DAY));
+      pm.collectionVariables.set('tenDaysAgo', iso(now - 10 * DAY));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+
+      var codes = (j && j.exceptions ? j.exceptions : []).map(function (e) { return e.exceptionType; });
+
+      var MUST = {
+          '10-insufficient-working-text':   4832,      // InSufficentworkingInd without its text
+          '20-consignee-country-missing':   4996,      // CheckConsigneeCountry
+          '50-place-of-manufacture-missing':5006,      // CheckPlaceOfManufactureAndZipcode, the four-way &&
+          '60-zip-too-short':               14027168,  // ... and its independent length check
+          '70-customs-house-blank':         2942,      // CheckIfSiteExistAndCustomsHouse, blank guard
+          '80-second-country-missing':      4993,      // CheckCountryXorGroup, NEITHER arm
+          '90-destination-country-and-group':5040,     // CheckCountryXorGroup, BOTH arm
+          '100-mercosur-no-destination':    5001       // CheckDestinationCountry (non-EUR branch)
+      };
+      // The two scenarios whose correct answer is silence. They are what stop the positives above from being
+      // satisfied by a validator that simply fires on everything.
+      var MUST_NOT = {
+          // IsCumulation false: the cumulation rules do not apply at all.
+          '30-no-cumulation':  [5003, 5040],
+          // Origin given as a group, so there is no origin COUNTRY and the place-of-manufacture rule is skipped
+          // entirely - neither of its two codes may appear.
+          '40-origin-as-group': [5006, 14027168]
+      };
+
+      if (MUST[name] !== undefined) {
+          pm.test(name + ': raises exceptionType ' + MUST[name], function () {
+              pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.include(MUST[name]);
+          });
+      }
+      if (MUST_NOT[name]) {
+          pm.test(name + ': the rule does not apply, so it raises nothing', function () {
+              MUST_NOT[name].forEach(function (c) {
+                  pm.expect(codes, 'codes seen: ' + JSON.stringify(codes)).to.not.include(c);
+              });
+          });
+      }
+    language: text/javascript

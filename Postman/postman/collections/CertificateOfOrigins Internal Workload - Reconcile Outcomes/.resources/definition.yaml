@@ -1,0 +1,124 @@
+$kind: collection
+id: certificateoforigins-reconcile-outcomes-v1
+name: CertificateOfOrigins Reconcile Outcomes
+description: >-
+  The three arms of ApplyReconciliationOutcome (CertificateOfOriginsBl.cs:1520), driven through
+  POST /CertificateOfOrigins/Reconcile. Every earlier collection reached the reconciliation only through the
+  MESSAGE path, where the declaration comes from ExportDealFileMockProxy and always disagrees with the
+  certificate - so every run produced Error-level findings and only the middle arm (hasErrors -> Rejected) ever
+  ran. The match arm and the warnings arm were both dead:
+    * no errors, no warnings -> RaiseCertificatePreferredAssessorEvent + ResolveAssessorUserId   (0/17, 0/14)
+    * warnings only          -> RaiseDeclarationHasWarningsEvent                                  (0/21)
+  Here the declaration payload is OURS, so the two sides can be made to agree - or to disagree in exactly one
+  controlled way. Each folder creates its own certificate at status Received, reconciles it once (the status
+  moves away from Received, so a certificate is reconcilable exactly once), then READS IT BACK: the resulting
+  status is the branch proof, because each arm sets a different one -
+  DeclarationMatch 6 / DeclarationMismatch 5 / Rejected 3.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      // Run-scoped suffix for every certificate number this collection creates: a fixed number would hit the
+      // existing-number branch (new version, old one cancelled) from the second run on. Re-minted on the first request.
+      if (pm.info.requestName === '00-setup-Match' || !pm.collectionVariables.get('runId')) {
+          pm.collectionVariables.set('runId', String(Date.now()));
+      }
+      // B-H1: the declaration link the reconcile must backfill, minted per run so the read-back can only match THIS request.
+      if (pm.info.requestName === '00-setup-BackfillLink' || !pm.collectionVariables.get('bh1Lead')) {
+          pm.collectionVariables.set('bh1Lead', 7000000 + (Date.now() % 1000000));
+          pm.collectionVariables.set('bh1Decl', 'BH1-' + Date.now());
+      }
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('tenDaysAgo', iso(Date.now() - 10 * 86400000));
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      // Every request name carries its scenario as a suffix ("10-reconcile-Warnings"), and the step is the
+      // prefix. Deliberately NOT pm.info.requestPath: that is not a Postman API - it reads undefined, the
+      // lookups silently no-op and the run goes green having asserted nothing. This repo has been bitten by
+      // exactly that before (see the Message Validation collection's note).
+      var name   = pm.info.requestName;
+      var step   = name.substring(0, name.indexOf('-', 3));
+      var folder = name.substring(name.indexOf('-', 3) + 1);
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+
+      // Each folder reconciles the certificate IT created. The folders are ordered so that a setup always
+      // immediately precedes its own reconcile, so one shared variable is enough.
+      if (name === '20-verify-BackfillLink' && j) {
+          pm.test('BackfillLink/20: linked to the lead document and declaration number the reconcile sent', function () {
+              pm.expect(j.leadDocumentId, 'leadDocumentId').to.eql(Number(pm.collectionVariables.get('bh1Lead')));
+              pm.expect(j.exportDeclarationNumber, 'exportDeclarationNumber').to.eql(pm.collectionVariables.get('bh1Decl'));
+          });
+      }
+      if (name === '00-setup-BackfillLink' && j) {
+          pm.test('BackfillLink/00: created with no declaration number', function () {
+              pm.expect(j.exportDeclarationNumber, 'exportDeclarationNumber').to.be.oneOf([null, undefined, '']);
+          });
+      }
+
+      if (step === '00-setup' && j) {
+          pm.collectionVariables.set('certId', j.id);
+          pm.test(folder + '/00-setup: created at Received', function () {
+              pm.expect(j.id, 'id').to.be.a('number').and.not.equal(0);
+              pm.expect(j.certificateOfOriginStatusId, 'status must be Received(2) or the reconcile gate skips it').to.eql(2);
+          });
+      }
+
+      var DECLARATION_MATCH = 6, DECLARATION_MISMATCH = 5, REJECTED = 3;
+
+      // folder -> what the reconcile must return, and the status it must leave behind.
+      var EXPECT = {
+          'Match':                 { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'MatchNoAssessor':       { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'BackfillLink':          { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'NoInvoiceRowsMatch':    { levels: [],    status: DECLARATION_MATCH,    contains: [] },
+          'Warnings':              { levels: [1],   status: DECLARATION_MISMATCH, contains: ['אינו תואם את החשבונות בהצהרת היצוא'] },
+          'WarningsImportReplace': { levels: [2],   status: DECLARATION_MISMATCH, contains: ['לא קיימת בהצהרה סחורה המקושרת להצהרת היבוא'] },
+          'CustomsItemMismatch':   { levels: [1, 2],   status: REJECTED,             contains: ['בתעודה אינו קיים או חסר בחשבונית',
+                                                                                             'בהצהרת היצוא אינו קיים או חסר בחשבונית'] }
+      };
+      var want = EXPECT[folder];
+
+      if (step === '10-reconcile' && want && j) {
+          var levels = j.map(function (e) { return e.exceptionLevel; });
+          var text   = j.map(function (e) { return e.exceptionDescription || ''; }).join(' | ');
+
+          if (want.levels.length === 0) {
+              pm.test(folder + '/10: reconciled clean - no findings at all', function () {
+                  pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.empty;
+              });
+          } else {
+              // The reported level is each message's legacy UIMessage type, NOT the level that picks the arm (legacy decided
+              // by the InfException level): the unmatched invoice is a warning that reports 1, the declaration-side customs item
+              // an error that reports 2. The arm itself is proven by the status at 20-verify.
+              pm.test(folder + '/10: findings report the UIMessage levels ' + JSON.stringify(want.levels), function () {
+                  pm.expect(j, 'findings: ' + text).to.be.an('array').that.is.not.empty;
+                  var seen = levels.filter(function (l, i) { return levels.indexOf(l) === i; }).sort();
+                  pm.expect(seen, 'levels (1=Error, 2=Warning)').to.eql(want.levels);
+              });
+              want.contains.forEach(function (t) {
+                  pm.test(folder + '/10: raised "' + t + '"', function () {
+                      pm.expect(text).to.include(t);
+                  });
+              });
+          }
+      }
+
+      if (step === '20-verify' && want && j) {
+          // The real branch proof. ApplyReconciliationOutcome's three arms each leave a different status, and
+          // nothing else in the flow writes these values, so the status alone says which arm ran.
+          pm.test(folder + '/20: outcome status is ' + want.status, function () {
+              pm.expect(j.certificateOfOriginStatusId,
+                  '6=DeclarationMatch (no findings), 5=DeclarationMismatch (warnings only), 3=Rejected (any error)')
+                  .to.eql(want.status);
+          });
+      }
+    language: text/javascript

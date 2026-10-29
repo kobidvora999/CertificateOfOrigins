@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/ByExternalIdExist?certificateOfOriginExternalId={{certNumber}}"
+method: GET
+# Existence check by number - resolves this certificate with its Published status name.
+order: 1720

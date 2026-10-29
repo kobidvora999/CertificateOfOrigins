@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "CertificateOfOrigins web - CertificateRequest",
+    "version": "1.0.0",
+    "description": "C14 Schema First contract for the web domain. Hand-written, derived from the legacy incoming-message service GetPC_Web_9096_CertificateRequest (the 'Web' in that name is what places this endpoint in the web domain). The controller is written to match this document, not the other way round, and Test/SchemaContract/WebCertificateRequestContractTests.cs fails the build if the two drift apart. Note the deliberate in-band error contract: an unknown guid or no matching certificate is HTTP 200 with ExeptionDescription set, never a 404 - the public portal depends on that. The response members keep the legacy wire names (PascalCase, including the legacy spelling ExeptionDescription; parity D-F1, decided 2026-10-11). A technical failure (a service this endpoint calls, missing configuration) is an HTTP 5xx, not an in-band error (parity D-F4, decided 2026-10-11)."
+  },
+  "paths": {
+    "/web/CertificateOfOrigins/RequestByGuid": {
+      "get": {
+        "tags": [ "CertificateOfOrigins" ],
+        "summary": "Certificate verification for the public portal.",
+        "description": "Located either by guid, or by certificate number together with its issuing date.",
+        "parameters": [
+          { "name": "certificateOfOriginGuid", "in": "query", "required": false, "schema": { "type": "string", "nullable": true } },
+          { "name": "certificateOfOriginNumber", "in": "query", "required": false, "schema": { "type": "string", "nullable": true } },
+          { "name": "issuingDate", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time", "nullable": true } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The web-query response. Carries ExeptionDescription instead of an error status when nothing matched.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CertificateOfOriginsResponseDto" } } }
+          },
+          "400": { "description": "Malformed request." },
+          "502": { "description": "The Documents service answered with an error." },
+          "503": { "description": "A service this endpoint calls is unavailable." }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CertificateOfOriginsRequestDto": {
+        "type": "object",
+        "properties": {
+          "certificateOfOriginGuid": { "type": "string", "nullable": true },
+          "certificateOfOriginNumber": { "type": "string", "nullable": true },
+          "issuingDate": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "CertificateOfOriginsResponseDto": {
+        "type": "object",
+        "properties": {
+          "CertificateNumber": { "type": "string", "nullable": true },
+          "QueryURL": { "type": "string", "nullable": true },
+          "DocumentID": { "type": "integer", "format": "int32" },
+          "CertificateOfOriginDetails": { "type": "array", "items": { "$ref": "#/components/schemas/FieldDataDto" } },
+          "CertificateOfOriginInvoiceDetails": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginWebInvoiceDetailDto" } },
+          "ExeptionDescription": { "type": "string", "nullable": true }
+        }
+      },
+      "FieldDataDto": {
+        "type": "object",
+        "properties": {
+          "Label": { "type": "string", "nullable": true },
+          "Value": { "nullable": true }
+        }
+      },
+      "CertificateOfOriginWebInvoiceDetailDto": {
+        "type": "object",
+        "properties": {
+          "InvoiceNumber": { "type": "string", "nullable": true },
+          "InvoiceDate": { "type": "string", "format": "date" },
+          "InvoiceAmount": { "type": "number", "format": "double" },
+          "CurrencyCode": { "type": "string", "nullable": true },
+          "InvoiceGoodsDescription": { "type": "string", "nullable": true },
+          "CertificateOfOriginItemDetailDTOs": { "type": "array", "items": { "$ref": "#/components/schemas/CertificateOfOriginWebItemDetailDto" } }
+        }
+      },
+      "CertificateOfOriginWebItemDetailDto": {
+        "type": "object",
+        "properties": {
+          "ItemNumber": { "type": "string", "nullable": true },
+          "OriginCriterion": { "type": "string", "nullable": true },
+          "GoodsDescription": { "type": "string", "nullable": true },
+          "GrossWeight": { "type": "number", "format": "double" },
+          "MeasurementUnitType": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}

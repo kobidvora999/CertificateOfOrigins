@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+method: GET
+# Read back: status 2, and the Country mock resolved destination DE to its id (138) and exporter EXP1 to customer 777 - the values the reconcile must match.
+order: 1100

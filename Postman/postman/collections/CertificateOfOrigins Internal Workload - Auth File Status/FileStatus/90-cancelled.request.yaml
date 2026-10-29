@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# CancelledFile(9) detaches every child request from the file (UnlinkAllRequestsFromFile). Deliberately LAST in the folder: it unlinks this run's two requests - harmless, the next run creates a new file and new requests.
+body:
+  type: json
+  content: |-
+    {
+      "id": {{fileId}},
+      "authenticationFileStatusId": 9,
+      "originalAuthenticationFileStatusId": {{fileStatus}},
+      "notes": null, "postalAdress": "flow address", "deliveryMethodId": 1,
+      "emailAdress": "flow@example.com", "reminderMethodId": 1, "requestCountryId": 32,
+      "userId": 5, "userNameIssuingLetter": "flow user",
+      "lastDelivery": null, "importerContactingReasonId": null, "firstProvideContactDate": null,
+      "organizationUnitId": 1,
+      "requests": [
+        { "documentId": {{docFileA}}, "authenticationFileId": {{fileId}}, "decisionId": 3, "originalRequestDecisionId": {{decA}},
+          "documentIssuingDate": "{{today}}", "organizationUnitId": 1, "userId": 5, "userResponseId": 5 }]
+    }
+order: 30090

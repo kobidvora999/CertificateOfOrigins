@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Customer/IdByExternalId/NO-SUCH-2147483647"
+method: GET
+# GetCustomerIdByExternalId - the exporter of an incoming message
+order: 4000

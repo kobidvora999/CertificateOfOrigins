@@ -1,0 +1,39 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveImport"
+method: POST
+headers:
+  Content-Type: application/json
+# FLOW STEP - the request the file-bearing scenarios (10/30/40/70) update; 03 attaches it to this run's file.
+# isNewInstance = true INSERTS the request (DocumentID minted per run in the collection pre-request script). Decision
+# 1 with isCurrentUserHandleRequest = true takes the quiet arm, so the scenarios below start from a clean row.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{docDecisionA}},
+      "isNewInstance": true,
+      "authenticationFileId": null,
+      "authenticationRequestDate": "{{today}}",
+      "collateralId": null,
+      "decisionId": 1,
+      "leadDocumentId": {{leadDocId}},
+      "documentIssuingDate": "{{today}}",
+      "importCountryId": 32,
+      "issuingCountryId": 32,
+      "number": 1,
+      "originCountryId": 32,
+      "preferenceDocumentTypeId": 1,
+      "responseNameEmail": "flow@example.com",
+      "responsePhoneNum": "0500000000",
+      "organizationUnitId": 1,
+      "vendorId": 777,
+      "vendorName": "Flow Vendor",
+      "customerId": null,
+      "importerId": null,
+      "remarks": "flow decision request",
+      "userId": 5,
+      "userResponseId": 5,
+      "isCurrentUserHandleRequest": true,
+      "collaterals": []
+    }
+order: 1000

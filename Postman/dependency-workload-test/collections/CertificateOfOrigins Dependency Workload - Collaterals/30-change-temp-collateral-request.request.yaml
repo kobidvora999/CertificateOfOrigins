@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_URL}}/api/Collateral/ChangeTempCollateralRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# ChangeTempCollateralRequest - collaterals of a saved import request made permanent
+body:
+  type: json
+  content: |-
+    [
+      {
+        "collateralRequestId": 2147483647,
+        "relatedEntityId": 2147483647,
+        "entityExternalId": "2147483647"
+      }
+    ]
+order: 3000

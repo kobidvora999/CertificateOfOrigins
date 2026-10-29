@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# C3: the worker rejects - status 3 with a reason, original status 2 (event 636 + feedback).
+body:
+  type: json
+  content: |-
+    {{rejectBody}}
+order: 2200

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/CustomsBook/CustomsItemIdByFullClassification/Export/0000000000"
+method: GET
+# GetCustomsItemIdByFullClassification - the customs item of a goods item
+order: 6000

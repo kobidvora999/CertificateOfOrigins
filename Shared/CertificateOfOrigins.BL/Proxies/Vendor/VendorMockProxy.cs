@@ -1,0 +1,29 @@
+using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.Proxy.Rest;
+using System.Diagnostics.CodeAnalysis;
+
+namespace CertificateOfOrigins.BL.Proxies;
+
+[ExcludeFromCodeCoverage]
+public class VendorMockProxy(IProxyMockUtil mockUtil) : IVendorProxy, IMockProxy
+{
+    // Default = realistic dummy vendors; feature "Vendors.NotFound" flips to the not-found branch.
+    public Task<List<VendorDto>?> GetVendorsByIds(List<int> vendorIds)
+    {
+        if (mockUtil.HasMockFeature("Vendors.NotFound"))
+        {
+            return Task.FromResult<List<VendorDto>?>(null);
+        }
+
+        var result = vendorIds.Select(id => new VendorDto
+        {
+            Id = id,                       // TODO: dummy data
+            Title = "Test Vendor " + id,    // TODO: dummy data
+            VendorAddress =
+            [
+                new VendorAddressDto { EnglishMainAddressLine = "1 Test Street", EnglishCityName = "Test City", EnglishPostalCode = "12345", EnglishCountryId = 840 }, // TODO: dummy data
+            ],
+        }).ToList();
+        return Task.FromResult<List<VendorDto>?>(result);
+    }
+}

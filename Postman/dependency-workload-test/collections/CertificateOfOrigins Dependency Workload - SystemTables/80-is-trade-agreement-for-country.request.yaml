@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/CustomsBook/IsTradeAgreementForCountry/1/376/false"
+method: GET
+# IsTradeAgreementForCountry - trade-agreement check of the message
+order: 8000

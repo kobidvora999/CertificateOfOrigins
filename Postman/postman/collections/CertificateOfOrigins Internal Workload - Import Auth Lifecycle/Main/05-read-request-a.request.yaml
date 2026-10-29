@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docA}}"
+method: GET
+# Read back: decision 1, not yet in a file.
+order: 1050

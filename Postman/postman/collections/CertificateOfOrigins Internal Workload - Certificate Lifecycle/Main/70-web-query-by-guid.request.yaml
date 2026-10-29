@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/web/CertificateOfOrigins/RequestByGuid?certificateOfOriginGuid={{certGuid}}"
+method: GET
+# The public verification of THIS certificate by the Guid its publish stamped.
+order: 1700

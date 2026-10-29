@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins"
+method: POST
+headers:
+  Content-Type: application/json
+# B-H2 (51b0376): a certificate with NO invoice rows is reconciled as a match even though its destination (AR -> 148) differs from the declaration (999) - the detail checks only count for a certificate that has invoice rows, as in production (analyst decision).
+body:
+  type: json
+  content: |-
+    {
+      "id": 0, "state": 1, "typeId": 2, "title": "reconcile-outcomes RC-NOINV",
+      "organizationUnitId": 1, "customerId": 777, "createCustomerId": 777,
+      "leadDocumentId": 111,
+      "certificateNumber": "RC-NOINV-{{runId}}",
+      "certificateOfOriginStatusId": 2,
+      "originalCertificateOfOriginStatusId": 0,
+      "requestReasonCode": 1,
+      "exportDeclarationNumber": "260146",
+      "isLastVersion": true, "versionNumber": 1,
+      "certificateOfOriginDetails": [
+        { "certificateDetailsTypeCodeId": 15, "value": "AR" },
+        { "certificateDetailsTypeCodeId": 1,  "value": "888" }
+      ],
+      "certificateOfOriginInvoiceDetails": []
+    }
+order: 14500

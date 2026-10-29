@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/ExportDealFile/LeadDocumentSubmissionDate/2147483647"
+method: GET
+# GetLeadDocumentSubmissionDate - the submission date on an import authentication request
+order: 2000

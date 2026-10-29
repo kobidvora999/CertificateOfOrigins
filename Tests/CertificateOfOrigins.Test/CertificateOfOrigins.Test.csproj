@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="10.0.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="CustomsCloud.InfrastructureCore.UnitTest" Version="1.10.60" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+		<PackageReference Include="NUnit.Analyzers" Version="4.10.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
+		<PackageReference Update="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="NUnit.Framework" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Shared\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
+		<ProjectReference Include="..\..\Shared\CertificateOfOrigins.BL\CertificateOfOrigins.BL.csproj" />
+		<ProjectReference Include="..\..\Shared\CertificateOfOrigins.DAL\CertificateOfOrigins.DAL.csproj" />
+		<ProjectReference Include="..\..\Workers\IssueCertificateOfOrigin\IssueCertificateOfOrigin.Worker\IssueCertificateOfOrigin.Worker.csproj" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+
+</Project>

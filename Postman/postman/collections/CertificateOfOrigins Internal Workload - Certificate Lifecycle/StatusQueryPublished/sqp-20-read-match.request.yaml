@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{sqpId}}"
+method: GET
+# Read at DeclarationMatch (6) - the body of the approve.
+order: 5020

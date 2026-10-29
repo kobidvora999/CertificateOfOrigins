@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/Customer/CustomersByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetCustomersByIds - exporter / agent / importer names
+body:
+  type: json
+  content: |-
+    [
+      2147483647
+    ]
+order: 1000

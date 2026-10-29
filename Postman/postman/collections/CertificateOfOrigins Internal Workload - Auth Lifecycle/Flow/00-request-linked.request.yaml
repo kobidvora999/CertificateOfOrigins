@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docLinked}}"
+method: GET
+# The request created by 01 and ATTACHED to the file by 03 - drives AuthenticationRequestBl.MapToResultDto (26 lines, previously 0% because the only fixture pointed at a nonexistent id and correctly 404'd).
+order: 10000

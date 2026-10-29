@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_URL}}/api/Collateral/DebitCreditCollateralRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# DebitCreditCollateralRequest - a wrong file collects the collateral
+body:
+  type: json
+  content: |-
+    {
+      "collateralRequestId": 2147483647,
+      "leadDocumentId": 2147483647,
+      "isCreateAutomaticAnswerForCollateralRequest": false
+    }
+order: 5000

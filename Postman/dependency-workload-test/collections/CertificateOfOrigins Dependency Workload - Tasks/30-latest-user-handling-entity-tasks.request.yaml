@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_URL}}/api/Task/LatestUserHandlingEntityTasksWithTaskUnification"
+method: POST
+headers:
+  Content-Type: application/json
+# GetLatestUserHandlingEntityTasksWithTaskUnification - the preferred assessor of a certificate (entity: the export lead document, org-unit type Export 18, as the BL sends)
+body:
+  type: json
+  content: |-
+    {
+      "entityId": 2147483647,
+      "entityTypeId": 11188,
+      "organizationUnitTypeId": 18,
+      "organizationUnitId": 2147483647
+    }
+order: 3000

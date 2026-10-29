@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+method: GET
+# State after 55: file 5, A decision 3, B decision 2.
+order: 1600

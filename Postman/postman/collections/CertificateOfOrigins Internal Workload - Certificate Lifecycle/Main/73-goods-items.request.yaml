@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/GoodsItemCerificateDTO"
+method: POST
+headers:
+  Content-Type: application/json
+# Goods-item linkage: the certificate number resolves to this certificate's id.
+body:
+  type: json
+  content: |-
+    [ { "goodsItemId": 1, "certificateNumber": "{{certNumber}}" } ]
+order: 1730

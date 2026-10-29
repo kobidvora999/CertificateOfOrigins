@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\CertificateOfOrigins.Model\CertificateOfOrigins.Model.csproj" />
+		<ProjectReference Include="..\CertificateOfOrigins.DAL\CertificateOfOrigins.DAL.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="CertificateOfOrigins.Test" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CustomsCloud.InfrastructureCore.BL" Version="1.10.109" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Cache" Version="1.10.61" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.DAL" Version="1.10.93" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Lock" Version="1.10.59" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Lookup" Version="1.10.130" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Parameters" Version="1.10.121" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Proxy" Version="1.10.118" />
+		<PackageReference Include="CustomsCloud.InfrastructureCore.Utils" Version="1.10.151" />
+		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Update="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+		<PackageReference Update="System.Security.Cryptography.Xml" Version="10.0.13" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<NoWarn>1701;1702;NU1803;NU1603;NU1608</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Scripts/**/*.sql" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Update="ErrorMessagesResources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>ErrorMessagesResources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+		<Compile Update="ErrorMessagesResources.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>ErrorMessagesResources.resx</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+</Project>

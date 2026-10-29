@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X2: a reminder -> WaitingForExporterAnswerAfterNotification (3), delivery FirstRemindSent (4).
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 1200

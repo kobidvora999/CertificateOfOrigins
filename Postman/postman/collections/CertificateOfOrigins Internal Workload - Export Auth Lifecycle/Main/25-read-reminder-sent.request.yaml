@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/{{expId}}"
+method: GET
+# State after X2: status 3, delivery 4.
+order: 1250

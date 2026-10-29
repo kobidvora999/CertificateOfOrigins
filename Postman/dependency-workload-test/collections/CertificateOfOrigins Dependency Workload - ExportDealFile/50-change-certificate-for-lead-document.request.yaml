@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/ExportDealFile/ChangeCertificateOfOriginForLeadDocument/2147483647/2147483647/2147483647"
+method: POST
+# ChangeCertificateOfOriginIdForLeadDocument - the lead document follows the replacing certificate
+order: 5000

@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Shared/">
+    <Project Path="../Shared/CertificateOfOrigins.BL/CertificateOfOrigins.BL.csproj" />
+    <Project Path="../Shared/CertificateOfOrigins.DAL/CertificateOfOrigins.DAL.csproj" />
+    <Project Path="../Shared/CertificateOfOrigins.Model/CertificateOfOrigins.Model.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="../.editorconfig" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="../Tests/CertificateOfOrigins.Test/CertificateOfOrigins.Test.csproj" />
+  </Folder>
+  <Project Path="CertificateOfOriginsWorkers/CertificateOfOriginsWorkers.csproj" />
+  <Project Path="IssueCertificateOfOrigin/IssueCertificateOfOrigin.Worker/IssueCertificateOfOrigin.Worker.csproj" />
+</Solution>

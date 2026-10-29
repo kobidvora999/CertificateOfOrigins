@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_URL}}/api/Task/IsTaskExistsOnEntity"
+method: POST
+headers:
+  Content-Type: application/json
+# IsTaskExistsOnEntity - the SetDecisionBeforeAssociation task
+body:
+  type: json
+  content: |-
+    {
+      "entityId": 2147483647,
+      "entityTypeId": 12384,
+      "taskTypeId": 406
+    }
+order: 2000

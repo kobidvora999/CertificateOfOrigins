@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+  x-mock-feature--Vendors.NotFound: "true"
+# The other half of FillAuthenticationRequestNames: GetVendorsByIds -> null.
+body:
+  type: json
+  content: |-
+    {
+      "documentId": {{mfDoc}},
+      "fromRequestDate": "{{tenDaysAgo}}",
+      "toRequestDate": "{{inOneMonth}}"
+    }
+order: 40600

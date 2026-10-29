@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# C9 on A -> Published (8).
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 1423,
+      "leadDocumentId": 111,
+      "exportDeclarationNum": "260146",
+      "certificateOfOriginsIds": [
+        {{rorA}}
+      ]
+    }
+order: 6020

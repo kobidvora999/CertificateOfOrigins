@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/Site/SitesByExternalNumbers"
+method: POST
+headers:
+  Content-Type: application/json
+# GetSitesByExternalNumbers - the customs-house site of the message
+body:
+  type: json
+  content: |-
+    [
+      "NO-SUCH-2147483647"
+    ]
+order: 14000

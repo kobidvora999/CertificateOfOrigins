@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/CurrencyType/CurrencyTypesByIds"
+method: POST
+headers:
+  Content-Type: application/json
+# GetCurrencyTypesByIds - currency names on the web query
+body:
+  type: json
+  content: |-
+    [
+      2147483647
+    ]
+order: 5000

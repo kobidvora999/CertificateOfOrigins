@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Customer/CustomersByCountry/376/40"
+method: GET
+# GetCustomersByCountry - the foreign customs house (activity type 40) of a country
+order: 3000

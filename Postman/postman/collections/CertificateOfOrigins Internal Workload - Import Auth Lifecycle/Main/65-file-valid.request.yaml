@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# S1: the file is closed as RightAuthenticationAnswer (6), a terminal status (collaterals granted).
+body:
+  type: json
+  content: |-
+    {{saveFileBody}}
+order: 1650

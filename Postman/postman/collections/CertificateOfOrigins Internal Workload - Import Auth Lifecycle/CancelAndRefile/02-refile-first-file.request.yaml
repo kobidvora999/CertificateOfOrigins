@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# F0: the first file of request C.
+body:
+  type: json
+  content: |-
+    [
+      {
+        "documentId": {{docC}},
+        "organizationUnitIdNum": 1,
+        "issuingCountryIdNum": 32,
+        "customerId": 888,
+        "responseNameEmail": "flow@example.com"
+      }
+    ]
+order: 2010

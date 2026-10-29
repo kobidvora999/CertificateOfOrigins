@@ -1,0 +1,94 @@
+using CertificateOfOrigins.Model.ModelDTOs;
+using CustomsCloud.InfrastructureCore.Proxy.Rest;
+using System.Diagnostics.CodeAnalysis;
+
+namespace CertificateOfOrigins.BL.Proxies;
+
+[ExcludeFromCodeCoverage]
+public class CustomerMockProxy(IProxyMockUtil mockUtil) : ICustomerProxy, IMockProxy
+{
+    // Default = realistic dummy customers; feature "Customers.NotFound" flips to the not-found branch.
+    public Task<List<CustomerDto>?> GetCustomersByIds(List<int> customerIds)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<List<CustomerDto>?>(null);
+        }
+
+        var result = customerIds.Select(id => new CustomerDto
+        {
+            Id = id,                          // TODO: dummy data
+            Title = "Test Customer " + id,     // TODO: dummy data
+            ExternalIdNum = "000000000",
+            IsActive = true,
+            EnglishFirstName = "Test",                // TODO: dummy data
+            EnglishLastName = "Customer " + id,       // TODO: dummy data
+        }).ToList();
+        return Task.FromResult<List<CustomerDto>?>(result);
+    }
+
+    public Task<CustomerDto?> GetCustomerInformation(int customerId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<CustomerDto?>(null);
+        }
+
+        var result = new CustomerDto
+        {
+            Id = customerId,                  // TODO: dummy data
+            Title = "Test Customer " + customerId,
+            ExternalIdNum = "000000000",
+            IsActive = true,
+            Addresses =
+            [
+                new CustomerAddressDto { AddressPurpose = 1, AddressSingleLine = "רחוב הבדיקה 1, חיפה" }, // TODO: dummy authentication address
+            ],
+            CustomerAddress =
+            [
+                new CustomerAddressDto
+                {
+                    Title = "Test Customs Department",          // TODO: dummy data
+                    EnglishMainAddressLine = "1 Customs Road",  // TODO: dummy data
+                    EnglishCityName = "Test City",
+                    EnglishPostalCode = "12345",
+                    EnglishCountryId = 840,
+                },
+            ],
+            CustomerActivity = [new CustomerActivityDto { CustomerActivityTypeId = 40 }], // TODO: dummy data (a foreign customs department)
+        };
+        return Task.FromResult<CustomerDto?>(result);
+    }
+
+    public Task<List<CustomerDto>?> GetCustomersByCountry(int countryId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<List<CustomerDto>?>(null);
+        }
+
+        var result = new List<CustomerDto>
+        {
+            new()
+            {
+                Id = countryId * 100,                          // TODO: dummy data
+                Title = "Foreign Customs House " + countryId,   // TODO: dummy data
+                ExternalIdNum = "000000000",
+                IsActive = true,
+            },
+        };
+        return Task.FromResult<List<CustomerDto>?>(result);
+    }
+
+    // Default = a dummy internal id derived from the external id; feature "Customers.NotFound" returns none
+    // (the ExporterId validation then records CustomerNotInCustomers).
+    public Task<int?> GetCustomerIdByExternalId(string externalId)
+    {
+        if (mockUtil.HasMockFeature("Customers.NotFound"))
+        {
+            return Task.FromResult<int?>(null);
+        }
+
+        return Task.FromResult<int?>(int.TryParse(externalId, out var id) ? id : 777); // TODO: dummy data
+    }
+}

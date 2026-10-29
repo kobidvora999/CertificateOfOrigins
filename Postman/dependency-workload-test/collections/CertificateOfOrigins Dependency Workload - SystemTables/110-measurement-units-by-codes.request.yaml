@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/MeasurementUnit/MeasurementUnitsByCodes"
+method: POST
+headers:
+  Content-Type: application/json
+# GetMeasurementUnitsByCodes - item measure type
+body:
+  type: json
+  content: |-
+    [
+      "KG"
+    ]
+order: 11000

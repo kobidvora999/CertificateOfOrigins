@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# SETUP - the authentication file 50-file-tasks-empty reads, holding the request created at 01.
+body:
+  type: json
+  content: |-
+    [ { "documentId": {{mfDoc}}, "organizationUnitIdNum": 1, "issuingCountryIdNum": 32, "customerId": 888 } ]
+order: 39900

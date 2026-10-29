@@ -1,0 +1,6 @@
+<Project>
+
+  <!-- The security floor for transitive packages lives once in Shared/Directory.Build.props. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Shared\Directory.Build.props" />
+
+</Project>

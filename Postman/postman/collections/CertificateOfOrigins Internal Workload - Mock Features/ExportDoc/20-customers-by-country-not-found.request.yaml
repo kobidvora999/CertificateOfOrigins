@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/32"
+method: GET
+headers:
+  x-mock-feature--Customers.NotFound: "true"
+# GetCustomersByCountry -> null: no customs house for the country is refused with 400 NoCustomHouseForThisCountry on countryId (bdb1866), as legacy.
+order: 50100

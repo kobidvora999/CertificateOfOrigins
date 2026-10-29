@@ -1,0 +1,185 @@
+$kind: collection
+id: certificateoforigins-auth-file-status-v1
+name: CertificateOfOrigins Auth File Status
+description: >-
+  The authentication-FILE status machine (ManageFileStatus -> CheckStatusAndOpenTask -> SendDecisionMessage)
+  and the two guard arms of HandleAuthenticationRequestDeliverySent. AuthenticationRequestBl.cs was the last
+  file still under 70% branch coverage, and this cluster is why: one fixture, one status transition (2 -> 5),
+  one child with decision 3 and userId == userResponseId. Every other arm of a nine-value status enum and a
+  nine-value decision enum had never been entered.
+  SELF-CONTAINED FLOW - no seed, no fixed ids. FileStatus/01-03 create this run's data through the API: two
+  import authentication requests (SaveImport, isNewInstance = true, DocumentIDs minted per run below) and an
+  authentication file holding both (CreateNewFile, identity id captured into fileId). Every scenario addresses
+  only {{fileId}} / {{docFileA}} / {{docFileB}}. The file is DEDICATED to this collection: one scenario here is
+  CancelledFile, which calls UnlinkAllRequestsFromFile - the collections run in PARALLEL and each creates its
+  own file. Both requests carry an ImporterID, which is what lets FillAuthenticationRequestNames' importer
+  block run.
+variables:
+  baseUrl: http://localhost:9034
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      pm.request.headers.upsert({ key: 'x-mock-mode', value: 'x-mock-mode' });
+      pm.request.headers.upsert({ key: 'CC-USER-ID', value: '5' });
+      var iso = function (d) { return new Date(d).toISOString().slice(0, 10) + 'T00:00:00'; };
+      pm.collectionVariables.set('today', iso(Date.now()));
+
+      // ---- run-scoped ids for the rows this collection CREATES (never fixed ids, never a seed) ----
+      // DocumentID is caller-assigned: 800000000 + (ms % 1e6) * 100 + SLOT * 10 + k, SLOT unique per collection
+      // (see Auth Lifecycle for the full scheme). Re-minted on the first creation step of every run.
+      var SLOT = 2, FIRST = '01-create-request-a';
+      if (pm.info.requestName === FIRST || !pm.collectionVariables.get('docBase')) {
+          pm.collectionVariables.set('docBase', 800000000 + (Date.now() % 1000000) * 100 + SLOT * 10);
+          pm.collectionVariables.unset('fileId');
+      }
+      var docBase = Number(pm.collectionVariables.get('docBase'));
+      pm.collectionVariables.set('docFileA', docBase + 1);
+      pm.collectionVariables.set('docFileB', docBase + 2);
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      var name = pm.info.requestName;
+      var j = null; try { j = pm.response.json(); } catch (e) { j = null; }
+
+      pm.test('no server error (5xx)', function () {
+          pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
+      });
+      pm.test(name + ': status is 200', function () { pm.response.to.have.status(200); });
+
+      var docFileA = Number(pm.collectionVariables.get('docFileA'));
+      var docFileB = Number(pm.collectionVariables.get('docFileB'));
+
+      // ---- flow: create this run's rows (captures first, so a failed assertion cannot break the chain) ----
+      var CREATED = { '01-create-request-a': docFileA, '02-create-request-b': docFileB };
+      if (CREATED[name] !== undefined) {
+          pm.test(name + ': the request was inserted and read back', function () {
+              pm.expect(j, 'body').to.be.an('object');
+              pm.expect(j.documentId, 'documentId').to.eql(CREATED[name]);
+          });
+      }
+      if (name === '03-create-file') {
+          if (j && j.id) { pm.collectionVariables.set('fileId', j.id); }
+          pm.test('03-create-file: a new authentication file was created', function () {
+              pm.expect(j && j.id, 'id').to.be.a('number').and.above(0);
+          });
+      }
+      var fileId = Number(pm.collectionVariables.get('fileId'));
+
+      // ---- the state the process left: every SaveFile sends these as its ORIGINAL values ----
+      // The file starts where CreateNewFile put it and each request where SaveImport put it; after that, every SaveFile
+      // answers the re-read file, so the next save's 'original' is always the state the previous step produced.
+      if (name === '01-create-request-a' && j) { pm.collectionVariables.set('decA', j.decisionId); }
+      if (name === '02-create-request-b' && j) { pm.collectionVariables.set('decB', j.decisionId); }
+      if (name === '03-create-file' && j) { pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId); }
+      if (/^[1-9]0-/.test(name) && j && j.authenticationFileStatusId !== undefined) {
+          pm.collectionVariables.set('fileStatus', j.authenticationFileStatusId);
+          (j.importAuthenticationRequests || j.requests || []).forEach(function (k) {
+              if (k.documentId === docFileA) { pm.collectionVariables.set('decA', k.decisionId); }
+              if (k.documentId === docFileB) { pm.collectionVariables.set('decB', k.decisionId); }
+          });
+      }
+
+      // A 404 here means a creation step above failed, so the row this scenario addresses does not exist.
+      if (pm.response.code === 404) {
+          pm.test('FLOW BROKEN - the row this scenario addresses was not created by FileStatus/01-03', function () {
+              pm.expect.fail('not found; check the 01-create-* / 03-create-file results earlier in this run');
+          });
+          return;
+      }
+
+      // ---- the file status machine ----
+      // SaveFile returns the re-read file graph. The status coming back is what proves the save landed; the arms
+      // themselves only raise events, so for those the cobertura delta is the proof and this is the contract.
+      var SENT_STATUS = {
+          '10-no-status-change': 1,
+          '20-reminder-sent':    3,
+          '30-received-answer':  5,
+          '40-clarification':    7,
+          '50-partly-child':     2,
+          '60-rejection-child':  6,
+          '70-administrative-closure': 10,
+          '80-child-edits':      10,
+          '90-cancelled':        9
+      };
+      if (SENT_STATUS[name] !== undefined && j) {
+          pm.test(name + ': the file came back at status ' + SENT_STATUS[name], function () {
+              pm.expect(j.id, 'id').to.eql(fileId);
+              pm.expect(j.authenticationFileStatusId, 'authenticationFileStatusId').to.eql(SENT_STATUS[name]);
+          });
+      }
+      if (name === '90-cancelled' && j) {
+          // CancelledFile is the one status with a visible DATA effect rather than an event: every child request
+          // is detached from the file. Anything else here would be a coverage-only claim.
+          pm.test('90-cancelled: the child requests were unlinked from the file', function () {
+              var kids = j.importAuthenticationRequests || j.requests || [];
+              pm.expect(kids, 'children still attached').to.be.an('array').that.is.empty;
+          });
+      }
+
+      if (name === '70-administrative-closure' && j) {
+          // CR 194221. SENT_STATUS above already proves the file reached status 10; this proves the OTHER half of
+          // the change - the request-level decision - actually persisted, which is a data effect rather than an
+          // event and so is assertable. The collateral grant and the opened task are events, so the coverage
+          // delta is their only proof.
+          pm.test('70-administrative-closure: the child request kept decision 10', function () {
+              var kids = j.importAuthenticationRequests || j.requests || [];
+              pm.expect(kids, 'children').to.be.an('array').that.is.not.empty;
+              // The file has TWO children (docFileA + docFileB) and the read does not promise an order, so match
+              // the one this request actually decided rather than indexing blindly.
+              var target = kids.filter(function (k) { return k.documentId === docFileA; })[0];
+              pm.expect(target, 'request docFileA in the response').to.not.be.undefined;
+              pm.expect(target.decisionId, 'decisionId').to.eql(10);
+          });
+      }
+
+      if (name === '80-child-edits' && j) {
+          // The re-read is the proof the child write landed: legacy saved the whole client-modified request
+          // (Repository.Save), the migration had kept only DecisionID + IsOldIndication.
+          var kids80 = j.importAuthenticationRequests || j.requests || [];
+          var byId = function (id) { return kids80.filter(function (k) { return k.documentId === id; })[0]; };
+          pm.test('80-child-edits: the coordinator edits on docFileA were saved and read back', function () {
+              var a = byId(docFileA);
+              pm.expect(a, 'request docFileA in the response').to.not.be.undefined;
+              pm.expect(a.decisionCircumstences, 'decisionCircumstences').to.eql('PM circumstances 80');
+              pm.expect(a.cirumstanceDetails, 'cirumstanceDetails').to.eql('PM details 80');
+              pm.expect(a.remarks, 'remarks').to.eql('PM remarks 80');
+              pm.expect(a.documentNumber, 'documentNumber').to.eql('DN-80');
+              pm.expect(a.vendorId, 'vendorId').to.eql(779);
+              pm.expect(a.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(4);
+              // Not sent → cleared, as legacy saved the client entity (FN-03); it was 279366 from 01-create-request-a.
+              // The API omits null fields from the JSON, so a cleared value comes back missing (undefined), not null.
+              pm.expect(a.importerId == null, 'importerId cleared (got ' + a.importerId + ')').to.be.true;
+          });
+          // docFileB sent back what 02-create-request-b inserted earlier in this run: an unchanged round-trip (FN-03).
+          pm.test('80-child-edits: a round-tripped child keeps its values', function () {
+              var b = byId(docFileB);
+              pm.expect(b, 'request docFileB in the response').to.not.be.undefined;
+              pm.expect(b.vendorId, 'vendorId').to.eql(778);
+              pm.expect(b.importerId, 'importerId').to.eql(279367);
+              pm.expect(b.remarks, 'remarks').to.eql('flow file request B');
+              pm.expect(b.preferenceDocumentTypeId, 'preferenceDocumentTypeId').to.eql(1);
+          });
+      }
+
+      // ---- delivery-sent guards ----
+      // The endpoint answers a bare boolean: false when it cannot find an AuthenticationRequestFile among the
+      // related entities. Both scenarios must be false, for two different reasons.
+      if (name === '95-delivery-no-related-entities' || name === '96-delivery-wrong-entity-type') {
+          pm.test(name + ': no authentication file found -> false', function () {
+              pm.expect(pm.response.text().trim().toLowerCase()).to.eql('false');
+          });
+      }
+
+      // ---- lead-document read ----
+      if (name === '10-by-lead-documents' && j) {
+          pm.test('10-by-lead-documents: the query matched, so the name fills actually ran', function () {
+              pm.expect(j, 'rows').to.be.an('array').that.is.not.empty;
+          });
+          pm.test('10-by-lead-documents: only the requests of this run came back', function () {
+              j.forEach(function (r) { pm.expect([docFileA, docFileB], 'documentId').to.include(r.documentId); });
+          });
+          pm.test('10-by-lead-documents: FillLeadDocumentRequestNames resolved the lookup names', function () {
+              pm.expect(j[0].importCountryName, 'importCountryName (Country lookup)').to.be.a('string').and.not.empty;
+          });
+      }
+    language: text/javascript

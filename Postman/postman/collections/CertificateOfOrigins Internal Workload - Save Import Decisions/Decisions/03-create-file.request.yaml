@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/CreateNewFile"
+method: POST
+headers:
+  Content-Type: application/json
+# FLOW STEP - creates THIS run's authentication file from request A (identity id captured into fileId). The
+# file-bearing scenarios send it as authenticationFileId, which drives RaiseNewRequestEvent's AddRelatedEntity arm.
+body:
+  type: json
+  content: |-
+    [
+      { "documentId": {{docDecisionA}}, "organizationUnitIdNum": 1, "issuingCountryIdNum": 32, "customerId": 123,
+        "responseNameEmail": "flow@example.com" }
+    ]
+order: 1200

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{rorB}}"
+method: GET
+# B is Received (2) and points at A (certificateIdToCancel = A id).
+order: 6035

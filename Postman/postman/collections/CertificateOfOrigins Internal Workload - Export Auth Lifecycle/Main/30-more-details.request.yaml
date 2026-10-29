@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest"
+method: POST
+headers:
+  Content-Type: application/json
+# X3: the exporter answered partly -> WaitingForAdditionalInformation (4).
+body:
+  type: json
+  content: |-
+    {{expBody}}
+order: 1300

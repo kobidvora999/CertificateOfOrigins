@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/SaveAttachments"
+method: POST
+headers:
+  Content-Type: application/json
+# Attach the rendered certificate (an ExportCertificateOfOrigin document, type 329 - the type that carries the certificate-number field) to THIS certificate.
+body:
+  type: json
+  content: |-
+    { "certificatesTemplates": [ { "id": 1, "name": "certificate", "content": "dGVzdA==", "documentTypeId": 329, "isPdfFormat": true } ], "certificateNumber": "{{certNumber}}", "certificateId": {{certId}}, "certificateRequestReasonCode": 1, "certificateTypeId": 1 }
+order: 1750

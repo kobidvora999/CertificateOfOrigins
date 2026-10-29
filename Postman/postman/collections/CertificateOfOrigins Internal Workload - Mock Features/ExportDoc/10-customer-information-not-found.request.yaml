@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/CustomerInformation/777"
+method: GET
+headers:
+  x-mock-feature--Customers.NotFound: "true"
+# GetCustomerInformation -> null: a missing customer is refused with 400 InvalidIdentificationNumber on customerId (b720c6a), as legacy.
+order: 50000

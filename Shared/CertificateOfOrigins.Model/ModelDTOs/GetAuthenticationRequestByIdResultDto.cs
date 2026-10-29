@@ -1,0 +1,106 @@
+namespace CertificateOfOrigins.Model.ModelDTOs;
+
+// Result of GetAuthenticationRequestByID — a single import authentication request with its item lines, the decision
+// lookup, collaterals (Collateral service), current-user task flags, and computed fields. The legacy returned the
+// full EF entity; this DTO carries the fields that method populated.
+public class GetAuthenticationRequestByIdResultDto
+{
+    public int DocumentId { get; set; }
+
+    public DateTime CreateDate { get; set; }
+
+    public int? AuthenticationFileId { get; set; }
+
+    public DateTime AuthenticationRequestDate { get; set; }
+
+    public int? CollateralId { get; set; }
+
+    public int? DecisionId { get; set; }
+
+    public int LeadDocumentId { get; set; }
+
+    public DateTime DocumentIssuingDate { get; set; }
+
+    public int ImportCountryId { get; set; }
+
+    public int IssuingCountryId { get; set; }
+
+    public int Number { get; set; }
+
+    public int OriginCountryId { get; set; }
+
+    public int PreferenceDocumentTypeId { get; set; }
+
+    public string? ResponseNameEmail { get; set; }
+
+    public int OrganizationUnitId { get; set; }
+
+    public int? VendorId { get; set; }
+
+    public string? VendorName { get; set; }
+
+    public int? CustomerId { get; set; }
+
+    public int? ImporterId { get; set; }
+
+    public DateTime? LastDeliveryForImporter { get; set; }
+
+    public string? InvoiceNumber { get; set; }
+
+    // SP result-set #2: item lines.
+    public List<AuthenticationRequestItemDetailDto> ItemDetails { get; set; } = [];
+
+    // Full decision lookup table (legacy loaded all decisions).
+    public List<CertificateOfOriginsDecisionDto> Decisions { get; set; } = [];
+
+    // Collaterals for this request (Collateral microservice).
+    public List<CollateralRequestDto> Collaterals { get; set; } = [];
+
+    // The lead document (SP result-set #3 / Infrastructure.Docs_Document) enriched via the Documents proxy GetDocumentById call.
+    // TypeName carries the legacy document FileUrl (the DocumentType name). The proxy route is a rollout TODO(blocking).
+    public DocumentDto? Document { get; set; }
+
+    // The lead-document submission date (legacy CRP.DealFile_LeadDocumentSubmissionData JOIN) — enriched via
+    // IExportDealFileProxy.GetLeadDocumentSubmissionDate. The proxy route is a rollout TODO(blocking).
+    public DateTime? LeadDocumentSubmissionDate { get; set; }
+
+    // Current-user task flags (from the Tasks microservice, compared to RequestMetadata.UserId).
+    public bool IsCurrentUserHandleRequest { get; set; }
+
+    public bool IsCurrentUserHasOpenTask { get; set; }
+
+    // Related entity ids to search: { EEntityType.ImportDeclaration : [LeadDocumentId] } (EEntityType as int key).
+    public Dictionary<int, List<int>> EntityTypeAndIdsToSearch { get; set; } = [];
+
+    // Config: additional-requests search window in days (parametersUtil "AdditionalRequestsForSearchInDays").
+    public int AdditionalRequestsForSearchInDays { get; set; }
+
+    // True when the issuing country is configured as a supplier-delivery (vendor) country.
+    public bool IsVendorByIssuingCountryId { get; set; }
+
+    // --- Restored 2026-09-07 (CHECK 2) ---
+    // The legacy operation returned the whole entity; this DTO had been trimmed to 21 of its 37 columns, so the
+    // coordinator screen lost the fields below and — worse — a GET → POST round-trip sent them back empty.
+    // UserId/UserResponseId are the sharpest case: SaveImportAuthenticationRequest REQUIRES them to address the
+    // central-decision message, and with the read not returning them the client posted 0, so the message went to
+    // user 0 and the rejection task was assigned to user 0.
+    public int UserId { get; set; }
+
+    public int UserResponseId { get; set; }
+
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }
+
+    public int RequestCircumstancesId { get; set; }
+
+    public string? Remarks { get; set; }
+
+    public string? ResponsePhoneNum { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+}

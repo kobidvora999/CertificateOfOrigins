@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/CurrencyType/CurrencyTypesByCodes"
+method: POST
+headers:
+  Content-Type: application/json
+# GetCurrencyTypesByCodes - invoice currency
+body:
+  type: json
+  content: |-
+    [
+      "USD"
+    ]
+order: 4000

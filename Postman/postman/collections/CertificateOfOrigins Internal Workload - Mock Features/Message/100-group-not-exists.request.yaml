@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+method: POST
+headers:
+  MessageSenderId: "1"
+  Content-Type: application/json
+# Destination sent as group 9, which the lookup stub does not carry; the group does not exist -> the group guard arm (650 with DestinationGroupOfCountries), skipping the trade-agreement call.
+body:
+  type: json
+  content: |-
+    {
+            "agentRequest": { "requestReasonCode": 1, "certificateOfOriginTypeCode": 1, "exportDeclarationNum": "260146" },
+      "certificateOfOrigin": {
+        "exporterId": "EXP1", "exporterName": "Acme", "exporterAddress": "1 Main St", "exporterCountry": "IL",
+        "tradeAgreementCountry1": "IL", "tradeAgreementCountry2": "DE",
+        "isCumulation": true, "cumulationCountry": "DE",
+        "originCountry": "IL", "destinationGroupOfCountries": 9,
+        "placeOfManufacture": 1, "zipCodeOfManufacture": "6100000",
+        "consigneeName": "Buyer", "consigneeAddress": "2 St", "consigneeCountry": "DE",
+        "customsHouse": "SITE01", "issuingCountry": "IL", "cityOfDeclaration": 1, "countryOfDeclaration": "IL",
+        "dateOfDeclaration": "{{twoDaysAgo}}",
+        "invoiceDetails": [
+          { "invoiceNum": "INV1", "invoiceDate": "{{tenDaysAgo}}", "descriptionOfInvoice": "goods",
+            "invoiceSum": 100, "currencyType": "USD",
+            "itemDetails": [ { "itemId": "123456", "marksAndNumbers": "M1", "itemDescription": "widget",
+              "originCriterion": "A", "measureType": "KG", "packageType": "BX", "packageQuantity": 1, "weight": 10 } ] } ]
+      }
+    }
+order: 11000

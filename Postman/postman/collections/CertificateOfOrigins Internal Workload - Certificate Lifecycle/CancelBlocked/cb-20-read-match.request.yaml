@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{cbId}}"
+method: GET
+# State after C6: DeclarationMatch (6).
+order: 4020

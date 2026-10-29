@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_URL}}/api/CommonServices/GenerateReportByParams"
+method: POST
+headers:
+  Content-Type: application/json
+# GenerateReportByParams - the certificate SSRS report rendered on publish (binary answer)
+body:
+  type: json
+  content: |-
+    {
+      "reportId": 7000,
+      "reportParameters": [
+        { "key": "EntityID", "value": "2147483647" },
+        { "key": "AdditionalInfo", "value": "" }
+      ],
+      "fileFormat": "PDF"
+    }
+order: 2000

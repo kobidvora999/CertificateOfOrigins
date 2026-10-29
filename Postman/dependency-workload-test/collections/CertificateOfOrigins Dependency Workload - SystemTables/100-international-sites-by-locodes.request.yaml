@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_URL}}/api/InternationalSite/InternationalSitesByLocodes"
+method: POST
+headers:
+  Content-Type: application/json
+# GetInternationalSitesByLocodes - port of shipment
+body:
+  type: json
+  content: |-
+    [
+      "ILHFA"
+    ]
+order: 10000

@@ -1,0 +1,63 @@
+## RequesrForVerificationMexico (2253) — מכתב אימות מקסיקו
+##
+## Pairs with RequesrForVerificationMexico.docx (the latest legacy version, from the TemplateBackUp share). The Templates module loads both by that
+## name, parses PrintTemplateDto.Data as JSON and merges by the field paths below.
+##
+## Data source: dbo.GetTemplateData @TemplateTypeID = 2253, serialized from ImportVerificationLetterResult with JsonNamingPolicy.CamelCase — hence
+## the camelCase paths. A path the data does not carry renders empty.
+
+properties:
+  is signing: false
+  is tagging: false
+  print format: Pdf
+
+fields:
+  # CONVERT(..., 107) — "Oct 15, 2026", formatted by the procedure.
+  - tag: ImportAuthenticationRequestDate
+    field type: PlainText
+    field path: $.importAuthenticationRequestDate
+
+  - tag: FileNumber
+    field type: PlainText
+    field path: $.fileNumber
+
+  # The supplier block — the file's vendor, from the Vendors service.
+  - tag: SupplierTitle
+    field type: PlainText
+    field path: $.supplierTitle
+
+  - tag: SupplierAddress
+    field type: PlainText
+    field path: $.supplierAddress
+
+  - tag: SupplierCountry
+    field type: PlainText
+    field path: $.supplierCountry
+
+  - tag: MovementCertificate
+    field type: PlainText
+    field path: $.movementCertificate
+
+  # Three months from today, CONVERT(..., 107).
+  - tag: ReplyDate
+    field type: PlainText
+    field path: $.replyDate
+
+  # The user's free text (a single blank when none).
+  - tag: FreeText
+    field type: PlainText
+    field path: $.freeText
+
+  # The producing user's signature (UserTemplateDetails.SignatureImageUrl).
+  - tag: UserSignature
+    field type: Image
+    field path: $.userSignature
+
+  - tag: EmployeeFullName
+    field type: PlainText
+    field path: $.employeeFullName
+
+  - tag: EmployeeEmailAddress
+    field type: PlainText
+    field path: $.employeeEmailAddress
+

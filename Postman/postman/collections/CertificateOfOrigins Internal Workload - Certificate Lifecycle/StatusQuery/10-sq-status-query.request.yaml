@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/community/CertificateOfOrigins/Request"
+method: POST
+headers:
+  MessageSenderId: "1"
+  Content-Type: application/json
+# C13: the agent asks for the status of the certificate it just sent - feedback only, status Received (2).
+body:
+  type: json
+  content: |-
+    { "agentRequest": { "requestReasonCode": 13, "certificateOfOriginTypeCode": 1, "certificateId": "{{sqCertNumber}}" } }
+order: 3100

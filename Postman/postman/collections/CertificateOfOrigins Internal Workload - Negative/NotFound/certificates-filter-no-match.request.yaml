@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/ByFilter"
+method: QUERY
+headers:
+  Content-Type: application/json
+# A certificate search by a number minted for this run matches nothing -> 200 with an empty list (the no-rows side of the customer enrichment).
+body:
+  type: json
+  content: |-
+    { "certificateNumber": "NO-SUCH-{{runId}}" }
+order: 5500

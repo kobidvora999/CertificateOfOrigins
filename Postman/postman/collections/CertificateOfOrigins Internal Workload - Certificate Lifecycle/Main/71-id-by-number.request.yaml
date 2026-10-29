@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/ID/{{certNumber}}"
+method: GET
+# Id lookup by the number this run generated.
+order: 1710

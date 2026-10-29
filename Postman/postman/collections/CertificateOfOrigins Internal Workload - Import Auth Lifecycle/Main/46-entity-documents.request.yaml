@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/EntityDocuments/{{docA}}"
+method: GET
+# Documents of the lead document of request A (Documents mock), filtered to the allowed types.
+order: 1460

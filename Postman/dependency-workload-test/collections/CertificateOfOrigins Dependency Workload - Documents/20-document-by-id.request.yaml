@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_URL}}/api/Document/2147483647"
+method: GET
+# GetDocumentById - the document of an import authentication request
+order: 2000

@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_URL}}/api/Message/SendMessage"
+method: POST
+headers:
+  Content-Type: application/json
+# SendMessage - feedback / decision / file-status messages (addressed to a user that cannot exist)
+body:
+  type: json
+  content: |-
+    {
+      "relatedEntity": {
+        "id": 2147483647,
+        "title": "dependency probe",
+        "entityType": 12319,
+        "customerId": 0
+      },
+      "messageTypeId": 11102,
+      "messageParameters": [],
+      "multipleMessageDestinations": [],
+      "isGroupMessage": false,
+      "userIdToSendMessage": 2147483647
+    }
+order: 3000

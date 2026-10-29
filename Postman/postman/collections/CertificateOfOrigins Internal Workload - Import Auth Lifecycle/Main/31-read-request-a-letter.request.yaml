@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/{{docA}}"
+method: GET
+# State after F4: decision 8 and LastDeliveryForImporter = today.
+order: 1310

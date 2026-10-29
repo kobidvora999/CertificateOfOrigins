@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/AuthenticationRequest/SaveFile"
+method: POST
+headers:
+  Content-Type: application/json
+# S1: CancelledFile (9) - every child request is unlinked from the file.
+body:
+  type: json
+  content: |-
+    {{saveFileBody}}
+order: 2030

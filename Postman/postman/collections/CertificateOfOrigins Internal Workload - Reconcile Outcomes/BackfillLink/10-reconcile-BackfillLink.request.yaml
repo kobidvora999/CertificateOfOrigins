@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/CertificateOfOrigins/Reconcile"
+method: POST
+headers:
+  Content-Type: application/json
+# ExportDeclarationSubmissionSucceeded (240) with a lead document and declaration number minted for this run; details match, so no findings.
+body:
+  type: json
+  content: |-
+    {
+      "eventType": 240,
+      "leadDocumentId": {{bh1Lead}},
+      "exportDeclarationNum": "{{bh1Decl}}",
+      "certificateOfOriginsIds": [ {{certId}} ],
+      "exporterCustomerId": 888,
+      "destinationCountryId": 148,
+      "organizationUnitId": 1,
+      "exportInvoiceInfoList": [
+        { "externalIdNum": "INV1", "exportGoodsItemInfoList": [] }
+      ]
+    }
+order: 9510

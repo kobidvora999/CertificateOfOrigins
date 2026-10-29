@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/ui/CertificateOfOrigins/{{cbId}}"
+method: GET
+# The refused cancellation left the certificate at DeclarationMatch (6).
+order: 4040

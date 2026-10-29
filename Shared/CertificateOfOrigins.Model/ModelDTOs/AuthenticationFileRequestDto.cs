@@ -1,0 +1,89 @@
+namespace CertificateOfOrigins.Model.ModelDTOs;
+
+// A child import authentication request of an authentication file (GetAuthenticationRequestFileByID, SP result-set
+// #2). Carries the request scalars plus its enriched document, item lines, decision lookup, collaterals, the lead-
+// document submission date, and the SendReminderForImporter task-existence flag (legacy per-row OUTER APPLY).
+public class AuthenticationFileRequestDto
+{
+    public int DocumentId { get; set; }
+
+    public DateTime CreateDate { get; set; }
+
+    public int? AuthenticationFileId { get; set; }
+
+    public DateTime AuthenticationRequestDate { get; set; }
+
+    public int? DecisionId { get; set; }
+
+    public int LeadDocumentId { get; set; }
+
+    public DateTime DocumentIssuingDate { get; set; }
+
+    public int ImportCountryId { get; set; }
+
+    public int IssuingCountryId { get; set; }
+
+    public int OriginCountryId { get; set; }
+
+    public int PreferenceDocumentTypeId { get; set; }
+
+    public string? ResponseNameEmail { get; set; }
+
+    public int OrganizationUnitId { get; set; }
+
+    public int? VendorId { get; set; }
+
+    public int? CustomerId { get; set; }
+
+    public int? ImporterId { get; set; }
+
+    public DateTime? LastDeliveryForImporter { get; set; }
+
+    public string? InvoiceNumber { get; set; }
+
+    // The handling user + the responding user. Both are round-tripped by SaveAuthenticationRequestFileChildDto and
+    // forwarded to SendDecisionMessage on save, so this read MUST return them — otherwise a GET → edit → POST posts 0
+    // for both and the decision message / rejection task is routed to user 0.
+    public int UserId { get; set; }
+
+    public int UserResponseId { get; set; }
+
+    // --- What the legacy file screen shows for the selected request (AuthenticationRequestFileGeneralView +
+    // FileRequestDocumentEditView). The first four are editable there; the rest are read-only on that screen. ---
+    public string? DecisionCircumstences { get; set; }
+
+    public string? CirumstanceDetails { get; set; }   // legacy spelling, kept — it is the column name
+
+    public string? Remarks { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public int RequestCircumstancesId { get; set; }
+
+    public bool IsOldIndication { get; set; }
+
+    public decimal? InvoiceGoodsItemTaxDifference { get; set; }
+
+    public decimal? AllInvoiceGoodsItemTaxDifference { get; set; }
+
+    // The lead document (Documents service), enriched with TypeName (DocumentType lookup).
+    public DocumentDto? Document { get; set; }
+
+    // Item lines (SP result-set #4).
+    public List<AuthenticationRequestItemDetailDto> ItemDetails { get; set; } = [];
+
+    // Full decision lookup table (legacy assigned the same list to every request).
+    public List<CertificateOfOriginsDecisionDto> Decisions { get; set; } = [];
+
+    // Collaterals for this request (Collateral service).
+    public List<CollateralRequestDto> Collaterals { get; set; } = [];
+
+    // Lead-document submission date (DealFile service; legacy CRP.DealFile_LeadDocumentSubmissionData JOIN).
+    public DateTime? LeadDocumentSubmissionDate { get; set; }
+
+    // True when an open SendReminderForImporter (404) task exists for this request (legacy OUTER APPLY on Tasks_Task).
+    public bool IsSendReminderForImporterTaskExists { get; set; }
+
+    // { EEntityType.ImportDeclaration : [LeadDocumentId] } (EEntityType as int key).
+    public Dictionary<int, List<int>> EntityTypeAndIdsToSearch { get; set; } = [];
+}
