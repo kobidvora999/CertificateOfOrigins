@@ -40,6 +40,9 @@ public class CustomerProxy(IHttpProxy httpProxy)
     {
         // Foreign customs-houses in the given country. The legacy passed the fixed activity-type filter
         // ECustomerActivityType.Foreign_customs_house = 40 (בית מכס זר) alongside the country id.
+        // TODO(internal): Customer/customers has no {countryId}/{activityType} segments, so the two parameters below never
+        // reach the request and the call is unfiltered. Confirm the query-string names the Customers service expects and
+        // switch to AddQueryStringParameter (as GetCustomersByIds does with customerIds).
         var req = CreateRequestBuilder()
             .UseGetMethod()
             .WithResource("Customer/customers")
