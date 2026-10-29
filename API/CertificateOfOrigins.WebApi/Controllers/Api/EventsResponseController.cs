@@ -23,7 +23,8 @@ public class EventsResponseController(IServiceProvider serviceProvider)
     // EventResponseArgs and the verb is PATCH, as every event response (_shared/controller-template.md).
     // No Events_EventTypeResponse row invokes this operation, in legacy or here (MIGRATION-NOT-DONE).
     [HttpPatch("HandleDeliverySent")]
-    [BadRequestResponse][OkJsonResponse(typeof(bool))]
+    [BadRequestResponse]
+    [OkJsonResponse(typeof(bool))]
     public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] EventResponseArgs args)
     {
         var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(args);

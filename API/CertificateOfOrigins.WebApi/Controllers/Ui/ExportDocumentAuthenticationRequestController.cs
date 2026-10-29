@@ -21,7 +21,8 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // from the Customers service by id. Missing customer → 400 InvalidIdentificationNumber (legacy business error, H-14). The SPA picks the
     // Authentication-purpose address (else the first) from Addresses as the customs-house address.
     [HttpGet("CustomerInformation/{customerId}")]
-    [BadRequestResponse][OkJsonResponse(typeof(CustomerDto))]
+    [BadRequestResponse]
+    [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformation([FromRoute] int customerId)
     {
         var result = await BusinessLayer.GetCustomerInformation(customerId);
@@ -32,7 +33,8 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 400
     // NoCustomHouseForThisCountry (legacy business error, H-14). Returns the first matching customer.
     [HttpGet("CustomerInformationByCountry/{countryId}")]
-    [BadRequestResponse][OkJsonResponse(typeof(CustomerDto))]
+    [BadRequestResponse]
+    [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformationByCountry([FromRoute] int countryId)
     {
         var result = await BusinessLayer.GetCustomerInformationByCountry(countryId);
@@ -43,7 +45,9 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // request by id, with its child collections (customs items, lead documents, manufacturing areas). Missing
     // id → 404 (BL throws RestNotFoundException). OriginalStatusId + ExportDeclarationIds are computed in the BL.
     [HttpGet("{id}")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> ExportDocumentAuthenticationRequestByID([FromRoute] int id)
     {
         var result = await BusinessLayer.GetExportDocumentAuthenticationRequestById(id);
@@ -51,7 +55,9 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     }
 
     [HttpQuery("Search")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(List<GetExportDocumentAuthenticationRequestSearchResultDto>))]
     public async Task<ActionResult<List<GetExportDocumentAuthenticationRequestSearchResultDto>>> ExportDocumentAuthenticationRequestSearch([FromBody] ExportDocumentAuthenticationRequestSearchFilterDto filter)
     {
         var result = await BusinessLayer.GetExportDocumentAuthenticationRequestSearch(filter);
@@ -63,7 +69,9 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // and sends the status message; and attaches any additional documents. A write with a body → POST. Returns the
     // saved graph.
     [HttpPost]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]
     public async Task<ActionResult<GetExportDocumentAuthenticationRequestByIdResultDto>> SaveExportDocumentAuthenticationRequest([FromBody] SaveExportDocumentAuthenticationRequestRequestDto request)
     {
         var result = await BusinessLayer.SaveExportDocumentAuthenticationRequest(request);

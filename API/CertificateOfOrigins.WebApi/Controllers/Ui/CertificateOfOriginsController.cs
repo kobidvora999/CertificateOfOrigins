@@ -19,7 +19,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Internal WCF: IsCertificateOfOriginByExternalIdExist(externalId) — existence query by certificate number
     // (LIKE substring, newest match). Returns the matching result, or null when none — existence check, no 404.
     [HttpGet("ByExternalIdExist")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginResultDto))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CertificateOfOriginResultDto))]
     public async Task<ActionResult<CertificateOfOriginResultDto?>> CertificateOfOriginByExternalIdExist([FromQuery][BindRequired] string certificateOfOriginExternalId)
     {
         var result = await BusinessLayer.IsCertificateOfOriginByExternalIdExist(certificateOfOriginExternalId);
@@ -29,7 +31,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Internal WCF: GetCertificateOfOriginsByFilter(filter) — the main certificate search. Returns the matching
     // certificates (empty list when none — a search, never 404). The BL/DAL/SP/enrichment were built for #2.
     [HttpQuery("ByFilter")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(List<CertificateOfOriginResultDto>))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(List<CertificateOfOriginResultDto>))]
     public async Task<ActionResult<List<CertificateOfOriginResultDto>>> CertificateOfOriginsByFilter([FromBody] CertificateOfOriginFilterDto filter)
     {
         var result = await BusinessLayer.GetCertificateOfOriginsByFilter(filter);
@@ -40,7 +44,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // errors + details + invoices + item lines + milestones), from the 7-result-set dbo.GetCertificateOfOriginByID.
     // Missing id → 404 (BL throws RestNotFoundException). Milestone user names are enriched in the BL via IUserProxy.
     [HttpGet("{certificateOfOriginId}")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CertificateOfOriginDto))]
     public async Task<ActionResult<CertificateOfOriginDto>> CertificateOfOriginById([FromRoute] int certificateOfOriginId)
     {
         var result = await BusinessLayer.GetCertificateOfOriginById(certificateOfOriginId);
@@ -52,7 +58,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity
     // by-reference (IsDeclarationReleased/IsCargoExitedOfCustomsRegulation); over REST only the flag is returned.
     [HttpQuery("LoadDataFromExportDeclaration")]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(bool))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(bool))]
     public async Task<ActionResult<bool>> LoadDataFromExportDeclaration([FromBody] LoadDataFromExportDeclarationRequestDto request)
     {
         var result = await BusinessLayer.LoadDataFromExportDeclaration(request);
@@ -64,7 +72,9 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // attachments on publish, links the DealFile lead document, and raises the status-change events + feedback message.
     // A state-changing write with a body → POST. Returns the fully re-read certificate graph (GetCertificateOfOriginById).
     [HttpPost]
-    [BadRequestResponse][NotFoundResponse][OkJsonResponse(typeof(CertificateOfOriginDto))]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(CertificateOfOriginDto))]
     public async Task<ActionResult<CertificateOfOriginDto>> SaveCertificateOfOrigin([FromBody] SaveCertificateOfOriginRequestDto request)
     {
         var result = await BusinessLayer.SaveCertificateOfOrigin(request);

@@ -27,7 +27,8 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // missing CertificateOfOriginQueryURL) a 500. Legacy put every failure into the response header because the ESB
     // channel required an answer; a REST caller gets the HTTP status instead.
     [HttpGet("RequestByGuid")]
-    [BadRequestResponse][OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
+    [BadRequestResponse]
+    [OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
     public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
     {
         var result = await BusinessLayer.GetCertificateRequestByGuid(request);
