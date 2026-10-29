@@ -29,3 +29,20 @@
 - **Postman:** הסביבות עברו ל-v3 ב-`Postman/postman/environments/*.environment.yaml` (הקבצים הישנים ב-`Postman/Environments/` נמחקו), ונוסף המניפסט `Postman/.postman/resources.yaml`. TODO(internal): להוסיף את מזהה ה-workspace של Postman למניפסט.
 - **מסד נתונים מקומי:** `DatabaseMigrationUtil` מושבת ב-`Program.cs`, ולכן סקריפטים חדשים לא רצים בעלייה. TODO(internal): להחיל את `API_20261015180000 - dbo.GetTemplateData preference letters.sql` בכל סביבה שבה `GetTemplateData` נכשל ב-"too many arguments".
 - **CustomerProxy.GetCustomersByCountry:** הנתיב `Customer/customers` (מהקוד מבפנים) בלי `{countryId}`/`{activityType}`, ולכן שני הפרמטרים לא נשלחים והקריאה לא מסוננת. TODO(internal): לברר את שמות ה-query string ש-Customers מצפה להם ולעבור ל-`AddQueryStringParameter`.
+
+## 5. ה-routes של `ui` לחיבור ה-WPF (שלב 4)
+ה-client עדיין לא מחובר ל-REST, ולכן אף צרכן לא נשבר. כשמחברים אותו (שלב 4), לפנות לכתובות האלה ולא לישנות (שינויים 1a–1c, 29/10/2026):
+
+| לפני | אחרי |
+|---|---|
+| `QUERY ui/CertificateOfOrigins/ByFilter` | `QUERY ui/CertificateOfOrigins` |
+| `QUERY ui/AuthenticationRequest/ByFilter` | `QUERY ui/AuthenticationRequest` |
+| `QUERY ui/ExportDocumentAuthenticationRequest/Search` | `QUERY ui/ExportDocumentAuthenticationRequest` |
+| `POST ui/AuthenticationRequest/SaveImport` | `POST ui/AuthenticationRequest` (הוספה או עדכון לפי `IsNewInstance`) |
+| `POST ui/AuthenticationRequest/CreateNewFile` | `POST ui/AuthenticationRequest/File` |
+| `POST ui/AuthenticationRequest/SaveFile` | `PUT ui/AuthenticationRequest/File/{fileId}` — ה-`Id` בגוף חייב להיות אותו קובץ, אחרת 400 |
+| מזהים בנתיב (`{certificateOfOriginId}`, `{documentId}`, `File/{fileId}`, `EntityDocuments/{leadDocumentId}`, `{id}`, `CustomerInformation/{customerId}`, `CustomerInformationByCountry/{countryId}`) | עם `:int` — מזהה שאינו מספר מחזיר 404 |
+| `GET api/CertificateOfOrigins/Template/{templateId}/{entityId}` | ללא שינוי בכתובת (`:int`); נוסף `GET api/CertificateOfOrigins/TemplateData/{templateId:int}/{entityId:int}` |
+
+**מסמכים נוספים בבקשת אימות יצוא:** הקישור עובר דרך `IDocumentUtil.SaveDocumentToEntity` (‏`POST {Documents}/document/SaveDocumentToEntity`). TODO(internal): לוודא שה-route הזה קיים בשירות Documents הפנימי (ה-probe ב-dependency-workload בודק אותו).
+

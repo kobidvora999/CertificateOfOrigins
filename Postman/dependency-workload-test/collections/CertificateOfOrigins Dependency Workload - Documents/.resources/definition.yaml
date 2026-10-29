@@ -2,7 +2,7 @@ $kind: collection
 name: CertificateOfOrigins Dependency Workload - Documents
 description: >-
   Dependency probe of the Documents service: one request per outbound call of the real proxies
-  (Shared/CertificateOfOrigins.BL/Proxies), sent straight to the route the proxy calls. Every entity id is 2147483647,
+  (Shared/CertificateOfOrigins.BL/Proxies) and of the platform IDocumentUtil, sent straight to the route it calls. Every entity id is 2147483647,
   an id no service can have, so the probe proves the dependency answers per its contract without depending on or
   changing pre-prod data. Runs PRE-PROD against the real service; base_URL is the target host (or the gateway).
 variables:
@@ -21,7 +21,7 @@ scripts:
       var EXPECT = {
           '10-documents-by-entity': [200],
           '20-document-by-id': [200, 204, 404],
-          '30-attach-documents-to-entity': [200, 204, 400, 404],
+          '30-save-document-to-entity': [200, 204, 400, 404],
           '40-delete-documents': [200, 204, 400, 404]
       };
       var name = pm.info.requestName;

@@ -31,7 +31,7 @@ JSON, and the status from the endpoint contract:
 | Collaterals | CollateralRequestByEntity · CollateralRequestIdsByEntity · ChangeTempCollateralRequest · GrantAllCollateralRequests · DebitCreditCollateralRequest | 5 |
 | Common | CommonServices/CreateQrCode · CommonServices/GenerateReportByParams · Message/SendMessage | 3 |
 | Customers | CustomersByIds · CustomerInformation · CustomersByCountry (activity type 40) · IdByExternalId | 4 |
-| Documents | DocumentsByEntity · Document/{id} · DeleteDocuments (the document attach moved to the platform `IDocumentUtil.SaveDocumentToEntity` on 29.10.2026; TODO(internal): probe it once the util's route is known) | 3 |
+| Documents | DocumentsByEntity · Document/{id} · document/SaveDocumentToEntity (platform `IDocumentUtil`, since 29.10.2026) · DeleteDocuments | 4 |
 | ExportDealFile | ExportDeclarationDetailsForCertificateOfOrigin · LeadDocumentSubmissionDate · LeadDocumentByCertificateOfOrigin (update) · LeadDocumentByCertificateOfOriginId · ChangeCertificateOfOriginForLeadDocument · ExportDeclarationInfo · DetailsForExportAssociatedGoodsItems | 7 |
 | SystemTables | CountryGroupExists · IsCountryInCountryGroup · CountriesByAlphaCodes · CurrencyTypesByCodes · CurrencyTypesByIds · CustomsItemIdByFullClassification · CustomsItemsByIds · IsTradeAgreementForCountry · DataDictionaryFieldsByIds · InternationalSitesByLocodes · MeasurementUnitsByCodes · OrganizationUnit/IsCustomsHouse · PackingTypesByCodes · SitesByExternalNumbers | 14 |
 | Tasks | IsTaskExist · IsTaskExistsOnEntity · LatestUserHandlingEntityTasksWithTaskUnification | 3 |
