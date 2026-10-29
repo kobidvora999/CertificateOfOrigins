@@ -20,7 +20,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetCustomerInformation(customerId) — fetch a single customer's information (incl. addresses)
     // from the Customers service by id. Missing customer → 400 InvalidIdentificationNumber (legacy business error, H-14). The SPA picks the
     // Authentication-purpose address (else the first) from Addresses as the customs-house address.
-    [HttpGet("CustomerInformation/{customerId}")]
+    [HttpGet("CustomerInformation/{customerId:int}")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformation([FromRoute] int customerId)
@@ -32,7 +32,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetCustomerInformationByCountry(countryId) — the foreign customs-house for a country
     // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 400
     // NoCustomHouseForThisCountry (legacy business error, H-14). Returns the first matching customer.
-    [HttpGet("CustomerInformationByCountry/{countryId}")]
+    [HttpGet("CustomerInformationByCountry/{countryId:int}")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformationByCountry([FromRoute] int countryId)
@@ -44,7 +44,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetExportDocumentAuthenticationRequestByID(id) — a single export-document authentication
     // request by id, with its child collections (customs items, lead documents, manufacturing areas). Missing
     // id → 404 (BL throws RestNotFoundException). OriginalStatusId + ExportDeclarationIds are computed in the BL.
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(GetExportDocumentAuthenticationRequestByIdResultDto))]

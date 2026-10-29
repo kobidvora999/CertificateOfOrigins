@@ -70,7 +70,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // only its LeadDocumentID, so it is flattened to a route param here. Returns the lead document's documents
     // (from the Documents service), filtered to the allowed types and to documents not already requested/claimed.
     // An empty result is legitimate (no 404).
-    [HttpGet("EntityDocuments/{leadDocumentId}")]
+    [HttpGet("EntityDocuments/{leadDocumentId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(List<DocumentDto>))]
@@ -175,7 +175,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // lines, decision lookup, collaterals (Collateral service), and current-user task flags (Tasks service). Missing
     // id → 404 (BL throws RestNotFoundException). The lead Document + LeadDocumentSubmissionDate are cross-service and
     // deferred (null).
-    [HttpGet("{documentId}")]
+    [HttpGet("{documentId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(GetAuthenticationRequestByIdResultDto))]
@@ -188,7 +188,7 @@ public class AuthenticationRequestController(IServiceProvider serviceProvider)
     // Internal WCF: GetAuthenticationRequestFileByID(fileId) — a single authentication file with its child requests
     // (each enriched), the file-status lookup, and the current-user handling flag. Missing id → 404 (BL throws
     // RestNotFoundException).
-    [HttpGet("File/{fileId}")]
+    [HttpGet("File/{fileId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(GetAuthenticationRequestFileByIdResultDto))]

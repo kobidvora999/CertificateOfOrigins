@@ -43,7 +43,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // Internal WCF: GetCertificateOfOriginById(id) — a single certificate with its full graph (header + declaration
     // errors + details + invoices + item lines + milestones), from the 7-result-set dbo.GetCertificateOfOriginByID.
     // Missing id → 404 (BL throws RestNotFoundException). Milestone user names are enriched in the BL via IUserProxy.
-    [HttpGet("{certificateOfOriginId}")]
+    [HttpGet("{certificateOfOriginId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(CertificateOfOriginDto))]
