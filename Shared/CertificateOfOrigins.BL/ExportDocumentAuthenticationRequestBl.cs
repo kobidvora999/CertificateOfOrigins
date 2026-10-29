@@ -6,6 +6,7 @@ using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.BL;
 using CustomsCloud.InfrastructureCore.BL.Exceptions;
 using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
 using Dapper;
 using Lookup;
@@ -146,7 +147,6 @@ public class ExportDocumentAuthenticationRequestBl(
                 string.Join(" ", validation.Errors.Select(failure => failure.ErrorMessage)));
         }
 
-        var documentsProxy = Resolve<IDocumentsProxy>();
         var entity = BuildEntity(request);
 
         // Hold the three child collections aside so the parent Add/Update touches only the parent row; they are
@@ -196,14 +196,18 @@ public class ExportDocumentAuthenticationRequestBl(
             await CheckStatusAndNotify(id, entity.StatusId, ToRelatedEntity(entity));
         }
 
-        // Post-save document attach (legacy IDocumentServiceAdapter.AttachDocumentsToEntity).
-        if (request.ListOfAdditionalDocumentsIds.Count > 0)
+        // Post-save document attach (legacy IDocumentServiceAdapter.AttachDocumentsToEntity) through the platform
+        // IDocumentUtil.SaveDocumentToEntity, one call per document (skills 2026-10-21). The util links by entity id and
+        // type only: legacy's VirtualEntity also carried the request's Title and CustomerID (parity finding H-4), which the
+        // util cannot send - a known gap, accepted by the developer on 29.10.2026.
+        var documentUtil = Resolve<IDocumentUtil>();
+        foreach (var documentId in request.ListOfAdditionalDocumentsIds)
         {
-            await documentsProxy.AttachDocumentsToEntity(new DocumentsToEntityDto
-            {
-                Entity = ToRelatedEntity(entity),
-                DocumentIds = request.ListOfAdditionalDocumentsIds,
-            });
+            await documentUtil.SaveDocumentToEntity(documentUtil.CreateEntityDocumentBuilder()
+                .WithDocumentId(documentId)
+                .WithEntityId(id)
+                .WithEntityTypeId((int)EEntityType.ExportDocumentAuthenticationRequest)
+                .Build());
         }
 
         return await GetExportDocumentAuthenticationRequestById(id);

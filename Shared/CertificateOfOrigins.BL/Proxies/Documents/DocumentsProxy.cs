@@ -46,14 +46,4 @@ public class DocumentsProxy(IHttpProxy httpProxy)
         response.Validate(HttpStatusCode.NotFound); // not found → null, as the legacy adapter returned
         return await response.GetResult<DocumentDto>();
     }
-
-    // Legacy: Container.Resolve<IDocumentsExternalProxy>().AttachDocumentsToEntity([DocumentsToEntityDTO]).
-    public async Task AttachDocumentsToEntity(DocumentsToEntityDto documents)
-    {
-        var req = CreateRequestBuilder()
-            .UsePostMethod()
-            .WithResource("api/Document/AttachDocumentsToEntity") // TODO(blocking): confirm endpoint name/route with the Documents microservice
-            .AddBody(new List<DocumentsToEntityDto> { documents });
-        await ExecuteAsync(req);
-    }
 }

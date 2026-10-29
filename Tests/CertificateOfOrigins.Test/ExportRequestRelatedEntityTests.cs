@@ -6,6 +6,7 @@ using CertificateOfOrigins.Model.CertificateOfOriginsDb;
 using CertificateOfOrigins.Model.ModelDTOs;
 using CustomsCloud.InfrastructureCore.Interfaces.Http;
 using CustomsCloud.InfrastructureCore.Lookup;
+using CustomsCloud.InfrastructureCore.Utils.Documents;
 using CustomsCloud.InfrastructureCore.Utils.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +17,8 @@ namespace CertificateOfOrigins.Test;
 
 // Parity finding H-4: legacy built the entity link of the document attach and of the status message with
 // `new VirtualEntity(entity)` (SendMessageDTO wraps it the same way), which copies the entity's Title and CustomerID. The
-// migration sent only the id and the type, so the Documents and MessageManagement services received no title and CustomerId 0.
+// status message keeps them. The document attach goes through IDocumentUtil.SaveDocumentToEntity since 29.10.2026 (skills
+// 2026-10-21), which links by entity id and type only - Title and CustomerID are a known gap the developer accepted.
 [TestFixture]
 public class ExportRequestRelatedEntityTests
 {
@@ -24,17 +26,15 @@ public class ExportRequestRelatedEntityTests
     private const int RequestCustomerId = 777;
 
     [Test]
-    public async Task TheDocumentAttachCarriesTheRequestTitleAndCustomer()
+    public async Task EachAdditionalDocumentIsLinkedToTheSavedRequest()
     {
         var captured = await Save();
 
         Assert.Multiple(() =>
         {
-            Assert.That(captured.AttachedEntity, Is.Not.Null);
-            Assert.That(captured.AttachedEntity!.Title, Is.EqualTo(RequestTitle));
-            Assert.That(captured.AttachedEntity.CustomerId, Is.EqualTo(RequestCustomerId));
-            Assert.That(captured.AttachedEntity.EntityType, Is.EqualTo((int)EEntityType.ExportDocumentAuthenticationRequest));
-            Assert.That(captured.AttachedEntity.Id, Is.Not.Zero, "the id is the saved request's");
+            Assert.That(captured.AttachedDocumentIds, Is.EqualTo(new[] { 5 }));
+            Assert.That(captured.AttachedEntityTypeId, Is.EqualTo((int)EEntityType.ExportDocumentAuthenticationRequest));
+            Assert.That(captured.AttachedEntityId, Is.Not.Zero, "the id is the saved request's");
         });
     }
 
@@ -48,7 +48,7 @@ public class ExportRequestRelatedEntityTests
             Assert.That(captured.MessageRelatedEntity, Is.Not.Null);
             Assert.That(captured.MessageRelatedEntity!.Title, Is.EqualTo(RequestTitle));
             Assert.That(captured.MessageRelatedEntity.CustomerId, Is.EqualTo(RequestCustomerId));
-            Assert.That(captured.MessageRelatedEntity.Id, Is.EqualTo(captured.AttachedEntity!.Id));
+            Assert.That(captured.MessageRelatedEntity.Id, Is.EqualTo(captured.AttachedEntityId));
         });
     }
 
@@ -59,7 +59,7 @@ public class ExportRequestRelatedEntityTests
     {
         var captured = await Save();
 
-        Assert.That(captured.MessageParameters, Is.EqualTo(new[] { captured.AttachedEntity!.Id.ToString(), "שם מהטבלה" }));
+        Assert.That(captured.MessageParameters, Is.EqualTo(new[] { captured.AttachedEntityId.ToString(), "שם מהטבלה" }));
     }
 
     private static async Task<Captured> Save()
@@ -82,15 +82,27 @@ public class ExportRequestRelatedEntityTests
             _ => null,
         });
 
-        var documentsProxy = Fake<IDocumentsProxy>((method, args) =>
+        // The entity-document builder records what it is given; every fluent call returns the same builder.
+        IEntityDocumentBuilder? entityDocumentBuilder = null;
+        entityDocumentBuilder = Fake<IEntityDocumentBuilder>((method, args) =>
         {
-            if (method.Name == "AttachDocumentsToEntity")
+            switch (method.Name)
             {
-                captured.AttachedEntity = ((DocumentsToEntityDto)args![0]!).Entity;
+                case nameof(IEntityDocumentBuilder.WithDocumentId):
+                    captured.AttachedDocumentIds.Add((int)args![0]!);
+                    break;
+                case nameof(IEntityDocumentBuilder.WithEntityId):
+                    captured.AttachedEntityId = (int)args![0]!;
+                    break;
+                case nameof(IEntityDocumentBuilder.WithEntityTypeId):
+                    captured.AttachedEntityTypeId = (int)args![0]!;
+                    break;
             }
 
-            return null;
+            return method.ReturnType == typeof(IEntityDocumentBuilder) ? entityDocumentBuilder : null;
         });
+        var documentUtil = Fake<IDocumentUtil>((method, _) =>
+            method.Name == nameof(IDocumentUtil.CreateEntityDocumentBuilder) ? entityDocumentBuilder : null);
 
         var messageProxy = Fake<IMessageManagementProxy>((method, args) =>
         {
@@ -108,7 +120,7 @@ public class ExportRequestRelatedEntityTests
         services.AddSingleton<ILogger<ExportDocumentAuthenticationRequestBl>>(NullLogger<ExportDocumentAuthenticationRequestBl>.Instance);
         services.AddSingleton(dataLayer);
         services.AddSingleton(Fake<IRequestMetadata>((method, _) => method.Name == "get_UserId" ? (int?)7 : null));
-        services.AddSingleton(documentsProxy);
+        services.AddSingleton(documentUtil);
         services.AddSingleton(messageProxy);
         services.AddSingleton(Fake<IEventUtil>((method, _) => method.Name == nameof(IEventUtil.CreatBuilder) ? FakeChainingBuilder(builderType) : null));
         services.AddSingleton(Fake<ICustomerProxy>());
@@ -143,7 +155,9 @@ public class ExportRequestRelatedEntityTests
 
     private sealed class Captured
     {
-        public VirtualEntityDto? AttachedEntity;
+        public List<int> AttachedDocumentIds = [];
+        public int AttachedEntityId;
+        public int AttachedEntityTypeId;
         public VirtualEntityDto? MessageRelatedEntity;
         public IEnumerable<string>? MessageParameters;
     }
