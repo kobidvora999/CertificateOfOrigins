@@ -65,7 +65,7 @@ public class MessageInBandFailureTests
         Assert.That(released, Is.Empty);
     }
 
-    // DELETE community/CertificateOfOrigins/COO-1001 — a cancellation takes the lock keyed by the certificate number.
+    // DELETE community/certificate-of-origins/COO-1001 — a cancellation takes the lock keyed by the certificate number.
     private static async Task Cancel(bool lockAcquired, bool lockThrows = false, bool configThrows = false, List<string>? released = null)
     {
         var lockState = Fake<ILockState>((method, _) => method.Name == "get_IsAcquired" ? lockAcquired : null);

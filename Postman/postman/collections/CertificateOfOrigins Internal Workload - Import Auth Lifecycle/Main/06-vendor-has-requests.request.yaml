@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor?vendorId={{vendorId}}"
+url: "{{baseUrl}}/ui/authentication-request/additional-exist-for-vendor?vendorId={{vendorId}}"
 method: GET
 # The vendor of this run (minted per run) now has requests - the two just created.
 order: 1060

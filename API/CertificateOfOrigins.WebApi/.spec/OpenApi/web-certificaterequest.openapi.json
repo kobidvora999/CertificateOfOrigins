@@ -6,7 +6,7 @@
     "description": "C14 Schema First contract for the web domain. Hand-written, derived from the legacy incoming-message service GetPC_Web_9096_CertificateRequest (the 'Web' in that name is what places this endpoint in the web domain). The controller is written to match this document, not the other way round, and Test/SchemaContract/WebCertificateRequestContractTests.cs fails the build if the two drift apart. Note the deliberate in-band error contract: an unknown guid or no matching certificate is HTTP 200 with ExeptionDescription set, never a 404 - the public portal depends on that. The response members keep the legacy wire names (PascalCase, including the legacy spelling ExeptionDescription; parity D-F1, decided 2026-10-11). A technical failure (a service this endpoint calls, missing configuration) is an HTTP 5xx, not an in-band error (parity D-F4, decided 2026-10-11)."
   },
   "paths": {
-    "/web/CertificateOfOrigins/RequestByGuid": {
+    "/web/certificate-of-origins/request-by-guid": {
       "get": {
         "tags": [ "CertificateOfOrigins" ],
         "summary": "Certificate verification for the public portal.",

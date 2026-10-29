@@ -11,7 +11,7 @@ description: >-
   and the two scenarios where the correct answer is "nothing happens" (an omitted packing/measure code, an
   ancient invoice date that is silently clamped) assert exactly that, because a validator that fired on those
   too would otherwise look just as green.
-  Every scenario is a POST community/CertificateOfOrigins create with no certificate number, so none of them takes
+  Every scenario is a POST community/certificate-of-origins create with no certificate number, so none of them takes
   the five-minute message lock; this collection is freely re-runnable. Pure REST: a rejected message is HTTP 400
   with the legacy code in errors[].errorCode (string) and its text in errors[].detail, not 200 with an in-band
   exceptions[] array.
@@ -36,7 +36,7 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      // Pure REST (alternative 2, POST community/CertificateOfOrigins): a rejected message is 400 ProblemDetails whose
+      // Pure REST (alternative 2, POST community/certificate-of-origins): a rejected message is 400 ProblemDetails whose
       // errors[] carry errorCode = the legacy exceptionType as a STRING and detail[0] = the legacy exceptionDescription;
       // a saved certificate is 201 with only its reconciliation warnings in exception[]. Both are read, codes as strings.
       var errList = (j && j.errors) ? j.errors : [];

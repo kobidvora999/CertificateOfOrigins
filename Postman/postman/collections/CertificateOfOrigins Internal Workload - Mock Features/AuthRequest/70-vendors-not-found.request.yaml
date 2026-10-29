@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest"
+url: "{{baseUrl}}/ui/authentication-request"
 method: QUERY
 headers:
   Content-Type: application/json

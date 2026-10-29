@@ -14,7 +14,7 @@
     }
   },
   "paths": {
-    "/community/CertificateOfOrigins": {
+    "/community/certificate-of-origins": {
       "post": {
         "operationId": "createCertificateOfOrigin",
         "summary": "Create a certificate of origin (request reasons 1, 2, 10, 12)",
@@ -62,7 +62,7 @@
         }
       }
     },
-    "/community/CertificateOfOrigins/{certificateId}": {
+    "/community/certificate-of-origins/{certificateId}": {
       "get": {
         "operationId": "getCertificateOfOriginStatus",
         "summary": "Status of a certificate (legacy request reason 13)",
@@ -277,7 +277,7 @@
         }
       }
     },
-    "/community/CertificateOfOrigins/{certificateIdToCancel}/Replacement": {
+    "/community/certificate-of-origins/{certificateIdToCancel}/replacement": {
       "post": {
         "operationId": "replaceCertificateOfOrigin",
         "summary": "Create a certificate that replaces an existing one, which is cancelled (reasons 4, 5)",

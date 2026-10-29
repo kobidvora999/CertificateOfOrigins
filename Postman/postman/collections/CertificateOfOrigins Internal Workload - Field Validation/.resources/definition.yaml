@@ -14,7 +14,7 @@ description: >-
   The third folder covers the country-GROUP switch. `CheckIfCountryGroupIsInTradeAgreement` picks its message
   from the same kind of DetailType switch, and a group can never share a message with its country — the
   cross-field XOR rule demands exactly one of each pair — so each arm needs a message of its own.
-  Pure REST: every request is POST community/CertificateOfOrigins; a rejected message is HTTP 400 with the legacy
+  Pure REST: every request is POST community/certificate-of-origins; a rejected message is HTTP 400 with the legacy
   code in errors[].errorCode (string), not 200 with an in-band exceptions[] array.
 variables:
   baseUrl: http://localhost:9034
@@ -37,7 +37,7 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      // Pure REST (alternative 2, POST community/CertificateOfOrigins): a rejected message is 400 ProblemDetails whose
+      // Pure REST (alternative 2, POST community/certificate-of-origins): a rejected message is 400 ProblemDetails whose
       // errors[].errorCode is the legacy exceptionType as a STRING; a saved certificate is 201 with the flat result and
       // only its reconciliation warnings in exception[]. Codes are read from both, as strings.
       var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })

@@ -14,7 +14,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Web;
 // not the other way round.
 [ApiController]
 [ProxyFailureExceptionFilter]
-[Route("web/[controller]")]
+[Route("web/certificate-of-origins")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)
 {
@@ -26,10 +26,10 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // 502/503 from [ProxyFailureExceptionFilter]; anything else (the DataDictionaryField / CurrencyType lookups, a
     // missing CertificateOfOriginQueryURL) a 500. Legacy put every failure into the response header because the ESB
     // channel required an answer; a REST caller gets the HTTP status instead.
-    [HttpGet("RequestByGuid")]
+    [HttpGet("request-by-guid")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(CertificateOfOriginsResponseDto))]
-    public async Task<ActionResult<CertificateOfOriginsResponseDto>> CertificateRequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
+    public async Task<ActionResult<CertificateOfOriginsResponseDto>> RequestByGuid([FromQuery] CertificateOfOriginsRequestDto request)
     {
         var result = await BusinessLayer.GetCertificateRequestByGuid(request);
         return Ok(result);

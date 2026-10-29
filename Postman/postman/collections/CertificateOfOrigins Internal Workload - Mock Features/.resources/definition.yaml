@@ -56,7 +56,7 @@ scripts:
 
       // Most scenarios answer 200 with the branch visible in the body. The two ExportDoc reads do NOT: a customer the
       // Customers service does not know is refused with a 400 naming the field, as legacy (b720c6a, bdb1866).
-      // The certificate-of-origin message (pure REST, alternative 2) is split by method: POST community/CertificateOfOrigins
+      // The certificate-of-origin message (pure REST, alternative 2) is split by method: POST community/certificate-of-origins
       // creates (201), PUT /{id} updates (200), POST /{idToCancel}/Replacement replaces (201), DELETE /{id} cancels (200).
       // A message the validation rejects is 400 (errors[].errorCode = the legacy exceptionType as a STRING); a saved
       // certificate keeps its reconciliation findings in exception[] of the 201/200.

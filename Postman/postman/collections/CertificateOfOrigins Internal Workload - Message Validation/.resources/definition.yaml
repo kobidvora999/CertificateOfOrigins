@@ -7,7 +7,7 @@ description: >-
   CertificateOfOriginsBl.MessageCrossField.cs and asserts the legacy code it must raise - now
   errors[].errorCode (a string) on the HTTP 400 of a rejected message, where it used to be the in-band
   exceptionType under 200 - so the assertion proves the BRANCH ran, not merely that the endpoint answered.
-  Pure REST (alternative 2): create is POST community/CertificateOfOrigins (201), update PUT /{id} (200),
+  Pure REST (alternative 2): create is POST community/certificate-of-origins (201), update PUT /{id} (200),
   replacement POST /{idToCancel}/Replacement (201), cancel DELETE /{id} (200, no body).
   Certificate type 1 (EURMED) is used deliberately: it is the only type whose cl_DetailsPerCertificate
   catalogue carries IsCumulation (field 19), and it has the richest catalogue (30 fields vs 19 for MERCOSUR).
@@ -44,7 +44,7 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      // Pure REST (alternative 2): the one message endpoint is split by method - POST community/CertificateOfOrigins
+      // Pure REST (alternative 2): the one message endpoint is split by method - POST community/certificate-of-origins
       // (create, 201), PUT .../{certificateId} (update, 200), POST .../{certificateIdToCancel}/Replacement (201), DELETE
       // .../{certificateId} (cancel, 200). A rejected message is 400 ProblemDetails whose errors[].errorCode is the legacy
       // exceptionType as a STRING. Each request's expected HTTP status:

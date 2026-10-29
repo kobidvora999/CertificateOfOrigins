@@ -1,7 +1,7 @@
 # אפיון: CertificateOfOrigins — CertificateOfOrigins API
 
 > **תאריך:** 28/07/2026
-> **Controller:** `CertificateOfOriginsController` (`/CertificateOfOrigins`)
+> **Controller:** `CertificateOfOriginsController` — `Ui/` (`/ui/certificate-of-origins`), `Api/` (`/api/certificate-of-origins`), `Web/` (`/web/certificate-of-origins`)
 
 ---
 
@@ -16,7 +16,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/CertificateOfOriginByExternalIdExist` |
+| **נתיב** | `/ui/certificate-of-origins/by-external-id-exist` |
 | **תיאור** | בדיקת קיום תעודת מקור לפי מספר תעודה חיצוני (Internal WCF: `IsCertificateOfOriginByExternalIdExist`) |
 
 **פרמטרים:**
@@ -43,7 +43,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/CertificateOfOriginID/{certificateNumber}` |
+| **נתיב** | `/api/certificate-of-origins/id/{certificateNumber}` |
 | **תיאור** | שליפת מזהה תעודת מקור לפי מספר תעודה (External WCF: `GetCertificateOfOriginID`) |
 
 **פרמטרים:**
@@ -69,7 +69,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/CertificateOfOrigins/GoodsItemCerificateDTO` |
+| **נתיב** | `/api/certificate-of-origins/goods-item-certificate` |
 | **תיאור** | העשרת רשימת פריטי טובין במזהה תעודת המקור התואם (External WCF: `GetGoodsItemCerificateDTO`) |
 
 **פרמטרים:**
@@ -95,8 +95,8 @@
 ### CertificateOfOriginsByFilter
 | שדה | ערך |
 |-----|-----|
-| **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/CertificateOfOriginsByFilter` |
+| **HTTP** | QUERY |
+| **נתיב** | `/ui/certificate-of-origins` |
 | **תיאור** | חיפוש תעודות מקור לפי מסנן מלא (Internal WCF: `GetCertificateOfOriginsByFilter`) |
 
 **פרמטרים:**
@@ -123,7 +123,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/CertificateOfOrigins/Convert` |
+| **נתיב** | `/api/certificate-of-origins/convert` |
 | **תיאור** | פעולת ESB/EAI — פענוח ישות מקושרת (Connected Entity) לישות וירטואלית גנרית (External WCF: `Convert`) |
 
 **פרמטרים:**
@@ -151,7 +151,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/CertificateOfOriginById/{certificateOfOriginId}` |
+| **נתיב** | `/ui/certificate-of-origins/{certificateOfOriginId}` |
 | **תיאור** | שליפת תעודת מקור בודדת עם כל הגרף שלה (Internal WCF: `GetCertificateOfOriginById`) |
 
 **פרמטרים:**
@@ -179,7 +179,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/CertificateRequestByGuid` |
+| **נתיב** | `/web/certificate-of-origins/request-by-guid` |
 | **תיאור** | אימות תעודת מקור לצורך הפורטל הציבורי, לפי guid או לפי מספר תעודה + תאריך הנפקה (Incoming WCF: `GetCertificateRequestByGuid` / `GetPC_Web_9096_CertificateRequest`) |
 
 **פרמטרים:**
@@ -213,8 +213,8 @@
 ### LoadDataFromExportDeclaration
 | שדה | ערך |
 |-----|-----|
-| **HTTP** | GET |
-| **נתיב** | `/CertificateOfOrigins/LoadDataFromExportDeclaration` |
+| **HTTP** | QUERY |
+| **נתיב** | `/ui/certificate-of-origins/load-data-from-export-declaration` |
 | **תיאור** | בדיקה האם ניתן להמשיך בטיפול בתעודה על סמך מצב הצהרת היצוא הקשורה (Internal WCF: `LoadDataFromExportDeclaration`) |
 
 **פרמטרים:**

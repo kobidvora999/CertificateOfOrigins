@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/community/CertificateOfOrigins/{{certNumber}}/Replacement"
+url: "{{base_URL}}/community/certificate-of-origins/{{certNumber}}/replacement"
 method: POST
 headers:
   MessageSenderId: "{{messageSenderId}}"

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{rejCertId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{rejCertId}}"
 method: GET
 # Read back the Received certificate - the body the reject save sends.
 order: 2100

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/community/CertificateOfOrigins/{{replacementNumber}}"
+url: "{{base_URL}}/community/certificate-of-origins/{{replacementNumber}}"
 method: DELETE
 headers:
   MessageSenderId: "{{messageSenderId}}"

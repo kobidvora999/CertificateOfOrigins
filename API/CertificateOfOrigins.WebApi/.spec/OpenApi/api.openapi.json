@@ -6,7 +6,7 @@
                  "description":  "C14 code-first contract for the api (external / service-to-service) domain. Exported from /openapi/v1.json of the running application, filtered to the api/ prefix, with components.schemas reduced to the transitive $ref closure of those paths. HttpQuery endpoints are absent by construction - ASP.NET does not emit them into the generated document."
              },
     "paths":  {
-                  "/api/CertificateOfOrigins/ID/{certificateNumber}":  {
+                  "/api/certificate-of-origins/id/{certificateNumber}":  {
                                                                            "get":  {
                                                                                        "tags":  [
                                                                                                     "CertificateOfOrigins"
@@ -75,7 +75,7 @@
                                                                                                      }
                                                                                    }
                                                                        },
-                  "/api/CertificateOfOrigins/GoodsItemCerificateDTO":  {
+                  "/api/certificate-of-origins/goods-item-certificate":  {
                                                                            "post":  {
                                                                                         "tags":  [
                                                                                                      "CertificateOfOrigins"
@@ -163,7 +163,7 @@
                                                                                                       }
                                                                                     }
                                                                        },
-                  "/api/CertificateOfOrigins/Convert":  {
+                  "/api/certificate-of-origins/convert":  {
                                                             "post":  {
                                                                          "tags":  [
                                                                                       "CertificateOfOrigins"
@@ -239,7 +239,7 @@
                                                                                        }
                                                                      }
                                                         },
-                  "/api/CertificateOfOrigins/SaveAttachments":  {
+                  "/api/certificate-of-origins/attachments":  {
                                                                     "post":  {
                                                                                  "tags":  [
                                                                                               "CertificateOfOrigins"
@@ -315,7 +315,7 @@
                                                                                                }
                                                                              }
                                                                 },
-                  "/api/CertificateOfOrigins/Reconcile":  {
+                  "/api/certificate-of-origins/reconcile":  {
                                                               "post":  {
                                                                            "tags":  [
                                                                                         "CertificateOfOrigins"
@@ -394,7 +394,7 @@
                                                                                          }
                                                                        }
                                                           },
-                  "/api/EventsResponse/HandleDeliverySent":  {
+                  "/api/events-response/handle-delivery-sent":  {
                                                                  "patch":  {
                                                                               "tags":  [
                                                                                            "EventsResponse"

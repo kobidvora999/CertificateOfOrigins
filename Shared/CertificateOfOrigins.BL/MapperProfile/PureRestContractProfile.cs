@@ -12,7 +12,7 @@ public class PureRestContractProfile : Profile
         // The contract's optional arrays (exception, attachment) are null when empty, not [].
         AllowNullCollections = true;
 
-        // Community certificate-of-origin request (community/CertificateOfOrigins) -> the internal message DTO the
+        // Community certificate-of-origin request (community/certificate-of-origins) -> the internal message DTO the
         // validation engine reads. The certificate numbers come from the URL; the BL sets them.
         CreateMap<CertificateOfOriginRequest, CertificateOfOriginRequestMessageDto>();
         CreateMap<AgentRequest, CertificateOfOriginAgentRequestDto>();

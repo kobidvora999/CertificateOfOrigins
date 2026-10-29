@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/BLC-NOPE-{{runId}}"
+url: "{{baseUrl}}/community/certificate-of-origins/BLC-NOPE-{{runId}}"
 method: GET
 headers:
   MessageSenderId: "1"

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{fileId}}"
+url: "{{baseUrl}}/ui/authentication-request/file/{{fileId}}"
 method: GET
 # After 30-delivery-vendor: the first vendor delivery recorded FirstProvideContactDate = today (the file was just created by 03, so it starts empty).
 order: 13500

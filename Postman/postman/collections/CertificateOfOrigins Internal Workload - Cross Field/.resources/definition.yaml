@@ -10,7 +10,7 @@ description: >-
   needs an Israel origin AND a missing pair AND a zipcode-mandatory type AND a non-exempt destination), and
   two of them fire only when a field is ABSENT — something no fixture built by copying a working message ever
   produces.
-  Every scenario is a POST community/CertificateOfOrigins create with no certificate number, so none takes the
+  Every scenario is a POST community/certificate-of-origins create with no certificate number, so none takes the
   five-minute message lease; the collection is freely re-runnable. Pure REST: a rejected message is HTTP 400 with
   the legacy code in errors[].errorCode (string), not 200 with an in-band exceptions[] array.
 variables:
@@ -33,7 +33,7 @@ scripts:
       pm.test('no server error (5xx)', function () {
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
-      // Pure REST (alternative 2, POST community/CertificateOfOrigins): a rejected message is 400 ProblemDetails whose
+      // Pure REST (alternative 2, POST community/certificate-of-origins): a rejected message is 400 ProblemDetails whose
       // errors[].errorCode is the legacy exceptionType as a STRING; a saved certificate is 201 with the flat result and
       // only its reconciliation warnings in exception[]. Codes are read from both, as strings.
       var codes = (j && j.errors ? j.errors : []).map(function (e) { return String(e.errorCode); })

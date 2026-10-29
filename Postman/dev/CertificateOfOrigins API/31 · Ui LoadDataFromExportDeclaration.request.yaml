@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/CertificateOfOrigins/LoadDataFromExportDeclaration"
+url: "{{base_URL}}/ui/certificate-of-origins/load-data-from-export-declaration"
 method: QUERY
 headers:
   Content-Type: "application/json"

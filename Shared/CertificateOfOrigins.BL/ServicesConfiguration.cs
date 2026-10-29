@@ -28,7 +28,7 @@ public class ServicesConfiguration : IServicesConfiguration
         services.AddBusinessLayer<AuthenticationRequestBl>();
         services.AddBusinessLayer<ExportDocumentAuthenticationRequestBl>();
 
-        // C14: the event-response BL (api/EventsResponse) — thin, delegates to AuthenticationRequestBl.
+        // C14: the event-response BL (api/events-response) — thin, delegates to AuthenticationRequestBl.
         services.AddBusinessLayer<EventsResponseBl>();
 
         // Platform mock convention (InfrastructureCore.Proxy 1.10.80+): REAL proxies are the default; a request

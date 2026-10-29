@@ -14,7 +14,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Community;
 // split into an endpoint and HTTP method per operation, with the certificate number in the URL.
 [ApiController]
 [ProxyFailureExceptionFilter]
-[Route("community/[controller]")]
+[Route("community/certificate-of-origins")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)
 {
@@ -63,7 +63,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     }
 
     // Legacy request reasons 4 and 5.
-    [HttpPost("{certificateIdToCancel}/Replacement")]
+    [HttpPost("{certificateIdToCancel}/replacement")]
     [BadRequestResponse]
     [NotFoundResponse]
     [ConflictResponse]

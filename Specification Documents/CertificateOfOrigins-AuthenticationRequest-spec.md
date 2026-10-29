@@ -1,7 +1,7 @@
 # אפיון: CertificateOfOrigins — AuthenticationRequest API
 
 > **תאריך:** 30/07/2026
-> **Controller:** `AuthenticationRequestController` (`/AuthenticationRequest`)
+> **Controller:** `Ui/AuthenticationRequestController` (`/ui/authentication-request`)
 
 ---
 
@@ -15,8 +15,8 @@
 ### AuthenticationRequestByFilter
 | שדה | ערך |
 |-----|-----|
-| **HTTP** | GET |
-| **נתיב** | `/AuthenticationRequest/AuthenticationRequestByFilter` |
+| **HTTP** | QUERY |
+| **נתיב** | `/ui/authentication-request` |
 | **תיאור** | חיפוש בקשות אימות יבוא לפי מסנן (Internal WCF: `GetAuthenticationRequestByFilter`) |
 
 **פרמטרים:**
@@ -46,8 +46,8 @@
 ### AuthenticationRequestByLeadDocumentIDs
 | שדה | ערך |
 |-----|-----|
-| **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/AuthenticationRequestByLeadDocumentIDs` |
+| **HTTP** | QUERY |
+| **נתיב** | `/ui/authentication-request/by-lead-document-ids` |
 | **תיאור** | שליפת בקשות אימות יבוא עבור רשימת מזהי מסמכים מובילים (Internal WCF: `GetAuthenticationRequestByLeadDocumentIDs`) |
 
 **פרמטרים:**
@@ -76,7 +76,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/AuthenticationRequest/CheckImporterOfImportAuthentication` |
+| **נתיב** | `/ui/authentication-request/check-importer-of-import-authentication` |
 | **תיאור** | בדיקה האם יבואן מסוים ברשימת יבואנים חסומי-אימות (Internal WCF: `CheckImporterOfImportAuthentication`) |
 
 **פרמטרים:**
@@ -101,7 +101,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/AuthenticationRequest/CheckIfExistsAdditionalRequestsForVendor` |
+| **נתיב** | `/ui/authentication-request/additional-exist-for-vendor` |
 | **תיאור** | בדיקה האם לספק יש יותר מבקשת אימות אחת בשלוש השנים האחרונות (Internal WCF: `CheckIfExistsAdditionalRequestsForVendor`) |
 
 **פרמטרים:**
@@ -126,7 +126,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/AuthenticationRequest/EntityDocuments/{leadDocumentId}` |
+| **נתיב** | `/ui/authentication-request/entity-documents/{leadDocumentId}` |
 | **תיאור** | שליפת המסמכים המצורפים למסמך המוביל, הזמינים לצירוף לבקשת אימות (Internal WCF: `GetEntityDocuments`) |
 
 **פרמטרים:**
@@ -159,7 +159,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/AuthenticationRequest/CheckIfExistsAdditionalRequestsForImporter` |
+| **נתיב** | `/ui/authentication-request/additional-exist-for-importer` |
 | **תיאור** | בדיקה האם קיימת בקשת אימות יבוא נוספת ליבואן בחלון הזמן המוגדר (Internal WCF: `CheckIfExistsAdditionalRequestsForImporter`) |
 
 **פרמטרים:**
@@ -188,7 +188,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/ChangeStatusAfterDeliverySent` |
+| **נתיב** | `/ui/authentication-request/change-status-after-delivery-sent` |
 | **תיאור** | העלאת אירוע סגירת משימות פתוחות לתיק אימות יבוא לאחר משלוח (Internal WCF: `ChangeStatusAfterDeliverySent`) |
 
 **פרמטרים:**
@@ -215,7 +215,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/CloseReminderTask` |
+| **נתיב** | `/ui/authentication-request/close-reminder-task` |
 | **תיאור** | העלאת אירוע סגירת משימת תזכורת 3 חודשים לתיק אימות יבוא (Internal WCF: `HandleSendRemindDeliverNotification`; שם המתודה ב-BL/endpoint שונה משם המתודה בחוזה ה-WCF המקורי — `CloseReminderTask`) |
 
 **פרמטרים:**
@@ -243,7 +243,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent` |
+| **נתיב** | `/ui/authentication-request/handle-import-delivery-and-reminder-for-vendor-sent` |
 | **תיאור** | עדכון סטטוס ושיטת משלוח של תיק בקשת אימות יבוא בעקבות משלוח לספק/בית מכס או תזכורת (Internal WCF: `HandleImportAuthenticationRequestDeliveryAndReminderForVendorSent`) |
 
 **פרמטרים:**
@@ -276,7 +276,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryForImporterSent` |
+| **נתיב** | `/ui/authentication-request/handle-import-delivery-for-importer-sent` |
 | **תיאור** | עדכון סטטוס/שיטת משלוח של תיק בקשת אימות יבוא והחלטת הבקשה, בעקבות משלוח ליבואן (Internal WCF: `HandleImportAuthenticationRequestDeliveryForImporterSent`, אותו שם) |
 
 **פרמטרים:**
@@ -304,7 +304,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/HandleImportAuthenticationRequestDeliveryReminderForImporterSent` |
+| **נתיב** | `/ui/authentication-request/handle-import-delivery-reminder-for-importer-sent` |
 | **תיאור** | עדכון סטטוס/שיטת משלוח של תיק בקשת אימות יבוא והחלטת הבקשה, בעקבות **תזכורת** משלוח ליבואן — התאום-תזכורת של `HandleImportAuthenticationRequestDeliveryForImporterSent` (#23) (Internal WCF: `HandleImportAuthenticationRequestDeliveryReminderForImporterSent`, אותו שם) |
 
 **פרמטרים:**
@@ -332,7 +332,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/AuthenticationRequest/CreateNewAuthenticationFile` |
+| **נתיב** | `/ui/authentication-request/file` |
 | **תיאור** | יצירת תיק בקשת אימות יבוא חדש מתוך קבוצת בקשות וקישורן אליו (Internal WCF: `CreateNewAuthenticationFile`, אותו שם) |
 
 **פרמטרים:**

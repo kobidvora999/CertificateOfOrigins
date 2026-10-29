@@ -93,7 +93,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
     private static readonly int[] ReplacementReasons =
         [(int)ERequestReason.CertificateReplacement, (int)ERequestReason.ImportCertificateReplacement];
 
-    // POST community/CertificateOfOrigins — legacy reasons 1, 2, 10, 12 without a certificate number.
+    // POST community/certificate-of-origins — legacy reasons 1, 2, 10, 12 without a certificate number.
     public async Task<CommunityResult> CreateCertificateOfOriginFromMessage(CommunityRequest request)
     {
         CheckRequestReasonForOperation(request.AgentRequest, CreateReasons);
@@ -101,7 +101,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return result;
     }
 
-    // PUT community/CertificateOfOrigins/{certificateId} — legacy reasons 1, 2, 12 with a certificate number (resend a
+    // PUT community/certificate-of-origins/{certificateId} — legacy reasons 1, 2, 12 with a certificate number (resend a
     // certificate not yet published) and 3 (update).
     public async Task<CommunityResult> UpdateCertificateOfOriginFromMessage(string certificateId, CommunityRequest request)
     {
@@ -113,7 +113,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return result;
     }
 
-    // POST community/CertificateOfOrigins/{certificateIdToCancel}/Replacement — legacy reasons 4 and 5: a new certificate
+    // POST community/certificate-of-origins/{certificateIdToCancel}/replacement — legacy reasons 4 and 5: a new certificate
     // that replaces the one in the URL, which is cancelled.
     public async Task<CommunityResult> ReplaceCertificateOfOriginFromMessage(string certificateIdToCancel, CommunityRequest request)
     {
@@ -125,7 +125,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return result;
     }
 
-    // GET community/CertificateOfOrigins/{certificateId} — legacy reason 13 (status). Legacy validated the full message body
+    // GET community/certificate-of-origins/{certificateId} — legacy reason 13 (status). Legacy validated the full message body
     // on a status query; a GET has no body, so that validation is gone (customs-approved 28.10.2026). Legacy also skipped
     // the amendment check for this reason, and returned no attachment.
     public async Task<CommunityResult> GetCertificateOfOriginStatusForMessage(string certificateId)
@@ -135,7 +135,7 @@ public partial class CertificateOfOriginsBl(IServiceProvider serviceProvider, IL
         return result;
     }
 
-    // DELETE community/CertificateOfOrigins/{certificateId} — legacy reason 14 (cancel).
+    // DELETE community/certificate-of-origins/{certificateId} — legacy reason 14 (cancel).
     public async Task<CommunityResult> CancelCertificateOfOriginByMessage(string certificateId)
     {
         await GetSenderCertificate(certificateId);

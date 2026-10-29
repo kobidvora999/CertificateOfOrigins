@@ -4,7 +4,7 @@ using FluentValidation;
 namespace CertificateOfOrigins.BL.Validations;
 
 // The service had no validation layer at all, so a malformed body reached the database and the resulting FK
-// violation escaped as an unhandled HTTP 500 (POST /CertificateOfOrigins with "{}" — found by the
+// violation escaped as an unhandled HTTP 500 (POST ui/certificate-of-origins with "{}" — found by the
 // internal-workload Negative collection, 2026-08-25).
 //
 // The rules below are deliberately limited to what the DB itself requires: every column checked here is

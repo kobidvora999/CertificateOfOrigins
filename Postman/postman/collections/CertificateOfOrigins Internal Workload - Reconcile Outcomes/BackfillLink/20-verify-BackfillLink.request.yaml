@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{certId}}"
 method: GET
 # The certificate is now linked to THIS request: its lead document and declaration number are the ones 10 sent.
 order: 9520

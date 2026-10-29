@@ -22,7 +22,7 @@ public class WebCertificateRequestContractTests
     public void ContractDeclaresThePortalVerificationPath()
     {
         var paths = _contract.RootElement.GetProperty("paths");
-        Assert.That(paths.TryGetProperty("/web/CertificateOfOrigins/RequestByGuid", out var path), Is.True,
+        Assert.That(paths.TryGetProperty("/web/certificate-of-origins/request-by-guid", out var path), Is.True,
             "the contract must describe the portal verification path under the web/ domain prefix");
         Assert.That(path.TryGetProperty("get", out _), Is.True, "the portal reads by guid, so the operation is a GET");
     }
@@ -33,7 +33,7 @@ public class WebCertificateRequestContractTests
     public void ContractAnswers200WhenNothingMatchedRatherThan404()
     {
         var responses = _contract.RootElement
-            .GetProperty("paths").GetProperty("/web/CertificateOfOrigins/RequestByGuid")
+            .GetProperty("paths").GetProperty("/web/certificate-of-origins/request-by-guid")
             .GetProperty("get").GetProperty("responses");
 
         Assert.Multiple(() =>
@@ -58,7 +58,7 @@ public class WebCertificateRequestContractTests
     public void QueryParametersMatchTheRequestDto()
     {
         var parameters = _contract.RootElement
-            .GetProperty("paths").GetProperty("/web/CertificateOfOrigins/RequestByGuid")
+            .GetProperty("paths").GetProperty("/web/certificate-of-origins/request-by-guid")
             .GetProperty("get").GetProperty("parameters")
             .EnumerateArray().Select(p => p.GetProperty("name").GetString()!)
             .OrderBy(n => n, StringComparer.Ordinal).ToList();

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/{{sqpNumber}}"
+url: "{{baseUrl}}/community/certificate-of-origins/{{sqpNumber}}"
 method: GET
 headers:
   MessageSenderId: "1"

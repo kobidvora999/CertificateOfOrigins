@@ -77,7 +77,7 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
       // The two message-status requests are pure REST now (alternative 2): 10 sends reason 13 to POST create, which
-      // refuses it (400); 20 is GET community/CertificateOfOrigins/{unknown} (404). Every other request answers 200.
+      // refuses it (400); 20 is GET community/certificate-of-origins/{unknown} (404). Every other request answers 200.
       var EXPECT_HTTP = { '10-status-no-id': 400, '20-status-unknown-id': 404 };
       var wantHttp = EXPECT_HTTP[name] || 200;
       pm.test(name + ': status is ' + wantHttp, function () { pm.response.to.have.status(wantHttp); });

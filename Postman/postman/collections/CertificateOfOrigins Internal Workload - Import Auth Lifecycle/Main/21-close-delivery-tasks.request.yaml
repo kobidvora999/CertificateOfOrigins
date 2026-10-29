@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/ChangeStatusAfterDeliverySent"
+url: "{{baseUrl}}/ui/authentication-request/change-status-after-delivery-sent"
 method: POST
 headers:
   Content-Type: application/json

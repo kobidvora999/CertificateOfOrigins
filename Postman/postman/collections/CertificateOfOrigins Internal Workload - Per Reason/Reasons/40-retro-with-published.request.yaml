@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/community/CertificateOfOrigins/PR-PUB-B-{{runId}}"
+url: "{{baseUrl}}/community/certificate-of-origins/PR-PUB-B-{{runId}}"
 method: PUT
 headers:
   MessageSenderId: "1"

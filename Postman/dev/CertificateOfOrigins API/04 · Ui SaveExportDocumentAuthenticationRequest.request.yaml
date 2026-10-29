@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/ExportDocumentAuthenticationRequest"
+url: "{{base_URL}}/ui/export-document-authentication-request"
 method: POST
 headers:
   Content-Type: "application/json"

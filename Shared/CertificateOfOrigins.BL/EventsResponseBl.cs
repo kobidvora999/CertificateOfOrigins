@@ -6,7 +6,7 @@ namespace CertificateOfOrigins.BL;
 
 // C14 event-response BL. The deciding signal for an event response is the INPUT TYPE: a legacy External operation
 // whose incoming DTO is RaiseEventArgs/EventResponseArgs is an event response, and it lives under the `api` domain
-// as api/EventsResponse with its own controller and its own BL.
+// as api/events-response with its own controller and its own BL.
 //
 // This BL is deliberately thin: it owns no logic of its own and delegates straight to the business BL. Its only
 // reason to exist is that C14 binds one controller to one BL, and the event-response controller must not be bound

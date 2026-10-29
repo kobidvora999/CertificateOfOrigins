@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{certId}}"
 method: GET
 # Rowversion for the publish.
 order: 23010

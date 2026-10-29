@@ -9,7 +9,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Ui;
 
 [ApiController]
 [ProxyFailureExceptionFilter]
-[Route("ui/[controller]")]
+[Route("ui/export-document-authentication-request")]
 public class ExportDocumentAuthenticationRequestController(IServiceProvider serviceProvider)
     : BaseController<ExportDocumentAuthenticationRequestBl>(serviceProvider)
 {
@@ -20,7 +20,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetCustomerInformation(customerId) — fetch a single customer's information (incl. addresses)
     // from the Customers service by id. Missing customer → 400 InvalidIdentificationNumber (legacy business error, H-14). The SPA picks the
     // Authentication-purpose address (else the first) from Addresses as the customs-house address.
-    [HttpGet("CustomerInformation/{customerId:int}")]
+    [HttpGet("customer-information/{customerId:int}")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformation([FromRoute] int customerId)
@@ -32,7 +32,7 @@ public class ExportDocumentAuthenticationRequestController(IServiceProvider serv
     // Internal WCF: GetCustomerInformationByCountry(countryId) — the foreign customs-house for a country
     // (Customers service, filtered to activity-type Foreign_customs_house). No customs-house → 400
     // NoCustomHouseForThisCountry (legacy business error, H-14). Returns the first matching customer.
-    [HttpGet("CustomerInformationByCountry/{countryId:int}")]
+    [HttpGet("customer-information-by-country/{countryId:int}")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(CustomerDto))]
     public async Task<ActionResult<CustomerDto>> CustomerInformationByCountry([FromRoute] int countryId)

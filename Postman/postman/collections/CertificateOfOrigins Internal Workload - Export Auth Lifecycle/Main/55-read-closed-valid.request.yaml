@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/{{expId}}"
+url: "{{baseUrl}}/ui/export-document-authentication-request/{{expId}}"
 method: GET
 # State after X5: status 6, children still attached.
 order: 1550

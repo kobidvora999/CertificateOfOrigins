@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/ExportDocumentAuthenticationRequest/CustomerInformation/{{expExporterId}}"
+url: "{{base_URL}}/ui/export-document-authentication-request/customer-information/{{expExporterId}}"
 method: GET
 scripts:
   - type: afterResponse

@@ -1,6 +1,6 @@
 $kind: http-request
-url: "{{base_URL}}/ui/AuthenticationRequest/ByLeadDocumentIDs"
-method: POST
+url: "{{base_URL}}/ui/authentication-request/by-lead-document-ids"
+method: QUERY
 headers:
   Content-Type: "application/json"
 body:

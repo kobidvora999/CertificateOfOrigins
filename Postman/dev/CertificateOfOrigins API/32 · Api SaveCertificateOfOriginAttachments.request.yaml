@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/api/CertificateOfOrigins/SaveAttachments"
+url: "{{base_URL}}/api/certificate-of-origins/attachments"
 method: POST
 headers:
   Content-Type: "application/json"

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/File/{{mfFileId}}"
+url: "{{baseUrl}}/ui/authentication-request/file/{{mfFileId}}"
 method: GET
 headers:
   x-mock-feature--Tasks.Empty: "true"

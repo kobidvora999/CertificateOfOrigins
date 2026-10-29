@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/api/EventsResponse/HandleDeliverySent"
+url: "{{baseUrl}}/api/events-response/handle-delivery-sent"
 method: PATCH
 headers:
   Content-Type: application/json

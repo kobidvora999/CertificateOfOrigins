@@ -20,7 +20,7 @@ namespace CertificateOfOrigins.Test;
 
 // C F-10 regression: in legacy the exception gate (throw _requestExceptions) ran before the reason switch, so a cancellation
 // that was blocked (an open customs-employee task, a still-linked declaration) never echoed the certificate it had not
-// cancelled. Pure REST (DELETE community/CertificateOfOrigins/{certificateId}): a blocked cancellation is a 400 with the
+// cancelled. Pure REST (DELETE community/certificate-of-origins/{certificateId}): a blocked cancellation is a 400 with the
 // legacy exceptions, never a response that could read as a success.
 [TestFixture]
 public class CancellationMessageResponseTests

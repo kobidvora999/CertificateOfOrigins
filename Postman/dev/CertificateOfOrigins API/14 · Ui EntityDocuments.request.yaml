@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_URL}}/ui/AuthenticationRequest/EntityDocuments/{{docA}}"
+url: "{{base_URL}}/ui/authentication-request/entity-documents/{{docA}}"
 method: GET
 scripts:
   - type: afterResponse

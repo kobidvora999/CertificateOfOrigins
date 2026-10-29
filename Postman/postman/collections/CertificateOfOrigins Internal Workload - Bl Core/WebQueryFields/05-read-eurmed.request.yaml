@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{wqEurmedId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{wqEurmedId}}"
 method: GET
 # Read back for the Guid.
 order: 10010

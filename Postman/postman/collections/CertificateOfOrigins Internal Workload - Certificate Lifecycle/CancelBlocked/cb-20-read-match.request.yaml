@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{cbId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{cbId}}"
 method: GET
 # State after C6: DeclarationMatch (6).
 order: 4020

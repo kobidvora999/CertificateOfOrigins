@@ -13,7 +13,7 @@ namespace CertificateOfOrigins.WebApi.Controllers.Api;
 // the class is named after its own BL (EventsResponseBl), which delegates to the business BL.
 [ApiController]
 [ProxyFailureExceptionFilter]
-[Route("api/[controller]")]
+[Route("api/events-response")]
 public class EventsResponseController(IServiceProvider serviceProvider)
     : BaseController<EventsResponseBl>(serviceProvider)
 {
@@ -22,10 +22,10 @@ public class EventsResponseController(IServiceProvider serviceProvider)
     // is commented out): it verifies the file exists and returns true/false. The body is the platform's
     // EventResponseArgs and the verb is PATCH, as every event response (_shared/controller-template.md).
     // No Events_EventTypeResponse row invokes this operation, in legacy or here (MIGRATION-NOT-DONE).
-    [HttpPatch("HandleDeliverySent")]
+    [HttpPatch("handle-delivery-sent")]
     [BadRequestResponse]
     [OkJsonResponse(typeof(bool))]
-    public async Task<ActionResult<bool>> HandleAuthenticationRequestDeliverySent([FromBody] EventResponseArgs args)
+    public async Task<ActionResult<bool>> HandleDeliverySent([FromBody] EventResponseArgs args)
     {
         var result = await BusinessLayer.HandleAuthenticationRequestDeliverySent(args);
         return Ok(result);

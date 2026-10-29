@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/{{mfDoc}}"
+url: "{{baseUrl}}/ui/authentication-request/{{mfDoc}}"
 method: GET
 headers:
   x-mock-feature--Collateral.Empty: "true"

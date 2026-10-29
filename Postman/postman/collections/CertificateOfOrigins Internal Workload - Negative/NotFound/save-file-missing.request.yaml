@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/AuthenticationRequest/File/2147483647"
+url: "{{baseUrl}}/ui/authentication-request/file/2147483647"
 method: PUT
 headers:
   Content-Type: application/json

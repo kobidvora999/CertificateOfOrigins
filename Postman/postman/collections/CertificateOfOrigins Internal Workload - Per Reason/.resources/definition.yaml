@@ -20,7 +20,7 @@ description: >-
   That is a defect in its own right, recorded in reports/gap-analysis-mock-features.md — an agent retransmitting
   the same certificate hits a spurious 400.
   PURE REST (alternative 2, 2026-10-28): the one message endpoint, which answered 200 with an in-band `exceptions`
-  array, is split by method - POST community/CertificateOfOrigins (reasons 1, 2, 10, 12 without a number, 201),
+  array, is split by method - POST community/certificate-of-origins (reasons 1, 2, 10, 12 without a number, 201),
   PUT /{certificateId} (1, 2, 12 with a number, and 3; 200), POST /{certificateIdToCancel}/Replacement (4, 5; 201).
   The certificate number moved from the body into the URL (the lease is now keyed on the PUT URL id), a rejected
   message is 400 with the legacy code in errors[].errorCode (string), and a number that does not exist or that
@@ -100,7 +100,7 @@ scripts:
           pm.expect(pm.response.code, 'HTTP ' + pm.response.code).to.be.below(500);
       });
 
-      // Pure REST (alternative 2): the message is split by method - POST community/CertificateOfOrigins (create, 201),
+      // Pure REST (alternative 2): the message is split by method - POST community/certificate-of-origins (create, 201),
       // PUT .../{certificateId} (update / resend, 200), POST .../{certificateIdToCancel}/Replacement (201). A rejected
       // message is 400 ProblemDetails (errors[].errorCode = the legacy exceptionType as a STRING), a number that does not
       // exist or that another sender created is 404. The worker-screen setup/publish requests (ui/...) still answer 200.

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/CertificateOfOrigins/{{certId}}"
+url: "{{baseUrl}}/ui/certificate-of-origins/{{certId}}"
 method: GET
 # State after C9: Published (8) - Guid, issuing date and QR stamped by the publish step.
 order: 1600

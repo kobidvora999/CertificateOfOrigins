@@ -14,7 +14,7 @@
 ## איך תבנית מחוברת לקוד
 
 ```
-GET api/CertificateOfOrigins/Template/{templateId}/{entityId}?additionalInfo=&freeText=
+GET api/certificate-of-origins/template/{templateId}/{entityId}?additionalInfo=&freeText=
   → CertificateOfOriginsBl.GenerateTemplate
       → GetTemplateMeta(templateId)   ← ממפה id → (Result DTO, {Name}, Format, IsFreeTextAllowed)
       → dbo.GetTemplateData           ← @EntityID, @TemplateTypeID, @CreateUserID, @AdditionalInfo (חתימת Object Maker); ענף פר-תבנית

@@ -1,7 +1,7 @@
 # אפיון: CertificateOfOrigins — ExportDocumentAuthenticationRequest API
 
 > **תאריך:** 28/07/2026
-> **Controller:** `ExportDocumentAuthenticationRequestController` (`/ExportDocumentAuthenticationRequest`)
+> **Controller:** `Ui/ExportDocumentAuthenticationRequestController` (`/ui/export-document-authentication-request`)
 
 ---
 
@@ -16,7 +16,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/ExportDocumentAuthenticationRequest/CustomerInformation/{customerId}` |
+| **נתיב** | `/ui/export-document-authentication-request/customer-information/{customerId}` |
 | **תיאור** | שליפת פרטי לקוח בודד לפי מזהה, כולל כתובות (Internal WCF: `GetCustomerInformation`) |
 
 **פרמטרים:**
@@ -43,7 +43,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/ExportDocumentAuthenticationRequest/CustomerInformationByCountry/{countryId}` |
+| **נתיב** | `/ui/export-document-authentication-request/customer-information-by-country/{countryId}` |
 | **תיאור** | שליפת בית המכס הזר עבור מדינה נתונה (Internal WCF: `GetCustomerInformationByCountry`) |
 
 **פרמטרים:**
@@ -70,7 +70,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/ExportDocumentAuthenticationRequest/ExportDocumentAuthenticationRequestByID/{id}` |
+| **נתיב** | `/ui/export-document-authentication-request/{id}` |
 | **תיאור** | שליפת בקשת אימות מסמך יצוא בודדת עם אוספי הבת שלה (Internal WCF: `GetExportDocumentAuthenticationRequestByID`) |
 
 **פרמטרים:**
@@ -98,7 +98,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | QUERY |
-| **נתיב** | `/ExportDocumentAuthenticationRequest/Search` |
+| **נתיב** | `/ui/export-document-authentication-request` |
 | **תיאור** | חיפוש בקשות אימות מסמכי יצוא לפי מסנן (Internal WCF: `GetExportDocumentAuthenticationRequestSearch`) |
 
 **פרמטרים:**

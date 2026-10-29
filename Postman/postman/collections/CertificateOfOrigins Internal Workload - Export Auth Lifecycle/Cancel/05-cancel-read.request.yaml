@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/ui/ExportDocumentAuthenticationRequest/{{expCxId}}"
+url: "{{baseUrl}}/ui/export-document-authentication-request/{{expCxId}}"
 method: GET
 # Read back at status 1.
 order: 3050

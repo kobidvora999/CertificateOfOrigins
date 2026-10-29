@@ -12,17 +12,17 @@ namespace CertificateOfOrigins.WebApi.Controllers.Ui;
 // resource — the same name recurs in Api/, Web/ and Community/, kept apart by folder + namespace.
 [ApiController]
 [ProxyFailureExceptionFilter]
-[Route("ui/[controller]")]
+[Route("ui/certificate-of-origins")]
 public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     : BaseController<CertificateOfOriginsBl>(serviceProvider)
 {
     // Internal WCF: IsCertificateOfOriginByExternalIdExist(externalId) — existence query by certificate number
     // (LIKE substring, newest match). Returns the matching result, or null when none — existence check, no 404.
-    [HttpGet("ByExternalIdExist")]
+    [HttpGet("by-external-id-exist")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(CertificateOfOriginResultDto))]
-    public async Task<ActionResult<CertificateOfOriginResultDto?>> CertificateOfOriginByExternalIdExist([FromQuery][BindRequired] string certificateOfOriginExternalId)
+    public async Task<ActionResult<CertificateOfOriginResultDto?>> ByExternalIdExist([FromQuery][BindRequired] string certificateOfOriginExternalId)
     {
         var result = await BusinessLayer.IsCertificateOfOriginByExternalIdExist(certificateOfOriginExternalId);
         return Ok(result);
@@ -56,7 +56,7 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // declaration in the ExportDealFile service and returns whether it may proceed (cargo exited customs
     // regulation AND the request is not a retrospective certificate). The legacy also mutated the entity
     // by-reference (IsDeclarationReleased/IsCargoExitedOfCustomsRegulation); over REST only the flag is returned.
-    [HttpQuery("LoadDataFromExportDeclaration")]
+    [HttpQuery("load-data-from-export-declaration")]
     [BadRequestResponse]
     [NotFoundResponse]
     [OkJsonResponse(typeof(bool))]

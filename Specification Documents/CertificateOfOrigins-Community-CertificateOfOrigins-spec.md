@@ -1,7 +1,7 @@
 # אפיון: CertificateOfOrigins — Community CertificateOfOrigins API
 
 > **תאריך:** 29/10/2026
-> **Controller:** `Community/CertificateOfOriginsController` (`/community/CertificateOfOrigins`)
+> **Controller:** `Community/CertificateOfOriginsController` (`/community/certificate-of-origins`)
 > **חוזה:** `.spec/OpenApi/certificateOfOriginsCommunity.json` (שורש ה-repo). ה-DTOs נוצרים מהחוזה (`CertificateOfOriginsCommunityModels.cs`).
 
 ---
@@ -31,7 +31,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/community/CertificateOfOrigins` |
+| **נתיב** | `/community/certificate-of-origins` |
 | **תיאור** | יצירת תעודת מקור — סיבות בקשה 1 (חדשה), 2 (בדיעבד), 10 (ריקה), 12 (טיוטה), בלי מספר תעודה |
 
 **פרמטרים:** `request` (`CertificateOfOriginRequest`, גוף) — `agentRequest`, `certificateOfOrigin` או `nonManipulationCertificate`
@@ -55,7 +55,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | GET |
-| **נתיב** | `/community/CertificateOfOrigins/{certificateId}` |
+| **נתיב** | `/community/certificate-of-origins/{certificateId}` |
 | **תיאור** | שאילתת סטטוס — סיבת בקשה 13 |
 
 **פרמטרים:** `certificateId` (`string`, נתיב) — מספר התעודה
@@ -78,7 +78,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | PUT |
-| **נתיב** | `/community/CertificateOfOrigins/{certificateId}` |
+| **נתיב** | `/community/certificate-of-origins/{certificateId}` |
 | **תיאור** | שליחה מחדש של תעודה שעוד לא פורסמה (סיבות 1, 2, 12) או תיקון תעודה (סיבה 3) |
 
 **פרמטרים:** `certificateId` (`string`, נתיב); `request` (`CertificateOfOriginRequest`, גוף) — `requestReasonCode` נשאר בגוף כי הוא מבחין בין שליחה מחדש לתיקון ונשמר על התעודה
@@ -103,7 +103,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | DELETE |
-| **נתיב** | `/community/CertificateOfOrigins/{certificateId}` |
+| **נתיב** | `/community/certificate-of-origins/{certificateId}` |
 | **תיאור** | ביטול תעודה — סיבת בקשה 14 |
 
 **פרמטרים:** `certificateId` (`string`, נתיב)
@@ -127,7 +127,7 @@
 | שדה | ערך |
 |-----|-----|
 | **HTTP** | POST |
-| **נתיב** | `/community/CertificateOfOrigins/{certificateIdToCancel}/Replacement` |
+| **נתיב** | `/community/certificate-of-origins/{certificateIdToCancel}/replacement` |
 | **תיאור** | תעודה חדשה שמחליפה את התעודה שבכתובת, שמבוטלת — סיבות 4 (החלפה), 5 (החלפה ביבוא) |
 
 **פרמטרים:** `certificateIdToCancel` (`string`, נתיב); `request` (`CertificateOfOriginRequest`, גוף, כולל `replacementReason`)

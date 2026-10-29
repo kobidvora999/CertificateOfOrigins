@@ -9,7 +9,7 @@ description: >-
   agent cancels by message -> Cancelled (4). Every step uses the id / number / Guid / timeStamp captured from the
   step before it, and every transition is proven by reading the certificate back and asserting its status.
   Reject: Received -> worker rejects -> Rejected (3). StatusQuery: Received -> agent status query (GET, status only).
-  The agent message is pure REST (alternative 2): create POST community/CertificateOfOrigins (201), replacement
+  The agent message is pure REST (alternative 2): create POST community/certificate-of-origins (201), replacement
   POST /{idToCancel}/Replacement (201), status GET /{id} (200), cancel DELETE /{id} (200); the result is flat
   (certificateId, certificateOfOriginStatusCode... at the top level) and a refused message is a 400 ProblemDetails.
   Captured values are collection variables only - never put them in an environment file (environment scope
@@ -61,7 +61,7 @@ scripts:
       // ---- a retransmission of the same certificate id within the 5-minute lease ----
       // The platform lock never released (InfrastructureCore.Lock locks in Redis DB 2, releases in DB 0); the service now
       // releases it in DB 2 itself (LockReleaseInLockDatabase), so a retransmission is answered, not ConcurrencyErrorTryAgain.
-      // Pure REST: the status query is GET community/CertificateOfOrigins/{certificateId}; a held lock would now be 409
+      // Pure REST: the status query is GET community/certificate-of-origins/{certificateId}; a held lock would now be 409
       // (was 200 + in-band ConcurrencyErrorTryAgain 1402474). The result is flat (no feedback wrapper).
       if (name === '90-retransmit-status-query') {
           pm.test('90: a retransmitted certificate id is answered (the lock was released)', function () {
@@ -72,7 +72,7 @@ scripts:
           return;
       }
 
-      // The certificate-of-origin message (pure REST, alternative 2): POST community/CertificateOfOrigins creates (201),
+      // The certificate-of-origin message (pure REST, alternative 2): POST community/certificate-of-origins creates (201),
       // POST /{idToCancel}/Replacement replaces (201), GET /{id} answers the status (200), DELETE /{id} cancels (200); a
       // refused message is 400 ProblemDetails (errors[].errorCode = the legacy exceptionType as a STRING). The worker
       // steps (ui/...) still answer 200.
