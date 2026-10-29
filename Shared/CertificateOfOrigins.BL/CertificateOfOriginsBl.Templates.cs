@@ -49,9 +49,7 @@ public partial class CertificateOfOriginsBl
     }
 
     // The Templates payload for a template + entity: the registered template name, its data as JSON, and the output
-    // format. Only GenerateTemplate calls it today (there is deliberately no endpoint of its own — no consumer asked
-    // for the un-rendered data); it stays public per the shared template-print pattern so a future caller needs no
-    // signature change.
+    // format. GenerateTemplate renders it; the generic template contract also exposes it as GET TemplateData.
     //
     // freeText is the user's free text for a template that allows it — legacy TemplateArgument.FreeText, which the
     // template merger put in <FreeText> (MergerOfTemplateArguments.AddFreeText).

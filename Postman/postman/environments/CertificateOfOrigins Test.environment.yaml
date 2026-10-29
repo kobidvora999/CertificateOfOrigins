@@ -1,0 +1,5 @@
+name: "CertificateOfOrigins Test"
+values:
+  - key: baseUrl
+    value: ""
+    description: "service host"

@@ -1,0 +1,30 @@
+# TODO(internal): add the Postman workspace this repo syncs to:
+# workspace:
+#   id: <workspace id>
+
+# Pipeline workspace = internal-workload (TEST-env coverage/lifecycle gate) ONLY.
+# Dependency-workload (pre-prod) lives in ../dependency-workload-test/collections/ and the DEV smoke
+# collection in ../dev/ — neither runs in the pipeline, so neither is listed here.
+
+localResources:
+  collections:
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Auth File Status
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Auth Lifecycle
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Bl Core
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Certificate Lifecycle
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Cross Field
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Export Auth Lifecycle
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Export Doc Request
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Field Validation
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Import Auth Lifecycle
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Invoice Items
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Message Validation
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Mock Features
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Negative
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Per Reason
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Reconcile Outcomes
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Save Import Decisions
+    - ../postman/collections/CertificateOfOrigins Internal Workload - Web Query
+  environments:
+    - ../postman/environments/CertificateOfOrigins Test.environment.yaml
+    - ../dependency-workload-test/CertificateOfOrigins-preprod.environment.yaml

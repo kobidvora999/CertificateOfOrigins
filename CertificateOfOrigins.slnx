@@ -19,11 +19,11 @@
     <Project Path="Workers/IssueCertificateOfOrigin/IssueCertificateOfOrigin.Worker/IssueCertificateOfOrigin.Worker.csproj" />
   </Folder>
   <Folder Name="/Postman/">
-    <Folder Name="/Postman/Environments/">
-      <File Path="Postman/Environments/CertificateOfOrigins.Development.postman_environment.json" />
-      <File Path="Postman/Environments/CertificateOfOrigins.PreProd.postman_environment.json" />
-      <File Path="Postman/Environments/CertificateOfOrigins.Production.postman_environment.json" />
-      <File Path="Postman/Environments/CertificateOfOrigins.Test.postman_environment.json" />
+    <Folder Name="/Postman/postman/environments/">
+      <File Path="Postman/postman/environments/CertificateOfOrigins Development.environment.yaml" />
+      <File Path="Postman/postman/environments/CertificateOfOrigins PreProd.environment.yaml" />
+      <File Path="Postman/postman/environments/CertificateOfOrigins Production.environment.yaml" />
+      <File Path="Postman/postman/environments/CertificateOfOrigins Test.environment.yaml" />
     </Folder>
   </Folder>
 </Solution>

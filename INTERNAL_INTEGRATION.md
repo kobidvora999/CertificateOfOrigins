@@ -23,3 +23,8 @@
 ## 3. בנייה והרצה
 - **DTOs:** `Shared/CertificateOfOrigins.Model/OpenApiModels.tt` → Run Custom Tool מייצר את `CertificateOfOriginsCommunityModels.cs` מהחוזה. הקובץ שבמאגר נוצר מחוץ לרשת עם NSwag 14.7.1 באותן אפשרויות. TODO(internal): להריץ את ה-TT ולוודא שאין הבדל.
 - **Postman:** 108 בקשות הומרו לכתובות החדשות; קוד האתר בגוף הבקשות שונה ל-`SIT01` (‏`CustomsHouse` מוגבל ל-5 תווים ב-XSD). TODO(internal): לוודא ש-`SIT01` קיים ב-Site lookup הפנימי (`ExternalSiteNumberForMessages`), או להחליף לקוד אמיתי.
+
+## 4. התאמה לסקילים (29/10/2026)
+- **חוזה התבניות הגנרי:** נוסף `GET api/CertificateOfOrigins/TemplateData/{templateId:int}/{entityId:int}` (‏`PrintTemplateDto`, בלי רינדור). ‏`Template/{templateId:int}/{entityId:int}` לא השתנה בכתובת; מזהה שאינו מספר מחזיר עכשיו 404 במקום 400.
+- **Postman:** הסביבות עברו ל-v3 ב-`Postman/postman/environments/*.environment.yaml` (הקבצים הישנים ב-`Postman/Environments/` נמחקו), ונוסף המניפסט `Postman/.postman/resources.yaml`. TODO(internal): להוסיף את מזהה ה-workspace של Postman למניפסט.
+- **מסד נתונים מקומי:** `DatabaseMigrationUtil` מושבת ב-`Program.cs`, ולכן סקריפטים חדשים לא רצים בעלייה. TODO(internal): להחיל את `API_20261015180000 - dbo.GetTemplateData preference letters.sql` בכל סביבה שבה `GetTemplateData` נכשל ב-"too many arguments".

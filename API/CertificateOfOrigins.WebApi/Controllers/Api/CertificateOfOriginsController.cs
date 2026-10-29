@@ -86,12 +86,24 @@ public class CertificateOfOriginsController(IServiceProvider serviceProvider)
     // (RestValidationException); an entity with no data → 404 (RestNotFoundException). additionalInfo is the legacy
     // Object Maker @AdditionalInfo, passed through to the template-data procedure; the user is taken from the request.
     // freeText is the user's free text for a template that allows it (legacy TemplateArgument.FreeText).
-    [HttpGet("Template/{templateId}/{entityId}")]
+    [HttpGet("Template/{templateId:int}/{entityId:int}")]
     [BadRequestResponse]
     [NotFoundResponse]
-    public async Task<IActionResult> GenerateTemplate([FromRoute] int templateId, [FromRoute] int entityId, [FromQuery] string? additionalInfo, [FromQuery] string? freeText)
+    public async Task<IActionResult> Template([FromRoute] int templateId, [FromRoute] int entityId, [FromQuery] string? additionalInfo, [FromQuery] string? freeText)
     {
-        var result = await BusinessLayer.GenerateTemplate(templateId, entityId, additionalInfo, freeText: freeText);
+        var result = await BusinessLayer.GenerateTemplate(templateId, entityId, additionalInfo, null, freeText);
         return File(result, "application/pdf");
+    }
+
+    // The generic template contract (every service): the Templates payload for a template + entity — the registered
+    // template name, its data and the output format — without rendering it. Same 400/404 as Template.
+    [HttpGet("TemplateData/{templateId:int}/{entityId:int}")]
+    [BadRequestResponse]
+    [NotFoundResponse]
+    [OkJsonResponse(typeof(PrintTemplateDto))]
+    public async Task<ActionResult<PrintTemplateDto>> TemplateData([FromRoute] int templateId, [FromRoute] int entityId, [FromQuery] string? additionalInfo, [FromQuery] string? freeText)
+    {
+        var result = await BusinessLayer.GetTemplateData(templateId, entityId, additionalInfo, null, freeText);
+        return Ok(result);
     }
 }
